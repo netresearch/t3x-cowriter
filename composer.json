@@ -1,0 +1,43 @@
+{
+    "name": "netresearch/t3-cowriter",
+    "description": "With the help of ai you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.",
+    "type": "typo3-cms-extension",
+    "license": [
+        "GPL-3.0-or-later"
+    ],
+    "homepage": "https://github.com/netresearch/t3-cowriter",
+    "readme": "README.md",
+    "keywords": [
+        "typo3",
+        "extension",
+        "cowriter",
+        "ai",
+        "backend"
+    ],
+    "authors": [
+        {
+            "name": "Netresearch",
+            "email": "andre.lademann@netresearch.de",
+            "homepage": "https://www.netresearch.de",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/netresearch/t3-cowriter/issues",
+        "source": "https://github.com/netresearch/t3-cowriter",
+        "docs": "https://github.com/netresearch/t3-cowriter"
+    },
+    "require": {
+        "typo3/cms-core": "^10.4 || ^11.5 || ^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Netresearch\\T3Cowriter\\": "Classes/"
+        }
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "t3_cowriter"
+        }
+    }
+}
