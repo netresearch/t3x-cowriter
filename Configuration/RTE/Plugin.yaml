@@ -1,0 +1,4 @@
+editor:
+  externalPlugins:
+    abbr:
+      resource: "EXT:t3_cowriter/Resources/Public/JavaScript/cowriter/"

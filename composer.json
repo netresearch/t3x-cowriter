@@ -20,6 +20,12 @@
             "email": "andre.lademann@netresearch.de",
             "homepage": "https://www.netresearch.de",
             "role": "Developer"
+        },
+        {
+            "name": "Netresearch",
+            "email": "thomas.schoene@netresearch.de",
+            "homepage": "https://www.netresearch.de",
+            "role": "Developer"
         }
     ],
     "support": {
@@ -28,7 +34,7 @@
         "docs": "https://github.com/netresearch/t3-cowriter"
     },
     "require": {
-        "typo3/cms-core": "^10.4 || ^11.5 || ^12.0"
+        "typo3/cms-core": "^11.5"
     },
     "autoload": {
         "psr-4": {

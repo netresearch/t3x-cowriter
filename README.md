@@ -7,14 +7,13 @@ Did you ever whish to have a second person to work on a TYPO3 page together with
 Install the extension via composer:
 
 ```bash
-composer require t3g/cowriter
+composer require netresearch/t3-cowriter
 ```
 
 ## Functionality
 
-1. Create articles based on your description
-2. Make summaries of your articles
-3. Convert some of your words into synonyms or emojis to make your text more interesting
+1. You'll get a new button in your editor for content elements.
+2. Press the button and enter a description for the text you want to generate
 
 ## License
 
