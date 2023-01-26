@@ -44,6 +44,9 @@
     "extra": {
         "typo3/cms": {
             "extension-key": "t3_cowriter"
+        },
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
         }
     }
 }
