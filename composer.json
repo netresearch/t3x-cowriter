@@ -26,6 +26,12 @@
             "email": "thomas.schoene@netresearch.de",
             "homepage": "https://www.netresearch.de",
             "role": "Developer"
+        },
+        {
+            "name": "Netresearch",
+            "email": "sebastian.koschel@netresearch.de",
+            "homepage": "https://www.netresearch.de",
+            "role": "Developer"
         }
     ],
     "support": {
@@ -34,7 +40,7 @@
         "docs": "https://github.com/netresearch/t3-cowriter"
     },
     "require": {
-        "typo3/cms-core": "^11.5"
+        "typo3/cms-core": "^9.5 || ^10.4 || ^11.5"
     },
     "autoload": {
         "psr-4": {

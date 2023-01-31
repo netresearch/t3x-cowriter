@@ -15,7 +15,7 @@ composer require netresearch/t3-cowriter
 
 ## Configuration
 
-1. Create a new API key at [https://www.cowriter.ai](https://www.cowriter.ai)
+1. Create a new API key at [https://openai.com/api/](https://openai.com/api/)
 2. Add the API key to your TYPO3 Extension configuration (Extension Manager -> Settings -> Extension Configuration -> t3_cowriter)
 
 ## Functionality
