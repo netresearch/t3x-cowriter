@@ -16,6 +16,7 @@
 
 - André Lademann
 - Thomas Schöne
+- Sebastian Koschel
 
 # 0.0.1
 
