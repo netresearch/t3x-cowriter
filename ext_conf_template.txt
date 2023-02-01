@@ -6,5 +6,4 @@
 openaiKey = 0
 
 # cat=PageTS; type=string; label=ExtensionOrg
-openaiOrg = 0
-
+openaiOrg = 
