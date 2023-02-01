@@ -1,3 +1,9 @@
+# 1.1.1
+
+## MISC
+
+- [Bugfix] Set Default organization empty 7a4ca1d
+
 # 1.1.0
 
 ## FEATURE
