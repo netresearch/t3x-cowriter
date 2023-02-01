@@ -52,7 +52,7 @@
             "extension-key": "t3_cowriter"
         },
         "branch-alias": {
-            "dev-main": "1.0.x-dev"
+            "dev-main": "1.1.x-dev"
         }
     }
 }

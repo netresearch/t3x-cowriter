@@ -1,3 +1,9 @@
+# 1.1.0
+
+## FEATURE
+
+- [FEATURE] Enhancement for use with TYPO3 version 9.5-11.5 554df42
+
 # 1.0.1
 
 # 1.0.0
@@ -6,25 +12,15 @@
 
 ## MISC
 
-- e1310dc NRLF-295: Add language files
-- 77c2df9 NRLF-295: Use js const only in BE mode
-- 03fe141 NRLF-295: Add animated image to documentation
-- 46238fd NRLF-295: Make api credentials configurable
-- a942a16 NRLF-295: Add plugin configuration for CKEditor
-
-## Contributors
-
-- André Lademann
-- Thomas Schöne
-- Sebastian Koschel
+- NRLF-295: Add language files e1310dc
+- NRLF-295: Use js const only in BE mode 77c2df9
+- NRLF-295: Add animated image to documentation 03fe141
+- NRLF-295: Make api credentials configurable 46238fd
+- NRLF-295: Add plugin configuration for CKEditor a942a16
 
 # 0.0.1
 
 ## MISC
 
-- cc9a8af NRLF-295: Add basic structure with make
-
-## Contributors
-
-- André Lademann
+- NRLF-295: Add basic structure with make cc9a8af
 
