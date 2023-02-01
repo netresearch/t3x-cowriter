@@ -26,7 +26,7 @@ jobs:
       - name: Step 3 - ZIP the whole package
         run: |
           rm -rf .git .github .gitignore .gitattributes .editorconfig .gitmodules
-          zip -r t3-cowriter-${{ github.ref_name }}.zip ./
+          zip -r ./package/t3-cowriter-${{ github.ref_name }}.zip ./
       - name: Step 4 - Upload the package artifact
         uses: actions/upload-artifact@v3
         with:
