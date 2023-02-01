@@ -4,3 +4,6 @@
 # Composer-related files
 .Build
 composer.lock
+
+# External resources
+/Resources/Public/JavaScript/Plugins/ckeditor-cowriter

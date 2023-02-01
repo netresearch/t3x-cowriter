@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - '*'
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -15,9 +13,16 @@ jobs:
       - name: Step 1 - Checkout sources
         uses: actions/checkout@v2
       - name: Step 2 - Download a file from another repository
-        # @todo Download and unzip the whole package
         run: |
-          wget https://netresearch.github.io/ckeditor-cowriter/plugin.js -O Resources/Public/JavaScript/Plugins/ckeditor-cowriter/plugin.js
+          mkdir -p ./Resources/Public/JavaScript/Plugins/ckeditor-cowriter/
+          wget https://netresearch.github.io/ckeditor-cowriter/plugin.js -O ./Resources/Public/JavaScript/Plugins/ckeditor-cowriter/plugin.js
+          
+          mkdir -p ./Resources/Public/JavaScript/Plugins/ckeditor-cowriter/icons/
+          wget https://netresearch.github.io/ckeditor-cowriter/icons/cash-register.svg -O ./Resources/Public/JavaScript/Plugins/ckeditor-cowriter/icons/cash-register.svg
+
+          mkdir -p ./Resources/Public/JavaScript/Plugins/ckeditor-cowriter/lang/
+          wget https://netresearch.github.io/ckeditor-cowriter/lang/en.js -O ./Resources/Public/JavaScript/Plugins/ckeditor-cowriter/lang/en.js
+          wget https://netresearch.github.io/ckeditor-cowriter/lang/de.js -O ./Resources/Public/JavaScript/Plugins/ckeditor-cowriter/lang/de.js
       - name: Step 3 - ZIP the whole package
         run: |
           zip -r t3-cowriter-${{ github.ref_name }}.zip ./
