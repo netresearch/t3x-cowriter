@@ -3,7 +3,7 @@
 Did you ever whish to have a second person to work on a TYPO3 page together with you? This extension allows you to do so. With the help of ai you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.
 
 ![TYPO3 AI cowriter](Documentation/Images/t3-cowriter.gif)
-
+> Give it a try with our TYPPO3 mock and let the AI write for you: [Demo](https://t3ai.surge.sh/)
 
 ## Installation
 
