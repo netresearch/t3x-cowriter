@@ -18,6 +18,23 @@ composer require netresearch/t3-cowriter
 
 1. Create a new API key at [https://openai.com/api/](https://openai.com/api/)
 2. Add the API key to your TYPO3 Extension configuration (Extension Manager -> Settings -> Extension Configuration -> t3_cowriter)
+3. Having no own RTE Configuration:
+    * Add EXT:t3_cowriter to your root page Page TSconfig -
+     Include static Page TSconfig (from extensions)
+   ![PageTSCongfig](Documentation/Images/pagetsconfig.png)
+4. With an own RTE Configuration yml file (your_ext/Configuration/RTE/YourConfig.yml):
+    * add the Plugin.yml to your imports and the plugin js to externalPlugins:
+```yml
+imports:
+  - { resource: "EXT:t3_cowriter/Configuration/RTE/Plugin.yaml" }
+
+editor:
+  externalPlugins:
+    cowriter:
+      resource: "EXT:t3_cowriter/Resources/Public/JavaScript/Plugins/cowriter/"
+
+```
+   
 
 ## Functionality
 
