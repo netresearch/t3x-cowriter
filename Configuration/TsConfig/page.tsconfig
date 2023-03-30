@@ -1,2 +1,2 @@
-RTE.config.tt_content.bodytext.types.text.preset = cowriter
+RTE.config.tt_content.bodytext.preset = cowriter
 RTE.config.tx_news_domain_model_news.bodytext.preset = cowriter
