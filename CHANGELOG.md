@@ -1,3 +1,13 @@
+# 1.2.1
+
+## BUGFIX
+
+- f7a416c [BUGFIX] Load default RTE configuration for styles
+
+## Contributors
+
+- Gitsko
+
 # 1.2.0
 
 ## FEATURE
