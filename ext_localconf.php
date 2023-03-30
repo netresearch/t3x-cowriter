@@ -15,7 +15,6 @@
 
 defined('TYPO3_MODE') or die('Access denied.');
 
-\TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addPageTSConfig('<INCLUDE_TYPOSCRIPT: source="FILE:EXT:t3_cowriter/Configuration/TsConfig/page.tsconfig">');
 
 if (empty($GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter'])) {
     $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter'] = 'EXT:t3_cowriter/Configuration/RTE/Plugin.yaml';
