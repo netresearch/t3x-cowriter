@@ -23,11 +23,8 @@ composer require netresearch/t3-cowriter
      Include static Page TSconfig (from extensions)
    ![PageTSCongfig](Documentation/Images/pagetsconfig.png)
 4. With an own RTE Configuration yml file (your_ext/Configuration/RTE/YourConfig.yml):
-    * add the Plugin.yml to your imports and the plugin js to externalPlugins:
+    * add to externalPlugins:
 ```yml
-imports:
-  - { resource: "EXT:t3_cowriter/Configuration/RTE/Plugin.yaml" }
-
 editor:
   externalPlugins:
     cowriter:
