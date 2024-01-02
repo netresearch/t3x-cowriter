@@ -32,7 +32,14 @@
             "email": "sebastian.koschel@netresearch.de",
             "homepage": "https://www.netresearch.de",
             "role": "Developer"
+        },
+        {
+            "name": "Netresearch",
+            "email": "martin.wunderlich@netresearch.de",
+            "homepage": "https://www.netresearch.de",
+            "role": "Developer"
         }
+
     ],
     "support": {
         "issues": "https://github.com/netresearch/t3-cowriter/issues",
@@ -41,7 +48,7 @@
     },
     "notify-batch": "https://flows.nrdev.de/composer/install",
     "require": {
-        "typo3/cms-core": "^9.5 || ^10.4 || ^11.5"
+        "typo3/cms-core": "^12.4"
     },
     "autoload": {
         "psr-4": {
@@ -53,7 +60,7 @@
             "extension-key": "t3_cowriter"
         },
         "branch-alias": {
-            "dev-main": "1.2.x-dev"
+            "dev-main": "2.0.x-dev"
         }
     }
 }
