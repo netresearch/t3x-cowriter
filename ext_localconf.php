@@ -13,7 +13,7 @@
  * The TYPO3 project - inspiring people to share!
  */
 
-defined('TYPO3_MODE') or die('Access denied.');
+defined('TYPO3') or die('Access denied.');
 
 
 if (empty($GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter'])) {
@@ -26,7 +26,7 @@ $extensionConfiguration = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(
     \TYPO3\CMS\Core\Configuration\ExtensionConfiguration::class
 );
 
-if (TYPO3_MODE === 'BE') {
+if (TYPO3 === 'BE') {
     $config = $extensionConfiguration->get('t3_cowriter');
     $renderer = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Core\Page\PageRenderer::class);
     $renderer->addJsInlineCode('cowriterkey', 'const OPENAI_KEY = "' . $config['openaiKey'] . '"', false, true);
