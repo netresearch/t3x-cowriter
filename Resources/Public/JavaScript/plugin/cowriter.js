@@ -1,40 +1,29 @@
 import {Core, UI} from "@typo3/ckeditor5-bundle.js";
+//import OpenAI from "openai";
 
 export default class cowriter extends Core.Plugin {
     static pluginName = 'cowriter';
 
     init() {
-        const editor = this.editor;
-        const model = editor.model;
-        const view = editor.view;
+        const editor = this.editor,
+              model = editor.model,
+              view = editor.view;
 
-        // Register <wbr>:
-        model.schema.register('wbrTag', {
-            allowWhere: '$text',
-            allowAttributesOf: '$text',
-            isInline: true
+        const openai = new OpenAI({
+            apiKey: addkey,
+            organization: addkey,
         });
 
-        editor.conversion.for('upcast')
-            .elementToElement({
-                model: 'wbrTag',
-                view: 'wbr'
-            });
+        // async getResult() {
+        //     const completion = await openai.chat.completions.create({
+        //         messages: [{ role: "user", content: "Say this is a test" }],
+        //         model: "gpt-3.5-turbo",
+        //     });
+        //
+        //     return completion.choices[0];
+        // }
 
-        editor.conversion.for('dataDowncast')
-            .elementToElement({
-                model: 'wbrTag',
-                view: (modelElement, {writer}) => writer.createEmptyElement('wbr')
-            });
-
-        // Wrap <wbr> with <span> element to highlight the element in the editing view:
-        editor.conversion.for('editingDowncast')
-            .elementToElement({
-                model: 'wbrTag',
-                view: (modelElement, {writer}) => writer.createContainerElement('span', {class: 'ck ck-wbr'}, writer.createEmptyElement('wbr'))
-            });
-
-        // Create button that allows to insert <wbr> at current text cursor position:
+        // Button to add text at current text cursor position:
         editor.ui.componentFactory.add('cowriter', () => {
             const button = new UI.ButtonView();
 
@@ -47,6 +36,7 @@ export default class cowriter extends Core.Plugin {
                 model.change(writer => {
                     const insertPosition = editor.model.document.selection.getFirstPosition();
                     writer.insert('Netresearch rockt', insertPosition);
+                    //writer.insert(this.getResult(), insertPosition);
                 });
             });
 
