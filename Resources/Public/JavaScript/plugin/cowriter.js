@@ -1,5 +1,4 @@
-import {Core, UI} from "@typo3/ckeditor5-bundle.js";
-//import OpenAI from "openai";
+import { Core, UI } from "@typo3/ckeditor5-bundle.js";
 
 export default class cowriter extends Core.Plugin {
     static pluginName = 'cowriter';
@@ -9,19 +8,6 @@ export default class cowriter extends Core.Plugin {
               model = editor.model,
               view = editor.view;
 
-        const openai = new OpenAI({
-            apiKey: addkey,
-            organization: addkey,
-        });
-
-        // async getResult() {
-        //     const completion = await openai.chat.completions.create({
-        //         messages: [{ role: "user", content: "Say this is a test" }],
-        //         model: "gpt-3.5-turbo",
-        //     });
-        //
-        //     return completion.choices[0];
-        // }
 
         // Button to add text at current text cursor position:
         editor.ui.componentFactory.add('cowriter', () => {
