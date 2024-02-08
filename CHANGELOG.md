@@ -1,3 +1,13 @@
+# 1.2.2
+
+## BUGFIX
+
+- e82fd8c [BUGFIX] Replace deprecated models
+
+## Contributors
+
+- Martin Wunderlich
+
 # 1.2.1
 
 ## BUGFIX
