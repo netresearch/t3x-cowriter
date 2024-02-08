@@ -1,6 +1,6 @@
 import { Core, UI } from "@typo3/ckeditor5-bundle.js";
 
-export default class cowriter extends Core.Plugin {
+export default class Cowriter extends Core.Plugin {
     static pluginName = 'cowriter';
 
     init() {
@@ -10,7 +10,7 @@ export default class cowriter extends Core.Plugin {
 
 
         // Button to add text at current text cursor position:
-        editor.ui.componentFactory.add('cowriter', () => {
+        editor.ui.componentFactory.add(Cowriter.pluginName, () => {
             const button = new UI.ButtonView();
 
             button.set({
