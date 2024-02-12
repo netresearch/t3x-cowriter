@@ -1,3 +1,14 @@
+# 1.2.3
+
+## FEATURE
+
+- ecc0fcb - NEXT-40: Remove obsolete pipeline + setup release to TER
+
+## Contributors
+
+- Norman Golatka
+
+
 # 1.2.2
 
 ## BUGFIX
