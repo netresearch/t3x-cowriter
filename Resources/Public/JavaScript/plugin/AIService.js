@@ -1,4 +1,4 @@
-// vi:ts=4 sw=4 expandtab colorcolumn=120
+// vim: ts=4 sw=4 expandtab colorcolumn=120
 // @ts-check
 
 /** @typedef {string} OpenAIAuth */
