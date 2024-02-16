@@ -16,9 +16,9 @@ export default class Cowriter extends Core.Plugin {
         this._service = new AIService(
             new AIServiceOptions(
                 // TODO: Get API URL from configuration
-                AIServiceOptions.OPENAI_URL,
+                _cowriterConfig.apiUrl,
                 // TODO: Get API token from configuration
-                null
+                _cowriterConfig.apiToken,
             )
         );
 

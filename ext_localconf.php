@@ -1,16 +1,17 @@
 <?php
+// vim: ts=4 sw=4 expandtab
 
-$GLOBALS['TYPO3_CONF_VARS']['BE']['stylesheets']['t3_cowriter']
-    = 'EXT:t3_cowriter/Resources/Public/Css/editor.css';
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
+use TYPO3\CMS\Core\Page\AssetCollector;
 
-// Make the extension configuration accessible
-$extensionConfiguration = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(
-    \TYPO3\CMS\Core\Configuration\ExtensionConfiguration::class
-);
+$config = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('t3_cowriter');
+$js = 'globalThis._cowriterConfig = ' . json_encode($config) . ';';
 
-if (TYPO3 === 'BE') {
-    $config = $extensionConfiguration->get('t3_cowriter');
-    $renderer = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Core\Page\PageRenderer::class);
-    $renderer->addJsInlineCode('cowriterkey', 'const OPENAI_KEY = "' . $config['openaiKey'] . '"', false, true);
-    $renderer->addJsInlineCode('cowriterorg', 'const OPENAI_ORG = "' . $config['openaiOrg'] . '"', false, true);
-}
+$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess'][] = function($parameters, $pagerenderer) use ($js) {
+    /** @var AssetCollector $assetCollector */
+    $assetCollector = GeneralUtility::makeInstance(AssetCollector::class);
+
+    // This sucks.
+    $assetCollector->addInlineJavaScript('cowriter_config', $js);
+};
