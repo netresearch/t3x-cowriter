@@ -3,6 +3,7 @@ name: Publish new extension version to TER
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   publish:
