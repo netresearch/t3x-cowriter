@@ -3,6 +3,6 @@
 ###################
 
 # cat=PageTS; type=string; label=API URL
-apiUrl = api.openai.com
+apiUrl = https://api.openai.com
 # cat=PageTS; type=string; label=API Token
 apiToken = 
