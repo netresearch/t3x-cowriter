@@ -1,4 +1,5 @@
-// vi:ts=4 sw=4 expandtab colorcolumn=120
+// vim: ts=4 sw=4 expandtab colorcolumn=120
+// @ts-check
 
 import { Core, UI } from "@typo3/ckeditor5-bundle.js";
 import { AIService, AIServiceOptions } from "./AIService.js";
@@ -12,7 +13,7 @@ export default class Cowriter extends Core.Plugin {
      */
     _service;
 
-    init() {
+    async init() {
         this._service = new AIService(
             new AIServiceOptions(
                 // TODO: Get API URL from configuration
@@ -21,6 +22,8 @@ export default class Cowriter extends Core.Plugin {
                 _cowriterConfig.apiToken,
             )
         );
+
+        const availableModels = await this._service.fetchModels();
 
         const editor = this.editor,
             model = editor.model,
@@ -37,13 +40,55 @@ export default class Cowriter extends Core.Plugin {
 
             button.on('execute', async () => {
                 // TODO: Open dialog
+                const selection =editor.model.document.selection;
+
+                const ranges = (Array.from(selection.getRanges()) ?? []);
+                let promptRange, prompt;
+                for (const range of ranges) {
+                    for (const item of range.getItems()) {
+                        prompt = item.data;
+                        promptRange = range;
+
+                        break;
+                    }
+                }
+
+                if (prompt === undefined || promptRange === undefined) return;
+
+                // TODO: Properly parse arguments or put these into a dropdown
+                let preferredModel = null;
+                if (prompt.startsWith('#cw:')) {
+                    const split = prompt.split(/ +/g);
+                    preferredModel = split[0].slice(4);
+                }
 
                 // TODO: Set loading state
-                const content = await this._service.complete("Here's an awesome fact about our earth: ", { model: "gpt-3.5-turbo" });
+
+                let aiModel = null;
+                let warning = "";
+                let content = "";
+                // FIXME: Clean this up
+                if (preferredModel !== null) {
+                    if (availableModels.includes(preferredModel)) {
+                        aiModel = preferredModel;
+                    } else {
+                        warning = `AI model "${preferredModel}" not available. `;
+                        aiModel = availableModels[0] ?? null;
+                    }
+                } else if (availableModels.length >= 1) {
+                    aiModel = availableModels[0];
+                } else {
+                    warning = "No AI model available.";
+                }
+
+                if (aiModel !== null) content = (await this._service.complete(prompt, { model: aiModel }))[0].content;
 
                 model.change((writer) => {
-                    const insertPosition = editor.model.document.selection.getFirstPosition();
-                    writer.insert(content[0].content, insertPosition);
+                    writer.remove(promptRange);
+                    const insertPosition = selection.getFirstPosition();
+                    writer.insert(warning + content, insertPosition);
+
+                    writer.setSelection(null);
                 });
             });
 
