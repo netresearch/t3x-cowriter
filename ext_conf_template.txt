@@ -2,8 +2,7 @@
 ### Credentials ###
 ###################
 
-# cat=PageTS; type=string; label=ExtensionKey
-openaiKey = 0
-
-# cat=PageTS; type=string; label=ExtensionOrg
-openaiOrg = 
+# cat=PageTS; type=string; label=API URL
+apiUrl = api.openai.com
+# cat=PageTS; type=string; label=API Token
+apiToken = 
