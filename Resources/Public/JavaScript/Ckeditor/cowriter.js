@@ -4,7 +4,7 @@
 import { Core, UI } from "@typo3/ckeditor5-bundle.js";
 import { AIService, AIServiceOptions } from "./AIService.js";
 
-export default class Cowriter extends Core.Plugin {
+export class Cowriter extends Core.Plugin {
     static pluginName = 'cowriter';
 
     /**
@@ -22,7 +22,6 @@ export default class Cowriter extends Core.Plugin {
                 _cowriterConfig.apiToken,
             )
         );
-
         const availableModels = await this._service.fetchModels();
 
         const editor = this.editor,

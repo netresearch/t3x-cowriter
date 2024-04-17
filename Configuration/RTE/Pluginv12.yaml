@@ -1,0 +1,13 @@
+editor:
+  config:
+    importModules:
+      - { module: '@netresearch/t3_cowriter/cowriter', exports: ['Cowriter'] }
+    toolbar:
+      items:
+        - bold
+        - italic
+        - '|'
+        - clipboard
+        - undo
+        - redo
+        - cowriter
