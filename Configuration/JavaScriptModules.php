@@ -6,6 +6,6 @@ return [
         'backend.form',
     ],
     'imports' => [
-        '@netresearch/ckeditor-cowriter' => 'EXT:t3_cowriter/Resources/Public/JavaScript/plugin/cowriter.js',
+        '@netresearch/t3_cowriter/cowriter' => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/cowriter.js',
     ],
 ];
