@@ -8,3 +8,5 @@ apiType = openai
 apiUrl = https://api.openai.com
 # cat=PageTS; type=string; label=API Token
 apiToken = 
+# cat=PageTS; type=string; label=Preferred LLM
+preferredModel = gpt-4-turbo

@@ -32,7 +32,7 @@ export class AIServiceOptions {
      * @type {string}
      * @module
      */
-    _apiUrl = '';
+    _apiUrl = "";
 
     /**
      * @type {OpenAIAuth|null}
@@ -50,16 +50,14 @@ export class AIServiceOptions {
      * @param {APIType} apiType
      * @param {string} apiUrl
      * @param {OpenAIAuth|null} auth
+     * @param {string|null} systemPrompt
      */
-    constructor(apiType, apiUrl, auth = null) {
+    constructor(apiType, apiUrl, auth = null, systemPrompt = null) {
         this._apiType = apiType;
         this._apiUrl = apiUrl;
         this._auth = auth;
-    }
 
-    /** @param {string} systemPrompt */
-    setSystemPrompt(systemPrompt) {
-        this._systemPrompt = systemPrompt;
+        if (systemPrompt !== null) this._systemPrompt = systemPrompt;
     }
 
     validate() {
@@ -179,7 +177,7 @@ export class AIService {
             body: JSON.stringify({
                 messages,
                 max_tokens: maxTokens,
-                model: model,
+                model,
                 temperature: temperature,
                 n: amount,
                 top_p: topP,

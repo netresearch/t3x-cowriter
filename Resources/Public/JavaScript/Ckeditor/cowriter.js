@@ -13,14 +13,18 @@ export class Cowriter extends Core.Plugin {
      */
     _service;
 
+    /**
+     * @type {string}
+     * @private
+     */
+    _preferredModel;
+
     async init() {
+        this._preferredModel = globalThis._cowriterConfig.preferredModel;
         this._service = new AIService(
             new AIServiceOptions(
-                // TODO: Get API type from configuration
                 globalThis._cowriterConfig.apiType,
-                // TODO: Get API URL from configuration
                 globalThis._cowriterConfig.apiUrl,
-                // TODO: Get API token from configuration
                 globalThis._cowriterConfig.apiToken,
             )
         );
@@ -61,6 +65,7 @@ export class Cowriter extends Core.Plugin {
                 if (prompt.startsWith('#cw:')) {
                     const split = prompt.split(/ +/g);
                     preferredModel = split[0].slice(4);
+                    prompt = split.slice(1).join(' ');
                 }
 
                 // TODO: Set loading state
@@ -77,7 +82,11 @@ export class Cowriter extends Core.Plugin {
                         aiModel = availableModels[0] ?? null;
                     }
                 } else if (availableModels.length >= 1) {
-                    aiModel = availableModels[0];
+                    if (availableModels.includes(this._preferredModel)) {
+                        aiModel = this._preferredModel;
+                    } else {
+                        aiModel = availableModels[0];
+                    }
                 } else {
                     warning = "No AI model available.";
                 }
