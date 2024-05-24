@@ -2,6 +2,8 @@
 ### Credentials ###
 ###################
 
+# cat=PageTS; type=string; label=API Type (openai, ollama)
+apiType = openai
 # cat=PageTS; type=string; label=API URL
 apiUrl = https://api.openai.com
 # cat=PageTS; type=string; label=API Token
