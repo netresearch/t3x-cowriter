@@ -10,8 +10,23 @@
  * @property {string} message.role
  */
 
+/**
+ * @readonly
+ * @enum {string}
+ */
+export const APIType = {
+    OPENAI: 'openai',
+    OLLAMA: 'ollama',
+}
+
 export class AIServiceOptions {
     static OPENAI_URL = "https://api.openai.com";
+
+    /**
+     * @type {APIType}
+     * @module
+     */
+    _apiType = APIType.OPENAI;
 
     /**
      * @type {string}
@@ -32,10 +47,12 @@ export class AIServiceOptions {
     _systemPrompt = "You are a helpful assistant.";
 
     /**
+     * @param {APIType} apiType
      * @param {string} apiUrl
      * @param {OpenAIAuth|null} auth
      */
-    constructor(apiUrl, auth = null) {
+    constructor(apiType, apiUrl, auth = null) {
+        this._apiType = apiType;
         this._apiUrl = apiUrl;
         this._auth = auth;
     }
@@ -99,7 +116,7 @@ export class AIService {
     _constructHeaders() {
         const headers = new Headers();
 
-        if (this._options._auth !== undefined) headers.set("Authorization", `Bearer ${this._options._auth}`);
+        if (this._options._auth !== undefined && this._options._auth !== "") headers.set("Authorization", `Bearer ${this._options._auth}`);
 
         return headers;
     };
@@ -108,10 +125,22 @@ export class AIService {
      * @returns {Promise<string[]>}
      */
     async fetchModels() {
-        // https://platform.openai.com/docs/api-reference/models
-        return fetch(`${this._options._apiUrl}/v1/models`, { method: "GET", headers: this._constructHeaders() })
-            .then(r => r.json())
-            .then(({ data }) => data.map(({ id }) => id));
+        switch (this._options._apiType) {
+            case APIType.OLLAMA: {
+                // https://github.com/ollama/ollama/blob/main/docs/api.md
+                return fetch(`${this._options._apiUrl}/api/tags`, { method: "GET", headers: this._constructHeaders() })
+                    .then((r) => r.json())
+                    .then(({ models }) => models.map(({ name }) => name));
+            }
+            case APIType.OPENAI: {
+                // https://platform.openai.com/docs/api-reference/models
+                return fetch(`${this._options._apiUrl}/v1/models`, { method: "GET", headers: this._constructHeaders() })
+                    .then((r) => r.json())
+                    .then(({ data }) => data.map(({ id }) => id));
+            }
+            default:
+                throw new Error(`Unsupported API type: ${this._options._apiType}`);
+        }
     }
 
     /**

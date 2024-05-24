@@ -16,10 +16,12 @@ export class Cowriter extends Core.Plugin {
     async init() {
         this._service = new AIService(
             new AIServiceOptions(
+                // TODO: Get API type from configuration
+                globalThis._cowriterConfig.apiType,
                 // TODO: Get API URL from configuration
-                _cowriterConfig.apiUrl,
+                globalThis._cowriterConfig.apiUrl,
                 // TODO: Get API token from configuration
-                _cowriterConfig.apiToken,
+                globalThis._cowriterConfig.apiToken,
             )
         );
         const availableModels = await this._service.fetchModels();
