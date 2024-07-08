@@ -3,7 +3,7 @@ namespace netresearch\t3_cowriter\Domain\Model;
 
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 
-class prompts extends AbstractEntity {
+class Prompts extends AbstractEntity {
     /**
      * @var string
      */
