@@ -56,7 +56,6 @@ return [
             'config' => [
                 'type' => 'select',
                 'renderType' => 'selectSingleBox',
-
                 'items' => [
                     ['-- Select a field --', 0]
                 ],
