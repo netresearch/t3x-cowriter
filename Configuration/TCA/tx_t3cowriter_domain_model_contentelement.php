@@ -31,6 +31,7 @@ return [
         'table' => [
             'exclude' => 1,
             'label' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf:tx_t3cowriter_domain_model_contentelement.title',
+            'onChange' => 'reload',
             'config' => [
                 'type' => 'select',
                 'renderType' => 'selectSingle',
@@ -38,7 +39,6 @@ return [
                     ['-- Select a table --', 0]
                 ],
                 'itemsProcFunc' => ItemsProcFunc::class . '->selectTables',
-                'onChange' => 'reload'
             ],
         ],
         'field' => [
