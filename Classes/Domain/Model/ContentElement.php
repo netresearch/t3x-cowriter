@@ -19,7 +19,6 @@ class ContentElement extends AbstractEntity {
     /**
      * @var string
      */
-
     protected string $table = '';
 
     /**
@@ -64,7 +63,6 @@ class ContentElement extends AbstractEntity {
     public function getField() {
         return $this->field;
     }
-
 
     /**
      * @param $field
