@@ -4,8 +4,8 @@ use Netresearch\T3Cowriter\UserFunctions\FormEngine\ItemsProcFunc;
 
 return [
     'ctrl' => [
-        'title' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_contentelement.title',
-        'label' => 'title',
+        'title' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf:tx_t3cowriter_domain_model_contentelement.title',
+        'label' => 'table',
         'tstamp' => 'tstamp',
         'crdate' => 'crdate',
         'cruser_id' => 'cruser_id',
@@ -21,26 +21,16 @@ return [
             'starttime' => 'starttime',
             'endtime' => 'endtime',
         ],
-        'searchFields' => 'title, table,field',
+        'searchFields' => 'table,field',
         'iconfile' => 'EXT:t3_cowriter/Resources/Public/Icons/Extension.svg'
     ],
     'types' => [
-        '1' => ['showitem' => 'title, table, field']
+        '1' => ['showitem' => 'table, field']
     ],
     'columns' => [
-        'title' => [
-            'exclude' => 1,
-            'label' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf:tx_t3cowriter_domain_model_contentelement.title',
-            'config' => [
-                'type' => 'input',
-                'size' => 30,
-                'eval' => 'trim'
-            ],
-        ],
         'table' => [
             'exclude' => 1,
             'label' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf:tx_t3cowriter_domain_model_contentelement.title',
-            'onChange' => 'reload',
             'config' => [
                 'type' => 'select',
                 'renderType' => 'selectSingle',
@@ -48,6 +38,7 @@ return [
                     ['-- Select a table --', 0]
                 ],
                 'itemsProcFunc' => ItemsProcFunc::class . '->selectTables',
+                'onChange' => 'reload'
             ],
         ],
         'field' => [
@@ -55,12 +46,13 @@ return [
             'label' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf:tx_t3cowriter_domain_model_contentelement.field',
             'config' => [
                 'type' => 'select',
-                'renderType' => 'selectSingleBox',
+                'renderType' => 'selectSingle',
                 'items' => [
                     ['-- Select a field --', 0]
                 ],
                 'itemsProcFunc' => ItemsProcFunc::class . '->selectFields',
             ],
         ],
+        // Weitere Felder hier
     ],
 ];

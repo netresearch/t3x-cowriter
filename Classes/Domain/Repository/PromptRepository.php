@@ -1,5 +1,5 @@
 <?php
-namespace netresearch\t3_cowriter\Domain\Repository;
+namespace Netresearch\T3Cowriter\Domain\Repository;
 
 use TYPO3\CMS\Extbase\Persistence\Repository;
 
