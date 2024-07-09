@@ -32,9 +32,11 @@ class ItemsProcFunc
     {
         $table = $params['row']['table'];
         if ($table) {
+            $table = strval($table[0]);
+
             $connection = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($table);
             $schemaManager = $connection->createSchemaManager();
-            $columns = $schemaManager->listTableNames();
+            $columns = $schemaManager->listTableColumns($table);
 
             foreach ($columns as $column) {
                 $params['items'][] = [$column->getName(), $column->getName()];
