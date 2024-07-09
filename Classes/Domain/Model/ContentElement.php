@@ -71,5 +71,4 @@ class ContentElement extends AbstractEntity {
     public function setField($field) {
         $this->field = $field;
     }
-
 }
