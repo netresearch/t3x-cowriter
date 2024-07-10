@@ -46,7 +46,7 @@ return [
             'label' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf:tx_t3cowriter_domain_model_contentelement.field',
             'config' => [
                 'type' => 'select',
-                'renderType' => 'selectSingle',
+                'renderType' => 'selectSingleBox',
                 'items' => [
                     ['-- Select a field --', 0]
                 ],
