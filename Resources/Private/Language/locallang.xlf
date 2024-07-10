@@ -9,7 +9,7 @@
         <source>Prompt</source>
       </trans-unit>
       <trans-unit id="tx_t3cowriter_domain_model_contentelement.title">
-        <source>Table</source>
+        <source>Content Element</source>
       </trans-unit>
       <trans-unit id="tx_t3cowriter_domain_model_contentelement.field">
         <source>Field</source>
