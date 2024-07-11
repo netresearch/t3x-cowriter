@@ -21,4 +21,3 @@ class ContentElementRepository extends Repository
         $this->setDefaultQuerySettings($querySettings);
     }
 }
-
