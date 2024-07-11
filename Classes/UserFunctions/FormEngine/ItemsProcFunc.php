@@ -28,32 +28,48 @@ class ItemsProcFunc
         $schemaManager = $connection->createSchemaManager();
         $tables = $schemaManager->listTableNames();
 
-        foreach ($tables as $table) {
-            $params['items'][] = [$table, $table];
-        }
+        $params = $this->getListItems($tables, $params, function($table) {
+            return $table;
+        });
     }
 
     /**
      *
      * Populates the available fields of a selected table into the selection list.
-     * 
+     *
      * @param $params
      * @return void
      * @throws \Doctrine\DBAL\Exception
      */
     public function selectFields(&$params): void
     {
-        $table = $params['row']['table'];
-        if ($table) {
-            $table = strval($table[0]);
-
-            $connection = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($table);
-            $schemaManager = $connection->createSchemaManager();
-            $columns = $schemaManager->listTableColumns($table);
-
-            foreach ($columns as $column) {
-                $params['items'][] = [$column->getName(), $column->getName()];
-            }
+        if (!isset($params['row']['table'][0])) {
+            return;
         }
+        $table = strval($params['row']['table'][0]);
+
+        $connection = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($table);
+        $schemaManager = $connection->createSchemaManager();
+        $columns = $schemaManager->listTableColumns($table);
+
+        $params = $this->getListItems($columns, $params, function($column) {return $column->getName();});
+    }
+
+    /**
+     *
+     * Helper method to add items to the selection list.
+     *
+     * @param array $items
+     * @param array $params
+     * @param callable $getName
+     * @return array
+     */
+    public function getListItems(array $items, array $params, callable $getName): array
+    {
+        foreach ($items as $item) {
+            $name = $getName($item);
+            $params['items'][] = [$name, $name];
+        }
+        return $params;
     }
 }
