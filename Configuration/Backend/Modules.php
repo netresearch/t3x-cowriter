@@ -2,6 +2,7 @@
 
 use Netresearch\T3Cowriter\Controller\T3CowriterModuleController;
 
+
 /**
  * Definitions for modules provided by EXT:examples
  */
@@ -18,7 +19,6 @@ return [
         'controllerActions' => [
             T3CowriterModuleController::class => [
                 'index'
-
             ]
         ],
     ]
