@@ -5,5 +5,5 @@ use TYPO3\CMS\Extbase\Persistence\Repository;
 
 class ContentElementRepository extends Repository
 {
-    // Zusätzliche Methoden falls erforderlich
+    // Additional methods if required
 }
