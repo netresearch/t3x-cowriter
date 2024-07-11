@@ -15,12 +15,12 @@ class ContentElement extends AbstractEntity {
     /**
      * @var string
      */
-    protected $table = '';
+    protected string $table = '';
 
     /**
      * @var string
      */
-    protected $field = '';
+    protected string $field = '';
 
     /**
      *
