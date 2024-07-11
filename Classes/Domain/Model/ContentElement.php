@@ -46,7 +46,6 @@ class ContentElement extends AbstractEntity {
     /**
      * @return string
      */
-
     public function getTable() {
         return $this->table;
     }
