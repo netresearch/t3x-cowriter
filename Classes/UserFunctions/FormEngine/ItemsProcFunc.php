@@ -6,13 +6,21 @@ use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
- * A user function used in select_2
+ * Provides methods to dynamically populate table and field selection lists.
+ *
+ * @package Netresearch\T3Cowriter
+ * @author  Philipp Altmann <philipp.altmann@netresearch.de>
+ * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
  */
 class ItemsProcFunc
 {
     /**
      *
-     * @param array $params
+     * Populates the available database tables into the selection list.
+     *
+     * @param $params
+     * @return void
+     * @throws \Doctrine\DBAL\Exception
      */
     public function selectTables(&$params): void
     {
@@ -24,9 +32,14 @@ class ItemsProcFunc
             $params['items'][] = [$table, $table];
         }
     }
+
     /**
      *
-     * @param array $params
+     * Populates the available fields of a selected table into the selection list.
+     * 
+     * @param $params
+     * @return void
+     * @throws \Doctrine\DBAL\Exception
      */
     public function selectFields(&$params): void
     {
