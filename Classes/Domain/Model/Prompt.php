@@ -11,15 +11,16 @@ use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
  * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
  */
 class Prompt extends AbstractEntity {
-    /**
-     * @var string
-     */
-    protected $title = '';
 
     /**
      * @var string
      */
-    protected $prompt = '';
+    protected string $title = '';
+
+    /**
+     * @var string
+     */
+    protected string $prompt = '';
 
     /**
      * @return string
