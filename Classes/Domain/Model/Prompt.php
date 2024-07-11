@@ -1,12 +1,12 @@
 <?php
-namespace netresearch\t3_cowriter\Domain\Model;
+namespace Netresearch\T3Cowriter\Domain\Model;
 
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 
 /**
  * Definition of the Prompt class that extends AbstractEntity
  *
- * @package Netresearch\t3_cowriter
+ * @package Netresearch\T3Cowriter
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
  * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
  */
@@ -23,6 +23,9 @@ class Prompt extends AbstractEntity {
     protected string $prompt = '';
 
     /**
+     *
+     * Gets the title of the prompt.
+     *
      * @return string
      */
     public function getTitle() {
@@ -30,6 +33,9 @@ class Prompt extends AbstractEntity {
     }
 
     /**
+     *
+     * Sets the title of the prompt.
+     *
      * @param string $title
      */
     public function setTitle($title) {
@@ -37,6 +43,9 @@ class Prompt extends AbstractEntity {
     }
 
     /**
+     *
+     * Gets the content of the prompt.
+     *
      * @return string
      */
     public function getPrompt() {
@@ -44,6 +53,9 @@ class Prompt extends AbstractEntity {
     }
 
     /**
+     *
+     * Sets the content of the prompt.
+     *
      * @param string $prompt
      */
     public function setPrompt($prompt) {

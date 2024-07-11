@@ -4,7 +4,7 @@ use Netresearch\T3Cowriter\UserFunctions\FormEngine\ItemsProcFunc;
 
 return [
     'ctrl' => [
-        'title' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf:tx_t3cowriter_domain_model_contentelement.title',
+        'title' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_contentelement.title',
         'label' => 'table',
         'tstamp' => 'tstamp',
         'crdate' => 'crdate',
