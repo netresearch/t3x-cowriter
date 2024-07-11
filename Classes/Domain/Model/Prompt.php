@@ -3,7 +3,13 @@ namespace netresearch\t3_cowriter\Domain\Model;
 
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 
-// Definition of the Prompt class that extends AbstractEntity
+/**
+ * Definition of the Prompt class that extends AbstractEntity
+ *
+ * @package Netresearch\t3_cowriter
+ * @author  Philipp Altmann <philipp.altmann@netresearch.de>
+ * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
+ */
 class Prompt extends AbstractEntity {
     /**
      * @var string
