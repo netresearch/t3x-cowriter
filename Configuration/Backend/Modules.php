@@ -1,23 +1,22 @@
 <?php
 
-use Netresearch\T3Cowriter\Controller\T3CowriterModuleController;
+
 
 /**
  * Definitions for modules provided by EXT:examples
  */
 return [
-    't3_cowriter' => [
-        'parent' => 'site',
+    'T3CowriterModuleController' => [
+        'parent' => 'web',
         'position' => ['bottom'],
         'access' => 'admin',
         'workspaces' => 'live',
-        'path' => '/module/page/t3cowriter',
-        'labels' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf',
-        'extensionName' => 't3_cowriter',
-        'navigationComponent' => '@typo3/backend/page-tree/page-tree-element',
+        'path' => '/module/page/example',
+        'labels' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf',
+        'extensionName' => 't3-cowriter',
         'controllerActions' => [
             T3CowriterModuleController::class => [
-                'index'
+                'indexAction'
             ]
         ],
     ]
