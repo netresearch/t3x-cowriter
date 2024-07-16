@@ -15,12 +15,8 @@ final class T3CowriterModuleController extends ActionController
     ) {
     }
 
-    // use Psr\Http\Message\ResponseInterface
     public function indexAction(): ResponseInterface {
         $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
-        /*
-            $moduleTemplate->assign('aVariable', 'aValue');
-        */
         return $moduleTemplate->renderResponse('Index');
     }
 }
