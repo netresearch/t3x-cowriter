@@ -14,6 +14,7 @@ return [
         'path' => '/module/page/t3cowriter',
         'labels' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf',
         'extensionName' => 't3-cowriter',
+        'navigationComponent' => '@typo3/backend/page-tree/page-tree-element',
         'controllerActions' => [
             T3CowriterModuleController::class => [
                 'index'
