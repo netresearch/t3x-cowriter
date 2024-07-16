@@ -7,7 +7,7 @@ use Netresearch\T3Cowriter\Controller\T3CowriterModuleController;
  */
 return [
     'T3CowriterModule' => [
-        'parent' => 'web',
+        'parent' => 'site',
         'position' => ['bottom'],
         'access' => 'admin',
         'workspaces' => 'live',
