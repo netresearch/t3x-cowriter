@@ -18,7 +18,7 @@ return [
         'navigationComponent' => '@typo3/backend/page-tree/page-tree-element',
         'controllerActions' => [
             T3CowriterModuleController::class => [
-                'index'
+                'index', 'contentElement'
             ]
         ],
     ]
