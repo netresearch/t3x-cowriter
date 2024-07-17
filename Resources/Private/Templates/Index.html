@@ -1,35 +1,19 @@
-<html data-namespace-typo3-fluid="true"
-      xmlns="http://www.w3.org/1999/xhtml" lang="en"
-      xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
-      xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
->
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" data-namespace-typo3-fluid="true">
 
 <f:layout name="Module" />
 
 <f:section name="Content">
     <h1>T3-Cowriter</h1>
-    <h2>Prompts</h2>
-    <f:for each="{prompts}" as="prompt">
-        <input type="radio" id="{prompt.uid}" name="fav_language" value="{prompt.uid}">
-        <label for="html">{prompt.title}</label><br>
-    </f:for>
-    <h2>Content Elements</h2>
-    <f:for each="{contentElements}" as="contentElement">
-        <input type="checkbox" id="{contentElement.uid}" name="fav_language" value="{contentElement.uid}">
-        <label for="html">{contentElement.title}</label><br>
-    </f:for>
-    <h2>Seiten</h2>
-    <f:for each="{pages}" as="page">
-        <table class="table">
-            <tr>
-                <th>{page.title}</th>
-            </tr>
-            <f:for each="{page.CType}" as="element" key="key">
-                <tr>
-                    <td>{key} ({element})</td>
-                </tr>
-            </f:for>
-        </table>
-    </f:for>
-</f:section>
+    <h1>Content Elements List</h1>
+    <li>Test</li>
+    <li>{contentElement}</li>
+    <li>{contentElements}</li>
+    <li>{content}</li>
+    <f:debug>{_all}</f:debug>
+    <ul>
+        <f:for each="{contentElements}" as="contentElement">
+            <li>{contentElement.getTable}</li><!-- Adjust property names as per your model -->
+        </f:for>
+    </ul>
+</f:section>tt
 </html>

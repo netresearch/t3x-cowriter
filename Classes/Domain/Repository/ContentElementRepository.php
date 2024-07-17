@@ -5,5 +5,10 @@ use TYPO3\CMS\Extbase\Persistence\Repository;
 
 class ContentElementRepository extends Repository
 {
-    // Additional methods if required
+    public function __construct(
+    ) {
+        parent::__construct();
+    }
+
+
 }
