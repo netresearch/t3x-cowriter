@@ -2,10 +2,10 @@
 <xliff version="1.0">
     <file source-language="en" datatype="plaintext" original="messages" date="2024-07-08T12:00:00Z" product-name="t3_cowriter">
         <body>
-            <trans-unit id="tx_t3cowriter_domain_model_prompts.title">
+            <trans-unit id="tx_t3cowriter_domain_model_prompt.title">
                 <source>Prompts</source>
             </trans-unit>
-            <trans-unit id="tx_t3cowriter_domain_model_prompts.prompt">
+            <trans-unit id="tx_t3cowriter_domain_model_prompt.prompt">
                 <source>Prompt</source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_contentelement.title">
