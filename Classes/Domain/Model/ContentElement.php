@@ -68,7 +68,8 @@ class ContentElement extends AbstractEntity {
      * @param $field
      * @return void
      */
-    public function setPrompt($field) {
+    public function setField($field) {
         $this->field = $field;
     }
+
 }
