@@ -23,16 +23,20 @@ class T3CowriterModuleController extends ActionController
      */
     protected readonly ContentElementRepository $contentElementRepository;
 
+    /**
+     * @var PromptRepository
+     */
     protected readonly PromptRepository $promptRepository;
 
+    /**
+     * @var ModuleTemplateFactory
+     */
     protected readonly ModuleTemplateFactory $moduleTemplateFactory;
 
     /**
-     *
-     *
-     * @param PromptRepository $promptRepository
      * @param ModuleTemplateFactory $moduleTemplateFactory
      * @param ContentElementRepository $contentElementRepository
+     * @param PromptRepository $promptRepository
      */
     public function __construct(
         ModuleTemplateFactory $moduleTemplateFactory,
@@ -47,8 +51,6 @@ class T3CowriterModuleController extends ActionController
 
 
     /**
-     *  Index action method to render the default view.
-     *
      * @return ResponseInterface
      */
     public function indexAction(): ResponseInterface {
@@ -68,9 +70,5 @@ class T3CowriterModuleController extends ActionController
         $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
         $moduleTemplate->setContent($this->view->render());
         return $this->htmlResponse($moduleTemplate->renderContent());
-    }
-
-    public function getAllContentElements(): ResponseInterface {
-
     }
 }
