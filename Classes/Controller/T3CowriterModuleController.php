@@ -34,6 +34,9 @@ class T3CowriterModuleController extends ActionController
     protected readonly ModuleTemplateFactory $moduleTemplateFactory;
 
     /**
+     *
+     *
+     *
      * @param ModuleTemplateFactory $moduleTemplateFactory
      * @param ContentElementRepository $contentElementRepository
      * @param PromptRepository $promptRepository
@@ -51,6 +54,8 @@ class T3CowriterModuleController extends ActionController
 
 
     /**
+     *  Index action method to render the default view.
+     *
      * @return ResponseInterface
      */
     public function indexAction(): ResponseInterface {
