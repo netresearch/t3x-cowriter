@@ -40,7 +40,7 @@ class T3CowriterModuleController extends ActionController
     /**
      *
      *
-     *
+     * @param PromptRepository $promptRepository
      * @param ModuleTemplateFactory $moduleTemplateFactory
      * @param ContentElementRepository $contentElementRepository
      * @param PromptRepository $promptRepository

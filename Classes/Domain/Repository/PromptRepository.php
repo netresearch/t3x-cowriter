@@ -26,5 +26,4 @@ class PromptRepository extends Repository
         $querySettings->setRespectStoragePage(false);
         $this->setDefaultQuerySettings($querySettings);
     }
-
 }
