@@ -90,8 +90,6 @@ class T3CowriterModuleController extends ActionController
      */
     private function getAllPagesWithTextFieldsElements($pageId) : array
     {
-
-
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
         $queryBuilder
             ->select('tt_content.pid', 'pages.title', 'tt_content.CType')
@@ -144,3 +142,15 @@ class T3CowriterModuleController extends ActionController
         return $organizedResults;
     }
 }
+
+/*
+ * SELECT uid, pid, header, bodytext, Ctype, COUNT(*) AS Anzahl
+FROM
+    tt_content
+WHERE
+    bodytext <> ''
+    AND bodytext IS NOT NULL
+    AND HEX(bodytext) <> '0A'
+GROUP BY
+    pid, CType;
+ */

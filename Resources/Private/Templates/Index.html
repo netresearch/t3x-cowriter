@@ -33,5 +33,19 @@
             </f:for>
         </table>
     </f:for>
+    <h2>Seiten</h2>
+    <f:for each="{pages}" as="page">
+        <table class="table">
+            <tr>
+                <th>{page.title}</th>
+            </tr>
+            <f:for each="{page.CType}" as="element" key="key">
+                <tr>
+                    <td>{key} ({element})</td>
+                </tr>
+            </f:for>
+        </table>
+    </f:for>
+
 </f:section>
 </html>
