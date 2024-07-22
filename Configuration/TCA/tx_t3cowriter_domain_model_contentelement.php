@@ -53,6 +53,5 @@ return [
                 'itemsProcFunc' => ItemsProcFunc::class . '->selectFields',
             ],
         ],
-        // Weitere Felder hier
     ],
 ];
