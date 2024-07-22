@@ -28,6 +28,5 @@ final class T3CowriterModuleController extends ActionController
     public function indexAction(): ResponseInterface {
         $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
         return $moduleTemplate->renderResponse('Index');
-
     }
 }
