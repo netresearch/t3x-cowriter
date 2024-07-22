@@ -70,5 +70,6 @@ class ItemsProcFunc
             $name = $getName($item);
             $params['items'][] = [$name, $name];
         }
+        return $params;
     }
 }
