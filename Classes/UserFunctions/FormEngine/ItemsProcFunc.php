@@ -6,15 +6,11 @@ use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
-<<<<<<< HEAD
  * Provides methods to dynamically populate table and field selection lists.
  *
  * @package Netresearch\T3Cowriter
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
  * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
-=======
- * A user function used in select_2
->>>>>>> 08b733c (NEXT-64: WIP)
  */
 class ItemsProcFunc
 {
