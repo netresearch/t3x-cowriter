@@ -10,7 +10,7 @@ use TYPO3\CMS\Extbase\Persistence\Repository;
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
  * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
  */
-class PromptsRepository extends Repository
+class PromptRepository extends Repository
 {
     // Additional methods if required
 }
