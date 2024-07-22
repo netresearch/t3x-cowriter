@@ -110,6 +110,17 @@ class T3CowriterModuleController extends ActionController
 
         // Organize the data into an array by pid and CType
         $organizedResults = [];
+        $organizedResults = $this->getOrganizedResults($results, $organizedResults);
+        return $organizedResults;
+    }
+
+    /**
+     * @param array $results
+     * @param array $organizedResults
+     * @return array
+     */
+    public function getOrganizedResults(array $results, array $organizedResults): array
+    {
         foreach ($results as $row) {
             $pid = $row['pid'];
             $CType = $row['CType'];
