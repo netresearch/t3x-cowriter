@@ -3,7 +3,6 @@ namespace Netresearch\T3Cowriter\Domain\Model;
 
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 
-
 /**
  * Model representing a content element with a table and field.
  *
@@ -28,6 +27,7 @@ class ContentElement extends AbstractEntity {
      *
      * @return string
      */
+
     public function getTable() {
         return $this->table;
     }
