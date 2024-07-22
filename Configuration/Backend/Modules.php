@@ -1,6 +1,6 @@
 <?php
 
-
+use Netresearch\T3Cowriter\Controller\T3CowriterModuleController;
 
 /**
  * Definitions for modules provided by EXT:examples
