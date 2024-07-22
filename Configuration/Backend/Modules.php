@@ -18,6 +18,7 @@ return [
         'controllerActions' => [
             T3CowriterModuleController::class => [
                 'index'
+
             ]
         ],
     ]
