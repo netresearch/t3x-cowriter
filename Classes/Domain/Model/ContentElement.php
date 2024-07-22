@@ -14,6 +14,11 @@ class ContentElement extends AbstractEntity {
     /**
      * @var string
      */
+    protected string $title = '';
+
+    /**
+     * @var string
+     */
     protected string $table = '';
 
     /**
@@ -22,9 +27,22 @@ class ContentElement extends AbstractEntity {
     protected string $field = '';
 
     /**
-     *
-     * Gets the table name.
-     *
+     * @return string
+     */
+    public function getTitle()
+    {
+        return $this->title;
+    }
+
+    /**
+     * @return void
+     */
+    public function setTitle()
+    {
+        $this->title = $title;
+    }
+
+    /**
      * @return string
      */
 
@@ -33,9 +51,6 @@ class ContentElement extends AbstractEntity {
     }
 
     /**
-     *
-     * Sets the table name.
-     *
      * @param $table
      * @return void
      */
@@ -44,9 +59,6 @@ class ContentElement extends AbstractEntity {
     }
 
     /**
-     *
-     * Gets the field name.
-     *
      * @return string
      */
     public function getField() {
@@ -54,9 +66,6 @@ class ContentElement extends AbstractEntity {
     }
 
     /**
-     *
-     * Sets the field name.
-     *
      * @param $field
      * @return void
      */
