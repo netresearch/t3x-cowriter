@@ -5,7 +5,7 @@ use Netresearch\T3Cowriter\UserFunctions\FormEngine\ItemsProcFunc;
 return [
     'ctrl' => [
         'title' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_contentelement.title',
-        'label' => 'table',
+        'label' => 'title',
         'tstamp' => 'tstamp',
         'crdate' => 'crdate',
         'cruser_id' => 'cruser_id',
@@ -21,13 +21,22 @@ return [
             'starttime' => 'starttime',
             'endtime' => 'endtime',
         ],
-        'searchFields' => 'table,field',
+        'searchFields' => 'title, table,field',
         'iconfile' => 'EXT:t3_cowriter/Resources/Public/Icons/Extension.svg'
     ],
     'types' => [
-        '1' => ['showitem' => 'table, field']
+        '1' => ['showitem' => 'title, table, field']
     ],
     'columns' => [
+        'title' => [
+            'exclude' => 1,
+            'label' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf:tx_t3cowriter_domain_model_contentelement.title',
+            'config' => [
+                'type' => 'input',
+                'size' => 30,
+                'eval' => 'trim'
+            ],
+        ],
         'table' => [
             'exclude' => 1,
             'label' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_db.xlf:tx_t3cowriter_domain_model_contentelement.title',
