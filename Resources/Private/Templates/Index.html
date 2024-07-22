@@ -9,11 +9,6 @@
 
 <f:section name="Content">
     <h1>T3-Cowriter</h1>
-    <h2>Prompts</h2>
-    <f:for each="{prompts}" as="prompt">
-        <input type="radio" id="{prompt.uid}" name="fav_language" value="{prompt.uid}">
-        <label for="html">{prompt.title}</label><br><!-- Adjust property names as per your model -->
-    </f:for>
 
     <h2>Content Elements</h2>
     <f:for each="{contentElements}" as="contentElement">
@@ -41,11 +36,16 @@
             </tr>
             <f:for each="{page.CType}" as="element" key="key">
                 <tr>
-                    <td>{key} ({element})</td>
+                    <th>{page.title}</th>
                 </tr>
-            </f:for>
-        </table>
-    </f:for>
+                <f:for each="{page.CType}" as="element" key="key">
+                    <tr>
+                        <td>{key} ({element})</td>
+                    </tr>
+                </f:for>
+            </table>
+        </f:for>
 
+    </f:form>
 </f:section>
 </html>

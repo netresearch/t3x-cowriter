@@ -61,6 +61,7 @@ class T3CowriterModuleController extends ActionController
      *  Index action method to render the default view.
      *
      * @return ResponseInterface
+     * @throws \Doctrine\DBAL\Exception
      */
     public function indexAction(): ResponseInterface {
         $request = $this->request->getQueryParams()['id'];
@@ -71,12 +72,13 @@ class T3CowriterModuleController extends ActionController
     }
 
     /**
+     * @param string $templateName
      * @return ResponseInterface
      */
-    private function moduleResponse(): ResponseInterface
+    private function moduleResponse(string $templateName = 'index'): ResponseInterface
     {
         $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
-        $moduleTemplate->setContent($this->view->render());
+        $moduleTemplate->setContent($this->view->render($templateName));
         return $this->htmlResponse($moduleTemplate->renderContent());
     }
 
@@ -141,16 +143,41 @@ class T3CowriterModuleController extends ActionController
         }
         return $organizedResults;
     }
-}
 
-/*
- * SELECT uid, pid, header, bodytext, Ctype, COUNT(*) AS Anzahl
-FROM
-    tt_content
-WHERE
-    bodytext <> ''
-    AND bodytext IS NOT NULL
-    AND HEX(bodytext) <> '0A'
-GROUP BY
-    pid, CType;
- */
+    /**
+     *  Handles the start button action. If no prompt or content elements are selected,
+     *  redirects to the index action. Otherwise, processes the selected prompt and content elements.
+     *
+     * @param int $selectedPrompt
+     * @param array $selectedContentElements
+     * @return ResponseInterface
+     * @throws \Doctrine\DBAL\Exception
+     */
+    public function startButtonAction(int $selectedPrompt = 0, array $selectedContentElements = []): ResponseInterface
+    {
+        if ($selectedPrompt === 0 || empty($selectedContentElements)) {
+            return $this->indexAction();
+        }
+        // Process the selected prompt
+        $prompt = $this->promptRepository->findByUid($selectedPrompt);
+
+        // Process the selected content elements
+        $contentElements = [];
+        $this->fetchContentElementsByUids($selectedContentElements, $contentElements);
+        return $this->moduleResponse('startButton');
+    }
+
+    /**
+     *  Populates the content elements array with elements corresponding to the given UIDs.
+     *
+     * @param array $selectedContentElements
+     * @param array $contentElements
+     * @return void
+     */
+    public function fetchContentElementsByUids(array $selectedContentElements, array $contentElements): void
+    {
+        foreach ($selectedContentElements as $uid) {
+            $contentElements[] = $this->contentElementRepository->findByUid($uid);
+        }
+    }
+}
