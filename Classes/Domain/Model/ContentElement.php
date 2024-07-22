@@ -37,7 +37,7 @@ class ContentElement extends AbstractEntity {
     /**
      * @return void
      */
-    public function setTitle()
+    public function setTitle($title)
     {
         $this->title = $title;
     }
