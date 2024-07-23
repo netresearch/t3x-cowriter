@@ -18,9 +18,4 @@ class PromptRepository extends Repository
     ) {
         parent::__construct();
     }
-
-    public function findAllTitle(): string
-    {
-
-    }
 }

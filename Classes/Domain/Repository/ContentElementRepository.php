@@ -12,9 +12,4 @@ class ContentElementRepository extends Repository
     ) {
         parent::__construct();
     }
-
-    public function findAllTables(): string
-    {
-
-    }
 }
