@@ -10,7 +10,6 @@ use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
 use Psr\Http\Message\ResponseInterface;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use Netresearch\T3Cowriter\Domain\Repository\ContentElementRepository;
-use Netresearch\T3Cowriter\Domain\Model\ContentElement;
 
 /**
  * handles the display and management of content elements and prompts within the T3Cowriter package.

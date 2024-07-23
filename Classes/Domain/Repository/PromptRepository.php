@@ -2,7 +2,6 @@
 namespace Netresearch\T3Cowriter\Domain\Repository;
 
 use TYPO3\CMS\Extbase\Persistence\Repository;
-use Netresearch\T3Cowriter\Domain\Model\Prompt;
 
 /**
  * Definition of the PromptsRepository class that extends the Repository class
