@@ -4,6 +4,7 @@ namespace Netresearch\T3Cowriter\UserFunctions\FormEngine;
 
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
  * Provides methods to dynamically populate table and field selection lists.
@@ -28,9 +29,7 @@ class ItemsProcFunc
         $schemaManager = $connection->createSchemaManager();
         $tables = $schemaManager->listTableNames();
 
-        $params = $this->getListItems($tables, $params, function($table) {
-            return $table;
-        });
+        $params = $this->getListItems($tables, $params);
     }
 
     /**
@@ -52,7 +51,7 @@ class ItemsProcFunc
         $schemaManager = $connection->createSchemaManager();
         $columns = $schemaManager->listTableColumns($table);
 
-        $params = $this->getListItems($columns, $params, function($column) {return $column->getName();});
+        $params = $this->getListItems($columns, $params);
     }
 
     /**
@@ -64,10 +63,10 @@ class ItemsProcFunc
      * @param callable $getName
      * @return array
      */
-    public function getListItems(array $items, array $params, callable $getName): array
+    public function getListItems(array $items, array $params): array
     {
         foreach ($items as $item) {
-            $name = $getName($item);
+            $name = is_string($item) ? $item : $item->getName();
             $params['items'][] = [$name, $name];
         }
         return $params;
