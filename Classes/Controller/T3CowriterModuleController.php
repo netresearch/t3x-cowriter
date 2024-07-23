@@ -16,6 +16,7 @@ use Netresearch\T3Cowriter\Domain\Repository\ContentElementRepository;
 use Netresearch\T3Cowriter\Domain\Model\ContentElement;
 use TYPO3\CMS\Extbase\Persistence\Repository;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\expr;
 
 #[AsController]
 class T3CowriterModuleController extends ActionController
@@ -66,8 +67,8 @@ class T3CowriterModuleController extends ActionController
         $request = $this->request->getQueryParams()['id'];
         DebuggerUtility::var_dump($request);
 
-        $this->view->assign('contentElements', $this->contentElementRepository->findAll());
-        $this->view->assign('prompts', $this->promptRepository->findAll());
+        $this->view->assign('contentElements', $this->contentElementRepository->findAllContentElements());
+        $this->view->assign('prompts', $this->promptRepository->findAllPrompts());
         $this->view->assign('pages', $this->getAllPagesWithTextFieldsElements($request));
         return $this->moduleResponse();
     }
@@ -106,6 +107,7 @@ class T3CowriterModuleController extends ActionController
                 $queryBuilder->expr()->eq('tt_content.pid', $queryBuilder->quoteIdentifier('pages.uid'))
             )
             ->where(
+                $queryBuilder->expr()->eq('pages.uid', $pageId),
                 $queryBuilder->expr()->neq('bodytext', $queryBuilder->createNamedParameter('')),
                 $queryBuilder->expr()->isNotNull('bodytext'),
                 $queryBuilder->expr()->neq('bodytext', $queryBuilder->createNamedParameter('\n'))
