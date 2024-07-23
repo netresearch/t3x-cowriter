@@ -1,6 +1,8 @@
 <?php
 namespace Netresearch\T3Cowriter\Domain\Repository;
 
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Persistence\Repository;
 use Netresearch\T3Cowriter\Domain\Model\Prompt;
 
@@ -19,8 +21,13 @@ class PromptRepository extends Repository
         parent::__construct();
     }
 
-    public function findAllTitle(): string
-    {
+    public function findAllPrompts(): array {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_t3cowriter_domain_model_prompt');
+        $queryBuilder
+            ->select('*')
+            ->from('tx_t3cowriter_domain_model_prompt');
 
+        $results = $queryBuilder->execute()->fetchAllAssociative();
+        return $results;
     }
 }
