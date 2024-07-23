@@ -35,6 +35,7 @@ class T3CowriterModuleController extends ActionController
      */
     protected readonly ModuleTemplateFactory $moduleTemplateFactory;
 
+
     /**
      *
      *
@@ -61,9 +62,13 @@ class T3CowriterModuleController extends ActionController
      * @return ResponseInterface
      */
     public function indexAction(): ResponseInterface {
+        // Get the PSR-7 request object
+        $request = $this->request->getQueryParams()['id'];
+        DebuggerUtility::var_dump($request);
+
         $this->view->assign('contentElements', $this->contentElementRepository->findAll());
         $this->view->assign('prompts', $this->promptRepository->findAll());
-        $this->view->assign('pages', $this->getAllPagesWithTextFieldsElements());
+        $this->view->assign('pages', $this->getAllPagesWithTextFieldsElements($request));
         return $this->moduleResponse();
     }
 
@@ -85,8 +90,10 @@ class T3CowriterModuleController extends ActionController
      * @return array
      * @throws \Doctrine\DBAL\Exception
      */
-    private function getAllPagesWithTextFieldsElements() : array
+    private function getAllPagesWithTextFieldsElements($pageId) : array
     {
+
+
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
         $queryBuilder
             ->select('tt_content.pid', 'pages.title', 'tt_content.CType')
