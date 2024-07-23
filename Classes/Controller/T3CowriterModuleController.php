@@ -67,8 +67,8 @@ class T3CowriterModuleController extends ActionController
         $request = $this->request->getQueryParams()['id'];
         DebuggerUtility::var_dump($request);
 
-        $this->view->assign('contentElements', $this->contentElementRepository->findAllContentElements());
-        $this->view->assign('prompts', $this->promptRepository->findAllPrompts());
+        $this->view->assign('contentElements', $this->contentElementRepository->findAll());
+        $this->view->assign('prompts', $this->promptRepository->findAll());
         $this->view->assign('pages', $this->getAllPagesWithTextFieldsElements($request));
         return $this->moduleResponse();
     }
