@@ -9,43 +9,32 @@
 
 <f:section name="Content">
     <h1>T3-Cowriter</h1>
-
-    <h2>Content Elements</h2>
-    <f:for each="{contentElements}" as="contentElement">
-        <input type="checkbox" id="{contentElement.uid}" name="fav_language" value="{contentElement.uid}">
-        <label for="html">{contentElement.title}</label><br>
-    </f:for>
-    <h2>Seiten</h2>
-    <f:for each="{pages}" as="page">
-        <table class="table">
-            <tr>
-                <th>{page.title}</th>
-            </tr>
-            <f:for each="{page.CType}" as="element" key="key">
-                <tr>
-                    <td>{key} ({element})</td>
-                </tr>
-            </f:for>
-        </table>
-    </f:for>
-    <h2>Seiten</h2>
-    <f:for each="{pages}" as="page">
-        <table class="table">
-            <tr>
-                <th>{page.title}</th>
-            </tr>
-            <f:for each="{page.CType}" as="element" key="key">
-                <tr>
-                    <th>{page.title}</th>
-                </tr>
-                <f:for each="{page.CType}" as="element" key="key">
-                    <tr>
-                        <td>{key} ({element})</td>
-                    </tr>
-                </f:for>
-            </table>
+    <h2>Prompts</h2>
+    <f:form method="post">
+        <f:for each="{prompts}" as="prompt">
+            <input type="radio" id="{prompt.uid}" name="selectedPrompt" value="{prompt.uid}">
+            <label for="html">{prompt.title}</label><br><!-- Adjust property names as per your model -->
         </f:for>
 
+        <h2>Content Elements</h2>
+        <f:for each="{contentElements}" as="contentElement">
+            <input type="checkbox" id="{contentElement.uid}" name="selectedContentElements[]" value="{contentElement.uid}">
+            <label for="html">{contentElement.title}</label><br>
+        </f:for>
+        <button type="submit" name="action" value="sendPromptToAiButton">Send</button>
+        <button type="submit" name="action" value="searchSelectedContentElements">Update list</button>
+        <h2>Seiten</h2>
+        <f:for each="{pages}" as="page">
+            <table class="table">
+                <tr>
+                    <th>{page.header}</th>
+                </tr>
+                <tr>
+                    <td>{page.bodytext}</td>
+                </tr>
+
+            </table>
+        </f:for>
     </f:form>
 </f:section>
 </html>
