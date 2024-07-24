@@ -63,6 +63,7 @@ class T3CowriterModuleController extends ActionController
      * @return ResponseInterface
      */
     public function indexAction(): ResponseInterface {
+        $request = $this->request->getQueryParams()['id'];
         $this->view->assign('contentElements', $this->contentElementRepository->findAll());
         $this->view->assign('prompts', $this->promptRepository->findAll());
         $this->view->assign('pages', $this->getAllPagesWithTextFieldsElements($request));
