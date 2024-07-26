@@ -18,6 +18,14 @@ use TYPO3\CMS\Extbase\Persistence\Repository;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\expr;
 
+
+/**
+ * Controller for the T3Cowriter module.
+ *
+ * @package Netresearch\T3Cowriter
+ * @author  Philipp Altmann <philipp.altmann@netresearch.de>
+ * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
+ */
 #[AsController]
 class T3CowriterModuleController extends ActionController
 {
@@ -38,8 +46,7 @@ class T3CowriterModuleController extends ActionController
 
 
     /**
-     *
-     *
+     * Constructor to initialize dependencies.
      *
      * @param ModuleTemplateFactory $moduleTemplateFactory
      * @param ContentElementRepository $contentElementRepository
@@ -58,7 +65,7 @@ class T3CowriterModuleController extends ActionController
 
 
     /**
-     *  Index action method to render the default view.
+     *  Renders the index action view.
      *
      * @return ResponseInterface
      */
@@ -66,11 +73,13 @@ class T3CowriterModuleController extends ActionController
         $request = $this->request->getQueryParams()['id'];
         $this->view->assign('contentElements', $this->contentElementRepository->findAll());
         $this->view->assign('prompts', $this->promptRepository->findAll());
-        $this->view->assign('pages', $this->getAllPagesWithTextFieldsElements($request));
+        $this->view->assign('pages', $this->getAllTextFieldsElements($request));
         return $this->moduleResponse();
     }
 
     /**
+     * Generates a module response with the specified template.
+     *
      * @return ResponseInterface
      */
     private function moduleResponse(): ResponseInterface
@@ -82,16 +91,13 @@ class T3CowriterModuleController extends ActionController
 
     /**
      *
-     *  Retrieves pages with text field elements and organizes the data.
-     *  Joins tt_content and pages tables, filters out empty and newline-only bodytext fields.
+     *  Retrieves all text field elements.
      *
      * @return array
      * @throws \Doctrine\DBAL\Exception
      */
-    private function getAllPagesWithTextFieldsElements($pageId) : array
+    private function getAllTextFieldsElements($pageId) : array
     {
-
-
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
         $queryBuilder
             ->select('tt_content.pid', 'pages.title', 'tt_content.CType')
@@ -121,6 +127,8 @@ class T3CowriterModuleController extends ActionController
     }
 
     /**
+     * Organizes the results into an array by pid and CType.
+     *
      * @param array $results
      * @param array $organizedResults
      * @return array

@@ -6,7 +6,7 @@ use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 /**
  * Model representing a content element with a table and field.
  *
- * @package Netresearch\SuperAdmin
+ * @package Netresearch\T3Cowriter
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
  * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
  */
