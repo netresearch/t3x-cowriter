@@ -65,9 +65,10 @@ class T3CowriterModuleController extends ActionController
 
 
     /**
-     *  Renders the index action view.
+     * Renders the index action view.
      *
      * @return ResponseInterface
+     * @throws \Doctrine\DBAL\Exception
      */
     public function indexAction(): ResponseInterface {
         $request = $this->request->getQueryParams()['id'];
@@ -90,9 +91,9 @@ class T3CowriterModuleController extends ActionController
     }
 
     /**
+     * Retrieves all text field elements.
      *
-     *  Retrieves all text field elements.
-     *
+     * @param $pageId
      * @return array
      * @throws \Doctrine\DBAL\Exception
      */
