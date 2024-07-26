@@ -39,7 +39,6 @@ class T3CowriterModuleController extends ActionController
      * @param PromptRepository $promptRepository
      * @param ModuleTemplateFactory $moduleTemplateFactory
      * @param ContentElementRepository $contentElementRepository
-     * @param PromptRepository $promptRepository
      */
     public function __construct(
         ModuleTemplateFactory $moduleTemplateFactory,
@@ -94,7 +93,7 @@ class T3CowriterModuleController extends ActionController
 
         // Process the selected content elements
         $contentElements = [];
-        $contentElements = $this->fetchContentElementsByUids($selectedContentElements, $contentElements);
+        $contentElements = $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements, $this, $contentElements);
 
         return $this->moduleResponse('sendPromptToAiButton');
     }
@@ -108,79 +107,10 @@ class T3CowriterModuleController extends ActionController
      */
     public function searchSelectedContentElementsAction(array $selectedContentElements = []): ResponseInterface
     {
-        $this->view->assign('result', $this->getAllTextFieldsElements($this->fetchContentElementsByUids($selectedContentElements)));
+        $pageId = $this->request->getQueryParams()['id'];
+        $contentElements = $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements);
+        $this->view->assign('result', $this->contentElementRepository->getAllTextFieldElements($contentElements, $pageId));
         return $this->indexAction();
     }
 
-    /**
-     * Retrieves all text field elements.
-     *
-     * @param array $contentElements
-     * @return array
-     * @throws \Doctrine\DBAL\Exception
-     */
-    private function getAllTextFieldsElements(array $contentElements) : array
-    {
-	    $results = [];
-        foreach ($contentElements as $contentElement) {
-            $fields = explode(',', $contentElement->getField());
-            $tableName = $contentElement->getTable();
-
-            if (!isset($results[$tableName])) {
-                $results[$tableName] = [
-                    'fields' => [],
-                    'elements' => []
-                ];
-            }
-
-            $results[$tableName]['fields'] = array_unique(array_merge($results[$tableName]['fields'], $fields));
-
-            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($tableName);
-            $queryBuilder
-                ->select('*')
-                ->from($tableName, 'table')
-                ->where(
-                    $queryBuilder->expr()->eq('table.pid', $this->request->getQueryParams()['id'])
-                );
-            $this->addWhereForAllFields($fields, $queryBuilder);
-            $statement = $queryBuilder->executeQuery();
-            $tableResults = $statement->fetchAllAssociative();
-
-            $results[$tableName]['elements'] = $tableResults;
-        }
-        return $results;
-    }
-
-    /**
-     * Fetches content elements by their UIDs.
-     *
-     * @param array $selectedContentElements
-     * @return array
-     */
-    public function fetchContentElementsByUids(array $selectedContentElements): array
-    {
-        $contentElements = [];
-        foreach ($selectedContentElements as $uid) {
-            $contentElements[] = $this->contentElementRepository->findByUid($uid);
-        }
-        return $contentElements;
-    }
-
-    /**
-     * Adds where conditions for all fields in the query.
-     *
-     * @param array $fields
-     * @param \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder
-     * @return void
-     */
-    public function addWhereForAllFields(array $fields, \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder): void
-    {
-        foreach ($fields as $field) {
-            $queryBuilder->andWhere(
-                $queryBuilder->expr()->neq('table.' . $field, $queryBuilder->createNamedParameter('')),
-                $queryBuilder->expr()->isNotNull('table.' . $field),
-                $queryBuilder->expr()->neq('table.' . $field, $queryBuilder->createNamedParameter('\n'))
-            );
-        };
-    }
 }
