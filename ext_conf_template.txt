@@ -7,6 +7,8 @@ apiType = openai
 # cat=PageTS; type=string; label=API URL
 apiUrl = https://api.openai.com
 # cat=PageTS; type=string; label=API Token
-apiToken = 
+apiToken =
 # cat=PageTS; type=string; label=Preferred LLM
 preferredModel = gpt-4-turbo
+# cat=PageTS; type=string; label=Preferred LLM
+basePrompt = Alle HTML Tags sollen unverändert erhalten bleiben

@@ -13,6 +13,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use Netresearch\T3Cowriter\Domain\Repository\ContentElementRepository;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 
 #[AsController]
 class T3CowriterModuleController extends ActionController
@@ -32,6 +33,11 @@ class T3CowriterModuleController extends ActionController
      */
     protected readonly ModuleTemplateFactory $moduleTemplateFactory;
 
+    /**
+     * @var ExtensionConfiguration
+     */
+    protected readonly ExtensionConfiguration $extensionConfiguration;
+
 
     /**
      *  Constructor to initialize dependencies.
@@ -43,12 +49,14 @@ class T3CowriterModuleController extends ActionController
     public function __construct(
         ModuleTemplateFactory $moduleTemplateFactory,
         ContentElementRepository $contentElementRepository,
-        PromptRepository $promptRepository
+        PromptRepository $promptRepository,
+        ExtensionConfiguration $extensionConfiguration
     )
     {
         $this->moduleTemplateFactory = $moduleTemplateFactory;
         $this->contentElementRepository = $contentElementRepository;
         $this->promptRepository = $promptRepository;
+        $this->extensionConfiguration = $extensionConfiguration;
     }
 
 
@@ -88,12 +96,28 @@ class T3CowriterModuleController extends ActionController
         if ($selectedPrompt === 0 || empty($selectedContentElements)) {
             return $this->indexAction();
         }
-        // Process the selected prompt
-        $prompt = $this->promptRepository->findByUid($selectedPrompt);
 
-        // Process the selected content elements
-        $contentElements = [];
-        $contentElements = $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements, $this, $contentElements);
+        $cowriterBasePrompt = $this->extensionConfiguration->get('t3_cowriter', 'basePrompt');
+        $prompt = $this->promptRepository->buildFinalPrompt($this->promptRepository->fetchPromptByUid($selectedPrompt), $cowriterBasePrompt);
+
+        $pageId = (int)$this->request->getQueryParams()['id'];
+        $contentElements = $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements);
+        $text = $this->view->assign('result', $this->contentElementRepository->getAllTextFieldElements($contentElements, $pageId));
+        DebuggerUtility::var_dump($this->view->assign('result', $this->contentElementRepository->getAllTextFieldElements($contentElements, $pageId)));
+
+        /*
+        $cowriterApiKey = $this->extensionConfiguration->get('t3_cowriter', 'apiToken');
+
+        $client = \OpenAI::client($cowriterApiKey);
+
+        $gptResult = $client->chat()->create([
+            'model' => 'gpt-4-turbo',
+            'messages' => [
+                ['role' => 'user', 'content' => $prompt],
+            ],
+        ]);
+        DebuggerUtility::var_dump($gptResult->choices[0]->message->content);
+*/
 
         return $this->indexAction();
     }

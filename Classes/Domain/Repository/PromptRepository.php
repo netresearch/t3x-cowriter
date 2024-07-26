@@ -1,11 +1,10 @@
 <?php
 namespace Netresearch\T3Cowriter\Domain\Repository;
 
-use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Persistence\Generic\Typo3QuerySettings;
 use TYPO3\CMS\Extbase\Persistence\Repository;
-use Netresearch\T3Cowriter\Domain\Model\Prompt;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
  * Definition of the PromptsRepository class that extends the Repository class
@@ -17,7 +16,6 @@ use Netresearch\T3Cowriter\Domain\Model\Prompt;
 class PromptRepository extends Repository
 {
     public function __construct(
-
     ) {
         parent::__construct();
         /** @var QuerySettingsInterface $querySettings */
@@ -25,5 +23,19 @@ class PromptRepository extends Repository
         // Show comments from all pages
         $querySettings->setRespectStoragePage(false);
         $this->setDefaultQuerySettings($querySettings);
+    }
+
+    public function fetchPromptByUid(int $selectedPrompt): string
+    {
+        $selectedPrompt = $this->findByUid($selectedPrompt);
+        $prompt = $selectedPrompt->getPrompt();
+        return $prompt;
+    }
+
+    public function buildFinalPrompt($prompt, $basePrompt) : string
+    {
+        $finalPrompt = $basePrompt . ' ' . $prompt;
+        DebuggerUtility::var_dump($finalPrompt);
+        return $finalPrompt;
     }
 }
