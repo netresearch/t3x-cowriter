@@ -95,7 +95,7 @@ class T3CowriterModuleController extends ActionController
         $contentElements = [];
         $contentElements = $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements, $this, $contentElements);
 
-        return $this->moduleResponse('sendPromptToAiButton');
+        return $this->indexAction();
     }
 
     /**
@@ -107,10 +107,10 @@ class T3CowriterModuleController extends ActionController
      */
     public function searchSelectedContentElementsAction(array $selectedContentElements = []): ResponseInterface
     {
-        $pageId = $this->request->getQueryParams()['id'];
+        $pageId = (int)$this->request->getQueryParams()['id'];
+
         $contentElements = $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements);
         $this->view->assign('result', $this->contentElementRepository->getAllTextFieldElements($contentElements, $pageId));
         return $this->indexAction();
     }
-
 }
