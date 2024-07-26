@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use Netresearch\T3Cowriter\Domain\Repository\PromptRepository;
-use ScssPhp\ScssPhp\Formatter\Debug;
 use TYPO3\CMS\Backend\Attribute\AsController;
 use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
 use Psr\Http\Message\ResponseInterface;
@@ -13,10 +12,7 @@ use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use Netresearch\T3Cowriter\Domain\Repository\ContentElementRepository;
-use Netresearch\T3Cowriter\Domain\Model\ContentElement;
-use TYPO3\CMS\Extbase\Persistence\Repository;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
-use function Symfony\Component\DependencyInjection\Loader\Configurator\expr;
+
 
 
 /**
