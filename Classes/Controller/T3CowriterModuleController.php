@@ -34,7 +34,7 @@ class T3CowriterModuleController extends ActionController
 
 
     /**
-     *
+     *  Constructor to initialize dependencies.
      *
      * @param PromptRepository $promptRepository
      * @param ModuleTemplateFactory $moduleTemplateFactory
@@ -54,19 +54,19 @@ class T3CowriterModuleController extends ActionController
 
 
     /**
-     *  Index action method to render the default view.
+     * Renders the index action view.
      *
      * @return ResponseInterface
-     * @throws \Doctrine\DBAL\Exception
      */
     public function indexAction(): ResponseInterface {
         $this->view->assign('contentElements', $this->contentElementRepository->findAll());
         $this->view->assign('prompts', $this->promptRepository->findAll());
-        //$this->view->assign('pages', $this->getAllPagesWithTextFieldsElements(['tt_content', 'tx_news_domain_model_news']));
         return $this->moduleResponse();
     }
 
     /**
+     * Generates a module response with the specified template.
+     *
      * @param string $templateName
      * @return ResponseInterface
      */
@@ -78,73 +78,11 @@ class T3CowriterModuleController extends ActionController
     }
 
     /**
-     *
-     *  Retrieves pages with text field elements and organizes the data.
-     *  Joins tt_content and pages tables, filters out empty and newline-only bodytext fields.
-     *
-     * @return array
-     * @throws \Doctrine\DBAL\Exception
-     */
-    private function getAllPagesWithTextFieldsElements(array $tables, array $columns) : array
-    {
-        //DebuggerUtility::var_dump($tableNames);
-        $results = [];
-        foreach ($tables as $table) {
-            DebuggerUtility::var_dump($table->getTable());
-            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table->getTable());
-            $queryBuilder
-                ->select('*')
-                ->from($table->getTable())
-                ->join(
-                    $table->getTable(),
-                    'pages',
-                    'pages',
-                    $queryBuilder->expr()->eq( $table->getTable() .'.pid', $queryBuilder->quoteIdentifier('pages.uid'))
-                )
-                ->where(
-                    $queryBuilder->expr()->eq('pages.uid', $this->request->getQueryParams()['id']),
-                    $queryBuilder->expr()->neq('bodytext', $queryBuilder->createNamedParameter('')),
-                    $queryBuilder->expr()->isNotNull('bodytext'),
-                    $queryBuilder->expr()->neq('bodytext', $queryBuilder->createNamedParameter('\n'))
-                );
-
-            $statement = $queryBuilder->executeQuery();
-            $tableResults = $statement->fetchAllAssociative();
-            $results = array_merge($results, $tableResults);
-        }
-        //DebuggerUtility::var_dump($results);
-        return $results;
-    }
-
-    public function getAllSelectedTableNames(array $selectedContentElements = [], array &$tableNames = [])
-    {
-        $contentElements = [];
-        $contentElements = $this->fetchContentElementsByUids($selectedContentElements, $contentElements);
-        return $contentElements;
-    }
-
-    public function getAllSelectedColumns(array $selectedContentElements = [], array &$columns = [])
-    {
-        $contentElements = [];
-        $contentElements = $this->fetchContentElementsByUids($selectedContentElements, $contentElements);
-
-        foreach ($contentElements as $element) {
-            $tableName = $element->getField();
-            if (!in_array($tableName, $columns)) {
-                $columns[] = $tableName;
-            }
-        }
-        return $columns;
-    }
-
-    /**
-     *  Handles the start button action. If no prompt or content elements are selected,
-     *  redirects to the index action. Otherwise, processes the selected prompt and content elements.
+     * Handles the action to send a prompt to AI.
      *
      * @param int $selectedPrompt
      * @param array $selectedContentElements
      * @return ResponseInterface
-     * @throws \Doctrine\DBAL\Exception
      */
     public function sendPromptToAiButtonAction(int $selectedPrompt = 0, array $selectedContentElements = []): ResponseInterface
     {
@@ -157,31 +95,92 @@ class T3CowriterModuleController extends ActionController
         // Process the selected content elements
         $contentElements = [];
         $contentElements = $this->fetchContentElementsByUids($selectedContentElements, $contentElements);
-        DebuggerUtility::var_dump($contentElements);
 
         return $this->moduleResponse('sendPromptToAiButton');
     }
 
+    /**
+     * Searches for the selected content elements.
+     *
+     * @param array $selectedContentElements
+     * @return ResponseInterface
+     * @throws \Doctrine\DBAL\Exception
+     */
     public function searchSelectedContentElementsAction(array $selectedContentElements = []): ResponseInterface
     {
-        $this->view->assign('pages', $this->getAllPagesWithTextFieldsElements($this->getAllSelectedTableNames($selectedContentElements), $this->getAllSelectedColumns($selectedContentElements)));
+        $this->view->assign('result', $this->getAllTextFieldsElements($this->fetchContentElementsByUids($selectedContentElements)));
         return $this->indexAction();
     }
 
     /**
-     *  Populates the content elements array with elements corresponding to the given UIDs.
+     * Retrieves all text field elements.
+     *
+     * @param array $contentElements
+     * @return array
+     * @throws \Doctrine\DBAL\Exception
+     */
+    private function getAllTextFieldsElements(array $contentElements) : array
+    {
+	    $results = [];
+        foreach ($contentElements as $contentElement) {
+            $fields = explode(',', $contentElement->getField());
+            $tableName = $contentElement->getTable();
+
+            if (!isset($results[$tableName])) {
+                $results[$tableName] = [
+                    'fields' => [],
+                    'elements' => []
+                ];
+            }
+
+            $results[$tableName]['fields'] = array_unique(array_merge($results[$tableName]['fields'], $fields));
+
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($tableName);
+            $queryBuilder
+                ->select('*')
+                ->from($tableName, 'table')
+                ->where(
+                    $queryBuilder->expr()->eq('table.pid', $this->request->getQueryParams()['id'])
+                );
+            $this->addWhereForAllFields($fields, $queryBuilder);
+            $statement = $queryBuilder->executeQuery();
+            $tableResults = $statement->fetchAllAssociative();
+
+            $results[$tableName]['elements'] = $tableResults;
+        }
+        return $results;
+    }
+
+    /**
+     * Fetches content elements by their UIDs.
      *
      * @param array $selectedContentElements
-     * @param array $contentElements
-     * @return void
+     * @return array
      */
-    public function fetchContentElementsByUids(array $selectedContentElements, array $contentElements): array
+    public function fetchContentElementsByUids(array $selectedContentElements): array
     {
+        $contentElements = [];
         foreach ($selectedContentElements as $uid) {
             $contentElements[] = $this->contentElementRepository->findByUid($uid);
         }
         return $contentElements;
     }
 
-
+    /**
+     * Adds where conditions for all fields in the query.
+     *
+     * @param array $fields
+     * @param \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder
+     * @return void
+     */
+    public function addWhereForAllFields(array $fields, \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder): void
+    {
+        foreach ($fields as $field) {
+            $queryBuilder->andWhere(
+                $queryBuilder->expr()->neq('table.' . $field, $queryBuilder->createNamedParameter('')),
+                $queryBuilder->expr()->isNotNull('table.' . $field),
+                $queryBuilder->expr()->neq('table.' . $field, $queryBuilder->createNamedParameter('\n'))
+            );
+        };
+    }
 }

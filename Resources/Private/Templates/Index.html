@@ -9,6 +9,7 @@
 
 <f:section name="Content">
     <h1>T3-Cowriter</h1>
+
     <h2>Prompts</h2>
     <f:form method="post">
         <f:for each="{prompts}" as="prompt">
@@ -24,15 +25,21 @@
         <button type="submit" name="action" value="sendPromptToAiButton">Send</button>
         <button type="submit" name="action" value="searchSelectedContentElements">Update list</button>
         <h2>Seiten</h2>
-        <f:for each="{pages}" as="page">
+        <f:for each="{result}" as="table" key="key">
+            <h3>{key}</h3>
             <table class="table">
                 <tr>
-                    <th>{page.header}</th>
+                    <th>field</th>
+                    <th>value</th>
                 </tr>
-                <tr>
-                    <td>{page.bodytext}</td>
-                </tr>
-
+                <f:for each="{table.elements}" as="element">
+                    <f:for each="{table.fields}" as="field">
+                        <tr>
+                            <td>{field}</td>
+                            <td>{element.{field}}</td>
+                        </tr>
+                    </f:for>
+                </f:for>
             </table>
         </f:for>
     </f:form>
