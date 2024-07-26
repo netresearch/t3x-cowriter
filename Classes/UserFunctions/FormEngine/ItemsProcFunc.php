@@ -27,7 +27,6 @@ class ItemsProcFunc
         $connection = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('pages');
         $schemaManager = $connection->createSchemaManager();
         $tables = $schemaManager->listTableNames();
-
         $params = $this->getListItems($tables, $params, function($table) {
             return $table;
         });
@@ -56,7 +55,6 @@ class ItemsProcFunc
     }
 
     /**
-     *
      * Helper method to add items to the selection list.
      *
      * @param array $items

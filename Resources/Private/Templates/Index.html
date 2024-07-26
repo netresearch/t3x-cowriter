@@ -4,7 +4,6 @@
       xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
 >
 
-
 <f:layout name="Module" />
 
 <f:section name="Content">
@@ -12,9 +11,8 @@
     <h2>Prompts</h2>
     <f:for each="{prompts}" as="prompt">
         <input type="radio" id="{prompt.uid}" name="fav_language" value="{prompt.uid}">
-        <label for="html">{prompt.title}</label><br><!-- Adjust property names as per your model -->
+        <label for="html">{prompt.title}</label><br>
     </f:for>
-
     <h2>Content Elements</h2>
     <f:for each="{contentElements}" as="contentElement">
         <input type="checkbox" id="{contentElement.uid}" name="fav_language" value="{contentElement.uid}">
@@ -33,6 +31,5 @@
             </f:for>
         </table>
     </f:for>
-
 </f:section>
 </html>
