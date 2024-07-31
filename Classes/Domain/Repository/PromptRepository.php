@@ -7,7 +7,7 @@ use TYPO3\CMS\Extbase\Persistence\Repository;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
- * Definition of the PromptsRepository class that extends the Repository class
+ * Definition of the Prompt class that extends AbstractEntity
  *
  * @package Netresearch\T3Cowriter
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
@@ -20,11 +20,18 @@ class PromptRepository extends Repository
         parent::__construct();
         /** @var QuerySettingsInterface $querySettings */
         $querySettings = GeneralUtility::makeInstance(Typo3QuerySettings::class);
-        // Show comments from all pages
         $querySettings->setRespectStoragePage(false);
         $this->setDefaultQuerySettings($querySettings);
     }
 
+    /**
+     *  Fetches a prompt by its UID.
+     *
+     *  Retrieves the prompt associated with the given UID.
+     *
+     * @param int $selectedPrompt
+     * @return string
+     */
     public function fetchPromptByUid(int $selectedPrompt): string
     {
         $selectedPrompt = $this->findByUid($selectedPrompt);
@@ -32,10 +39,17 @@ class PromptRepository extends Repository
         return $prompt;
     }
 
-    public function buildFinalPrompt($prompt, $basePrompt) : string
+    /**
+     *  Builds the final prompt by combining base prompt, selected prompt, and content.
+     *
+     * @param string $prompt
+     * @param string $basePrompt
+     * @param string $content
+     * @return string
+     */
+    public function buildFinalPrompt(string $prompt, string $basePrompt, string $content) : string
     {
-        $finalPrompt = $basePrompt . ' ' . $prompt;
-        DebuggerUtility::var_dump($finalPrompt);
+        $finalPrompt = $basePrompt . ' ' . $prompt . ' TEXT: ' . $content;
         return $finalPrompt;
     }
 }

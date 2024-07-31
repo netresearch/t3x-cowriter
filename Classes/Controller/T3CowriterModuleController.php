@@ -15,6 +15,14 @@ use Netresearch\T3Cowriter\Domain\Repository\ContentElementRepository;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 
+
+/**
+ * Definition of the T3CowriterModuleController class that extends the ActionController class
+ *
+ * @package Netresearch\T3Cowriter
+ * @author  Philipp Altmann <philipp.altmann@netresearch.de>
+ * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
+ */
 #[AsController]
 class T3CowriterModuleController extends ActionController
 {
@@ -40,11 +48,14 @@ class T3CowriterModuleController extends ActionController
 
 
     /**
-     *  Constructor to initialize dependencies.
+     * Constructor for the T3CowriterModuleController.
      *
-     * @param PromptRepository $promptRepository
+     * Initializes the controller with the necessary dependencies.
+     *
      * @param ModuleTemplateFactory $moduleTemplateFactory
      * @param ContentElementRepository $contentElementRepository
+     * @param PromptRepository $promptRepository
+     * @param ExtensionConfiguration $extensionConfiguration
      */
     public function __construct(
         ModuleTemplateFactory $moduleTemplateFactory,
@@ -61,7 +72,9 @@ class T3CowriterModuleController extends ActionController
 
 
     /**
-     * Renders the index action view.
+     *  Handles the default action for the module.
+     *
+     *  Assigns content elements and prompts to the view and returns the module response.
      *
      * @return ResponseInterface
      */
@@ -73,8 +86,6 @@ class T3CowriterModuleController extends ActionController
     }
 
     /**
-     * Generates a module response with the specified template.
-     *
      * @param string $templateName
      * @return ResponseInterface
      */
@@ -86,11 +97,16 @@ class T3CowriterModuleController extends ActionController
     }
 
     /**
-     * Handles the action to send a prompt to AI.
+     *  Generates the module response.
+     *
+     *  Creates and renders the module template and returns the HTML response.
      *
      * @param int $selectedPrompt
      * @param array $selectedContentElements
      * @return ResponseInterface
+     * @throws \Doctrine\DBAL\Exception
+     * @throws \TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationExtensionNotConfiguredException
+     * @throws \TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationPathDoesNotExistException
      */
     public function sendPromptToAiButtonAction(int $selectedPrompt = 0, array $selectedContentElements = []): ResponseInterface
     {
@@ -98,33 +114,19 @@ class T3CowriterModuleController extends ActionController
             return $this->indexAction();
         }
 
-        $cowriterBasePrompt = $this->extensionConfiguration->get('t3_cowriter', 'basePrompt');
-        $prompt = $this->promptRepository->buildFinalPrompt($this->promptRepository->fetchPromptByUid($selectedPrompt), $cowriterBasePrompt);
+        $result = $this->contentElementRepository->getAllTextFieldElements(
+            $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements),
+            (int)$this->request->getQueryParams()['id']
+        );
 
-        $pageId = (int)$this->request->getQueryParams()['id'];
-        $contentElements = $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements);
-        $text = $this->view->assign('result', $this->contentElementRepository->getAllTextFieldElements($contentElements, $pageId));
-        DebuggerUtility::var_dump($this->view->assign('result', $this->contentElementRepository->getAllTextFieldElements($contentElements, $pageId)));
-
-        /*
-        $cowriterApiKey = $this->extensionConfiguration->get('t3_cowriter', 'apiToken');
-
-        $client = \OpenAI::client($cowriterApiKey);
-
-        $gptResult = $client->chat()->create([
-            'model' => 'gpt-4-turbo',
-            'messages' => [
-                ['role' => 'user', 'content' => $prompt],
-            ],
-        ]);
-        DebuggerUtility::var_dump($gptResult->choices[0]->message->content);
-*/
-
+        $this->modifyResultsByAi($result, $selectedPrompt);
         return $this->indexAction();
     }
 
     /**
-     * Searches for the selected content elements.
+     *  Handles the action of sending a prompt to the AI.
+     *
+     *  Validates selected prompt and content elements, processes the text fields, and modifies them via AI.
      *
      * @param array $selectedContentElements
      * @return ResponseInterface
@@ -132,10 +134,68 @@ class T3CowriterModuleController extends ActionController
      */
     public function searchSelectedContentElementsAction(array $selectedContentElements = []): ResponseInterface
     {
-        $pageId = (int)$this->request->getQueryParams()['id'];
+        $processed = $this->contentElementRepository->createArrayToCountContentElements(
+            $this->contentElementRepository->getAllTextFieldElements(
+                $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements),
+                (int)$this->request->getQueryParams()['id']
+            ),
+            $this
+        );
+        $this->view->assign('result', $processed);
 
-        $contentElements = $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements);
-        $this->view->assign('result', $this->contentElementRepository->getAllTextFieldElements($contentElements, $pageId));
         return $this->indexAction();
+    }
+
+    /**
+     *  Searches for and processes selected content elements and prompts.
+     *
+     *  Sends the selected content elements and prompts to the AI and processes the results.
+     *
+     * @param array $element
+     * @param int $selectedPrompt
+     * @return void
+     * @throws \TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationExtensionNotConfiguredException
+     * @throws \TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationPathDoesNotExistException
+     */
+    public function modifyElement(array $element, int $selectedPrompt): void
+    {
+        foreach ($element as $key => $value) {
+            if ($key == 'uid' || $key == 'tablename') {
+                continue;
+            }
+            $prompt = $this->promptRepository->buildFinalPrompt(
+                $this->promptRepository->fetchPromptByUid($selectedPrompt),
+                $this->extensionConfiguration->get('t3_cowriter', 'basePrompt'),
+                $value
+            );
+
+            $cowriterApiKey = $this->extensionConfiguration->get('t3_cowriter', 'apiToken');
+            $client = \OpenAI::client($cowriterApiKey);
+            $gptResult = $client->chat()->create([
+                'model' => 'gpt-4-turbo',
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+            ]);
+            $gptResult = $gptResult->choices[0]->message->content;
+
+            $this->contentElementRepository->setAllTextFieldElements($gptResult, $element, $key);
+        }
+    }
+
+    /**
+     *  Modifies a content element using AI.
+     *
+     * @param array $result
+     * @param int $selectedPrompt
+     * @return void
+     * @throws \TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationExtensionNotConfiguredException
+     * @throws \TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationPathDoesNotExistException
+     */
+    public function modifyResultsByAi(array $result, int $selectedPrompt): void
+    {
+        foreach ($result as $element) {
+            $this->modifyElement($element, $selectedPrompt);
+        }
     }
 }
