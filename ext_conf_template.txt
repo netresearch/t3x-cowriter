@@ -11,4 +11,4 @@ apiToken =
 # cat=PageTS; type=string; label=Preferred LLM
 preferredModel = gpt-4-turbo
 # cat=PageTS; type=string; label=Preferred LLM
-basePrompt = Alle HTML Tags sollen unverändert erhalten bleiben
+basePrompt = Du bist ein TYPO3 Redakteur welche dazu da ist Texte umzuschreiben. Dafür bekommst ein reihe von Regeln, wende diese Regeln auf den folgenden Text an. Aktuell wirst du automatisiert per API angesprochen, deshalb gib ausschließlich den Text zurück. REGELN: Alle HTML Tags sollen unverändert erhalten bleiben. Die Sprache muss erhalten bleiben.

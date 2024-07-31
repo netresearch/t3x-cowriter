@@ -15,7 +15,6 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 class ItemsProcFunc
 {
     /**
-     *
      * Populates the available database tables into the selection list.
      *
      * @param $params
@@ -34,7 +33,6 @@ class ItemsProcFunc
     }
 
     /**
-     *
      * Populates the available fields of a selected table into the selection list.
      *
      * @param $params
@@ -56,7 +54,6 @@ class ItemsProcFunc
     }
 
     /**
-     *
      * Helper method to add items to the selection list.
      *
      * @param array $items
