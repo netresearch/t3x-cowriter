@@ -13,12 +13,12 @@ url.searchParams.append('operationID', operationID);
 
 
 
-const elem = document.getElementById('t3cowriter_sendbutton');
+const button = document.getElementById('t3cowriter_sendbutton');
 const progress_div = document.getElementById('t3cowriter-progress');
 
-elem.addEventListener('click', function() {
-    console.log('Button wurde geklickt');
+button.addEventListener('click', function() {
     progress_div.style.display = 'block';
+
     setInterval(async () => {
         const res = await fetch(url);
         if (!res.ok) {
@@ -26,10 +26,8 @@ elem.addEventListener('click', function() {
             return;
         }
 
-
         const body = await res.json();
         const {current, total} = body;
-
         const percent = (current / total) * 100;
 
         progressBarInner.style.width = `${percent}%`;
