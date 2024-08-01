@@ -3,10 +3,13 @@
 
 declare(strict_types=1);
 
-use TYPO3\CMS\Core\Utility\GeneralUtility;
+use Netresearch\T3Cowriter\Service\ProgressService as ProgressService;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Page\AssetCollector;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Cache\Backend\Typo3DatabaseBackend;
+use TYPO3\CMS\Core\Cache\Frontend\VariableFrontend;
 
 call_user_func(static function () {
     // Add TypoScript automatically (to use it in backend modules)
@@ -24,7 +27,7 @@ $GLOBALS['TYPO3_CONF_VARS']['SYS']['features']['security.backend.enforceContentS
 $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
     = 'EXT:t3_cowriter/Configuration/RTE/Pluginv12.yaml';
 
-$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess'][] = function($parameters, $pagerenderer) use ($js) {
+$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess'][] = function ($parameters, $pagerenderer) use ($js) {
     /** @var AssetCollector $assetCollector */
     $assetCollector = GeneralUtility::makeInstance(AssetCollector::class);
 
@@ -32,4 +35,11 @@ $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php'][
     $assetCollector->addInlineJavaScript('cowriter_config', $js);
 };
 
-
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations'][ProgressService::CACHE_IDENTIFIER] ??= [
+    'frontend' => VariableFrontend::class,
+    'backend' => Typo3DatabaseBackend::class,
+    'groups' => ['system'],
+    'options' => [
+        'defaultLifetime' => 600,
+    ],
+];

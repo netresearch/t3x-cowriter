@@ -8,6 +8,11 @@
 <f:layout name="Module" />
 
 <f:section name="Content">
+    <f:be.pageRenderer
+            includeJavaScriptModules="{
+         0: '@netresearch/t3_cowriter/progress_bar.js'
+      }"
+    />
     <h1>T3-Cowriter</h1>
     <h2>Prompts</h2>
     <f:form method="post">
@@ -21,8 +26,18 @@
             <input type="checkbox" id="{contentElement.uid}" name="selectedContentElements[]" value="{contentElement.uid}">
             <label for="html">{contentElement.title}</label><br>
         </f:for>
-        <button type="submit" name="action" value="sendPromptToAiButton">Send</button>
+        <input id="t3cowriter-operationIDField" type="hidden" name="operationID" value="{operationID}" readonly>
+        <button type="submit" name="action" value="sendPromptToAiButton" id="t3cowriter_sendbutton">Send</button>
         <button type="submit" name="action" value="searchSelectedContentElements">Update list</button>
+
+        <div id="t3cowriter-progress" style="display: none; flex-direction: column">
+            <div id="bar" style="height: 32px; border: 1px solid black; padding: 0.25rem">
+                <div id="bar-inner" style="width: 0; height: 100%; background-color: black; transition: 100ms width"></div>
+            </div>
+
+            <p id="text" style="text-align: center"></p>
+        </div>
+
         <h2>Seiten</h2>
         <f:for each="{result}" as="table" key="tablename">
             <h3>{tablename}</h3>
