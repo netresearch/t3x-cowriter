@@ -19,12 +19,22 @@ class ProgressService
     {
     }
 
+    /**
+     * Record the progress of an operation.
+     *
+     * @param string $operationID
+     * @param int $current
+     * @param int $total
+     * @return void
+     */
     function recordProgress(string $operationID, int $current, int $total): void
     {
         $this->cache->set(self::getID($operationID), [$current, $total]);
     }
 
     /**
+     * Get the progress of an operation.
+     *
      * @param string $operationID
      * @return int[]|null
      */
@@ -35,6 +45,12 @@ class ProgressService
         return $progress === false ? null : $progress;
     }
 
+    /**
+     * Get the cache ID for an operation.
+     *
+     * @param string $operationID
+     * @return string
+     */
     private static function getID(string $operationID): string
     {
         return sha1(self::CACHE_IDENTIFIER . '_' . $operationID);

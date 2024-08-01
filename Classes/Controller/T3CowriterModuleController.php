@@ -17,7 +17,6 @@ use TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationExtensionNotCon
 use TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationPathDoesNotExistException;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 
 /**
@@ -204,11 +203,12 @@ class T3CowriterModuleController extends ActionController
             $progress++;
 
             $this->progressService->recordProgress($operationID, $progress, count($result));
-            //DebuggerUtility::var_dump($progress);
         }
     }
 
     /**
+     * Generates the module response.
+     *
      * @param string $templateName
      * @return ResponseInterface
      */
