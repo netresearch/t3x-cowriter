@@ -57,7 +57,8 @@ class T3CowriterModuleController extends ActionController
      *
      * @return ResponseInterface
      */
-    public function indexAction(): ResponseInterface {
+    public function indexAction(): ResponseInterface
+    {
         $this->view->assign('contentElements', $this->contentElementRepository->findAll());
         $this->view->assign('prompts', $this->promptRepository->findAll());
         return $this->moduleResponse();
