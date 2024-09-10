@@ -56,7 +56,7 @@ class T3CowriterModuleController extends ActionController
      * Constructor for the T3CowriterModuleController.
      *
      * Initializes the controller with the necessary dependencies.
-     *q
+     *
      * @param ModuleTemplateFactory $moduleTemplateFactory
      * @param ContentElementRepository $contentElementRepository
      * @param PromptRepository $promptRepository
