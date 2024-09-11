@@ -5,6 +5,17 @@
             <trans-unit id="tx_t3cowriter.headline">
                 <source>T3-Cowriter</source>
             </trans-unit>
+            <trans-unit id="tx_t3cowriter.description">
+                <source>
+                    How it works:
+                    Create a folder in the page tree.
+                    Add new records to hold your prompts and content elements.
+                    Select a page and – from below – the desired prompt, and the content elements it should be applied to.
+                    'Find elements' shows the number of the chosen elements on the page.
+                    By clicking 'send', the prompt is processed by ChatGPT.
+                    See the results in the frontend.
+                </source>
+            </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_prompt.title">
                 <source>Prompts</source>
             </trans-unit>
@@ -15,7 +26,7 @@
                 <source>Prompt</source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_contentelement.title">
-                <source>Content Element</source>
+                <source>Content Elements</source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_contentelement.tooltip">
                 <source>Choose one or more content elements the prompt should be applied to.</source>

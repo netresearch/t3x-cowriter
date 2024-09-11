@@ -16,8 +16,13 @@
          0: '@netresearch/t3_cowriter/progress_bar.js'
         }"
         />
-        <h1>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter.headline')}</h1>
+        <h1>
+            {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter.headline')}
+        </h1>
         <f:form method="post">
+            <div>
+                {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter.description')}
+            </div>
             <div class="prompts">
                 <h2 title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_prompt.tooltip')}">
                     {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_prompt.title')}
