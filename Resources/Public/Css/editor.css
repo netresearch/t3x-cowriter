@@ -1,0 +1,90 @@
+/* Add all styles for the cowriter module here */
+
+.nr-cowriter {
+    background-color: #ccc;
+
+    h1,
+    form,
+    p#text,
+    .table,
+    .brand-logo
+    {
+        margin-bottom: 0;
+    }
+
+    h1 {
+        background-color: #0a6e77;
+        color: #fff;
+        text-align: center;
+        padding: 1rem;
+    }
+
+    form {
+        border: 1px solid gray;
+
+        > div {
+            padding: 1rem;
+
+            &:not(:last-child) {
+                border-bottom: 1px solid gray;
+            }
+
+            &:first-child {
+                display: none;
+            }
+
+            .select-items {
+                display: flex;
+                gap: 1rem;
+                padding: .5rem 0;
+            }
+        }
+
+        button {
+            background-color: #0a6e77;
+            border-radius: 5px;
+            border: 1px solid transparent;
+            color: #fff;
+            cursor: pointer;
+            padding: .5rem 2rem;
+            margin-top: .5rem;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        #t3cowriter-progress {
+            display: none;
+            flex-direction: column;
+        }
+
+        #bar {
+            margin-top: 1rem;
+            height: 32px;
+            border: 1px solid gray;
+            background-color: #fff;
+            padding: 0.25rem;
+            border-radius: 5px;
+        }
+
+        #bar-inner {
+            background-color: #0a6e77;
+            width: 0;
+            height: 100%;
+            transition: 100ms width;
+        }
+
+        p#text {
+            text-align: center;
+        }
+    }
+
+    .brand-logo {
+        background-color: #fff;
+        text-align: center;
+        padding: 1rem;
+
+        > img {
+            max-width: 150px;
+        }
+    }
+}

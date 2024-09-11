@@ -4,56 +4,76 @@
       xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
 >
 
-
 <f:layout name="Module" />
 
 <f:section name="Content">
-    <f:be.pageRenderer
-            includeJavaScriptModules="{
+
+    <f:asset.css identifier="cowriter" href="EXT:t3_cowriter/Resources/Public/Css/editor.css" />
+
+    <div class="nr-cowriter">
+        <f:be.pageRenderer
+                includeJavaScriptModules="{
          0: '@netresearch/t3_cowriter/progress_bar.js'
-      }"
-    />
-    <h1>T3-Cowriter</h1>
-    <h2>Prompts</h2>
-    <f:form method="post">
-        <f:for each="{prompts}" as="prompt">
-            <input type="radio" id="{prompt.uid}" name="selectedPrompt" value="{prompt.uid}">
-            <label for="html">{prompt.title}</label><br><!-- Adjust property names as per your model -->
-        </f:for>
-
-        <h2>Content Elements</h2>
-        <f:for each="{contentElements}" as="contentElement">
-            <input type="checkbox" id="{contentElement.uid}" name="selectedContentElements[]" value="{contentElement.uid}">
-            <label for="html">{contentElement.title}</label><br>
-        </f:for>
-        <input id="t3cowriter-operationIDField" type="hidden" name="operationID" value="{operationID}" readonly>
-        <button type="submit" name="action" value="sendPromptToAiButton" id="t3cowriter_sendbutton">Send</button>
-        <button type="submit" name="action" value="searchSelectedContentElements">Update list</button>
-
-        <div id="t3cowriter-progress" style="display: none; flex-direction: column">
-            <div id="bar" style="height: 32px; border: 1px solid black; padding: 0.25rem">
-                <div id="bar-inner" style="width: 0; height: 100%; background-color: black; transition: 100ms width"></div>
+        }"
+        />
+        <h1>T3-Cowriter</h1>
+        <f:form method="post">
+            <div class="prompts">
+                <h2>Prompts</h2>
+                <div class="select-items">
+                    <f:for each="{prompts}" as="prompt">
+                        <div>
+                            <input type="radio" id="{prompt.uid}" name="selectedPrompt" value="{prompt.uid}">
+                            <label for="html">{prompt.title}</label><br><!-- Adjust property names as per your model -->
+                        </div>
+                    </f:for>
+                </div>
             </div>
+            <div class="content-elements">
+                <h2>Content Elements</h2>
+                <div class="select-items">
+                    <f:for each="{contentElements}" as="contentElement">
+                        <div>
+                            <input type="checkbox" id="{contentElement.uid}" name="selectedContentElements[]" value="{contentElement.uid}">
+                            <label for="html">{contentElement.title}</label><br>
+                        </div>
+                    </f:for>
+                </div>
+                <input id="t3cowriter-operationIDField" type="hidden" name="operationID" value="{operationID}" readonly>
+                <button type="submit" name="action" value="searchSelectedContentElements">Update list</button>
+                <button type="submit" name="action" value="sendPromptToAiButton" id="t3cowriter_sendbutton">Send</button>
 
-            <p id="text" style="text-align: center"></p>
+                <div id="t3cowriter-progress">
+                    <div id="bar">
+                        <div id="bar-inner"></div>
+                    </div>
+
+                    <p id="text"></p>
+                </div>
+            </div>
+            <f:if condition="{result}">
+                <div>
+                    <f:for each="{result}" as="table" key="tablename">
+                        <h3>Entries found for table: {tablename}</h3>
+                        <table class="table">
+                            <tr>
+                                <th>Field</th>
+                                <th>Count</th>
+                            </tr>
+                            <f:for each="{table}" as="count" key="field">
+                                <tr>
+                                    <td>{field}</td>
+                                    <td>{count}</td>
+                                </tr>
+                            </f:for>
+                        </table>
+                    </f:for>
+                </div>
+            </f:if>
+        </f:form>
+        <div class="brand-logo">
+            <img src="{f:uri.image(src: 'EXT:t3_cowriter/Resources/Public/Images/netresearch-logo.svg')}">
         </div>
-
-        <h2>Seiten</h2>
-        <f:for each="{result}" as="table" key="tablename">
-            <h3>{tablename}</h3>
-            <table class="table">
-                <tr>
-                    <th>Field</th>
-                    <th>Count</th>
-                </tr>
-                <f:for each="{table}" as="count" key="field">
-                    <tr>
-                        <td>{field}</td>
-                        <td>{count}</td>
-                    </tr>
-                </f:for>
-            </table>
-        </f:for>
-    </f:form>
+    </div>
 </f:section>
 </html>
