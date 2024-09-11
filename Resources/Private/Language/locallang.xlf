@@ -2,8 +2,14 @@
 <xliff version="1.0">
     <file source-language="en" datatype="plaintext" original="messages" date="2024-07-08T12:00:00Z" product-name="t3_cowriter">
         <body>
+            <trans-unit id="tx_t3cowriter.headline">
+                <source>T3-Cowriter</source>
+            </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_prompt.title">
                 <source>Prompts</source>
+            </trans-unit>
+            <trans-unit id="tx_t3cowriter_domain_model_prompt.tooltip">
+                <source>Choose one prompt that should be processed.</source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_prompt.prompt">
                 <source>Prompt</source>
@@ -11,8 +17,32 @@
             <trans-unit id="tx_t3cowriter_domain_model_contentelement.title">
                 <source>Content Element</source>
             </trans-unit>
+            <trans-unit id="tx_t3cowriter_domain_model_contentelement.tooltip">
+                <source>Choose one or more content elements the prompt should be applied to.</source>
+            </trans-unit>
+            <trans-unit id="tx_t3cowriter_domain_model_button.update">
+                <source>Find elements</source>
+            </trans-unit>
+            <trans-unit id="tx_t3cowriter_domain_model_button.update.tooltip">
+                <source>Show the number of elements of the chosen type/s on a page.</source>
+            </trans-unit>
+            <trans-unit id="tx_t3cowriter_domain_model_button.send">
+                <source>Send</source>
+            </trans-unit>
+            <trans-unit id="tx_t3cowriter_domain_model_button.send.tooltip">
+                <source>Execute the prompt for all chosen elements.</source>
+            </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_contentelement.field">
                 <source>Field</source>
+            </trans-unit>
+            <trans-unit id="tx_t3cowriter_domain_model_table.title">
+                <source>Entries found for table:</source>
+            </trans-unit>
+            <trans-unit id="tx_t3cowriter_domain_model_table.column.field">
+                <source>Field</source>
+            </trans-unit>
+            <trans-unit id="tx_t3cowriter_domain_model_table.column.count">
+                <source>Count</source>
             </trans-unit>
         </body>
     </file>

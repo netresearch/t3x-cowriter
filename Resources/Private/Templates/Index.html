@@ -16,10 +16,12 @@
          0: '@netresearch/t3_cowriter/progress_bar.js'
         }"
         />
-        <h1>T3-Cowriter</h1>
+        <h1>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter.headline')}</h1>
         <f:form method="post">
             <div class="prompts">
-                <h2>Prompts</h2>
+                <h2 title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_prompt.tooltip')}">
+                    {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_prompt.title')}
+                </h2>
                 <div class="select-items">
                     <f:for each="{prompts}" as="prompt">
                         <div>
@@ -29,8 +31,11 @@
                     </f:for>
                 </div>
             </div>
+
             <div class="content-elements">
-                <h2>Content Elements</h2>
+                <h2 title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_contentelement.tooltip')}">
+                    {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_contentelement.title')}
+                </h2>
                 <div class="select-items">
                     <f:for each="{contentElements}" as="contentElement">
                         <div>
@@ -40,25 +45,32 @@
                     </f:for>
                 </div>
                 <input id="t3cowriter-operationIDField" type="hidden" name="operationID" value="{operationID}" readonly>
-                <button type="submit" name="action" value="searchSelectedContentElements">Update list</button>
-                <button type="submit" name="action" value="sendPromptToAiButton" id="t3cowriter_sendbutton">Send</button>
+
+                <button type="submit" name="action" value="searchSelectedContentElements" title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.update.tooltip')}">
+                    {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.update')}
+                </button>
+                <button type="submit" name="action" value="sendPromptToAiButton" id="t3cowriter_sendbutton" title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.send.tooltip')}">
+                    {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.send')}
+                </button>
 
                 <div id="t3cowriter-progress">
                     <div id="bar">
                         <div id="bar-inner"></div>
                     </div>
-
                     <p id="text"></p>
                 </div>
             </div>
+
             <f:if condition="{result}">
                 <div>
                     <f:for each="{result}" as="table" key="tablename">
-                        <h3>Entries found for table: {tablename}</h3>
+                        <h3>
+                            {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_table.title')} {tablename}
+                        </h3>
                         <table class="table">
                             <tr>
-                                <th>Field</th>
-                                <th>Count</th>
+                                <th>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_table.column.field')}</th>
+                                <th>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_table.column.count')}</th>
                             </tr>
                             <f:for each="{table}" as="count" key="field">
                                 <tr>
@@ -72,7 +84,7 @@
             </f:if>
         </f:form>
         <div class="brand-logo">
-            <img src="{f:uri.image(src: 'EXT:t3_cowriter/Resources/Public/Images/netresearch-logo.svg')}">
+            <img src="{f:uri.image(src: 'EXT:t3_cowriter/Resources/Public/Images/netresearch-logo.svg')}" alt="Netresearch logo" title="Netresearch logo">
         </div>
     </div>
 </f:section>
