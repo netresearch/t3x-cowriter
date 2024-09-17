@@ -15,6 +15,7 @@ return [
         'path' => '/module/page/t3cowriter',
         'labels' => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf',
         'extensionName' => 't3_cowriter',
+        'icon' => 'EXT:t3_cowriter/Resources/Public/Icons/Extension.svg',
         'navigationComponent' => '@typo3/backend/page-tree/page-tree-element',
         'controllerActions' => [
             T3CowriterModuleController::class => [
