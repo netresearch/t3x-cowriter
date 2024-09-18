@@ -16,13 +16,9 @@
          0: '@netresearch/t3_cowriter/progress_bar.js'
         }"
         />
-        <h1>
-            {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter.headline')}
-        </h1>
+        <h1>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter.headline')}</h1>
         <f:form method="post">
-            <div>
-                {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter.description')}
-            </div>
+            <div>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter.description')}</div>
             <div class="prompts">
                 <h2 title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_prompt.tooltip')}">
                     {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_prompt.title')}
@@ -51,10 +47,33 @@
                 </div>
                 <input id="t3cowriter-operationIDField" type="hidden" name="operationID" value="{operationID}" readonly>
 
-                <button type="submit" name="action" value="searchSelectedContentElements" title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.update.tooltip')}">
+                <button type="submit" name="action" value="searchSelectedContentElements" id="t3cowriter-findElements" title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.update.tooltip')}">
                     {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.update')}
                 </button>
-                <button type="submit" name="action" value="sendPromptToAiButton" id="t3cowriter_sendbutton" title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.send.tooltip')}">
+
+                <f:if condition="{result}">
+                    <div class ="t3cowriter-table">
+                        <f:for each="{result}" as="table" key="tablename">
+                            <h3>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_table.title')} {tablename}</h3>
+                            <table class="table">
+                                <tr>
+                                    <th>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_table.column.field')}</th>
+                                    <th>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_table.column.count')}</th>
+                                </tr>
+                                <f:for each="{table}" as="count" key="field">
+                                    <tr>
+                                        <td>{field}</td>
+                                        <td>{count}</td>
+                                    </tr>
+                                </f:for>
+                            </table>
+                        </f:for>
+                    </div>
+                </f:if>
+            </div>
+
+            <div class="send">
+                <button type="submit" name="action" value="sendPromptToAiButton" id="t3cowriter-sendButton" title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.send.tooltip')}">
                     {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_button.send')}
                 </button>
 
@@ -65,28 +84,6 @@
                     <p id="text"></p>
                 </div>
             </div>
-
-            <f:if condition="{result}">
-                <div>
-                    <f:for each="{result}" as="table" key="tablename">
-                        <h3>
-                            {f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_table.title')} {tablename}
-                        </h3>
-                        <table class="table">
-                            <tr>
-                                <th>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_table.column.field')}</th>
-                                <th>{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang.xlf:tx_t3cowriter_domain_model_table.column.count')}</th>
-                            </tr>
-                            <f:for each="{table}" as="count" key="field">
-                                <tr>
-                                    <td>{field}</td>
-                                    <td>{count}</td>
-                                </tr>
-                            </f:for>
-                        </table>
-                    </f:for>
-                </div>
-            </f:if>
         </f:form>
         <div class="brand-logo">
             <img src="{f:uri.image(src: 'EXT:t3_cowriter/Resources/Public/Images/netresearch-logo.svg')}" alt="Netresearch logo" title="Netresearch logo">

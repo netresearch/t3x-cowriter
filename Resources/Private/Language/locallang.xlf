@@ -3,17 +3,15 @@
     <file source-language="en" datatype="plaintext" original="messages" date="2024-07-08T12:00:00Z" product-name="t3_cowriter">
         <body>
             <trans-unit id="tx_t3cowriter.headline">
-                <source>T3-Cowriter</source>
+                <source>AI - Editorial Assistant t3_cowriter</source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter.description">
                 <source>
-                    How it works:
-                    Create a folder in the page tree.
-                    Add new records to hold your prompts and content elements.
-                    Select a page and – from below – the desired prompt, and the content elements it should be applied to.
-                    'Find elements' shows the total number of the chosen elements on the page.
-                    By clicking 'send', the prompt is processed by your chosen LLM.
-                    Check the results in the frontend.
+                    This is how it works:
+                    Select one or more pages from the Page tree where you want to make text customisations.
+                    At the bottom, select the desired prompt and the content elements to which it should be applied.
+                    Click 'Find Elements' to display the number of selected elements on the page.
+                    When you click 'Execute', the prompt will be processed by your chosen LLM. See the results in the frontend.
                 </source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_prompt.title">
@@ -32,13 +30,13 @@
                 <source>Choose one or more content elements the prompt should be applied to.</source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_button.update">
-                <source>Find elements</source>
+                <source>Find Elements</source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_button.update.tooltip">
                 <source>Show the number of elements of the chosen type/s on a page.</source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_button.send">
-                <source>Send</source>
+                <source>Execute Prompt</source>
             </trans-unit>
             <trans-unit id="tx_t3cowriter_domain_model_button.send.tooltip">
                 <source>Execute the prompt for all chosen elements.</source>

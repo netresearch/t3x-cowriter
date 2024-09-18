@@ -13,7 +13,7 @@ url.searchParams.append('operationID', operationID);
 
 
 
-const button = document.getElementById('t3cowriter_sendbutton');
+const button = document.getElementById('t3cowriter-sendButton');
 const progress_div = document.getElementById('t3cowriter-progress');
 
 button.addEventListener('click', function() {

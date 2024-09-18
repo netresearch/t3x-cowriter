@@ -40,14 +40,21 @@
             }
         }
 
-        button {
+        #t3cowriter-findElements {
+            margin-top: .5rem;
+        }
+
+        .t3cowriter-table {
+            margin-top: 1rem;
+        }
+
+        #t3cowriter-sendButton {
             background-color: #0a6e77;
             border-radius: 5px;
             border: 1px solid transparent;
             color: #fff;
             cursor: pointer;
             padding: .5rem 2rem;
-            margin-top: .5rem;
             text-align: center;
             font-weight: bold;
         }
