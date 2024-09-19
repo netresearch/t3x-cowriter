@@ -111,7 +111,7 @@ class T3CowriterModuleController extends ActionController
      */
     public function sendPromptToAiButtonAction(string $operationID, int $selectedPrompt = 0, array $selectedContentElements = []): ResponseInterface
     {
-        if ($selectedPrompt === 0 || empty($selectedContentElements)) {
+        if ($selectedPrompt === 0 || empty($selectedContentElements) || !$this->request->hasArgument('id')) {
             return $this->indexAction();
         }
 
