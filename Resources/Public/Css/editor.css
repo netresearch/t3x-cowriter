@@ -41,7 +41,10 @@
         }
 
         #t3cowriter-findElements {
+            background-color: #ccc;
             margin-top: .5rem;
+            border: none;
+            text-decoration: underline;
         }
 
         .t3cowriter-table {
