@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * This file is part of the package netresearch/t3-cowriter.
+ *
+ * For the full copyright and license information, please read the
+ * LICENSE file that was distributed with this source code.
+ */
+
 declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
@@ -18,11 +25,9 @@ use TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationPathDoesNotExis
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 
-
 /**
- * Definition of the T3CowriterModuleController class that extends the ActionController class
+ * Definition of the T3CowriterModuleController class that extends the ActionController class.
  *
- * @package Netresearch\T3Cowriter
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
  * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
  */
@@ -51,33 +56,30 @@ class T3CowriterModuleController extends ActionController
 
     protected readonly ProgressService $progressService;
 
-
     /**
      * Constructor for the T3CowriterModuleController.
      *
      * Initializes the controller with the necessary dependencies.
      *
-     * @param ModuleTemplateFactory $moduleTemplateFactory
+     * @param ModuleTemplateFactory    $moduleTemplateFactory
      * @param ContentElementRepository $contentElementRepository
-     * @param PromptRepository $promptRepository
-     * @param ExtensionConfiguration $extensionConfiguration
-     * @param ProgressService $progressService
+     * @param PromptRepository         $promptRepository
+     * @param ExtensionConfiguration   $extensionConfiguration
+     * @param ProgressService          $progressService
      */
     public function __construct(
-        ModuleTemplateFactory    $moduleTemplateFactory,
+        ModuleTemplateFactory $moduleTemplateFactory,
         ContentElementRepository $contentElementRepository,
-        PromptRepository         $promptRepository,
-        ExtensionConfiguration   $extensionConfiguration,
-        ProgressService          $progressService
-    )
-    {
-        $this->moduleTemplateFactory = $moduleTemplateFactory;
+        PromptRepository $promptRepository,
+        ExtensionConfiguration $extensionConfiguration,
+        ProgressService $progressService,
+    ) {
+        $this->moduleTemplateFactory    = $moduleTemplateFactory;
         $this->contentElementRepository = $contentElementRepository;
-        $this->promptRepository = $promptRepository;
-        $this->extensionConfiguration = $extensionConfiguration;
-        $this->progressService = $progressService;
+        $this->promptRepository         = $promptRepository;
+        $this->extensionConfiguration   = $extensionConfiguration;
+        $this->progressService          = $progressService;
     }
-
 
     /**
      *  Handles the default action for the module.
@@ -85,14 +87,16 @@ class T3CowriterModuleController extends ActionController
      *  Assigns content elements and prompts to the view and returns the module response.
      *
      * @return ResponseInterface
+     *
      * @throws RandomException
      */
     public function indexAction(): ResponseInterface
     {
         $this->view->assign('contentElements', $this->contentElementRepository->findAll());
         $operationID = base64_encode(random_bytes(32));
-        $this->view->assign("operationID", $operationID);
+        $this->view->assign('operationID', $operationID);
         $this->view->assign('prompts', $this->promptRepository->findAll());
+
         return $this->moduleResponse();
     }
 
@@ -102,9 +106,11 @@ class T3CowriterModuleController extends ActionController
      *  Creates and renders the module template and returns the HTML response.
      *
      * @param string $operationID
-     * @param int $selectedPrompt
-     * @param array $selectedContentElements
+     * @param int    $selectedPrompt
+     * @param array  $selectedContentElements
+     *
      * @return ResponseInterface
+     *
      * @throws Exception
      * @throws ExtensionConfigurationExtensionNotConfiguredException
      * @throws ExtensionConfigurationPathDoesNotExistException
@@ -117,10 +123,11 @@ class T3CowriterModuleController extends ActionController
 
         $result = $this->contentElementRepository->getAllTextFieldElements(
             $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements),
-            (int)$this->request->getQueryParams()['id']
+            (int) $this->request->getQueryParams()['id']
         );
 
         $this->modifyResultsByAi($operationID, $result, $selectedPrompt);
+
         return $this->indexAction();
     }
 
@@ -130,7 +137,9 @@ class T3CowriterModuleController extends ActionController
      *  Validates selected prompt and content elements, processes the text fields, and modifies them via AI.
      *
      * @param array $selectedContentElements
+     *
      * @return ResponseInterface
+     *
      * @throws Exception
      */
     public function searchSelectedContentElementsAction(array $selectedContentElements = []): ResponseInterface
@@ -138,7 +147,7 @@ class T3CowriterModuleController extends ActionController
         $processed = $this->contentElementRepository->createArrayToCountContentElements(
             $this->contentElementRepository->getAllTextFieldElements(
                 $this->contentElementRepository->fetchContentElementsByUid($selectedContentElements),
-                (int)$this->request->getQueryParams()['id']
+                (int) $this->request->getQueryParams()['id']
             ),
             $this
         );
@@ -153,8 +162,10 @@ class T3CowriterModuleController extends ActionController
      *  Sends the selected content elements and prompts to the AI and processes the results.
      *
      * @param array $element
-     * @param int $selectedPrompt
+     * @param int   $selectedPrompt
+     *
      * @return void
+     *
      * @throws ExtensionConfigurationExtensionNotConfiguredException
      * @throws ExtensionConfigurationPathDoesNotExistException
      */
@@ -171,9 +182,9 @@ class T3CowriterModuleController extends ActionController
             );
 
             $cowriterApiKey = $this->extensionConfiguration->get('t3_cowriter', 'apiToken');
-            $client = OpenAI::client($cowriterApiKey);
-            $gptResult = $client->chat()->create([
-                'model' => 'gpt-4-turbo',
+            $client         = OpenAI::client($cowriterApiKey);
+            $gptResult      = $client->chat()->create([
+                'model'    => 'gpt-4-turbo',
                 'messages' => [
                     ['role' => 'user', 'content' => $prompt],
                 ],
@@ -188,9 +199,11 @@ class T3CowriterModuleController extends ActionController
      *  Modifies a content element using AI.
      *
      * @param string $operationID
-     * @param array $result
-     * @param int $selectedPrompt
+     * @param array  $result
+     * @param int    $selectedPrompt
+     *
      * @return void
+     *
      * @throws ExtensionConfigurationExtensionNotConfiguredException
      * @throws ExtensionConfigurationPathDoesNotExistException
      */
@@ -200,7 +213,7 @@ class T3CowriterModuleController extends ActionController
 
         foreach ($result as $element) {
             $this->modifyElement($element, $selectedPrompt);
-            $progress++;
+            ++$progress;
 
             $this->progressService->recordProgress($operationID, $progress, count($result));
         }
@@ -210,12 +223,14 @@ class T3CowriterModuleController extends ActionController
      * Generates the module response.
      *
      * @param string $templateName
+     *
      * @return ResponseInterface
      */
     private function moduleResponse(string $templateName = 'index'): ResponseInterface
     {
         $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
         $moduleTemplate->setContent($this->view->render($templateName));
+
         return $this->htmlResponse($moduleTemplate->renderContent());
     }
 }

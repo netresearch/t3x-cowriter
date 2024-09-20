@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * This file is part of the package netresearch/t3-cowriter.
+ *
+ * For the full copyright and license information, please read the
+ * LICENSE file that was distributed with this source code.
+ */
+
 declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Service;
@@ -11,23 +18,23 @@ class ProgressService
     /**
      * @var string
      */
-    const CACHE_IDENTIFIER = 't3_cowriter_progress';
+    public const CACHE_IDENTIFIER = 't3_cowriter_progress';
 
     public function __construct(
-        private readonly FrontendInterface $cache
-    )
-    {
+        private readonly FrontendInterface $cache,
+    ) {
     }
 
     /**
      * Record the progress of an operation.
      *
      * @param string $operationID
-     * @param int $current
-     * @param int $total
+     * @param int    $current
+     * @param int    $total
+     *
      * @return void
      */
-    function recordProgress(string $operationID, int $current, int $total): void
+    public function recordProgress(string $operationID, int $current, int $total): void
     {
         $this->cache->set(self::getID($operationID), [$current, $total]);
     }
@@ -36,9 +43,10 @@ class ProgressService
      * Get the progress of an operation.
      *
      * @param string $operationID
+     *
      * @return int[]|null
      */
-    function getProgress(string $operationID): array|null
+    public function getProgress(string $operationID): ?array
     {
         $progress = $this->cache->get(self::getID($operationID));
 
@@ -49,6 +57,7 @@ class ProgressService
      * Get the cache ID for an operation.
      *
      * @param string $operationID
+     *
      * @return string
      */
     private static function getID(string $operationID): string

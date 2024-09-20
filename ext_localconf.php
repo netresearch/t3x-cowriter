@@ -1,15 +1,21 @@
 <?php
-// vim: ts=4 sw=4 expandtab
+
+/**
+ * This file is part of the package netresearch/t3-cowriter.
+ *
+ * For the full copyright and license information, please read the
+ * LICENSE file that was distributed with this source code.
+ */
 
 declare(strict_types=1);
 
-use Netresearch\T3Cowriter\Service\ProgressService as ProgressService;
+use Netresearch\T3Cowriter\Service\ProgressService;
+use TYPO3\CMS\Core\Cache\Backend\Typo3DatabaseBackend;
+use TYPO3\CMS\Core\Cache\Frontend\VariableFrontend;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Page\AssetCollector;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Cache\Backend\Typo3DatabaseBackend;
-use TYPO3\CMS\Core\Cache\Frontend\VariableFrontend;
 
 call_user_func(static function () {
     // Add TypoScript automatically (to use it in backend modules)
@@ -21,7 +27,7 @@ call_user_func(static function () {
 });
 
 $config = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('t3_cowriter');
-$js = 'globalThis._cowriterConfig = ' . json_encode($config) . ';';
+$js     = 'globalThis._cowriterConfig = ' . json_encode($config) . ';';
 
 $GLOBALS['TYPO3_CONF_VARS']['SYS']['features']['security.backend.enforceContentSecurityPolicy'] = false;
 $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
@@ -37,9 +43,9 @@ $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php'][
 
 $GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations'][ProgressService::CACHE_IDENTIFIER] ??= [
     'frontend' => VariableFrontend::class,
-    'backend' => Typo3DatabaseBackend::class,
-    'groups' => ['system'],
-    'options' => [
+    'backend'  => Typo3DatabaseBackend::class,
+    'groups'   => ['system'],
+    'options'  => [
         'defaultLifetime' => 600,
     ],
 ];

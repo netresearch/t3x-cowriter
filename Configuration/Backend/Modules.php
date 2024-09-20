@@ -1,12 +1,19 @@
 <?php
 
+/**
+ * This file is part of the package netresearch/t3-cowriter.
+ *
+ * For the full copyright and license information, please read the
+ * LICENSE file that was distributed with this source code.
+ */
+
 declare(strict_types=1);
 
 use Netresearch\T3Cowriter\Controller\T3CowriterModuleController;
 
 // Caution, variable name must not exist within \TYPO3\CMS\Core\Package\AbstractServiceProvider::configureBackendModules
 return [
-    'netresearch_module'              => [
+    'netresearch_module' => [
         'labels'         => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod.xlf',
         'iconIdentifier' => 'extension-netresearch-module',
         'position'       => [

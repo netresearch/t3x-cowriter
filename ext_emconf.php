@@ -19,12 +19,12 @@ $EM_CONF['t3_cowriter'] = [
     'state'          => 'stable',
     'version'        => '2.0.0',
     'constraints'    => [
-        'depends'   => [
+        'depends' => [
             'typo3' => '12.4.0-12.99.99',
         ],
         'conflicts' => [
         ],
-        'suggests'  => [
+        'suggests' => [
         ],
     ],
 ];

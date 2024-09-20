@@ -1,15 +1,23 @@
 <?php
+
+/**
+ * This file is part of the package netresearch/t3-cowriter.
+ *
+ * For the full copyright and license information, please read the
+ * LICENSE file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
 namespace Netresearch\T3Cowriter\Domain\Repository;
 
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Persistence\Generic\Typo3QuerySettings;
 use TYPO3\CMS\Extbase\Persistence\Repository;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
- * Definition of the Prompt class that extends AbstractEntity
+ * Definition of the Prompt class that extends AbstractEntity.
  *
- * @package Netresearch\T3Cowriter
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
  * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
  */
@@ -30,12 +38,14 @@ class PromptRepository extends Repository
      *  Retrieves the prompt associated with the given UID.
      *
      * @param int $selectedPrompt
+     *
      * @return string
      */
     public function fetchPromptByUid(int $selectedPrompt): string
     {
         $selectedPrompt = $this->findByUid($selectedPrompt);
-        $prompt = $selectedPrompt->getPrompt();
+        $prompt         = $selectedPrompt->getPrompt();
+
         return $prompt;
     }
 
@@ -45,11 +55,13 @@ class PromptRepository extends Repository
      * @param string $prompt
      * @param string $basePrompt
      * @param string $content
+     *
      * @return string
      */
-    public function buildFinalPrompt(string $prompt, string $basePrompt, string $content) : string
+    public function buildFinalPrompt(string $prompt, string $basePrompt, string $content): string
     {
         $finalPrompt = $basePrompt . ' ' . $prompt . ' TEXT: ' . $content;
+
         return $finalPrompt;
     }
 }
