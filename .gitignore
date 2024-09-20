@@ -1,12 +1,19 @@
-# IntelliJ project folder
+# PHPStorm
 .idea
 
-# Composer-related files
-.Build
+# OSX
+.DS_Store
+
+# Composer
+vendor/
+bin/
+logs/
 composer.lock
-*.zip
 
-# External resources
-/Resources/Public/JavaScript/Plugins/ckeditor-cowriter
+# Build stuff
+.build/
 
-._*
+# Cache
+.php-cs-fixer.cache
+.phplint.cache
+.phpunit.result.cache

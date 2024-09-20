@@ -1,6 +1,6 @@
 {
     "name": "netresearch/t3-cowriter",
-    "description": "With the help of AI you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.",
+    "description": "TYPO3 extension that allows you to work on a page using an AI-powered co-author – a digital assistant that helps you write your content.",
     "type": "typo3-cms-extension",
     "license": [
         "GPL-3.0-or-later"
@@ -17,29 +17,28 @@
     "authors": [
         {
             "name": "Netresearch",
-            "email": "andre.lademann@netresearch.de",
-            "homepage": "https://www.netresearch.de",
-            "role": "Developer"
-        },
-        {
-            "name": "Netresearch",
             "email": "thomas.schoene@netresearch.de",
             "homepage": "https://www.netresearch.de",
             "role": "Developer"
         },
         {
-            "name": "Netresearch",
+            "name": "Sebastian Koschel",
             "email": "sebastian.koschel@netresearch.de",
             "homepage": "https://www.netresearch.de",
             "role": "Developer"
         },
         {
-            "name": "Netresearch",
+            "name": "Martin Wunderlich",
             "email": "martin.wunderlich@netresearch.de",
             "homepage": "https://www.netresearch.de",
             "role": "Developer"
+        },
+        {
+            "name": "Rico Sonntag",
+            "email": "rico.sonntag@netresearch.de",
+            "role": "Developer",
+            "homepage": "https://www.netresearch.de/"
         }
-
     ],
     "support": {
         "issues": "https://github.com/netresearch/t3-cowriter/issues",
@@ -49,19 +48,66 @@
     "notify-batch": "https://flows.nrdev.de/composer/install",
     "require": {
         "typo3/cms-core": "^12.4",
+        "typo3/cms-backend": "^12.4",
+        "typo3/cms-extbase": "^12.4",
         "openai-php/client": "^0.10.0"
     },
-    "autoload": {
-        "psr-4": {
-            "Netresearch\\T3Cowriter\\": "Classes/"
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "3.64",
+        "friendsoftypo3/phpstan-typo3": "^0.9",
+        "overtrue/phplint": "^9.4",
+        "phpstan/phpstan": "^1.12",
+        "phpstan/phpstan-strict-rules": "^1.6",
+        "phpstan/phpstan-deprecation-rules": "^1.2",
+        "ssch/typo3-rector": "^2.6"
+    },
+    "config": {
+        "bin-dir": ".build/bin",
+        "vendor-dir": ".build/vendor",
+        "discard-changes": true,
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "platform-check": false,
+        "allow-plugins": {
+            "typo3/cms-composer-installers": true,
+            "typo3/class-alias-loader": true,
+            "php-http/discovery": true
         }
     },
     "extra": {
         "typo3/cms": {
-            "extension-key": "t3_cowriter"
+            "extension-key": "t3_cowriter",
+            "web-dir": ".build/public"
         },
         "branch-alias": {
-            "dev-main": "2.0.x-dev"
+            "dev-master": "2.0.x-dev"
         }
+    },
+    "autoload": {
+        "psr-4": {
+            "Netresearch\\T3Cowriter\\": "Classes"
+        }
+    },
+    "scripts": {
+        "ci:test:php:lint": [
+            "phplint --configuration Build/.phplint.yml"
+        ],
+        "ci:test:php:phpstan": [
+            "phpstan analyze --configuration Build/phpstan.neon --memory-limit=-1"
+        ],
+        "ci:test:php:phpstan:baseline": [
+            "phpstan analyze --configuration Build/phpstan.neon --generate-baseline Build/phpstan-baseline.neon --allow-empty-baseline"
+        ],
+        "ci:test:php:rector": [
+            "rector process --config Build/rector.php --dry-run"
+        ],
+        "ci:test": [
+            "@ci:test:php:lint",
+            "@ci:test:php:phpstan",
+            "@ci:test:php:rector"
+        ],
+        "ci:cgl": [
+            "php-cs-fixer fix --config Build/.php-cs-fixer.dist.php --diff --verbose --cache-file .build/.php-cs-fixer.cache"
+        ]
     }
 }
