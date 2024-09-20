@@ -175,6 +175,7 @@ class T3CowriterModuleController extends ActionController
             if ($key == 'uid') {
                 continue;
             }
+
             if ($key == 'tablename') {
                 continue;
             }

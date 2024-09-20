@@ -45,7 +45,6 @@
         "source": "https://github.com/netresearch/t3-cowriter",
         "docs": "https://github.com/netresearch/t3-cowriter"
     },
-    "notify-batch": "https://flows.nrdev.de/composer/install",
     "require": {
         "typo3/cms-core": "^12.4",
         "typo3/cms-backend": "^12.4",

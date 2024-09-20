@@ -164,9 +164,11 @@ class ContentElementRepository extends Repository
             if ($key == 'uid') {
                 continue;
             }
+
             if ($key == 'tablename') {
                 continue;
             }
+
             $table[$key] = ($table[$key] ?? 0) + 1;
         }
 
