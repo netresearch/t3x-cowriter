@@ -39,52 +39,57 @@ class ContentElement extends AbstractEntity
     /**
      * @return string
      */
-    public function getTitle()
+    public function getTitle(): string
     {
         return $this->title;
     }
 
     /**
-     * @return void
+     * @param string $title
+     *
+     * @return ContentElement
      */
-    public function setTitle($title)
+    public function setTitle(string $title): ContentElement
     {
         $this->title = $title;
+        return $this;
     }
 
     /**
      * @return string
      */
-    public function getTable()
+    public function getTable(): string
     {
         return $this->table;
     }
 
     /**
-     * @param $table
+     * @param string $table
      *
-     * @return void
+     * @return ContentElement
      */
-    public function setTable($table)
+    public function setTable(string $table): ContentElement
     {
         $this->table = $table;
+        return $this;
     }
 
     /**
      * @return string
      */
-    public function getField()
+    public function getField(): string
     {
         return $this->field;
     }
 
     /**
-     * @param $field
+     * @param string $field
      *
-     * @return void
+     * @return ContentElement
      */
-    public function setField($field)
+    public function setField(string $field): ContentElement
     {
         $this->field = $field;
+        return $this;
     }
 }

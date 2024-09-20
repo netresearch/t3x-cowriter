@@ -45,10 +45,13 @@ class Prompt extends AbstractEntity
      * Sets the title of the prompt.
      *
      * @param string $title
+     *
+     * @return Prompt
      */
-    public function setTitle($title)
+    public function setTitle(string $title): Prompt
     {
         $this->title = $title;
+        return $this;
     }
 
     /**
@@ -65,9 +68,12 @@ class Prompt extends AbstractEntity
      * Sets the content of the prompt.
      *
      * @param string $prompt
+     *
+     * @return Prompt
      */
-    public function setPrompt($prompt)
+    public function setPrompt(string $prompt): Prompt
     {
         $this->prompt = $prompt;
+        return $this;
     }
 }
