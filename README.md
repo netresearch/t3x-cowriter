@@ -1,3 +1,7 @@
+[![Latest version](https://img.shields.io/github/v/release/netresearch/t3x-cowriter?sort=semver)](https://github.com/netresearch/t3x-cowriter/releases/latest)
+[![License](https://img.shields.io/github/license/netresearch/t3x-cowriter)](https://github.com/netresearch/t3x-cowriter/blob/main/LICENSE)
+[![CI](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml/badge.svg)](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml)
+
 # T3 cowriter
 
 Did you ever wish to have a second person to work on a TYPO3 page together with you? This extension allows you to do so. With the help of AI you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.
