@@ -15,7 +15,6 @@ return [
         'label'                    => 'title',
         'tstamp'                   => 'tstamp',
         'crdate'                   => 'crdate',
-        'cruser_id'                => 'cruser_id',
         'dividers2tabs'            => true,
         'versioningWS'             => 2,
         'origUid'                  => 't3_origuid',

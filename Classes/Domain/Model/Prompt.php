@@ -36,7 +36,7 @@ class Prompt extends AbstractEntity
      *
      * @return string
      */
-    public function getTitle()
+    public function getTitle(): string
     {
         return $this->title;
     }
@@ -51,6 +51,7 @@ class Prompt extends AbstractEntity
     public function setTitle(string $title): Prompt
     {
         $this->title = $title;
+
         return $this;
     }
 
@@ -59,7 +60,7 @@ class Prompt extends AbstractEntity
      *
      * @return string
      */
-    public function getPrompt()
+    public function getPrompt(): string
     {
         return $this->prompt;
     }
@@ -74,6 +75,7 @@ class Prompt extends AbstractEntity
     public function setPrompt(string $prompt): Prompt
     {
         $this->prompt = $prompt;
+
         return $this;
     }
 }

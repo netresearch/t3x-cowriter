@@ -17,7 +17,6 @@ return [
         'label'                    => 'title',
         'tstamp'                   => 'tstamp',
         'crdate'                   => 'crdate',
-        'cruser_id'                => 'cruser_id',
         'dividers2tabs'            => true,
         'versioningWS'             => 2,
         'origUid'                  => 't3_origuid',
@@ -54,7 +53,7 @@ return [
                 'type'       => 'select',
                 'renderType' => 'selectSingle',
                 'items'      => [
-                    ['-- Select a table --', 0],
+                    ['label' => '-- Select a table --', 'value' => 0],
                 ],
                 'itemsProcFunc' => ItemsProcFunc::class . '->selectTables',
             ],
@@ -66,7 +65,7 @@ return [
                 'type'       => 'select',
                 'renderType' => 'selectSingleBox',
                 'items'      => [
-                    ['-- Select a field --', 0],
+                    ['label' => '-- Select a field --', 'value' => 0],
                 ],
                 'itemsProcFunc' => ItemsProcFunc::class . '->selectFields',
             ],

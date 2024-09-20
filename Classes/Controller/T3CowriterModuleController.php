@@ -117,7 +117,7 @@ class T3CowriterModuleController extends ActionController
      */
     public function sendPromptToAiButtonAction(string $operationID, int $selectedPrompt = 0, array $selectedContentElements = []): ResponseInterface
     {
-        if ($selectedPrompt === 0 || empty($selectedContentElements) || !$this->request->hasArgument('id')) {
+        if ($selectedPrompt === 0 || $selectedContentElements === [] || !$this->request->hasArgument('id')) {
             return $this->indexAction();
         }
 
@@ -172,9 +172,13 @@ class T3CowriterModuleController extends ActionController
     public function modifyElement(array $element, int $selectedPrompt): void
     {
         foreach ($element as $key => $value) {
-            if ($key == 'uid' || $key == 'tablename') {
+            if ($key == 'uid') {
                 continue;
             }
+            if ($key == 'tablename') {
+                continue;
+            }
+
             $prompt = $this->promptRepository->buildFinalPrompt(
                 $this->promptRepository->fetchPromptByUid($selectedPrompt),
                 $this->extensionConfiguration->get('t3_cowriter', 'basePrompt'),

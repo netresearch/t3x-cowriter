@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Domain\Repository;
 
+use Doctrine\DBAL\Exception;
 use Netresearch\T3Cowriter\Controller\T3CowriterModuleController;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
@@ -60,7 +61,7 @@ class ContentElementRepository extends Repository
      *
      * @return array
      *
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function getAllTextFieldElements(array $contentElements, int $pageId): array
     {
@@ -160,10 +161,12 @@ class ContentElementRepository extends Repository
     public function countContentElements(mixed $item, mixed $table): mixed
     {
         foreach ($item as $key => $value) {
-            if ($key == 'uid' || $key == 'tablename') {
+            if ($key == 'uid') {
                 continue;
             }
-
+            if ($key == 'tablename') {
+                continue;
+            }
             $table[$key] = ($table[$key] ?? 0) + 1;
         }
 
@@ -180,7 +183,7 @@ class ContentElementRepository extends Repository
      */
     public function addTableNameToResults(array $tableResults, mixed $tableName): array
     {
-        foreach ($tableResults as $key => $tableResult) {
+        foreach (array_keys($tableResults) as $key) {
             $tableResults[$key]['tablename'] = $tableName;
         }
 

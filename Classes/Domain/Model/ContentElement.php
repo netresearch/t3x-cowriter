@@ -52,6 +52,7 @@ class ContentElement extends AbstractEntity
     public function setTitle(string $title): ContentElement
     {
         $this->title = $title;
+
         return $this;
     }
 
@@ -71,6 +72,7 @@ class ContentElement extends AbstractEntity
     public function setTable(string $table): ContentElement
     {
         $this->table = $table;
+
         return $this;
     }
 
@@ -90,6 +92,7 @@ class ContentElement extends AbstractEntity
     public function setField(string $field): ContentElement
     {
         $this->field = $field;
+
         return $this;
     }
 }

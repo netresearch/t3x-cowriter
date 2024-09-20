@@ -36,7 +36,7 @@ class ProgressService
      */
     public function recordProgress(string $operationID, int $current, int $total): void
     {
-        $this->cache->set(self::getID($operationID), [$current, $total]);
+        $this->cache->set($this->getID($operationID), [$current, $total]);
     }
 
     /**
@@ -48,7 +48,7 @@ class ProgressService
      */
     public function getProgress(string $operationID): ?array
     {
-        $progress = $this->cache->get(self::getID($operationID));
+        $progress = $this->cache->get($this->getID($operationID));
 
         return $progress === false ? null : $progress;
     }
@@ -60,7 +60,7 @@ class ProgressService
      *
      * @return string
      */
-    private static function getID(string $operationID): string
+    private function getID(string $operationID): string
     {
         return sha1(self::CACHE_IDENTIFIER . '_' . $operationID);
     }

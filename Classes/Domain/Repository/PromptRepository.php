@@ -44,9 +44,8 @@ class PromptRepository extends Repository
     public function fetchPromptByUid(int $selectedPrompt): string
     {
         $selectedPrompt = $this->findByUid($selectedPrompt);
-        $prompt         = $selectedPrompt->getPrompt();
 
-        return $prompt;
+        return $selectedPrompt->getPrompt();
     }
 
     /**
@@ -60,8 +59,6 @@ class PromptRepository extends Repository
      */
     public function buildFinalPrompt(string $prompt, string $basePrompt, string $content): string
     {
-        $finalPrompt = $basePrompt . ' ' . $prompt . ' TEXT: ' . $content;
-
-        return $finalPrompt;
+        return $basePrompt . ' ' . $prompt . ' TEXT: ' . $content;
     }
 }

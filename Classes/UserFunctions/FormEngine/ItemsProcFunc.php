@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\UserFunctions\FormEngine;
 
+use Doctrine\DBAL\Exception;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
@@ -29,17 +30,21 @@ class ItemsProcFunc
      *
      * @return void
      *
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function selectTables(&$params): void
     {
-        $connection    = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('pages');
+        $connection = GeneralUtility::makeInstance(ConnectionPool::class)
+            ->getConnectionForTable('pages');
+
         $schemaManager = $connection->createSchemaManager();
         $tables        = $schemaManager->listTableNames();
 
-        $params = $this->getListItems($tables, $params, function ($table) {
-            return $table;
-        });
+        $params = $this->getListItems(
+            $tables,
+            $params,
+            fn ($table) => $table
+        );
     }
 
     /**
@@ -49,20 +54,27 @@ class ItemsProcFunc
      *
      * @return void
      *
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function selectFields(&$params): void
     {
         if (!isset($params['row']['table'][0])) {
             return;
         }
-        $table = strval($params['row']['table'][0]);
 
-        $connection    = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($table);
+        $table = (string) $params['row']['table'][0];
+
+        $connection = GeneralUtility::makeInstance(ConnectionPool::class)
+            ->getConnectionForTable($table);
+
         $schemaManager = $connection->createSchemaManager();
         $columns       = $schemaManager->listTableColumns($table);
 
-        $params = $this->getListItems($columns, $params, function ($column) {return $column->getName(); });
+        $params = $this->getListItems(
+            $columns,
+            $params,
+            fn ($column) => $column->getName()
+        );
     }
 
     /**
