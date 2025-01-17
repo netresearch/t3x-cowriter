@@ -17,7 +17,8 @@ use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
  * Definition of the Prompt class that extends AbstractEntity.
  *
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
- * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
+ * @license Netresearch https://www.netresearch.de
+ * @link    https://www.netresearch.de
  */
 class Prompt extends AbstractEntity
 {

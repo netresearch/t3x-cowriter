@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-namespace Netresearch\T3Cowriter\UserFunctions\FormEngine;
+namespace Netresearch\T3Cowriter\Backend;
 
 use Doctrine\DBAL\Exception;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -19,20 +19,21 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * Provides methods to dynamically populate table and field selection lists.
  *
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
- * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
+ * @license Netresearch https://www.netresearch.de
+ * @link    https://www.netresearch.de
  */
 class ItemsProcFunc
 {
     /**
      * Populates the available database tables into the selection list.
      *
-     * @param $params
+     * @param array<string, mixed> $config Configuration array
      *
      * @return void
      *
      * @throws Exception
      */
-    public function selectTables(&$params): void
+    public function selectTables(array &$config): void
     {
         $connection = GeneralUtility::makeInstance(ConnectionPool::class)
             ->getConnectionForTable('pages');
@@ -40,9 +41,9 @@ class ItemsProcFunc
         $schemaManager = $connection->createSchemaManager();
         $tables        = $schemaManager->listTableNames();
 
-        $params = $this->getListItems(
+        $config = $this->getListItems(
             $tables,
-            $params,
+            $config,
             fn ($table) => $table
         );
     }
@@ -50,19 +51,19 @@ class ItemsProcFunc
     /**
      * Populates the available fields of a selected table into the selection list.
      *
-     * @param $params
+     * @param array<string, mixed> $config Configuration array
      *
      * @return void
      *
      * @throws Exception
      */
-    public function selectFields(&$params): void
+    public function selectFields(array &$config): void
     {
-        if (!isset($params['row']['table'][0])) {
+        if (!isset($config['row']['table'][0])) {
             return;
         }
 
-        $table = (string) $params['row']['table'][0];
+        $table = (string) $config['row']['table'][0];
 
         $connection = GeneralUtility::makeInstance(ConnectionPool::class)
             ->getConnectionForTable($table);
@@ -70,9 +71,9 @@ class ItemsProcFunc
         $schemaManager = $connection->createSchemaManager();
         $columns       = $schemaManager->listTableColumns($table);
 
-        $params = $this->getListItems(
+        $config = $this->getListItems(
             $columns,
-            $params,
+            $config,
             fn ($column) => $column->getName()
         );
     }
@@ -80,19 +81,19 @@ class ItemsProcFunc
     /**
      * Helper method to add items to the selection list.
      *
-     * @param array    $items
-     * @param array    $params
-     * @param callable $getName
+     * @param array<string, mixed> $items
+     * @param array<string, mixed> $config  Configuration array
+     * @param callable             $getName
      *
-     * @return array
+     * @return array<string, mixed>
      */
-    public function getListItems(array $items, array $params, callable $getName): array
+    private function getListItems(array $items, array $config, callable $getName): array
     {
         foreach ($items as $item) {
             $name              = $getName($item);
-            $params['items'][] = [$name, $name];
+            $config['items'][] = [$name, $name];
         }
 
-        return $params;
+        return $config;
     }
 }

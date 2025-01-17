@@ -31,7 +31,9 @@ return [
         'iconfile'     => 'EXT:t3_cowriter/Resources/Public/Icons/Extension.svg',
     ],
     'types' => [
-        '1' => ['showitem' => 'title, prompt'],
+        '1' => [
+            'showitem' => 'title, prompt',
+        ],
     ],
     'columns' => [
         'title' => [

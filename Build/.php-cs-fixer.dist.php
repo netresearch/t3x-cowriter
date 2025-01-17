@@ -1,6 +1,15 @@
 <?php
 
 /**
+ * This file is part of the package netresearch/t3-cowriter.
+ *
+ * For the full copyright and license information, please read the
+ * LICENSE file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
+/**
  * This file represents the configuration for Code Sniffing PSR-2-related
  * automatic checks of coding guidelines
  * Install @fabpot's great php-cs-fixer tool via

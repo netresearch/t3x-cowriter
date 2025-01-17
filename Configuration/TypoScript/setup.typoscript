@@ -1,16 +1,16 @@
 # Module configuration
-module.t3_cowriter {
+module.tx_t3cowriter {
     view {
         templateRootPaths {
-            0 = EXT:t3_cowriter/Resources/Private/Templates/
+            0 = EXT:t3_cowriter/Resources/Private/Backend/Templates/
         }
 
         partialRootPaths {
-            0 = EXT:t3_cowriter/Resources/Private/Partials/
+            0 = EXT:t3_cowriter/Resources/Private/Backend/Partials/
         }
 
         layoutRootPaths {
-            0 = EXT:t3_cowriter/Resources/Private/Layouts/
+            0 = EXT:t3_cowriter/Resources/Private/Backend/Layouts/
         }
     }
 }

@@ -10,12 +10,16 @@
 declare(strict_types=1);
 
 return [
-    'dependencies' => ['backend'],
-    'tags'         => [
+    'dependencies' => [
+        'core',
+        'backend',
+        'rte_ckeditor',
+    ],
+    'tags' => [
         'backend.form',
     ],
     'imports' => [
-        '@netresearch/t3_cowriter/cowriter'        => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/cowriter.js',
-        '@netresearch/t3_cowriter/progress_bar.js' => 'EXT:t3_cowriter/Resources/Public/JavaScript/progress_bar.js',
+        '@netresearch/t3-cowriter/cowriter'        => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/cowriter.js',
+        '@netresearch/t3-cowriter/progress_bar.js' => 'EXT:t3_cowriter/Resources/Public/JavaScript/progress_bar.js',
     ],
 ];

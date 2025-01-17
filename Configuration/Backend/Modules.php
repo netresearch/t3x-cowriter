@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use Netresearch\T3Cowriter\Controller\T3CowriterModuleController;
+use Netresearch\T3Cowriter\Controller\CowriterModuleController;
 
 // Caution, variable name must not exist within \TYPO3\CMS\Core\Package\AbstractServiceProvider::configureBackendModules
 return [
@@ -27,12 +27,12 @@ return [
         'workspaces'                               => 'live',
         'iconIdentifier'                           => 'extension-netresearch-t3-cowriter',
         'path'                                     => '/module/netresearch/cowriter',
-        'labels'                                   => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_um.xlf',
+        'labels'                                   => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_cowriter.xlf',
         'extensionName'                            => 'T3Cowriter',
         'inheritNavigationComponentFromMainModule' => false,
         'navigationComponent'                      => '@typo3/backend/page-tree/page-tree-element',
         'controllerActions'                        => [
-            T3CowriterModuleController::class => [
+            CowriterModuleController::class => [
                 'index',
                 'sendPromptToAiButton',
                 'searchSelectedContentElements',

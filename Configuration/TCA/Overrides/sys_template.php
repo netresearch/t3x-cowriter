@@ -13,12 +13,10 @@ use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 
 defined('TYPO3') || exit('Access denied.');
 
-call_user_func(function (): void {
-    $extensionKey = 't3_cowriter';
-
+call_user_func(static function (): void {
     ExtensionManagementUtility::addStaticFile(
-        $extensionKey,
+        't3_cowriter',
         'Configuration/TypoScript/',
-        'CKEditor plugin: cowriter'
+        'Netresearch: CKEditor plugin "cowriter"'
     );
 });

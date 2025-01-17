@@ -18,16 +18,17 @@ use TYPO3\CMS\Core\Http\JsonResponse;
 use TYPO3\CMS\Core\Http\ServerRequest;
 
 /**
- * Definition of the T3CowriterModuleController class that extends the ActionController class.
+ * ProgressController.
  *
  * @author  Philipp Altmann <philipp.altmann@netresearch.de>
- * @license https://www.gnu.org/licenses/gpl-3.0.de.html GPL-3.0-or-later
+ * @license Netresearch https://www.netresearch.de
+ * @link    https://www.netresearch.de
  */
 #[AsController]
 class ProgressController
 {
     /**
-     * Constructor for the T3CowriterModuleController.
+     * Constructor for the CowriterModuleController.
      *
      * Initializes the controller with the necessary dependencies.
      *q
@@ -40,12 +41,15 @@ class ProgressController
     }
 
     /**
+     * @param ServerRequest $request
+     *
      * @return ResponseInterface
      */
     public function indexAction(ServerRequest $request): ResponseInterface
     {
         $queryParams = $request->getQueryParams();
         $operationID = $queryParams['operationID'];
+
         if (empty($operationID)) {
             return new JsonResponse([
                 'error' => 'Missing operationID parameter',
@@ -53,6 +57,7 @@ class ProgressController
         }
 
         $data = $this->progressService->getProgress($operationID);
+
         if ($data === null) {
             return new JsonResponse([
                 'error' => 'Operation not found',

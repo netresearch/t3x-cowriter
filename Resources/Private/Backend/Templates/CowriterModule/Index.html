@@ -1,0 +1,106 @@
+<html data-namespace-typo3-fluid="true"
+      xmlns="http://www.w3.org/1999/xhtml" lang="en"
+      xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+>
+    <f:layout name="Default"/>
+
+    <f:section name="Content">
+        <h1><f:translate key="tx_t3cowriter.headline" /></h1>
+
+        <f:form method="post">
+            <f:form.hidden id="t3cowriter-operationIDField" name="operationID" value="{operationID}" />
+
+            <div><f:translate key="tx_t3cowriter.description" /></div>
+            <div class="prompts">
+                <h2 title="{f:translate(key: 'tx_t3cowriter_domain_model_prompt.tooltip')}">
+                    <f:translate key="tx_t3cowriter_domain_model_prompt.title" />
+                </h2>
+                <div class="select-items">
+                    <f:for each="{prompts}" as="prompt">
+                        <div class="form-check">
+                            <f:form.radio class="form-check-input"
+                                          name="selectedPrompt"
+                                          id="prompt-{prompt.uid}"
+                                          value="{prompt.uid}" />
+                            <label class="form-check-label" for="prompt-{prompt.uid}">
+                                {prompt.title}
+                            </label>
+                        </div>
+                    </f:for>
+                </div>
+            </div>
+
+            <div class="content-elements">
+                <h2 title="{f:translate(key: 'tx_t3cowriter_domain_model_contentelement.tooltip')}">
+                    <f:translate key="tx_t3cowriter_domain_model_contentelement.title" />
+                </h2>
+                <div class="select-items">
+                    <f:for each="{contentElements}" as="contentElement">
+                        <div class="form-check">
+                            <f:form.checkbox class="form-check-input"
+                                             value="{contentElement.uid}"
+                                             name="selectedContentElements"
+                                             multiple="TRUE"
+                                             id="content-element-{contentElement.uid}" />
+                            <label class="form-check-label" for="content-element-{contentElement.uid}">
+                                {contentElement.title}
+                            </label>
+                        </div>
+                    </f:for>
+                </div>
+
+                <f:form.button type="submit"
+                               name="action"
+                               value="searchSelectedContentElements"
+                               id="t3cowriter-findElements"
+                               title="{f:translate(key: 'tx_t3cowriter_domain_model_button.update.tooltip')}">
+                    <f:translate key="tx_t3cowriter_domain_model_button.update">Find Elements</f:translate>
+                </f:form.button>
+
+                <f:if condition="{processed}">
+                    <div class="t3cowriter-table">
+                        <f:for each="{processed}" as="table" key="tablename">
+                            <p><f:translate key="tx_t3cowriter_domain_model_table.title" /> {tablename}</p>
+                            <table class="table">
+                                <tr>
+                                    <th><f:translate key="tx_t3cowriter_domain_model_table.column.field" /></th>
+                                    <th><f:translate key="tx_t3cowriter_domain_model_table.column.count" /></th>
+                                </tr>
+                                <f:for each="{table}" as="count" key="field">
+                                    <tr>
+                                        <td>{field}</td>
+                                        <td>{count}</td>
+                                    </tr>
+                                </f:for>
+                            </table>
+                        </f:for>
+                    </div>
+                </f:if>
+            </div>
+
+            <div class="send">
+                <f:form.button type="submit"
+                               class="btn btn-netresearch"
+                               name="action"
+                               value="sendPromptToAiButton"
+                               id="t3cowriter-sendButton"
+                               title="{f:translate(key: 'tx_t3cowriter_domain_model_button.send.tooltip')}">
+                    <f:translate key="tx_t3cowriter_domain_model_button.send">Execute Prompt</f:translate>
+                </f:form.button>
+
+                <div id="t3cowriter-progress">
+                    <div id="bar">
+                        <div id="bar-inner"></div>
+                    </div>
+                    <p id="text"></p>
+                </div>
+            </div>
+        </f:form>
+
+        <div class="brand-logo">
+            <f:image src="EXT:t3_cowriter/Resources/Public/Images/netresearch-logo.svg"
+                     alt="Netresearch Logo"
+                     title="Netresearch Logo" />
+        </div>
+    </f:section>
+</html>

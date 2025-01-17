@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use Netresearch\T3Cowriter\UserFunctions\FormEngine\ItemsProcFunc;
+use Netresearch\T3Cowriter\Backend\ItemsProcFunc;
 
 return [
     'ctrl' => [
@@ -53,7 +53,10 @@ return [
                 'type'       => 'select',
                 'renderType' => 'selectSingle',
                 'items'      => [
-                    ['label' => '-- Select a table --', 'value' => 0],
+                    [
+                        'label' => '-- Select a table --',
+                        'value' => 0,
+                    ],
                 ],
                 'itemsProcFunc' => ItemsProcFunc::class . '->selectTables',
             ],
@@ -65,7 +68,10 @@ return [
                 'type'       => 'select',
                 'renderType' => 'selectSingleBox',
                 'items'      => [
-                    ['label' => '-- Select a field --', 'value' => 0],
+                    [
+                        'label' => '-- Select a field --',
+                        'value' => 0,
+                    ],
                 ],
                 'itemsProcFunc' => ItemsProcFunc::class . '->selectFields',
             ],

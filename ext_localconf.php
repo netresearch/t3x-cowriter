@@ -24,6 +24,10 @@ call_user_func(static function () {
         'setup',
         '@import "EXT:t3_cowriter/Configuration/TypoScript/setup.typoscript"'
     );
+
+    // Add our custom style sheet
+    $GLOBALS['TYPO3_CONF_VARS']['BE']['stylesheets']['t3_cowriter']
+        = 'EXT:t3_cowriter/Resources/Public/Css/Module.css';
 });
 
 $config = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('t3_cowriter');
