@@ -10,7 +10,7 @@
                 <target>Cowriter</target>
             </trans-unit>
             <trans-unit id="mlang_labels_tabescr">
-                <target>Ein Modul zum Erstellen von KI-unterstützter Inhalte.</target>
+                <target>Ein Modul zum Erstellen von KI-unterstützten Inhalten.</target>
             </trans-unit>
         </body>
     </file>

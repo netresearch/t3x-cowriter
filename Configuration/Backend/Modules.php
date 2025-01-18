@@ -23,8 +23,7 @@ return [
     'netresearch_t3_cowriter' => [
         'parent'                                   => 'netresearch_module',
         'position'                                 => [],
-        'access'                                   => 'admin',
-        'workspaces'                               => 'live',
+        'access'                                   => 'user',
         'iconIdentifier'                           => 'extension-netresearch-t3-cowriter',
         'path'                                     => '/module/netresearch/cowriter',
         'labels'                                   => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_cowriter.xlf',
