@@ -52,13 +52,13 @@
         "openai-php/client": "^0.10.0"
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^3.64",
-        "friendsoftypo3/phpstan-typo3": "^0.9",
-        "overtrue/phplint": "^9.4",
-        "phpstan/phpstan": "^1.12",
-        "phpstan/phpstan-strict-rules": "^1.6",
-        "phpstan/phpstan-deprecation-rules": "^1.2",
-        "ssch/typo3-rector": "^2.6"
+        "friendsofphp/php-cs-fixer": "^3.65",
+        "saschaegerer/phpstan-typo3": "^1.0 || v2.x-dev",
+        "overtrue/phplint": "^9.5",
+        "phpstan/phpstan": "^1.0 || ^2.0",
+        "phpstan/phpstan-strict-rules": "^1.0 || ^2.0",
+        "phpstan/phpstan-deprecation-rules": "^1.0 || ^2.0",
+        "ssch/typo3-rector": "^2.0 || ^3.0"
     },
     "config": {
         "bin-dir": ".build/bin",

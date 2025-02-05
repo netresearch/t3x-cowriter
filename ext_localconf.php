@@ -17,7 +17,7 @@ use TYPO3\CMS\Core\Page\AssetCollector;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-call_user_func(static function () {
+call_user_func(static function (): void {
     // Add TypoScript automatically (to use it in backend modules)
     ExtensionManagementUtility::addTypoScript(
         't3_cowriter',
@@ -37,7 +37,7 @@ $GLOBALS['TYPO3_CONF_VARS']['SYS']['features']['security.backend.enforceContentS
 $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
     = 'EXT:t3_cowriter/Configuration/RTE/Pluginv12.yaml';
 
-$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess'][] = function ($parameters, $pagerenderer) use ($js) {
+$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess'][] = static function ($parameters, $pagerenderer) use ($js): void {
     /** @var AssetCollector $assetCollector */
     $assetCollector = GeneralUtility::makeInstance(AssetCollector::class);
 
