@@ -48,7 +48,7 @@
     },
     "notify-batch": "https://flows.nrdev.de/composer/install",
     "require": {
-        "typo3/cms-core": "^12.4"
+        "typo3/cms-core": "^12.4 || ^13.0"
     },
     "autoload": {
         "psr-4": {
