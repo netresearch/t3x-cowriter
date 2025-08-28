@@ -19,16 +19,38 @@ export class Cowriter extends Core.Plugin {
      */
     _preferredModel;
 
+    /**
+     * @type {string[]}
+     * @private
+     */
+    _availableModels = [];
+
     async init() {
-        this._preferredModel = globalThis._cowriterConfig.preferredModel;
-        this._service = new AIService(
-            new AIServiceOptions(
-                globalThis._cowriterConfig.apiType,
-                globalThis._cowriterConfig.apiUrl,
-                globalThis._cowriterConfig.apiToken,
-            )
-        );
-        const availableModels = await this._service.fetchModels();
+        try {
+            const config = globalThis._cowriterConfig || {};
+            this._preferredModel = config.preferredModel || 'gpt-3.5-turbo';
+            
+            if (!config.apiUrl || !config.apiToken) {
+                console.warn('[Cowriter] Missing API configuration. Please configure the extension in the Extension Manager.');
+                return;
+            }
+
+            this._service = new AIService(
+                new AIServiceOptions(
+                    config.apiType || 'openai',
+                    config.apiUrl,
+                    config.apiToken,
+                )
+            );
+            
+            this._availableModels = await this._service.fetchModels().catch(() => {
+                console.warn('[Cowriter] Failed to fetch available models');
+                return [];
+            });
+        } catch (error) {
+            console.error('[Cowriter] Failed to initialize:', error);
+            return;
+        }
 
         const editor = this.editor,
             model = editor.model,
@@ -44,23 +66,40 @@ export class Cowriter extends Core.Plugin {
             });
 
             button.on('execute', async () => {
-                // TODO: Open dialog
-                const selection =editor.model.document.selection;
-
-                const ranges = (Array.from(selection.getRanges()) ?? []);
-                let promptRange, prompt;
-                for (const range of ranges) {
-                    for (const item of range.getItems()) {
-                        prompt = item.data;
-                        promptRange = range;
-
-                        break;
-                    }
+                if (!this._service) {
+                    alert('[Cowriter] Not configured. Please check the extension settings.');
+                    return;
                 }
 
-                if (prompt === undefined || promptRange === undefined) return;
+                const selection = editor.model.document.selection;
+                const ranges = Array.from(selection.getRanges());
+                
+                if (!ranges.length) {
+                    alert('[Cowriter] Please select some text or type a prompt.');
+                    return;
+                }
 
-                // TODO: Properly parse arguments or put these into a dropdown
+                let promptRange = null;
+                let prompt = '';
+                
+                // Get selected text
+                for (const range of ranges) {
+                    for (const item of range.getItems()) {
+                        if (item.data) {
+                            prompt = item.data;
+                            promptRange = range;
+                            break;
+                        }
+                    }
+                    if (prompt) break;
+                }
+
+                if (!prompt || !promptRange) {
+                    alert('[Cowriter] Please select some text or type a prompt.');
+                    return;
+                }
+
+                // Parse model preference from prompt
                 let preferredModel = null;
                 if (prompt.startsWith('#cw:')) {
                     const split = prompt.split(/ +/g);
@@ -68,38 +107,57 @@ export class Cowriter extends Core.Plugin {
                     prompt = split.slice(1).join(' ');
                 }
 
-                // TODO: Set loading state
+                // Set button to loading state
+                button.set('isEnabled', false);
+                button.set('label', 'Generating...');
 
-                let aiModel = null;
-                let warning = "";
-                let content = "";
-                // FIXME: Clean this up
-                if (preferredModel !== null) {
-                    if (availableModels.includes(preferredModel)) {
-                        aiModel = preferredModel;
+                try {
+                    let aiModel = null;
+                    let warning = "";
+                    let content = "";
+                    
+                    // Determine which model to use
+                    if (preferredModel !== null) {
+                        if (this._availableModels.includes(preferredModel)) {
+                            aiModel = preferredModel;
+                        } else {
+                            warning = `AI model "${preferredModel}" not available. Using ${this._availableModels[0] || 'default model'}. `;
+                            aiModel = this._availableModels[0] || this._preferredModel;
+                        }
+                    } else if (this._availableModels.length >= 1) {
+                        if (this._availableModels.includes(this._preferredModel)) {
+                            aiModel = this._preferredModel;
+                        } else {
+                            aiModel = this._availableModels[0];
+                        }
                     } else {
-                        warning = `AI model "${preferredModel}" not available. `;
-                        aiModel = availableModels[0] ?? null;
-                    }
-                } else if (availableModels.length >= 1) {
-                    if (availableModels.includes(this._preferredModel)) {
                         aiModel = this._preferredModel;
-                    } else {
-                        aiModel = availableModels[0];
                     }
-                } else {
-                    warning = "No AI model available.";
+
+                    if (aiModel) {
+                        const response = await this._service.complete(prompt, { model: aiModel });
+                        content = response[0]?.content || 'No response generated.';
+                    } else {
+                        warning = "No AI model available. ";
+                    }
+
+                    // Replace the prompt with the generated content
+                    model.change((writer) => {
+                        writer.remove(promptRange);
+                        const insertPosition = selection.getFirstPosition();
+                        if (warning || content) {
+                            writer.insertText(warning + content, insertPosition);
+                        }
+                        writer.setSelection(null);
+                    });
+                } catch (error) {
+                    console.error('[Cowriter] Error generating content:', error);
+                    alert('[Cowriter] Error generating content. Please check console for details.');
+                } finally {
+                    // Reset button state
+                    button.set('isEnabled', true);
+                    button.set('label', 'Cowriter');
                 }
-
-                if (aiModel !== null) content = (await this._service.complete(prompt, { model: aiModel }))[0].content;
-
-                model.change((writer) => {
-                    writer.remove(promptRange);
-                    const insertPosition = selection.getFirstPosition();
-                    writer.insert(warning + content, insertPosition);
-
-                    writer.setSelection(null);
-                });
             });
 
             return button;

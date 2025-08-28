@@ -7,12 +7,12 @@ $EM_CONF[$_EXTKEY] = [
     'author' => 'Netresearch DTT GmbH',
     'author_email' => 'info@netresearch.de',
     'clearCacheOnLoad' => 0,
-    'version' => '2.0.0',
+    'version' => '2.1.0',
     'state' => 'stable',
     'constraints' => [
         'depends' => [
-            'typo3' => '12.0.0-12.5.99',
-            'rte_ckeditor' => '12.0.0-12.5.99',
+            'typo3' => '12.4.0-13.4.99',
+            'rte_ckeditor' => '12.4.0-13.4.99',
         ],
         'conflicts' => [],
         'suggests' => []
