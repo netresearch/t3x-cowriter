@@ -19,6 +19,17 @@ export class Cowriter extends Core.Plugin {
      */
     _preferredModel;
 
+    /**
+     * Sanitize AI-generated content by removing HTML/XML tags
+     * @param {string} content - The content to sanitize
+     * @returns {string} - The sanitized content
+     * @private
+     */
+    _sanitizeContent(content) {
+        // Remove HTML/XML tags from the content
+        return content.replace(/<[^>]*>/g, '');
+    }
+
     async init() {
         this._preferredModel = globalThis._cowriterConfig.preferredModel;
         this._service = new AIService(
@@ -91,7 +102,10 @@ export class Cowriter extends Core.Plugin {
                     warning = "No AI model available.";
                 }
 
-                if (aiModel !== null) content = (await this._service.complete(prompt, { model: aiModel }))[0].content;
+                if (aiModel !== null) {
+                    const rawContent = (await this._service.complete(prompt, { model: aiModel }))[0].content;
+                    content = this._sanitizeContent(rawContent);
+                }
 
                 model.change((writer) => {
                     writer.remove(promptRange);
