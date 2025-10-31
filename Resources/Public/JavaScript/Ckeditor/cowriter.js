@@ -104,7 +104,7 @@ export class Cowriter extends Core.Plugin {
                         content = (await this._service.complete(prompt, { model: aiModel }))[0].content;
                     } catch (error) {
                         console.error('AI completion failed:', error);
-                        content = `[Error: Failed to generate content. ${error.message || 'Please check your API credentials and try again.'}]`;
+                        content = `[Error: Failed to generate content. ${error.message || 'Please check your configuration and try again.'}]`;
                     }
                 }
 
