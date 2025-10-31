@@ -6,5 +6,12 @@
 composer.lock
 *.zip
 
+# PHP CS Fixer
+.php-cs-fixer.cache
+.php-cs-fixer.php
+
+# PHPStan
+.phpstan.cache
+
 # External resources
 /Resources/Public/JavaScript/Plugins/ckeditor-cowriter
