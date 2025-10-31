@@ -26,6 +26,11 @@ export class Cowriter extends Core.Plugin {
      * @private
      */
     _sanitizeContent(content) {
+        // Handle null, undefined, or non-string inputs
+        if (!content || typeof content !== 'string') {
+            return '';
+        }
+        
         // Remove HTML/XML tags from the content
         // Matches opening tags, closing tags, and self-closing tags
         return content.replace(/<\/?[a-zA-Z][^>]*>/g, '');
