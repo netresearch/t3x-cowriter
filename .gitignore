@@ -13,5 +13,8 @@ composer.lock
 # PHPStan
 .phpstan.cache
 
+# PHPLint
+.phplint.cache
+
 # External resources
 /Resources/Public/JavaScript/Plugins/ckeditor-cowriter
