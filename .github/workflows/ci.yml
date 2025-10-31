@@ -32,12 +32,6 @@ jobs:
             -   name: Validate composer.json and composer.lock
                 run: composer validate
 
-            -   id: security
-                name: Security audit
-                if: ${{ always() && steps.install.conclusion == 'success' }}
-                run: |
-                    composer audit
-
             -   id: composer-cache-vars
                 name: Composer Cache Vars
                 run: |
@@ -63,6 +57,12 @@ jobs:
                     composer require typo3/cms-rte-ckeditor:${{ matrix.typo3 }} --no-progress --no-update
                     composer install --no-interaction --prefer-dist
                     git checkout composer.json
+
+            -   id: security
+                name: Security audit
+                if: ${{ always() && steps.install.conclusion == 'success' }}
+                run: |
+                    composer audit
 
             -   id: lint
                 name: Lint
