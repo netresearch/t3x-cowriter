@@ -127,13 +127,25 @@ export class AIService {
             case APIType.OLLAMA: {
                 // https://github.com/ollama/ollama/blob/main/docs/api.md
                 return fetch(`${this._options._apiUrl}/api/tags`, { method: "GET", headers: this._constructHeaders() })
-                    .then((r) => r.json())
+                    .then(async (r) => {
+                        if (!r.ok) {
+                            const errorText = await r.text().catch(() => r.statusText);
+                            throw new Error(`Failed to fetch models: ${r.status} ${errorText}`);
+                        }
+                        return r.json();
+                    })
                     .then(({ models }) => models.map(({ name }) => name));
             }
             case APIType.OPENAI: {
                 // https://platform.openai.com/docs/api-reference/models
                 return fetch(`${this._options._apiUrl}/v1/models`, { method: "GET", headers: this._constructHeaders() })
-                    .then((r) => r.json())
+                    .then(async (r) => {
+                        if (!r.ok) {
+                            const errorText = await r.text().catch(() => r.statusText);
+                            throw new Error(`Failed to fetch models: ${r.status} ${errorText}`);
+                        }
+                        return r.json();
+                    })
                     .then(({ data }) => data.map(({ id }) => id));
             }
             default:
@@ -185,7 +197,13 @@ export class AIService {
                 presence_penalty: presencePenalty
             })
         })
-            .then(r => r.json())
+            .then(async (r) => {
+                if (!r.ok) {
+                    const errorText = await r.text().catch(() => r.statusText);
+                    throw new Error(`Failed to generate completion: ${r.status} ${errorText}`);
+                }
+                return r.json();
+            })
             .then(({ choices }) => choices.reduce(
                 (/** @type {{[idx: number]: OpenAIChoice['message']}} */ choices, /** @type {OpenAIChoice} */ choice) => {
                     choices[choice.index] = choice.message;
