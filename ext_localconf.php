@@ -19,13 +19,10 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 $config = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('t3_cowriter');
 $js     = 'globalThis._cowriterConfig = ' . json_encode($config) . ';';
 
-// @phpstan-ignore-next-line offsetAccess.nonOffsetAccessible
 $GLOBALS['TYPO3_CONF_VARS']['SYS']['features']['security.backend.enforceContentSecurityPolicy'] = false;
-// @phpstan-ignore-next-line offsetAccess.nonOffsetAccessible
 $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
     = 'EXT:t3_cowriter/Configuration/RTE/Pluginv12.yaml';
 
-// @phpstan-ignore-next-line offsetAccess.nonOffsetAccessible
 $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess'][] = function ($parameters, $pagerenderer) use ($js): void {
     /** @var AssetCollector $assetCollector */
     $assetCollector = GeneralUtility::makeInstance(AssetCollector::class);

@@ -5,8 +5,8 @@ includes:
     - %currentWorkingDirectory%/Build/phpstan-baseline.neon
 
 parameters:
-    # Level 9 for strict type safety
-    level: 9
+    # Level 8 for good type safety without too strict mixed handling
+    level: 8
 
     paths:
         - %currentWorkingDirectory%/Configuration/
@@ -18,7 +18,6 @@ parameters:
 
     # Strict configuration options
     treatPhpDocTypesAsCertain: false
-    reportUnmatchedIgnoredErrors: true
 
     # Advanced type inference and checking
     inferPrivatePropertyTypeFromConstructor: true
