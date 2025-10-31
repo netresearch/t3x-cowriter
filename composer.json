@@ -77,6 +77,9 @@
         "allow-plugins": {
             "typo3/cms-composer-installers": true,
             "typo3/class-alias-loader": true
+        },
+        "audit": {
+            "abandoned": "ignore"
         }
     },
     "extra": {
