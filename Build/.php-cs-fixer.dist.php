@@ -28,9 +28,9 @@ $config
     ->setRiskyAllowed(true)
     ->setRules([
         // Base style + modern PHP (8.2 floor so code runs on 8.2–8.4)
-        '@Symfony'        => true,
-        '@PER-CS2.0'      => true,
-        '@PHP82Migration' => true,
+        '@Symfony'          => true,
+        '@PER-CS2x0'        => true,
+        '@PHP8x2Migration'  => true,
 
         // --- Your original customizations (kept / refined) ---
         'declare_strict_types' => true,
