@@ -19,6 +19,35 @@ export class Cowriter extends Core.Plugin {
      */
     _preferredModel;
 
+    /**
+     * Sanitize AI-generated content by removing HTML/XML tags
+     * @param {string} content - The content to sanitize
+     * @returns {string} - The sanitized content
+     * @private
+     */
+    _sanitizeContent(content) {
+        // Handle null, undefined, or non-string inputs
+        if (!content || typeof content !== 'string') {
+            return '';
+        }
+        
+        // Remove HTML/XML tags from the content
+        // Matches opening tags, closing tags, and self-closing tags
+        // Note: This sanitizes AI-generated output (not user input) to remove
+        // accidental HTML/XML tags. The content will also be processed by CKEditor's
+        // own sanitization before being inserted into the DOM.
+        let sanitized = content;
+        let previousLength;
+        
+        // Run the replacement multiple times to handle any nested or overlapping tags
+        do {
+            previousLength = sanitized.length;
+            sanitized = sanitized.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+        } while (sanitized.length !== previousLength);
+        
+        return sanitized;
+    }
+
     async init() {
         this._preferredModel = globalThis._cowriterConfig.preferredModel;
         this._service = new AIService(
@@ -101,7 +130,8 @@ export class Cowriter extends Core.Plugin {
 
                 if (aiModel !== null) {
                     try {
-                        content = (await this._service.complete(prompt, { model: aiModel }))[0].content;
+                        const rawContent = (await this._service.complete(prompt, { model: aiModel }))[0].content;
+                        content = this._sanitizeContent(rawContent);
                     } catch (error) {
                         console.error('AI completion failed:', error);
                         content = `[Error: Failed to generate content. ${error.message || 'Please check your configuration and try again.'}]`;
