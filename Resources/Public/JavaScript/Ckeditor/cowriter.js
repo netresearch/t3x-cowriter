@@ -33,7 +33,19 @@ export class Cowriter extends Core.Plugin {
         
         // Remove HTML/XML tags from the content
         // Matches opening tags, closing tags, and self-closing tags
-        return content.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+        // Note: This sanitizes AI-generated output (not user input) to remove
+        // accidental HTML/XML tags. The content will also be processed by CKEditor's
+        // own sanitization before being inserted into the DOM.
+        let sanitized = content;
+        let previousLength;
+        
+        // Run the replacement multiple times to handle any nested or overlapping tags
+        do {
+            previousLength = sanitized.length;
+            sanitized = sanitized.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+        } while (sanitized.length !== previousLength);
+        
+        return sanitized;
     }
 
     async init() {
