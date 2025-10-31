@@ -1,0 +1,26 @@
+includes:
+    - %currentWorkingDirectory%/.Build/vendor/phpstan/phpstan-strict-rules/rules.neon
+    - %currentWorkingDirectory%/.Build/vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - %currentWorkingDirectory%/.Build/vendor/saschaegerer/phpstan-typo3/extension.neon
+    - %currentWorkingDirectory%/Build/phpstan-baseline.neon
+
+parameters:
+    # Level 9 for strict type safety
+    level: 9
+
+    paths:
+        - %currentWorkingDirectory%/Configuration/
+        - %currentWorkingDirectory%/ext_localconf.php
+
+    excludePaths:
+        - %currentWorkingDirectory%/.Build/*
+        - %currentWorkingDirectory%/ext_emconf.php
+
+    # Strict configuration options
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: true
+
+    # Advanced type inference and checking
+    inferPrivatePropertyTypeFromConstructor: true
+    checkMissingCallableSignature: true
+    checkUninitializedProperties: true
