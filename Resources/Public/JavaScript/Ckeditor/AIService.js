@@ -120,6 +120,19 @@ export class AIService {
     };
 
     /**
+     * @param {Response} response
+     * @returns {Promise<Response>}
+     * @private
+     */
+    async _handleResponse(response) {
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => response.statusText);
+            throw new Error(`${response.status} ${errorText}`);
+        }
+        return response;
+    }
+
+    /**
      * @returns {Promise<string[]>}
      */
     async fetchModels() {
@@ -127,26 +140,22 @@ export class AIService {
             case APIType.OLLAMA: {
                 // https://github.com/ollama/ollama/blob/main/docs/api.md
                 return fetch(`${this._options._apiUrl}/api/tags`, { method: "GET", headers: this._constructHeaders() })
-                    .then(async (r) => {
-                        if (!r.ok) {
-                            const errorText = await r.text().catch(() => r.statusText);
-                            throw new Error(`Failed to fetch models: ${r.status} ${errorText}`);
-                        }
-                        return r.json();
-                    })
-                    .then(({ models }) => models.map(({ name }) => name));
+                    .then((r) => this._handleResponse(r))
+                    .then((r) => r.json())
+                    .then(({ models }) => models.map(({ name }) => name))
+                    .catch((error) => {
+                        throw new Error(`Failed to fetch models: ${error.message}`);
+                    });
             }
             case APIType.OPENAI: {
                 // https://platform.openai.com/docs/api-reference/models
                 return fetch(`${this._options._apiUrl}/v1/models`, { method: "GET", headers: this._constructHeaders() })
-                    .then(async (r) => {
-                        if (!r.ok) {
-                            const errorText = await r.text().catch(() => r.statusText);
-                            throw new Error(`Failed to fetch models: ${r.status} ${errorText}`);
-                        }
-                        return r.json();
-                    })
-                    .then(({ data }) => data.map(({ id }) => id));
+                    .then((r) => this._handleResponse(r))
+                    .then((r) => r.json())
+                    .then(({ data }) => data.map(({ id }) => id))
+                    .catch((error) => {
+                        throw new Error(`Failed to fetch models: ${error.message}`);
+                    });
             }
             default:
                 throw new Error(`Unsupported API type: ${this._options._apiType}`);
@@ -197,20 +206,18 @@ export class AIService {
                 presence_penalty: presencePenalty
             })
         })
-            .then(async (r) => {
-                if (!r.ok) {
-                    const errorText = await r.text().catch(() => r.statusText);
-                    throw new Error(`Failed to generate completion: ${r.status} ${errorText}`);
-                }
-                return r.json();
-            })
+            .then((r) => this._handleResponse(r))
+            .then((r) => r.json())
             .then(({ choices }) => choices.reduce(
                 (/** @type {{[idx: number]: OpenAIChoice['message']}} */ choices, /** @type {OpenAIChoice} */ choice) => {
                     choices[choice.index] = choice.message;
                     return choices;
                 },
                 {}
-            ));
+            ))
+            .catch((error) => {
+                throw new Error(`Failed to generate completion: ${error.message}`);
+            });
 
         return result;
     }
