@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of the package netresearch/t3-cowriter.
+ *
+ * For the full copyright and license information, please read the
+ * LICENSE file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
 $EM_CONF[$_EXTKEY] = [
     'title' => 't3_cowriter',
     'description' => 'With the help of AI you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.',
@@ -17,9 +26,8 @@ $EM_CONF[$_EXTKEY] = [
             'rte_ckeditor' => '12.4.0-13.4.99',
         ],
         'conflicts' => [],
-        'suggests' => []
+        'suggests' => [],
     ],
-
     'autoload' => [
         'psr-4' => [
             'Netresearch\\T3Cowriter\\' => 'Classes/',
