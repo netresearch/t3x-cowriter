@@ -1,7 +1,3 @@
-# 2.0.1
-
-- 529ba6b Add company and change author, change extension icon to netresearch logo
-
 # 1.2.3
 
 ## FEATURE
