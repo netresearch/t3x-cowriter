@@ -57,7 +57,15 @@ export class Cowriter extends Core.Plugin {
                 globalThis._cowriterConfig.apiToken,
             )
         );
-        const availableModels = await this._service.fetchModels();
+        
+        let availableModels = [];
+        try {
+            availableModels = await this._service.fetchModels();
+        } catch (error) {
+            console.error('Failed to fetch AI models:', error);
+            // Continue initialization even if model fetching fails
+            // The error will be shown when user tries to use the feature
+        }
 
         const editor = this.editor,
             model = editor.model,
@@ -117,12 +125,17 @@ export class Cowriter extends Core.Plugin {
                         aiModel = availableModels[0];
                     }
                 } else {
-                    warning = "No AI model available.";
+                    warning = "No AI model available. ";
                 }
 
                 if (aiModel !== null) {
-                    const rawContent = (await this._service.complete(prompt, { model: aiModel }))[0].content;
-                    content = this._sanitizeContent(rawContent);
+                    try {
+                        const rawContent = (await this._service.complete(prompt, { model: aiModel }))[0].content;
+                        content = this._sanitizeContent(rawContent);
+                    } catch (error) {
+                        console.error('AI completion failed:', error);
+                        content = `[Error: Failed to generate content. ${error.message || 'Please check your configuration and try again.'}]`;
+                    }
                 }
 
                 model.change((writer) => {
