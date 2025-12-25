@@ -1,0 +1,23 @@
+#!/bin/bash
+
+## Description: Install all TYPO3 versions (v12.4, v13.4) with t3_cowriter extension
+## Usage: install-all
+## Example: ddev install-all
+
+set -e
+
+echo "=== Installing all TYPO3 versions ==="
+echo ""
+
+install-v12
+echo ""
+install-v13
+
+echo ""
+echo "=== All TYPO3 versions installed ==="
+echo ""
+echo "Available environments:"
+echo "  - TYPO3 v12: https://v12.${DDEV_HOSTNAME}/typo3/"
+echo "  - TYPO3 v13: https://v13.${DDEV_HOSTNAME}/typo3/"
+echo ""
+echo "Login: admin / Joh316!"

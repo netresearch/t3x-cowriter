@@ -1,0 +1,63 @@
+#!/bin/bash
+
+## Description: Install TYPO3 v12.4 with t3_cowriter extension
+## Usage: install-v12
+## Example: ddev install-v12
+
+set -e
+
+TYPO3_VERSION="^12.4"
+INSTALL_DIR="/var/www/html/v12"
+DB_NAME="v12"
+EXTENSION_KEY="t3_cowriter"
+PACKAGE_NAME="netresearch/t3-cowriter"
+
+echo "=== Installing TYPO3 ${TYPO3_VERSION} ==="
+
+# Create database if not exists
+mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+
+# Clean install directory
+rm -rf ${INSTALL_DIR}/*
+mkdir -p ${INSTALL_DIR}
+cd ${INSTALL_DIR}
+
+# Create TYPO3 project
+composer create-project typo3/cms-base-distribution:${TYPO3_VERSION} . --no-interaction
+
+# Add extension as path repository
+composer config repositories.extension path /var/www/html/extension
+composer require ${PACKAGE_NAME}:@dev --no-interaction
+
+# Install TYPO3
+vendor/bin/typo3 setup \
+    --driver=mysqli \
+    --host=db \
+    --port=3306 \
+    --dbname=${DB_NAME} \
+    --username=db \
+    --password=db \
+    --admin-username=admin \
+    --admin-user-password='Joh316!' \
+    --admin-email=admin@example.com \
+    --project-name="TYPO3 v12 - t3_cowriter" \
+    --no-interaction \
+    --force
+
+# Configure for DDEV multi-domain
+cat >> config/system/additional.php << 'EOF'
+<?php
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['trustedHostsPattern'] = '.*';
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['features']['security.backend.enforceReferrer'] = false;
+EOF
+
+# Activate extension
+vendor/bin/typo3 extension:activate ${EXTENSION_KEY}
+
+# Clear cache
+vendor/bin/typo3 cache:flush
+
+echo ""
+echo "=== TYPO3 v12.4 installed successfully ==="
+echo "Backend: https://v12.${DDEV_HOSTNAME}/typo3/"
+echo "Login: admin / Joh316!"

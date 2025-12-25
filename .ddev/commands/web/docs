@@ -1,0 +1,46 @@
+#!/bin/bash
+
+## Description: Render extension documentation
+## Usage: docs
+## Example: ddev docs
+
+set -e
+
+EXTENSION_DIR="/var/www/html/extension"
+DOCS_OUTPUT="/var/www/html/docs"
+
+echo "=== Rendering documentation ==="
+
+cd ${EXTENSION_DIR}
+
+# Check if Documentation folder exists
+if [ ! -d "Documentation" ]; then
+    echo "No Documentation folder found in extension."
+    exit 1
+fi
+
+# Create output directory
+mkdir -p ${DOCS_OUTPUT}
+
+# Check for docker (for t3docs rendering)
+if command -v docker &> /dev/null; then
+    # Use official TYPO3 documentation rendering
+    docker run --rm \
+        -v "${EXTENSION_DIR}:/project" \
+        -v "${DOCS_OUTPUT}:/project/Documentation-GENERATED-temp" \
+        ghcr.io/typo3-documentation/render-guides:latest \
+        --config /project/Documentation
+
+    # Copy to docs volume
+    cp -r Documentation-GENERATED-temp/* ${DOCS_OUTPUT}/ 2>/dev/null || true
+else
+    echo "Docker not available inside container."
+    echo "Documentation rendering requires the t3docs docker image."
+    echo ""
+    echo "Alternative: Run from host:"
+    echo "  docker run --rm -v \$(pwd):/project ghcr.io/typo3-documentation/render-guides:latest"
+fi
+
+echo ""
+echo "=== Documentation rendered ==="
+echo "View at: https://docs.${DDEV_HOSTNAME}/"

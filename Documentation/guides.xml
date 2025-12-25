@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<guides xmlns="https://www.phpdoc.org/guides" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://www.phpdoc.org/guides https://docs.typo3.org/schemas/guides.xsd">
+    <project title="AI Cowriter for TYPO3"/>
+    <extension extension-key="t3_cowriter" vendor="netresearch" repository="https://github.com/netresearch/t3x-cowriter"/>
+</guides>

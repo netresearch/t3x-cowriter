@@ -1,0 +1,22 @@
+name: t3-cowriter
+type: php
+docroot: ""
+php_version: "8.4"
+webserver_type: apache-fpm
+xdebug_enabled: false
+additional_hostnames:
+  - v12
+  - v13
+  - docs
+additional_fqdns: []
+database:
+  type: mariadb
+  version: "10.11"
+use_dns_when_possible: true
+composer_version: "2"
+web_environment: []
+nodejs_version: "22"
+
+hooks:
+  post-start:
+    - exec: echo "DDEV environment ready for t3_cowriter extension development"
