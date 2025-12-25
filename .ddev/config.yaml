@@ -1,12 +1,12 @@
 name: t3-cowriter
 type: php
 docroot: ""
+# PHP 8.5 is required for this version - update when DDEV supports it
 php_version: "8.4"
 webserver_type: apache-fpm
 xdebug_enabled: false
 additional_hostnames:
-  - v12
-  - v13
+  - v14
   - docs
 additional_fqdns: []
 database:

@@ -2,8 +2,14 @@
 // @ts-check
 
 import { Core, UI } from "@typo3/ckeditor5-bundle.js";
-import { AIService, AIServiceOptions } from "./AIService.js";
+import { AIService } from "./AIService.js";
 
+/**
+ * Cowriter CKEditor plugin.
+ *
+ * Provides AI-powered text completion within the TYPO3 backend RTE.
+ * Uses the nr-llm extension for LLM provider abstraction.
+ */
 export class Cowriter extends Core.Plugin {
     static pluginName = 'cowriter';
 
@@ -12,12 +18,6 @@ export class Cowriter extends Core.Plugin {
      * @private
      */
     _service;
-
-    /**
-     * @type {string}
-     * @private
-     */
-    _preferredModel;
 
     /**
      * Sanitize AI-generated content by removing HTML/XML tags
@@ -30,7 +30,7 @@ export class Cowriter extends Core.Plugin {
         if (!content || typeof content !== 'string') {
             return '';
         }
-        
+
         // Remove HTML/XML tags from the content
         // Matches opening tags, closing tags, and self-closing tags
         // Note: This sanitizes AI-generated output (not user input) to remove
@@ -38,26 +38,19 @@ export class Cowriter extends Core.Plugin {
         // own sanitization before being inserted into the DOM.
         let sanitized = content;
         let previousLength;
-        
+
         // Run the replacement multiple times to handle any nested or overlapping tags
         do {
             previousLength = sanitized.length;
             sanitized = sanitized.replace(/<\/?[a-zA-Z][^>]*>/g, '');
         } while (sanitized.length !== previousLength);
-        
+
         return sanitized;
     }
 
     async init() {
-        this._preferredModel = globalThis._cowriterConfig.preferredModel;
-        this._service = new AIService(
-            new AIServiceOptions(
-                globalThis._cowriterConfig.apiType,
-                globalThis._cowriterConfig.apiUrl,
-                globalThis._cowriterConfig.apiToken,
-            )
-        );
-        const availableModels = await this._service.fetchModels();
+        // Initialize the AIService (now uses TYPO3 AJAX backend)
+        this._service = new AIService();
 
         const editor = this.editor,
             model = editor.model,
@@ -73,8 +66,7 @@ export class Cowriter extends Core.Plugin {
             });
 
             button.on('execute', async () => {
-                // TODO: Open dialog
-                const selection =editor.model.document.selection;
+                const selection = editor.model.document.selection;
 
                 const ranges = (Array.from(selection.getRanges()) ?? []);
                 let promptRange, prompt;
@@ -82,54 +74,29 @@ export class Cowriter extends Core.Plugin {
                     for (const item of range.getItems()) {
                         prompt = item.data;
                         promptRange = range;
-
                         break;
                     }
                 }
 
                 if (prompt === undefined || promptRange === undefined) return;
 
-                // TODO: Properly parse arguments or put these into a dropdown
-                let preferredModel = null;
-                if (prompt.startsWith('#cw:')) {
-                    const split = prompt.split(/ +/g);
-                    preferredModel = split[0].slice(4);
-                    prompt = split.slice(1).join(' ');
-                }
-
-                // TODO: Set loading state
-
-                let aiModel = null;
-                let warning = "";
                 let content = "";
-                // FIXME: Clean this up
-                if (preferredModel !== null) {
-                    if (availableModels.includes(preferredModel)) {
-                        aiModel = preferredModel;
-                    } else {
-                        warning = `AI model "${preferredModel}" not available. `;
-                        aiModel = availableModels[0] ?? null;
-                    }
-                } else if (availableModels.length >= 1) {
-                    if (availableModels.includes(this._preferredModel)) {
-                        aiModel = this._preferredModel;
-                    } else {
-                        aiModel = availableModels[0];
-                    }
-                } else {
-                    warning = "No AI model available.";
-                }
+                let errorMessage = "";
 
-                if (aiModel !== null) {
-                    const rawContent = (await this._service.complete(prompt, { model: aiModel }))[0].content;
+                try {
+                    // Use the complete endpoint via TYPO3 AJAX
+                    const result = await this._service.complete(prompt, {});
+                    const rawContent = result.completion || '';
                     content = this._sanitizeContent(rawContent);
+                } catch (error) {
+                    console.error('Cowriter error:', error);
+                    errorMessage = `[Cowriter Error: ${error.message}] `;
                 }
 
                 model.change((writer) => {
                     writer.remove(promptRange);
                     const insertPosition = selection.getFirstPosition();
-                    writer.insert(warning + content, insertPosition);
-
+                    writer.insert(errorMessage + content, insertPosition);
                     writer.setSelection(null);
                 });
             });
