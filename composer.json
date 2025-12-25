@@ -53,7 +53,7 @@
         "typo3/cms-rte-ckeditor": "^12.4 || ^13.4"
     },
     "require-dev": {
-        "typo3/testing-framework": "^7.0 || ^8.0",
+        "typo3/testing-framework": "^9.3.0",
         "friendsofphp/php-cs-fixer": "^3.87",
         "saschaegerer/phpstan-typo3": "^1.10 || ^2.0",
         "overtrue/phplint": "^9.5",
