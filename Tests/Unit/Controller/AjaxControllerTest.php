@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /*
  * This file is part of the package netresearch/t3-cowriter.
  *
@@ -9,9 +7,14 @@ declare(strict_types=1);
  * LICENSE file that was distributed with this source code.
  */
 
+declare(strict_types=1);
+
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
-use Netresearch\NrLlm\Service\LlmServiceManager;
+use Netresearch\NrLlm\Domain\Model\CompletionResponse;
+use Netresearch\NrLlm\Domain\Model\UsageStatistics;
+use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
+use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -19,20 +22,21 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
+use RuntimeException;
 use TYPO3\CMS\Core\Http\JsonResponse;
 
 #[CoversClass(AjaxController::class)]
 final class AjaxControllerTest extends TestCase
 {
     private AjaxController $subject;
-    private LlmServiceManager&MockObject $llmServiceManagerMock;
+    private LlmServiceManagerInterface&MockObject $llmServiceManagerMock;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->llmServiceManagerMock = $this->createMock(LlmServiceManager::class);
-        $this->subject = new AjaxController($this->llmServiceManagerMock);
+        $this->llmServiceManagerMock = $this->createMock(LlmServiceManagerInterface::class);
+        $this->subject               = new AjaxController($this->llmServiceManagerMock);
     }
 
     #[Test]
@@ -41,15 +45,15 @@ final class AjaxControllerTest extends TestCase
         $messages = [
             ['role' => 'user', 'content' => 'Hello'],
         ];
-        $expectedResponse = ['role' => 'assistant', 'content' => 'Hi there!'];
+        $completionResponse = $this->createCompletionResponse('Hi there!');
 
         $this->llmServiceManagerMock
             ->expects($this->once())
             ->method('chat')
-            ->with($messages, [])
-            ->willReturn($expectedResponse);
+            ->with($messages, null)
+            ->willReturn($completionResponse);
 
-        $request = $this->createRequestWithBody(['messages' => $messages]);
+        $request  = $this->createRequestWithBody(['messages' => $messages]);
         $response = $this->subject->chatAction($request);
 
         $this->assertInstanceOf(JsonResponse::class, $response);
@@ -74,7 +78,7 @@ final class AjaxControllerTest extends TestCase
     #[Test]
     public function chatActionReturnsErrorForEmptyMessages(): void
     {
-        $request = $this->createRequestWithBody(['messages' => []]);
+        $request  = $this->createRequestWithBody(['messages' => []]);
         $response = $this->subject->chatAction($request);
 
         $this->assertInstanceOf(JsonResponse::class, $response);
@@ -84,16 +88,16 @@ final class AjaxControllerTest extends TestCase
     #[Test]
     public function completeActionReturnsJsonResponse(): void
     {
-        $prompt = 'Complete this sentence';
-        $expectedCompletion = 'with great content.';
+        $prompt             = 'Complete this sentence';
+        $completionResponse = $this->createCompletionResponse('with great content.');
 
         $this->llmServiceManagerMock
             ->expects($this->once())
             ->method('complete')
-            ->with($prompt, [])
-            ->willReturn($expectedCompletion);
+            ->with($prompt, null)
+            ->willReturn($completionResponse);
 
-        $request = $this->createRequestWithBody(['prompt' => $prompt]);
+        $request  = $this->createRequestWithBody(['prompt' => $prompt]);
         $response = $this->subject->completeAction($request);
 
         $this->assertInstanceOf(JsonResponse::class, $response);
@@ -103,7 +107,7 @@ final class AjaxControllerTest extends TestCase
     #[Test]
     public function completeActionReturnsErrorForEmptyPrompt(): void
     {
-        $request = $this->createRequestWithBody(['prompt' => '']);
+        $request  = $this->createRequestWithBody(['prompt' => '']);
         $response = $this->subject->completeAction($request);
 
         $this->assertInstanceOf(JsonResponse::class, $response);
@@ -115,9 +119,9 @@ final class AjaxControllerTest extends TestCase
     {
         $this->llmServiceManagerMock
             ->method('complete')
-            ->willThrowException(new \RuntimeException('Provider error'));
+            ->willThrowException(new RuntimeException('Provider error'));
 
-        $request = $this->createRequestWithBody(['prompt' => 'test']);
+        $request  = $this->createRequestWithBody(['prompt' => 'test']);
         $response = $this->subject->completeAction($request);
 
         $this->assertInstanceOf(JsonResponse::class, $response);
@@ -127,16 +131,17 @@ final class AjaxControllerTest extends TestCase
     #[Test]
     public function chatActionPassesOptionsToService(): void
     {
-        $messages = [['role' => 'user', 'content' => 'Hello']];
-        $options = ['temperature' => 0.7, 'maxTokens' => 1000];
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $options            = ['temperature' => 0.7, 'maxTokens' => 1000];
+        $completionResponse = $this->createCompletionResponse('Response');
 
         $this->llmServiceManagerMock
             ->expects($this->once())
             ->method('chat')
-            ->with($messages, $options)
-            ->willReturn(['role' => 'assistant', 'content' => 'Response']);
+            ->with($messages, $this->isInstanceOf(ChatOptions::class))
+            ->willReturn($completionResponse);
 
-        $request = $this->createRequestWithBody(['messages' => $messages, 'options' => $options]);
+        $request  = $this->createRequestWithBody(['messages' => $messages, 'options' => $options]);
         $response = $this->subject->chatAction($request);
 
         $this->assertSame(200, $response->getStatusCode());
@@ -151,5 +156,22 @@ final class AjaxControllerTest extends TestCase
         $request->method('getBody')->willReturn($bodyMock);
 
         return $request;
+    }
+
+    private function createCompletionResponse(string $content): CompletionResponse
+    {
+        $usage = new UsageStatistics(
+            promptTokens: 10,
+            completionTokens: 20,
+            totalTokens: 30,
+        );
+
+        return new CompletionResponse(
+            content: $content,
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'stop',
+            provider: 'test-provider',
+        );
     }
 }
