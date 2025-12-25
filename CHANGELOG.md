@@ -1,3 +1,28 @@
+# 2.0.0
+
+## BREAKING
+
+- Requires PHP 8.2+ and TYPO3 12.4+
+- Dropped support for TYPO3 9.5-11.5
+
+## FEATURE
+
+- d909f6c feat: add comprehensive extension infrastructure
+- Add TYPO3 v12.4 LTS and v13 support
+- Add DDEV development environment with multi-version testing
+- Add PHPUnit unit and functional test infrastructure
+- Add comprehensive RST documentation following TYPO3 13.x standards
+- Add enterprise-grade governance documents (SECURITY.md, CONTRIBUTING.md)
+- Add Dependabot configuration for dependency updates
+
+## SECURITY
+
+- ca6606e fix(ci): pin GitHub Actions to commit hashes
+
+## Contributors
+
+- Team der Netresearch DTT GmbH
+
 # 1.2.3
 
 ## FEATURE
