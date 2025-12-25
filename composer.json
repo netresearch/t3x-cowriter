@@ -7,6 +7,14 @@
     ],
     "homepage": "https://github.com/netresearch/t3-cowriter",
     "readme": "README.md",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/netresearch/t3x-nr-llm"
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "keywords": [
         "typo3",
         "extension",
@@ -51,12 +59,11 @@
         "typo3/cms-core": "^14.0",
         "typo3/cms-backend": "^14.0",
         "typo3/cms-rte-ckeditor": "^14.0",
-        "netresearch/nr-llm": "^1.0"
+        "netresearch/nr-llm": "dev-main"
     },
     "require-dev": {
         "typo3/testing-framework": "^9.0",
         "friendsofphp/php-cs-fixer": "^3.87",
-        "saschaegerer/phpstan-typo3": "^2.0",
         "overtrue/phplint": "^9.5",
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
