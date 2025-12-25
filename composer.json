@@ -67,6 +67,11 @@
             "Netresearch\\T3Cowriter\\": "Classes/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Netresearch\\T3Cowriter\\Tests\\": "Tests/"
+        }
+    },
     "config": {
         "bin-dir": ".Build/bin",
         "vendor-dir": ".Build/vendor",
@@ -121,6 +126,12 @@
             "@ci:test:php:phpstan",
             "@ci:test:php:rector",
             "@ci:test:php:cgl"
+        ],
+        "ci:test:php:unit": [
+            "phpunit -c Build/phpunit/UnitTests.xml"
+        ],
+        "ci:test:php:functional": [
+            "phpunit -c Build/phpunit/FunctionalTests.xml"
         ]
     }
 }

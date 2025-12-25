@@ -7,8 +7,6 @@
  * LICENSE file that was distributed with this source code.
  */
 
-// vim: ts=4 sw=4 expandtab
-
 declare(strict_types=1);
 
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
@@ -23,10 +21,9 @@ $GLOBALS['TYPO3_CONF_VARS']['SYS']['features']['security.backend.enforceContentS
 $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
     = 'EXT:t3_cowriter/Configuration/RTE/Pluginv12.yaml';
 
-$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess'][] = function ($parameters, $pagerenderer) use ($js): void {
-    /** @var AssetCollector $assetCollector */
-    $assetCollector = GeneralUtility::makeInstance(AssetCollector::class);
-
-    // This sucks.
-    $assetCollector->addInlineJavaScript('cowriter_config', $js);
-};
+$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess'][]
+    = static function ($parameters, $pagerenderer) use ($js): void {
+        /** @var AssetCollector $assetCollector */
+        $assetCollector = GeneralUtility::makeInstance(AssetCollector::class);
+        $assetCollector->addInlineJavaScript('cowriter_config', $js);
+    };

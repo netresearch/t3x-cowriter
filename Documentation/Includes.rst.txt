@@ -1,0 +1,5 @@
+..  This file is included in all documentation files to provide common definitions.
+
+..  |extension_key| replace:: t3_cowriter
+..  |extension_name| replace:: AI Cowriter
+..  |vendor| replace:: Netresearch

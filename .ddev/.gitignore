@@ -1,0 +1,13 @@
+# DDEV generated files (do not commit)
+.ddev-docker-compose-base.yaml
+.ddev-docker-compose-full.yaml
+.homeadditions/
+.sshimageBuild/
+.webimageBuild/
+db_snapshots/
+sequelpro.spf
+import-db/
+import.yaml
+providers/
+import-files/
+xhprof/

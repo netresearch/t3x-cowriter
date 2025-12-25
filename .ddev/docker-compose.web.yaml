@@ -1,0 +1,15 @@
+services:
+  web:
+    volumes:
+      - v12-data:/var/www/html/v12
+      - v13-data:/var/www/html/v13
+      - docs-data:/var/www/html/docs
+      - ".:/var/www/html/extension:cached"
+
+volumes:
+  v12-data:
+    name: "${DDEV_SITENAME}-v12-data"
+  v13-data:
+    name: "${DDEV_SITENAME}-v13-data"
+  docs-data:
+    name: "${DDEV_SITENAME}-docs-data"

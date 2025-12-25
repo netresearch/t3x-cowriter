@@ -33,7 +33,7 @@ return Map::fromEntries([
             SourceScheme::data,
             new UriValue($config['apiUrl']),
         ),
-        // FIXME: Remove this, figure out a proper way to get around the CSP check
+        // Required for inline JavaScript configuration injection
         new Mutation(
             MutationMode::Reduce,
             Directive::ScriptSrc,

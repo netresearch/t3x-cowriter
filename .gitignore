@@ -18,3 +18,16 @@ composer.lock
 
 # External resources
 /Resources/Public/JavaScript/Plugins/ckeditor-cowriter
+
+# DDEV local environment
+.ddev/.ddev-docker-compose-base.yaml
+.ddev/.ddev-docker-compose-full.yaml
+.ddev/.homeadditions
+.ddev/db_snapshots
+
+# Documentation generated
+Documentation-GENERATED-temp/
+
+# direnv
+.envrc
+.direnv/
