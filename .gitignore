@@ -31,3 +31,4 @@ Documentation-GENERATED-temp/
 # direnv
 .envrc
 .direnv/
+.claude/

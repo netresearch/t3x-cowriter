@@ -17,8 +17,8 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                typo3: [ '^12.4', '^13.4' ]
-                php: [ '8.2', '8.3', '8.4' ]
+                typo3: [ '^14.0' ]
+                php: [ '8.5' ]
 
         steps:
             -   id: checkout

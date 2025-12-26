@@ -4,6 +4,7 @@
 .homeadditions/
 .sshimageBuild/
 .webimageBuild/
+.dbimageBuild/
 db_snapshots/
 sequelpro.spf
 import-db/
@@ -11,3 +12,24 @@ import.yaml
 providers/
 import-files/
 xhprof/
+homeadditions/
+
+# DDEV template and example files
+*.example
+README*.txt
+db-build/
+mysql/
+nginx_full/
+traefik/
+web-entrypoint.d/
+web-build/README*.txt
+php/README*.txt
+commands/db/
+commands/.gitattributes
+commands/web/README*.txt
+
+# Keep our custom files
+!apache/
+!commands/web/
+!commands/host/
+!php/

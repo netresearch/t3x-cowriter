@@ -1,199 +1,137 @@
 // vim: ts=4 sw=4 expandtab colorcolumn=120
 // @ts-check
 
-/** @typedef {string} OpenAIAuth */
 /**
- * @typedef {object} OpenAIChoice
- * @property {number} index
- * @property {object} message
- * @property {string} message.content
- * @property {string} message.role
+ * AIService - TYPO3 backend integration for LLM requests.
+ *
+ * This service routes all LLM requests through the TYPO3 backend,
+ * which uses the nr-llm extension for provider-agnostic LLM access.
+ * API keys are securely stored on the server.
+ *
+ * @module AIService
  */
 
 /**
- * @readonly
- * @enum {string}
+ * @typedef {object} ChatMessage
+ * @property {string} role - The role (user, assistant, system)
+ * @property {string} content - The message content
  */
-export const APIType = {
-    OPENAI: 'openai',
-    OLLAMA: 'ollama',
-}
-
-export class AIServiceOptions {
-    static OPENAI_URL = "https://api.openai.com";
-
-    /**
-     * @type {APIType}
-     * @module
-     */
-    _apiType = APIType.OPENAI;
-
-    /**
-     * @type {string}
-     * @module
-     */
-    _apiUrl = "";
-
-    /**
-     * @type {OpenAIAuth|null}
-     * @module
-     */
-    _auth = null;
-
-    /** 
-     * @type {string}
-     * @module
-     */
-    _systemPrompt = "You are a helpful assistant.";
-
-    /**
-     * @param {APIType} apiType
-     * @param {string} apiUrl
-     * @param {OpenAIAuth|null} auth
-     * @param {string|null} systemPrompt
-     */
-    constructor(apiType, apiUrl, auth = null, systemPrompt = null) {
-        this._apiType = apiType;
-        this._apiUrl = apiUrl;
-        this._auth = auth;
-
-        if (systemPrompt !== null) this._systemPrompt = systemPrompt;
-    }
-
-    validate() {
-        if (this._apiUrl === '') {
-            throw new Error("The provided apiUrl is empty")
-        }
-        if (this._apiUrl === AIServiceOptions.OPENAI_URL && this._auth === null) {
-            throw new Error("OpenAI API needs the authorization option to be set")
-        }
-    }
-}
 
 /**
  * @typedef {object} CompletionOptions
- * @property {string} model
- * @property {number} [maxTokens]
- * @property {number} [temperature] What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
- * @property {number} [presencePenalty] Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
- * @property {number} [frequencyPenalty] Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
- * @property {number} [topP] An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.
- * @property {number} [amount] Number of results to return
- *
- * @link {https://platform.openai.com/docs/api-reference/chat/create
+ * @property {number} [maxTokens] - Maximum tokens to generate
+ * @property {number} [temperature] - Sampling temperature (0-2)
+ */
+
+/**
+ * @typedef {object} ChatResponse
+ * @property {string} content - The response content
+ * @property {string} [role] - The role (usually 'assistant')
  */
 
 export class AIService {
     /**
-     * @type {string[]}
+     * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
+     * @type {{chat: string|null, complete: string|null}}
      * @private
      */
-    static MODELS_WITHOUT_SYSTEM_PROMPT = ['mistralai/Mistral-7B-Instruct-v0.2'];
-
-    /**
-     * @type {AIServiceOptions}
-     * @private
-     */
-    _options;
-
-    /** @param {AIServiceOptions} options */
-    constructor(options) {
-        if (!(options instanceof AIServiceOptions)) {
-            throw new Error("provided options object isn't a AIServiceOptions")
-        }
-
-        options.validate();
-
-        this._options = options;
-    }
-
-    /**
-     * @returns {Headers}
-     * @private
-     */
-    _constructHeaders() {
-        const headers = new Headers();
-
-        if (this._options._auth !== undefined && this._options._auth !== "") headers.set("Authorization", `Bearer ${this._options._auth}`);
-
-        return headers;
+    _routes = {
+        chat: null,
+        complete: null,
     };
 
-    /**
-     * @returns {Promise<string[]>}
-     */
-    async fetchModels() {
-        switch (this._options._apiType) {
-            case APIType.OLLAMA: {
-                // https://github.com/ollama/ollama/blob/main/docs/api.md
-                return fetch(`${this._options._apiUrl}/api/tags`, { method: "GET", headers: this._constructHeaders() })
-                    .then((r) => r.json())
-                    .then(({ models }) => models.map(({ name }) => name));
-            }
-            case APIType.OPENAI: {
-                // https://platform.openai.com/docs/api-reference/models
-                return fetch(`${this._options._apiUrl}/v1/models`, { method: "GET", headers: this._constructHeaders() })
-                    .then((r) => r.json())
-                    .then(({ data }) => data.map(({ id }) => id));
-            }
-            default:
-                throw new Error(`Unsupported API type: ${this._options._apiType}`);
+    constructor() {
+        // Get AJAX URLs from TYPO3 global settings
+        if (typeof TYPO3 !== 'undefined' && TYPO3.settings && TYPO3.settings.ajaxUrls) {
+            this._routes.chat = TYPO3.settings.ajaxUrls.tx_cowriter_chat || null;
+            this._routes.complete = TYPO3.settings.ajaxUrls.tx_cowriter_complete || null;
         }
     }
 
     /**
-     * @param {string} model
-     * @returns {boolean}
+     * Validate that AJAX routes are available.
+     * @throws {Error} If routes are not configured
+     * @private
      */
-    supportsSystemPrompt(model) {
-        return !AIService.MODELS_WITHOUT_SYSTEM_PROMPT.includes(model)
+    _validateRoutes() {
+        if (!this._routes.chat || !this._routes.complete) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
     }
 
     /**
-     * @param {string} prompt
-     * @param {CompletionOptions} options
-     * @return {Promise<{[idx: number]: OpenAIChoice['message']}>}
+     * Send a chat request with conversation history.
+     *
+     * @param {ChatMessage[]} messages - Array of messages in the conversation
+     * @param {CompletionOptions} [options={}] - Optional completion parameters
+     * @returns {Promise<ChatResponse>} The assistant's response
      */
-    async complete(
-        prompt,
-        { model, amount = 1, maxTokens = 4000, temperature = 0.4, topP = 1, frequencyPenalty = 0, presencePenalty = 0 }
-    ) {
-        const headers = this._constructHeaders();
-        headers.set("Content-Type", "application/json");
+    async chat(messages, options = {}) {
+        this._validateRoutes();
 
-        const messages = [
-            { role: "user", content: prompt }
-        ]
+        const response = await fetch(this._routes.chat, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ messages, options }),
+        });
 
-        if (!AIService.MODELS_WITHOUT_SYSTEM_PROMPT.includes(model)) {
-            messages.unshift({ role: "system", content: this._options._systemPrompt });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
         }
 
-        // https://platform.openai.com/docs/api-reference/chat
-        // https://docs.vllm.ai/en/latest/getting_started/quickstart.html#using-openai-chat-api-with-vllm
-        const result = await fetch(`${this._options._apiUrl}/v1/chat/completions`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-                messages,
-                max_tokens: maxTokens,
-                model,
-                temperature: temperature,
-                n: amount,
-                top_p: topP,
-                frequency_penalty: frequencyPenalty,
-                presence_penalty: presencePenalty
-            })
-        })
-            .then(r => r.json())
-            .then(({ choices }) => choices.reduce(
-                (/** @type {{[idx: number]: OpenAIChoice['message']}} */ choices, /** @type {OpenAIChoice} */ choice) => {
-                    choices[choice.index] = choice.message;
-                    return choices;
-                },
-                {}
-            ));
+        return response.json();
+    }
 
-        return result;
+    /**
+     * Send a single completion request.
+     *
+     * @param {string} prompt - The prompt to complete
+     * @param {CompletionOptions} [options={}] - Optional completion parameters
+     * @returns {Promise<{completion: string}>} The completion result
+     */
+    async complete(prompt, options = {}) {
+        this._validateRoutes();
+
+        const response = await fetch(this._routes.complete, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt, options }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+}
+
+// Legacy exports for backward compatibility (deprecated)
+// These will be removed in a future version
+export const APIType = {
+    OPENAI: 'openai',
+    OLLAMA: 'ollama',
+};
+
+export class AIServiceOptions {
+    /**
+     * @deprecated Use the new AIService() without options. Configuration is now handled by nr-llm.
+     */
+    constructor() {
+        console.warn(
+            'AIServiceOptions is deprecated. Configuration is now handled by the nr-llm extension.'
+        );
+    }
+
+    validate() {
+        // No-op for backward compatibility
     }
 }

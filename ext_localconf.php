@@ -9,21 +9,11 @@
 
 declare(strict_types=1);
 
-use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
-use TYPO3\CMS\Core\Page\AssetCollector;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-
-/** @var array{apiUrl: string} $config */
-$config = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('t3_cowriter');
-$js     = 'globalThis._cowriterConfig = ' . json_encode($config) . ';';
-
-$GLOBALS['TYPO3_CONF_VARS']['SYS']['features']['security.backend.enforceContentSecurityPolicy'] = false;
+/**
+ * Register the Cowriter CKEditor preset.
+ *
+ * Note: LLM configuration is handled by the nr-llm extension.
+ * API keys are securely stored on the server and accessed via AJAX.
+ */
 $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
     = 'EXT:t3_cowriter/Configuration/RTE/Pluginv12.yaml';
-
-$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess'][]
-    = static function ($parameters, $pagerenderer) use ($js): void {
-        /** @var AssetCollector $assetCollector */
-        $assetCollector = GeneralUtility::makeInstance(AssetCollector::class);
-        $assetCollector->addInlineJavaScript('cowriter_config', $js);
-    };
