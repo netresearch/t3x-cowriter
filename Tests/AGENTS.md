@@ -14,7 +14,7 @@
 
 ## Required Test Cases (15+ minimum)
 
-### CowriterAjaxControllerTest
+### AjaxControllerTest
 
 | # | Test Name | Purpose |
 |---|-----------|---------|
@@ -49,19 +49,20 @@
 ## Test Execution Commands
 
 ```bash
-# Unit tests (via make -> composer -> runTests.sh)
+# Unit tests (via make -> DDEV)
 make test-unit
+
+# Integration tests
+make test-integration
+
+# E2E tests
+make test-e2e
 
 # With coverage
 make test-coverage
 
-# Mutation testing
-make test-mutation
-
-# Underlying execution (runTests.sh)
-Build/Scripts/runTests.sh -s unit
-Build/Scripts/runTests.sh -s unit -c  # with coverage
-Build/Scripts/runTests.sh -s mutation
+# Full CI suite
+make ci
 ```
 
 ## Test Structure
@@ -70,14 +71,19 @@ Build/Scripts/runTests.sh -s mutation
 Tests/
 ├── Unit/
 │   ├── Controller/
-│   │   └── CowriterAjaxControllerTest.php
-│   └── Domain/
-│       └── DTO/
-│           ├── CompleteRequestTest.php
-│           └── CompleteResponseTest.php
-└── Functional/
-    └── Controller/
-        └── CowriterAjaxControllerTest.php
+│   │   └── AjaxControllerTest.php
+│   ├── Domain/
+│   │   └── DTO/
+│   │       ├── CompleteRequestTest.php
+│   │       ├── CompleteResponseTest.php
+│   │       └── UsageDataTest.php
+│   └── EventListener/
+│       └── InjectAjaxUrlsListenerTest.php
+├── Integration/
+│   └── Controller/
+│       └── AjaxControllerIntegrationTest.php
+└── E2E/
+    └── CowriterWorkflowTest.php
 ```
 
 ## PHPUnit Attributes

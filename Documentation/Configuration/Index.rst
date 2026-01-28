@@ -16,12 +16,12 @@ extension settings.
 Supported providers
 -------------------
 
-*   **OpenAI** - GPT-4, GPT-3.5-turbo
-*   **Anthropic Claude** - Claude 3.5, Claude 3
-*   **Google Gemini** - Gemini Pro, Gemini Ultra
-*   **OpenRouter** - Access to 100+ models
-*   **Mistral** - Mistral Large, Mistral Medium
-*   **Groq** - Fast inference with Llama, Mixtral
+*   **OpenAI** - GPT-5.x series, o-series reasoning models
+*   **Anthropic Claude** - Claude 4.5 Opus, Sonnet, Haiku
+*   **Google Gemini** - Gemini 3 Pro, Flash
+*   **OpenRouter** - Access to 100+ models from multiple providers
+*   **Mistral** - Mistral Large, Medium, and open models
+*   **Groq** - Ultra-fast inference with Llama, Mixtral
 
 Configuration steps
 -------------------

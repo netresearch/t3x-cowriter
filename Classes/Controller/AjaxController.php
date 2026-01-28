@@ -35,7 +35,7 @@ use TYPO3\CMS\Core\Http\JsonResponse;
  * SECURITY: All LLM output is HTML-escaped to prevent XSS attacks.
  */
 #[AsController]
-final class AjaxController
+final readonly class AjaxController
 {
     /**
      * System prompt for the cowriter assistant.

@@ -7,7 +7,7 @@
 
 | File | Purpose |
 |------|---------|
-| Controller/CowriterAjaxController.php | AJAX handler for CKEditor integration |
+| Controller/AjaxController.php | AJAX handler for CKEditor integration |
 | Domain/DTO/CompleteRequest.php | Request DTO with validation |
 | Domain/DTO/CompleteResponse.php | Response DTO with HTML escaping |
 | Domain/DTO/UsageData.php | Token usage statistics |
@@ -60,14 +60,14 @@ try {
 ## Build & Tests
 
 ```bash
-# Unit tests (via make -> composer -> runTests.sh)
+# Unit tests (via make -> composer)
 make test-unit
 
 # With coverage
 make test-coverage
 
 # PHPStan level 10
-make phpstan
+make typecheck
 ```
 
 ## Code Style

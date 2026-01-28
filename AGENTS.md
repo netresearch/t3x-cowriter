@@ -158,7 +158,7 @@ final class AjaxController
 - **AJAX routes:** Protected by TYPO3 backend authentication
 - **Input validation:** Type-cast all request parameters
 - **XSS prevention:** JsonResponse for API output
-- **Static analysis:** PHPStan level 8
+- **Static analysis:** PHPStan level 10
 
 ## PR/Commit Checklist
 
