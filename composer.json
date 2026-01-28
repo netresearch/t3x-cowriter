@@ -7,6 +7,14 @@
     ],
     "homepage": "https://github.com/netresearch/t3-cowriter",
     "readme": "README.md",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/netresearch/t3x-nr-llm"
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "keywords": [
         "typo3",
         "extension",
@@ -47,20 +55,20 @@
         "docs": "https://github.com/netresearch/t3-cowriter"
     },
     "require": {
-        "php": "^8.2 || ^8.3 || ^8.4",
-        "typo3/cms-core": "^12.4 || ^13.4",
-        "typo3/cms-backend": "^12.4 || ^13.4 || ^14.0",
-        "typo3/cms-rte-ckeditor": "^12.4 || ^13.4 || ^14.0"
+        "php": "^8.5",
+        "typo3/cms-core": "^14.0",
+        "typo3/cms-backend": "^14.0",
+        "typo3/cms-rte-ckeditor": "^14.0",
+        "netresearch/nr-llm": "dev-main"
     },
     "require-dev": {
-        "typo3/testing-framework": "^7.0 || ^8.0 || ^9.0",
+        "typo3/testing-framework": "^9.0",
         "friendsofphp/php-cs-fixer": "^3.87",
-        "saschaegerer/phpstan-typo3": "^1.10 || ^2.0",
         "overtrue/phplint": "^9.5",
-        "phpstan/phpstan": "^1.10 || ^2.0",
-        "phpstan/phpstan-strict-rules": "^1.5 || ^2.0",
-        "phpstan/phpstan-deprecation-rules": "^1.1 || ^2.0",
-        "ssch/typo3-rector": "^2.0 || ^3.0"
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "ssch/typo3-rector": "^3.0"
     },
     "autoload": {
         "psr-4": {
@@ -93,7 +101,7 @@
             "web-dir": ".Build/public"
         },
         "branch-alias": {
-            "dev-main": "2.0.x-dev"
+            "dev-main": "3.0.x-dev"
         }
     },
     "scripts": {

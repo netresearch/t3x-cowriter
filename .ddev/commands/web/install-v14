@@ -1,0 +1,74 @@
+#!/bin/bash
+
+## Description: Install TYPO3 v14.0 with t3_cowriter extension
+## Usage: install-v14
+## Example: ddev install-v14
+
+set -e
+
+TYPO3_VERSION="^14.0"
+INSTALL_DIR="/var/www/html/v14"
+DB_NAME="v14"
+EXTENSION_KEY="t3_cowriter"
+PACKAGE_NAME="netresearch/t3-cowriter"
+
+echo "=== Installing TYPO3 ${TYPO3_VERSION} ==="
+
+# Create database if not exists and grant access
+mariadb -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+mariadb -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO 'db'@'%'; FLUSH PRIVILEGES;"
+
+# Clean install directory
+rm -rf ${INSTALL_DIR}/* ${INSTALL_DIR}/.[!.]*
+mkdir -p ${INSTALL_DIR}
+cd ${INSTALL_DIR}
+
+# Create TYPO3 project
+composer create-project typo3/cms-base-distribution:${TYPO3_VERSION} . --no-interaction
+
+# Remove platform PHP override (base-distribution sets 8.2, but we use 8.5)
+composer config --unset platform.php
+
+# Allow dev dependencies (needed for nr-llm and extension during development)
+composer config minimum-stability dev
+composer config prefer-stable true
+
+# Add nr-llm repository (needed for development version)
+composer config repositories.nr-llm vcs https://github.com/netresearch/t3x-nr-llm
+
+# Add extension as path repository (mounted at /var/www/t3_cowriter)
+composer config repositories.extension path /var/www/t3_cowriter
+composer require ${PACKAGE_NAME}:@dev --no-interaction
+
+# Install TYPO3
+vendor/bin/typo3 setup \
+    --driver=mysqli \
+    --host=db \
+    --port=3306 \
+    --dbname=${DB_NAME} \
+    --username=db \
+    --password=db \
+    --admin-username=admin \
+    --admin-user-password='Joh316!' \
+    --admin-email=admin@example.com \
+    --project-name="TYPO3 v14 - t3_cowriter" \
+    --no-interaction \
+    --force
+
+# Configure for DDEV multi-domain
+cat >> config/system/additional.php << 'EOF'
+<?php
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['trustedHostsPattern'] = '.*';
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['features']['security.backend.enforceReferrer'] = false;
+EOF
+
+# Set up extensions (in TYPO3 v14, extensions are activated via composer)
+vendor/bin/typo3 extension:setup
+
+# Clear cache
+vendor/bin/typo3 cache:flush
+
+echo ""
+echo "=== TYPO3 v14.0 installed successfully ==="
+echo "Backend: https://v14.${DDEV_HOSTNAME}/typo3/"
+echo "Login: admin / Joh316!"

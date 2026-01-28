@@ -6,15 +6,35 @@
 Configuration
 =============
 
-API key setup
-=============
+LLM provider setup
+==================
 
-1.  Create a new API key at https://openai.com/api/
-2.  Add the API key to your TYPO3 Extension configuration:
+The Cowriter extension uses the :composer:`netresearch/nr-llm` extension for
+LLM provider configuration. Configure your preferred provider in the nr-llm
+extension settings.
 
-    *   Go to :guilabel:`Admin Tools` > :guilabel:`Settings` > :guilabel:`Extension Configuration`
-    *   Select :guilabel:`t3_cowriter`
-    *   Enter your OpenAI API key
+Supported providers
+-------------------
+
+*   **OpenAI** - GPT-4, GPT-3.5-turbo
+*   **Anthropic Claude** - Claude 3.5, Claude 3
+*   **Google Gemini** - Gemini Pro, Gemini Ultra
+*   **OpenRouter** - Access to 100+ models
+*   **Mistral** - Mistral Large, Mistral Medium
+*   **Groq** - Fast inference with Llama, Mixtral
+
+Configuration steps
+-------------------
+
+1.  Go to :guilabel:`Admin Tools` > :guilabel:`Settings` > :guilabel:`Extension Configuration`
+2.  Select :guilabel:`nr_llm`
+3.  Choose your preferred LLM provider
+4.  Enter your API key for the selected provider
+
+..  tip::
+
+    See the `nr-llm documentation <https://github.com/netresearch/t3x-nr-llm>`_
+    for detailed provider configuration options.
 
 RTE configuration
 =================
@@ -46,19 +66,17 @@ If you have your own RTE configuration file
         cowriter:
           resource: "EXT:t3_cowriter/Resources/Public/JavaScript/Plugins/cowriter/"
 
-Extension settings
-==================
+Security considerations
+=======================
 
-..  confval:: apiKey
-    :name: extension-apiKey
-    :type: string
-    :Default: (empty)
+The Cowriter extension routes all LLM requests through the TYPO3 backend,
+ensuring that:
 
-    Your OpenAI API key. Required for the extension to work.
+*   API keys are never exposed to the frontend
+*   All requests are authenticated via TYPO3's backend session
+*   Content generation is logged and auditable
 
-..  confval:: model
-    :name: extension-model
-    :type: string
-    :Default: gpt-3.5-turbo
+..  warning::
 
-    The OpenAI model to use for content generation.
+    Always configure your LLM provider's API key in the backend. Never
+    expose API keys in frontend JavaScript or client-accessible files.

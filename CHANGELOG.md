@@ -1,3 +1,34 @@
+# 3.0.0
+
+## BREAKING
+
+- Requires PHP 8.5+ and TYPO3 14.0+
+- Requires nr-llm extension for LLM provider abstraction
+- Removed direct OpenAI/Ollama API support from JavaScript
+- API configuration now handled by nr-llm extension
+
+## FEATURE
+
+- Integrated nr-llm extension for unified LLM provider support
+- Added PHP backend controller for secure LLM requests
+- Supports all nr-llm providers: OpenAI, Claude, Gemini, OpenRouter, Mistral, Groq
+- API keys are now securely stored on the server (not exposed to frontend)
+
+## SECURITY
+
+- Removed API key exposure from frontend JavaScript
+- All LLM requests now routed through authenticated TYPO3 AJAX endpoints
+
+## MIGRATION
+
+- Install and configure nr-llm extension
+- Remove old API configuration from extension settings
+- Provider selection is now handled via nr-llm configuration
+
+## Contributors
+
+- Team der Netresearch DTT GmbH
+
 # 2.0.0
 
 ## BREAKING
