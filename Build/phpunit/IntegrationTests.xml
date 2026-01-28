@@ -11,8 +11,8 @@
          displayDetailsOnTestsThatTriggerWarnings="true"
 >
     <testsuites>
-        <testsuite name="Unit Tests">
-            <directory>../../Tests/Unit/</directory>
+        <testsuite name="Integration Tests">
+            <directory>../../Tests/Integration/</directory>
         </testsuite>
     </testsuites>
     <source>

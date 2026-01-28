@@ -1,14 +1,34 @@
-# T3 cowriter
+# TYPO3 Extension: t3_cowriter
 
-Did you ever wish to have a second person to work on a TYPO3 page together with you? This extension allows you to do so. With the help of AI you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.
+[![CI](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml/badge.svg)](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/netresearch/t3x-cowriter/graph/badge.svg)](https://codecov.io/gh/netresearch/t3x-cowriter)
+[![PHPStan](https://img.shields.io/badge/PHPStan-level%2010-brightgreen.svg)](https://phpstan.org/)
+[![PHP 8.5+](https://img.shields.io/badge/PHP-8.5%2B-blue.svg)](https://www.php.net/)
+[![TYPO3 v14](https://img.shields.io/badge/TYPO3-v14-orange.svg)](https://typo3.org/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+[![Latest Release](https://img.shields.io/github/v/release/netresearch/t3x-cowriter)](https://github.com/netresearch/t3x-cowriter/releases)
+
+AI-powered content assistant for TYPO3 CKEditor - write better content with help from AI.
 
 ![TYPO3 AI cowriter](Documentation/Images/t3-cowriter.gif)
-> Give it a try with our TYPPO3 mock and let the AI write for you: [Demo](https://t3ai.surge.sh/)
+
+## Features
+
+- **CKEditor Integration**: Seamless toolbar button in TYPO3's rich text editor
+- **Multi-Provider Support**: Works with all LLM providers supported by nr-llm (OpenAI, Claude, Gemini, etc.)
+- **Secure Backend Proxy**: API keys never exposed to frontend - all requests proxied through TYPO3 backend
+- **Model Override**: Use `#cw:model-name` prefix to request specific models
+- **XSS Protection**: All LLM output is HTML-escaped for defense in depth
+
+## Requirements
+
+- PHP 8.5+
+- TYPO3 v14
+- [netresearch/nr-llm](https://github.com/netresearch/t3x-nr-llm) extension (LLM provider abstraction)
 
 ## Installation
 
-Currently the extension is not available via TER.
-Install the extension via composer:
+Install via Composer:
 
 ```bash
 composer require netresearch/t3-cowriter
@@ -16,34 +36,132 @@ composer require netresearch/t3-cowriter
 
 ## Configuration
 
-1. Create a new API key at [https://openai.com/api/](https://openai.com/api/)
-2. Add the API key to your TYPO3 Extension configuration (Extension Manager -> Settings -> Extension Configuration -> t3_cowriter)
-3. Having no own RTE Configuration:
-    * Add EXT:t3_cowriter to your root page Page TSconfig -
-     Include static Page TSconfig (from extensions)
-   ![PageTSCongfig](Documentation/Images/pagetsconfig.png)
-4. With an own RTE Configuration yml file (your_ext/Configuration/RTE/YourConfig.yml):
-    * add to externalPlugins:
-```yml
+### 1. Configure nr-llm Extension
+
+First, set up at least one LLM provider in the nr-llm extension:
+
+1. Navigate to **Admin Tools → LLM Management**
+2. Add a provider (e.g., OpenAI with your API key)
+3. Create a model configuration
+4. Create an LLM configuration and set it as default
+
+### 2. Add CKEditor Preset
+
+#### Option A: Use the included preset
+
+Add the cowriter preset to your Page TSconfig:
+
+```typoscript
+RTE.default.preset = cowriter
+```
+
+#### Option B: Extend your existing preset
+
+Add to your RTE configuration YAML:
+
+```yaml
 editor:
   externalPlugins:
     cowriter:
       resource: "EXT:t3_cowriter/Resources/Public/JavaScript/Plugins/cowriter/"
+```
+
+## Usage
+
+1. Select text in the CKEditor
+2. Click the **Cowriter** button in the toolbar
+3. The selected text is sent to the LLM with a system prompt to improve it
+4. The improved text replaces your selection
+
+### Model Override
+
+Prefix your prompt with `#cw:model-name` to use a specific model:
 
 ```
-   
+#cw:gpt-4o Improve this text
+#cw:claude-sonnet-4-20250514 Make this more professional
+```
 
-## Functionality
+## Architecture
 
-1. You'll get a new button in your editor for content elements.
-2. Press the button and enter a description for the text you want to generate
+```
+[CKEditor Button] → [AIService.js] → [TYPO3 AJAX]
+                                         ↓
+                                    [AjaxController]
+                                         ↓
+                              [LlmServiceManagerInterface]
+                                         ↓
+                                   [nr-llm Provider]
+                                         ↓
+                                   [External LLM API]
+```
+
+All LLM requests are proxied through the TYPO3 backend. API keys are stored encrypted and never exposed to the browser.
+
+## Development
+
+### Prerequisites
+
+- DDEV for local development
+- PHP 8.5+ with required extensions
+
+### Setup
+
+```bash
+ddev start
+ddev composer install
+ddev install-v14
+```
+
+### Testing
+
+```bash
+# Run all tests
+make ci
+
+# Individual test suites
+make test-unit           # Unit tests
+make test-functional     # Functional tests
+make test-integration    # Integration tests
+
+# Code quality
+make lint               # PHP-CS-Fixer
+make phpstan            # PHPStan level 10
+```
+
+### Test Coverage
+
+Target: >80% code coverage
+
+```bash
+make test-coverage
+open .Build/coverage/html/index.html
+```
+
+## Security
+
+- API keys stored in nr-llm with sodium encryption
+- All backend AJAX endpoints require TYPO3 authentication
+- LLM output HTML-escaped to prevent XSS
+- CSRF protection via TYPO3 middleware
+- Content Security Policy (CSP) compatible
+
+## Migration from v2.x
+
+Version 3.0 removes the frontend-only architecture. API keys are no longer stored in extension settings.
+
+See [CHANGELOG.md](CHANGELOG.md) for migration details.
 
 ## License
 
-This project is licensed under the GNU GENERAL PUBLIC LICENSE - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
-### Contact
+## Contributing
 
-[Netresearch](https://www.netresearch.de/), the company behind this plugin, is a leading European provider of digital solutions and services for the eCommerce industry. We are a team of eCommerce experts, developers, designers, project managers, and consultants. We are passionate about eCommerce and we love to share our knowledge with the community.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
-> [Twitter](https://twitter.com/netresearch) | [LinkedIn](https://www.linkedin.com/company/netresearch/) | [Facebook](https://www.facebook.com/netresearch/) | [Xing](https://www.xing.com/companies/netresearchdttgmbh) | [YouTube](https://www.youtube.com/@netresearch)
+## Contact
+
+[Netresearch DTT GmbH](https://www.netresearch.de/) - Your TYPO3 and eCommerce experts.
+
+> [Twitter](https://twitter.com/netresearch) | [LinkedIn](https://www.linkedin.com/company/netresearch/) | [GitHub](https://github.com/netresearch)

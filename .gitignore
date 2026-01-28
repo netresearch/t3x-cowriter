@@ -24,6 +24,7 @@ composer.lock
 .ddev/.ddev-docker-compose-full.yaml
 .ddev/.homeadditions
 .ddev/db_snapshots
+index.html
 
 # Documentation generated
 Documentation-GENERATED-temp/
@@ -31,3 +32,4 @@ Documentation-GENERATED-temp/
 # direnv
 .envrc
 .direnv/
+.claude/

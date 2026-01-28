@@ -6,4 +6,11 @@ services:
 
   Netresearch\T3Cowriter\:
     resource: '../Classes/*'
-    exclude: '../Classes/Domain/Model/*'
+    exclude:
+      - '../Classes/Domain/Model/*'
+      - '../Classes/Domain/DTO/*'
+
+  Netresearch\T3Cowriter\Controller\AjaxController:
+    public: true
+    arguments:
+      $logger: '@Psr\Log\LoggerInterface'
