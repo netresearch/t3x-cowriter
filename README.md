@@ -10,7 +10,15 @@
 [![TYPO3 v14](https://img.shields.io/badge/TYPO3-v14-orange.svg)](https://typo3.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 [![Latest Release](https://img.shields.io/github/v/release/netresearch/t3x-cowriter)](https://github.com/netresearch/t3x-cowriter/releases)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-4baaaa.svg)](CODE_OF_CONDUCT.md)
+
+<!-- TYPO3 TER -->
+![Composer](https://typo3-badges.dev/badge/t3_cowriter/composer/shields.svg)
+![Downloads](https://typo3-badges.dev/badge/t3_cowriter/downloads/shields.svg)
+![Extension](https://typo3-badges.dev/badge/t3_cowriter/extension/shields.svg)
+![Stability](https://typo3-badges.dev/badge/t3_cowriter/stability/shields.svg)
+![TYPO3](https://typo3-badges.dev/badge/t3_cowriter/typo3/shields.svg)
+![Version](https://typo3-badges.dev/badge/t3_cowriter/version/shields.svg)
 
 AI-powered content assistant for TYPO3 CKEditor - write better content with help from AI.
 
