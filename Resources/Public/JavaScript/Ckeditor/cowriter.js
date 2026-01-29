@@ -86,7 +86,7 @@ export class Cowriter extends Core.Plugin {
                 try {
                     // Use the complete endpoint via TYPO3 AJAX
                     const result = await this._service.complete(prompt, {});
-                    const rawContent = result.completion || '';
+                    const rawContent = result.content || '';
                     content = this._sanitizeContent(rawContent);
                 } catch (error) {
                     console.error('Cowriter error:', error);

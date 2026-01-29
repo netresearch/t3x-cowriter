@@ -14,7 +14,7 @@
 
 ## Required Test Cases (15+ minimum)
 
-### CowriterAjaxControllerTest
+### AjaxControllerTest
 
 | # | Test Name | Purpose |
 |---|-----------|---------|
@@ -48,20 +48,24 @@
 
 ## Test Execution Commands
 
+**CI is authoritative** - always verify fixes pass in GitHub Actions CI before merging.
+Run tests locally via composer (same commands as CI).
+
 ```bash
-# Unit tests (via make -> composer -> runTests.sh)
-make test-unit
+# Unit tests
+composer ci:test:php:unit
 
-# With coverage
-make test-coverage
+# Integration tests
+composer ci:test:php:integration
 
-# Mutation testing
-make test-mutation
+# E2E tests
+composer ci:test:php:e2e
 
-# Underlying execution (runTests.sh)
-Build/Scripts/runTests.sh -s unit
-Build/Scripts/runTests.sh -s unit -c  # with coverage
-Build/Scripts/runTests.sh -s mutation
+# All tests
+composer ci:test:all
+
+# Full CI suite (lint + static analysis + tests)
+composer ci:test && composer ci:test:all
 ```
 
 ## Test Structure
@@ -70,14 +74,19 @@ Build/Scripts/runTests.sh -s mutation
 Tests/
 ├── Unit/
 │   ├── Controller/
-│   │   └── CowriterAjaxControllerTest.php
-│   └── Domain/
-│       └── DTO/
-│           ├── CompleteRequestTest.php
-│           └── CompleteResponseTest.php
-└── Functional/
-    └── Controller/
-        └── CowriterAjaxControllerTest.php
+│   │   └── AjaxControllerTest.php
+│   ├── Domain/
+│   │   └── DTO/
+│   │       ├── CompleteRequestTest.php
+│   │       ├── CompleteResponseTest.php
+│   │       └── UsageDataTest.php
+│   └── EventListener/
+│       └── InjectAjaxUrlsListenerTest.php
+├── Integration/
+│   └── Controller/
+│       └── AjaxControllerIntegrationTest.php
+└── E2E/
+    └── CowriterWorkflowTest.php
 ```
 
 ## PHPUnit Attributes
@@ -85,8 +94,8 @@ Tests/
 Use PHPUnit 12 attribute syntax:
 
 ```php
-#[CoversClass(CowriterAjaxController::class)]
-final class CowriterAjaxControllerTest extends TestCase
+#[CoversClass(AjaxController::class)]
+final class AjaxControllerTest extends TestCase
 {
     #[Test]
     public function completeActionReturnsSuccessForValidPrompt(): void
@@ -143,8 +152,8 @@ public function testWithMockedResponse(): void
 
 ## PR/Commit Checklist
 
-1. **Coverage > 80%:** Check with `make test-coverage`
-2. **All tests pass:** `make test-unit`
+1. **CI passes:** Push and verify GitHub Actions CI passes
+2. **Coverage > 80%:** CI reports coverage to Codecov
 3. **PHPUnit attributes:** Use `#[Test]`, `#[CoversClass]`
 4. **DataProviders:** For multiple input scenarios
 5. **Edge cases:** Empty, null, invalid inputs

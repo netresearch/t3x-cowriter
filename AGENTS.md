@@ -7,17 +7,18 @@
 ## Quick Start
 
 ```bash
-# First time setup
-make up                      # Start DDEV + install TYPO3 v14
+# Install dependencies
+composer install
 
 # Development workflow
-make lint                    # Run all linters
-make format                  # Fix code style
-make test                    # Run tests (in DDEV)
-make ci                      # Full CI check (pre-commit)
+composer ci:test             # Run all linters + static analysis
+composer ci:test:all         # Run all tests (unit, integration, e2e)
+composer ci:cgl              # Fix code style
+composer ci:rector           # Apply PHP modernization
 
-# Access
-make urls                    # Show all access URLs
+# Local TYPO3 instance (optional, for manual testing only)
+make up                      # Start DDEV + install TYPO3 v14
+make urls                    # Show access URLs
 ```
 
 ## Setup
@@ -75,19 +76,33 @@ CKEditor ← Response ← TYPO3 AJAX ← AjaxController ← nr-llm ← Response
 
 ## Build & Test Commands
 
-### Fast Quality Checks (Pre-commit)
+**CI is authoritative** - always verify fixes pass in GitHub Actions CI before merging.
+Run tests locally via composer (same as CI), not via DDEV.
+
+### Quality Checks
 
 ```bash
-make lint                    # PHP lint + PHPStan + Rector + style check
-make format                  # Auto-fix code style
-make typecheck               # PHPStan static analysis
+composer ci:test:php:lint    # PHP syntax check
+composer ci:test:php:phpstan # Static analysis (level 10)
+composer ci:test:php:cgl     # Code style check
+composer ci:test:php:rector  # PHP modernization check
+composer ci:test             # All of the above
 ```
 
-### Full CI Suite
+### Tests
 
 ```bash
-make ci                      # Complete CI pipeline
-make test                    # All tests (runs in DDEV)
+composer ci:test:php:unit        # Unit tests
+composer ci:test:php:integration # Integration tests
+composer ci:test:php:e2e         # E2E tests
+composer ci:test:all             # All tests
+```
+
+### Code Fixes
+
+```bash
+composer ci:cgl              # Auto-fix code style
+composer ci:rector           # Apply PHP modernization
 ```
 
 ### Individual Commands
@@ -103,11 +118,11 @@ composer ci:test:php:phpstan
 composer ci:test:php:cgl
 
 # Code Style Fix
-composer ci:php:cgl
+composer ci:cgl
 
 # Rector (PHP Modernization)
 composer ci:test:php:rector
-composer ci:php:rector              # Apply changes
+composer ci:rector                  # Apply changes
 ```
 
 ## Code Style
@@ -158,7 +173,7 @@ final class AjaxController
 - **AJAX routes:** Protected by TYPO3 backend authentication
 - **Input validation:** Type-cast all request parameters
 - **XSS prevention:** JsonResponse for API output
-- **Static analysis:** PHPStan level 8
+- **Static analysis:** PHPStan level 10
 
 ## PR/Commit Checklist
 

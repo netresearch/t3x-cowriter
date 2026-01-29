@@ -138,8 +138,19 @@
         "ci:test:php:unit": [
             "phpunit -c Build/phpunit/UnitTests.xml"
         ],
+        "ci:test:php:integration": [
+            "phpunit -c Build/phpunit/IntegrationTests.xml"
+        ],
+        "ci:test:php:e2e": [
+            "phpunit -c Build/phpunit/E2ETests.xml"
+        ],
         "ci:test:php:functional": [
             "phpunit -c Build/phpunit/FunctionalTests.xml"
+        ],
+        "ci:test:all": [
+            "@ci:test:php:unit",
+            "@ci:test:php:integration",
+            "@ci:test:php:e2e"
         ]
     }
 }

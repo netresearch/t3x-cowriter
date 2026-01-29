@@ -103,6 +103,18 @@ jobs:
                 run: |
                     .Build/bin/phpunit -c Build/phpunit/UnitTests.xml
 
+            -   id: integration-tests
+                name: Integration Tests
+                if: ${{ always() && steps.install.conclusion == 'success' }}
+                run: |
+                    .Build/bin/phpunit -c Build/phpunit/IntegrationTests.xml
+
+            -   id: e2e-tests
+                name: E2E Tests
+                if: ${{ always() && steps.install.conclusion == 'success' }}
+                run: |
+                    .Build/bin/phpunit -c Build/phpunit/E2ETests.xml
+
             -   id: functional-tests
                 name: Functional Tests
                 if: ${{ always() && steps.install.conclusion == 'success' }}

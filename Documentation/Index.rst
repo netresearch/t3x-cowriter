@@ -55,7 +55,7 @@ your content directly in the CKEditor rich text editor.
 
     ..  card:: :ref:`Configuration <configuration>`
 
-        Configure the OpenAI API key and RTE integration.
+        Configure the LLM provider via nr-llm and RTE integration.
 
     ..  card:: :ref:`Usage <usage>`
 

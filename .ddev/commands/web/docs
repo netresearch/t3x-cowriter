@@ -6,7 +6,7 @@
 
 set -e
 
-EXTENSION_DIR="/var/www/html/extension"
+EXTENSION_DIR="/var/www/t3_cowriter"
 DOCS_OUTPUT="/var/www/html/docs"
 
 echo "=== Rendering documentation ==="
@@ -38,6 +38,9 @@ else
     echo "Documentation rendering requires the t3docs docker image."
     echo ""
     echo "Alternative: Run from host:"
+    echo "  ddev exec-host docs"
+    echo ""
+    echo "Or render manually from project root:"
     echo "  docker run --rm -v \$(pwd):/project ghcr.io/typo3-documentation/render-guides:latest"
 fi
 

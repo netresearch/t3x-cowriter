@@ -1,0 +1,18 @@
+# CODEOWNERS for t3x-cowriter
+# These owners will be requested for review when someone opens a pull request.
+
+# Default owners for everything in the repo
+* @netresearch/typo3
+
+# PHP backend code
+/Classes/ @netresearch/typo3
+/Configuration/ @netresearch/typo3
+
+# JavaScript/CKEditor integration
+/Resources/Public/JavaScript/ @netresearch/typo3
+
+# CI/CD workflows
+/.github/ @netresearch/typo3
+
+# Documentation
+/Documentation/ @netresearch/typo3
