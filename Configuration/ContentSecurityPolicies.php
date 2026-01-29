@@ -24,7 +24,7 @@ use TYPO3\CMS\Core\Type\Map;
  * so no external connect-src is needed. The inline script allowance is required for the
  * InjectAjaxUrlsListener that injects AJAX URLs into the page.
  *
- * @see \Netresearch\T3Cowriter\EventListener\InjectAjaxUrlsListener
+ * @see Netresearch\T3Cowriter\EventListener\InjectAjaxUrlsListener
  */
 return Map::fromEntries([
     Scope::backend(),
