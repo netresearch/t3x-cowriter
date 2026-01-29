@@ -9,31 +9,27 @@
 
 declare(strict_types=1);
 
-use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Security\ContentSecurityPolicy\Directive;
 use TYPO3\CMS\Core\Security\ContentSecurityPolicy\Mutation;
 use TYPO3\CMS\Core\Security\ContentSecurityPolicy\MutationCollection;
 use TYPO3\CMS\Core\Security\ContentSecurityPolicy\MutationMode;
 use TYPO3\CMS\Core\Security\ContentSecurityPolicy\Scope;
 use TYPO3\CMS\Core\Security\ContentSecurityPolicy\SourceKeyword;
-use TYPO3\CMS\Core\Security\ContentSecurityPolicy\SourceScheme;
-use TYPO3\CMS\Core\Security\ContentSecurityPolicy\UriValue;
 use TYPO3\CMS\Core\Type\Map;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-/** @var array{apiUrl: string} $config */
-$config = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('t3_cowriter');
-
+/**
+ * Content Security Policy configuration for t3_cowriter.
+ *
+ * Note: All LLM requests go through TYPO3 backend AJAX routes (not direct external API calls),
+ * so no external connect-src is needed. The inline script allowance is required for the
+ * InjectAjaxUrlsListener that injects AJAX URLs into the page.
+ *
+ * @see \Netresearch\T3Cowriter\EventListener\InjectAjaxUrlsListener
+ */
 return Map::fromEntries([
     Scope::backend(),
     new MutationCollection(
-        new Mutation(
-            MutationMode::Extend,
-            Directive::ConnectSrc,
-            SourceScheme::data,
-            new UriValue($config['apiUrl']),
-        ),
-        // Required for inline JavaScript configuration injection
+        // Required for inline JavaScript configuration injection (AJAX URLs)
         new Mutation(
             MutationMode::Reduce,
             Directive::ScriptSrc,

@@ -103,11 +103,11 @@ composer ci:test:php:phpstan
 composer ci:test:php:cgl
 
 # Code Style Fix
-composer ci:php:cgl
+composer ci:cgl
 
 # Rector (PHP Modernization)
 composer ci:test:php:rector
-composer ci:php:rector              # Apply changes
+composer ci:rector                  # Apply changes
 ```
 
 ## Code Style

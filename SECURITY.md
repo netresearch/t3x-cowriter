@@ -4,7 +4,8 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 2.x     | :white_check_mark: |
+| 3.x     | :white_check_mark: |
+| 2.x     | :x:                |
 | 1.x     | :x:                |
 
 ## Reporting a Vulnerability
@@ -44,9 +45,10 @@ Include the following information:
 
 When using this extension:
 
-1. **API Key Security**: Store your OpenAI API key securely using TYPO3's
-   encrypted extension configuration
+1. **API Key Security**: API keys are securely managed by the nr-llm extension
+   on the server side. No API keys are exposed to the frontend.
 2. **Access Control**: Restrict backend access to trusted editors only
-3. **Regular Updates**: Keep the extension and TYPO3 core updated
+3. **Regular Updates**: Keep the extension, nr-llm, and TYPO3 core updated
 4. **CSP Configuration**: Review Content Security Policy settings for your
    environment
+5. **XSS Protection**: All AI-generated content is HTML-escaped server-side

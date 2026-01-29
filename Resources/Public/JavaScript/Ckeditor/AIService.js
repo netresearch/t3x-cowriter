@@ -29,6 +29,15 @@
  * @property {string} [role] - The role (usually 'assistant')
  */
 
+/**
+ * @typedef {object} CompleteResponse
+ * @property {boolean} success - Whether the request succeeded
+ * @property {string} content - The generated content
+ * @property {string} [model] - The model used for generation
+ * @property {string} [finishReason] - Why generation stopped (stop, length, etc.)
+ * @property {{promptTokens: number, completionTokens: number, totalTokens: number}} [usage] - Token usage statistics
+ */
+
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
@@ -92,7 +101,7 @@ export class AIService {
      *
      * @param {string} prompt - The prompt to complete
      * @param {CompletionOptions} [options={}] - Optional completion parameters
-     * @returns {Promise<{completion: string}>} The completion result
+     * @returns {Promise<CompleteResponse>} The completion result
      */
     async complete(prompt, options = {}) {
         this._validateRoutes();

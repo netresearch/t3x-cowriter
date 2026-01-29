@@ -91,8 +91,8 @@ Tests/
 Use PHPUnit 12 attribute syntax:
 
 ```php
-#[CoversClass(CowriterAjaxController::class)]
-final class CowriterAjaxControllerTest extends TestCase
+#[CoversClass(AjaxController::class)]
+final class AjaxControllerTest extends TestCase
 {
     #[Test]
     public function completeActionReturnsSuccessForValidPrompt(): void
