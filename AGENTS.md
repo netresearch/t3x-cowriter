@@ -7,17 +7,18 @@
 ## Quick Start
 
 ```bash
-# First time setup
-make up                      # Start DDEV + install TYPO3 v14
+# Install dependencies
+composer install
 
 # Development workflow
-make lint                    # Run all linters
-make format                  # Fix code style
-make test                    # Run tests (in DDEV)
-make ci                      # Full CI check (pre-commit)
+composer ci:test             # Run all linters + static analysis
+composer ci:test:all         # Run all tests (unit, integration, e2e)
+composer ci:cgl              # Fix code style
+composer ci:rector           # Apply PHP modernization
 
-# Access
-make urls                    # Show all access URLs
+# Local TYPO3 instance (optional, for manual testing only)
+make up                      # Start DDEV + install TYPO3 v14
+make urls                    # Show access URLs
 ```
 
 ## Setup
@@ -76,9 +77,9 @@ CKEditor ← Response ← TYPO3 AJAX ← AjaxController ← nr-llm ← Response
 ## Build & Test Commands
 
 **CI is authoritative** - always verify fixes pass in GitHub Actions CI before merging.
-DDEV/make commands are for local debugging only.
+Run tests locally via composer (same as CI), not via DDEV.
 
-### Quality Checks (CI-style, preferred)
+### Quality Checks
 
 ```bash
 composer ci:test:php:lint    # PHP syntax check
@@ -88,7 +89,7 @@ composer ci:test:php:rector  # PHP modernization check
 composer ci:test             # All of the above
 ```
 
-### Tests (CI-style, preferred)
+### Tests
 
 ```bash
 composer ci:test:php:unit        # Unit tests
@@ -97,12 +98,11 @@ composer ci:test:php:e2e         # E2E tests
 composer ci:test:all             # All tests
 ```
 
-### Local Development (DDEV - for debugging only)
+### Code Fixes
 
 ```bash
-make up                      # Start DDEV + install TYPO3 v14
-make lint                    # Run linters (uses DDEV)
-make test                    # Run tests (uses DDEV)
+composer ci:cgl              # Auto-fix code style
+composer ci:rector           # Apply PHP modernization
 ```
 
 ### Individual Commands

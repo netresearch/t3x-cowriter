@@ -49,10 +49,10 @@
 ## Test Execution Commands
 
 **CI is authoritative** - always verify fixes pass in GitHub Actions CI before merging.
-DDEV is only for debugging test failures locally.
+Run tests locally via composer (same commands as CI).
 
 ```bash
-# Unit tests (CI-style, preferred)
+# Unit tests
 composer ci:test:php:unit
 
 # Integration tests
@@ -67,8 +67,6 @@ composer ci:test:all
 # Full CI suite (lint + static analysis + tests)
 composer ci:test && composer ci:test:all
 ```
-
-**Note:** Push changes and let CI verify. Local DDEV runs may have environment differences.
 
 ## Test Structure
 
