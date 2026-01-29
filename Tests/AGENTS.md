@@ -48,22 +48,27 @@
 
 ## Test Execution Commands
 
+**CI is authoritative** - always verify fixes pass in GitHub Actions CI before merging.
+DDEV is only for debugging test failures locally.
+
 ```bash
-# Unit tests (via make -> DDEV)
-make test-unit
+# Unit tests (CI-style, preferred)
+composer ci:test:php:unit
 
 # Integration tests
-make test-integration
+composer ci:test:php:integration
 
 # E2E tests
-make test-e2e
+composer ci:test:php:e2e
 
-# With coverage
-make test-coverage
+# All tests
+composer ci:test:all
 
-# Full CI suite
-make ci
+# Full CI suite (lint + static analysis + tests)
+composer ci:test && composer ci:test:all
 ```
+
+**Note:** Push changes and let CI verify. Local DDEV runs may have environment differences.
 
 ## Test Structure
 
@@ -149,8 +154,8 @@ public function testWithMockedResponse(): void
 
 ## PR/Commit Checklist
 
-1. **Coverage > 80%:** Check with `make test-coverage`
-2. **All tests pass:** `make test-unit`
+1. **CI passes:** Push and verify GitHub Actions CI passes
+2. **Coverage > 80%:** CI reports coverage to Codecov
 3. **PHPUnit attributes:** Use `#[Test]`, `#[CoversClass]`
 4. **DataProviders:** For multiple input scenarios
 5. **Edge cases:** Empty, null, invalid inputs

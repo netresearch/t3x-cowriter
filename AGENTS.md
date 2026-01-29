@@ -75,19 +75,34 @@ CKEditor ← Response ← TYPO3 AJAX ← AjaxController ← nr-llm ← Response
 
 ## Build & Test Commands
 
-### Fast Quality Checks (Pre-commit)
+**CI is authoritative** - always verify fixes pass in GitHub Actions CI before merging.
+DDEV/make commands are for local debugging only.
+
+### Quality Checks (CI-style, preferred)
 
 ```bash
-make lint                    # PHP lint + PHPStan + Rector + style check
-make format                  # Auto-fix code style
-make typecheck               # PHPStan static analysis
+composer ci:test:php:lint    # PHP syntax check
+composer ci:test:php:phpstan # Static analysis (level 10)
+composer ci:test:php:cgl     # Code style check
+composer ci:test:php:rector  # PHP modernization check
+composer ci:test             # All of the above
 ```
 
-### Full CI Suite
+### Tests (CI-style, preferred)
 
 ```bash
-make ci                      # Complete CI pipeline
-make test                    # All tests (runs in DDEV)
+composer ci:test:php:unit        # Unit tests
+composer ci:test:php:integration # Integration tests
+composer ci:test:php:e2e         # E2E tests
+composer ci:test:all             # All tests
+```
+
+### Local Development (DDEV - for debugging only)
+
+```bash
+make up                      # Start DDEV + install TYPO3 v14
+make lint                    # Run linters (uses DDEV)
+make test                    # Run tests (uses DDEV)
 ```
 
 ### Individual Commands
