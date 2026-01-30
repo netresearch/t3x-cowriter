@@ -12,9 +12,9 @@
     "lint:fix": "eslint Resources/Public/JavaScript/**/*.js --fix"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^3.0.0",
+    "@vitest/coverage-v8": "^4.0.0",
     "eslint": "^9.0.0",
     "jsdom": "^26.0.0",
-    "vitest": "^3.0.0"
+    "vitest": "^4.0.0"
   }
 }
