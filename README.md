@@ -2,6 +2,9 @@
 
 <!-- CI/Quality -->
 [![CI](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml/badge.svg)](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/netresearch/t3x-cowriter/graph/badge.svg)](https://codecov.io/gh/netresearch/t3x-cowriter)
+
+<!-- Security -->
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/netresearch/t3x-cowriter/badge)](https://securityscorecards.dev/viewer/?uri=github.com/netresearch/t3x-cowriter)
 
 <!-- Standards -->
