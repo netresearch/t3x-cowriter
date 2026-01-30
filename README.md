@@ -6,6 +6,7 @@
 
 <!-- Security -->
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/netresearch/t3x-cowriter/badge)](https://securityscorecards.dev/viewer/?uri=github.com/netresearch/t3x-cowriter)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11853/badge)](https://www.bestpractices.dev/projects/11853)
 
 <!-- Standards -->
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%2010-brightgreen.svg)](https://phpstan.org/)
