@@ -9,6 +9,15 @@ services:
     exclude:
       - '../Classes/Domain/Model/*'
       - '../Classes/Domain/DTO/*'
+      - '../Classes/Service/RateLimitResult.php'
+
+  Netresearch\T3Cowriter\Service\RateLimiterService:
+    arguments:
+      $cache: '@cache.runtime'
+      $requestsPerMinute: 20
+
+  Netresearch\T3Cowriter\Service\RateLimiterInterface:
+    alias: Netresearch\T3Cowriter\Service\RateLimiterService
 
   Netresearch\T3Cowriter\Controller\AjaxController:
     public: true

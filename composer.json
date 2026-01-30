@@ -56,8 +56,8 @@
     },
     "require": {
         "php": "^8.5",
-        "typo3/cms-core": "^14.0",
-        "typo3/cms-backend": "^14.0",
+        "typo3/cms-core": "^14.0.2",
+        "typo3/cms-backend": "^14.0.2",
         "typo3/cms-rte-ckeditor": "^14.0",
         "netresearch/nr-llm": "dev-main"
     },
@@ -68,6 +68,7 @@
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpunit/phpunit": "^12.5.8",
         "ssch/typo3-rector": "^3.0"
     },
     "autoload": {

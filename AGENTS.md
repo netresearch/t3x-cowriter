@@ -69,6 +69,15 @@ CKEditor → AIService.js → TYPO3 AJAX → AjaxController → nr-llm → AI Pr
 CKEditor ← Response ← TYPO3 AJAX ← AjaxController ← nr-llm ← Response
 ```
 
+### AJAX Routes
+
+| Route | Path | Method | Purpose |
+|-------|------|--------|---------|
+| `tx_cowriter_chat` | `/cowriter/chat` | `chatAction` | Multi-turn chat conversations |
+| `tx_cowriter_complete` | `/cowriter/complete` | `completeAction` | Single prompt completion |
+| `tx_cowriter_stream` | `/cowriter/stream` | `streamAction` | Streaming completion via SSE |
+| `tx_cowriter_configurations` | `/cowriter/configurations` | `getConfigurationsAction` | List available LLM configurations |
+
 ### Key Dependencies
 
 - **netresearch/nr-llm:** Backend LLM abstraction layer

@@ -12,7 +12,6 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\EventListener;
 
 use Netresearch\T3Cowriter\EventListener\InjectAjaxUrlsListener;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -23,7 +22,6 @@ use TYPO3\CMS\Core\Page\AssetCollector;
 use TYPO3\CMS\Core\Page\Event\BeforeJavaScriptsRenderingEvent;
 
 #[CoversClass(InjectAjaxUrlsListener::class)]
-#[AllowMockObjectsWithoutExpectations]
 final class InjectAjaxUrlsListenerTest extends TestCase
 {
     private InjectAjaxUrlsListener $subject;
@@ -42,6 +40,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     {
         $assetCollector = $this->createMock(AssetCollector::class);
         $assetCollector->expects($this->never())->method('addInlineJavaScript');
+        $assetCollector->expects($this->never())->method('addJavaScript');
 
         $event = new BeforeJavaScriptsRenderingEvent(
             assetCollector: $assetCollector,
@@ -53,7 +52,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     }
 
     #[Test]
-    public function invokeAddsInlineJsWhenInline(): void
+    public function invokeAddsJsonDataElementWhenInline(): void
     {
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
@@ -64,9 +63,19 @@ final class InjectAjaxUrlsListenerTest extends TestCase
             ->expects($this->once())
             ->method('addInlineJavaScript')
             ->with(
-                'cowriter-ajax-urls',
-                $this->isString(),
-                [],
+                'cowriter-ajax-urls-data',
+                $this->isType('string'),
+                ['type'     => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
+                ['priority' => true],
+            );
+
+        $assetCollector
+            ->expects($this->once())
+            ->method('addJavaScript')
+            ->with(
+                'cowriter-url-loader',
+                'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/UrlLoader.js',
+                ['type'     => 'module'],
                 ['priority' => true],
             );
 
@@ -80,21 +89,22 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     }
 
     #[Test]
-    public function invokeGeneratesValidJavaScript(): void
+    public function invokeGeneratesValidJsonData(): void
     {
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
             ->willReturnCallback(fn (string $route) => new Uri('/typo3/ajax/' . $route));
 
-        $capturedJs     = '';
+        $capturedJson   = '';
         $assetCollector = $this->createMock(AssetCollector::class);
         $assetCollector
             ->method('addInlineJavaScript')
-            ->willReturnCallback(function (string $identifier, string $js) use (&$capturedJs, $assetCollector): AssetCollector {
-                $capturedJs = $js;
+            ->willReturnCallback(function (string $identifier, string $json) use (&$capturedJson, $assetCollector): AssetCollector {
+                $capturedJson = $json;
 
                 return $assetCollector;
             });
+        $assetCollector->method('addJavaScript');
 
         $event = new BeforeJavaScriptsRenderingEvent(
             assetCollector: $assetCollector,
@@ -104,12 +114,12 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         ($this->subject)($event);
 
-        // Verify JavaScript contains expected content
-        $this->assertStringContainsString('TYPO3.settings', $capturedJs);
-        $this->assertStringContainsString('ajaxUrls', $capturedJs);
-        $this->assertStringContainsString('tx_cowriter_chat', $capturedJs);
-        $this->assertStringContainsString('tx_cowriter_complete', $capturedJs);
-        $this->assertStringContainsString('tx_cowriter_configurations', $capturedJs);
+        // Verify JSON is valid and contains expected keys
+        $decoded = json_decode($capturedJson, true);
+        $this->assertIsArray($decoded);
+        $this->assertArrayHasKey('tx_cowriter_chat', $decoded);
+        $this->assertArrayHasKey('tx_cowriter_complete', $decoded);
+        $this->assertArrayHasKey('tx_cowriter_configurations', $decoded);
     }
 
     #[Test]
@@ -126,6 +136,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         $assetCollector = $this->createMock(AssetCollector::class);
         $assetCollector->method('addInlineJavaScript');
+        $assetCollector->method('addJavaScript');
 
         $event = new BeforeJavaScriptsRenderingEvent(
             assetCollector: $assetCollector,
@@ -141,18 +152,26 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     }
 
     #[Test]
-    public function invokeUsesHighPriority(): void
+    public function invokeUsesHighPriorityForBothAssets(): void
     {
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
             ->willReturn(new Uri('/typo3/ajax/test'));
 
-        $capturedOptions = [];
-        $assetCollector  = $this->createMock(AssetCollector::class);
+        $inlineOptions  = [];
+        $jsOptions      = [];
+        $assetCollector = $this->createMock(AssetCollector::class);
         $assetCollector
             ->method('addInlineJavaScript')
-            ->willReturnCallback(function ($id, $js, $attrs, $options) use (&$capturedOptions, $assetCollector): AssetCollector {
-                $capturedOptions = $options;
+            ->willReturnCallback(function ($id, $json, $attrs, $options) use (&$inlineOptions, $assetCollector): AssetCollector {
+                $inlineOptions = $options;
+
+                return $assetCollector;
+            });
+        $assetCollector
+            ->method('addJavaScript')
+            ->willReturnCallback(function ($id, $src, $attrs, $options) use (&$jsOptions, $assetCollector): AssetCollector {
+                $jsOptions = $options;
 
                 return $assetCollector;
             });
@@ -165,23 +184,59 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         ($this->subject)($event);
 
-        $this->assertArrayHasKey('priority', $capturedOptions);
-        $this->assertTrue($capturedOptions['priority']);
+        // Both inline JSON data and external JS should have high priority
+        $this->assertArrayHasKey('priority', $inlineOptions);
+        $this->assertTrue($inlineOptions['priority']);
+        $this->assertArrayHasKey('priority', $jsOptions);
+        $this->assertTrue($jsOptions['priority']);
     }
 
     #[Test]
-    public function invokeGeneratesValidJson(): void
+    public function invokeJsonContainsCorrectUrls(): void
     {
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
             ->willReturnCallback(fn (string $route) => new Uri('/typo3/ajax/' . $route));
 
-        $capturedJs     = '';
+        $capturedJson   = '';
         $assetCollector = $this->createMock(AssetCollector::class);
         $assetCollector
             ->method('addInlineJavaScript')
-            ->willReturnCallback(function (string $identifier, string $js) use (&$capturedJs, $assetCollector): AssetCollector {
-                $capturedJs = $js;
+            ->willReturnCallback(function (string $identifier, string $json) use (&$capturedJson, $assetCollector): AssetCollector {
+                $capturedJson = $json;
+
+                return $assetCollector;
+            });
+        $assetCollector->method('addJavaScript');
+
+        $event = new BeforeJavaScriptsRenderingEvent(
+            assetCollector: $assetCollector,
+            isInline: true,
+            priority: false,
+        );
+
+        ($this->subject)($event);
+
+        $decoded = json_decode($capturedJson, true);
+        $this->assertEquals('/typo3/ajax/tx_cowriter_chat', $decoded['tx_cowriter_chat']);
+        $this->assertEquals('/typo3/ajax/tx_cowriter_complete', $decoded['tx_cowriter_complete']);
+        $this->assertEquals('/typo3/ajax/tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
+    }
+
+    #[Test]
+    public function invokeAddsExternalModuleWithCorrectPath(): void
+    {
+        $this->backendUriBuilderMock
+            ->method('buildUriFromRoute')
+            ->willReturn(new Uri('/typo3/ajax/test'));
+
+        $capturedSrc    = '';
+        $assetCollector = $this->createMock(AssetCollector::class);
+        $assetCollector->method('addInlineJavaScript');
+        $assetCollector
+            ->method('addJavaScript')
+            ->willReturnCallback(function ($id, $src) use (&$capturedSrc, $assetCollector): AssetCollector {
+                $capturedSrc = $src;
 
                 return $assetCollector;
             });
@@ -194,16 +249,39 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         ($this->subject)($event);
 
-        // Extract JSON from the JavaScript
-        if (preg_match('/var cowriterUrls = ({[^}]+});/', $capturedJs, $matches)) {
-            $json    = $matches[1];
-            $decoded = json_decode($json, true);
-            $this->assertIsArray($decoded);
-            $this->assertArrayHasKey('tx_cowriter_chat', $decoded);
-            $this->assertArrayHasKey('tx_cowriter_complete', $decoded);
-            $this->assertArrayHasKey('tx_cowriter_configurations', $decoded);
-        } else {
-            $this->fail('Could not extract JSON from JavaScript output');
-        }
+        $this->assertEquals(
+            'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/UrlLoader.js',
+            $capturedSrc,
+        );
+    }
+
+    #[Test]
+    public function invokeAddsExternalModuleWithTypeModule(): void
+    {
+        $this->backendUriBuilderMock
+            ->method('buildUriFromRoute')
+            ->willReturn(new Uri('/typo3/ajax/test'));
+
+        $capturedAttrs  = [];
+        $assetCollector = $this->createMock(AssetCollector::class);
+        $assetCollector->method('addInlineJavaScript');
+        $assetCollector
+            ->method('addJavaScript')
+            ->willReturnCallback(function ($id, $src, $attrs) use (&$capturedAttrs, $assetCollector): AssetCollector {
+                $capturedAttrs = $attrs;
+
+                return $assetCollector;
+            });
+
+        $event = new BeforeJavaScriptsRenderingEvent(
+            assetCollector: $assetCollector,
+            isInline: true,
+            priority: false,
+        );
+
+        ($this->subject)($event);
+
+        $this->assertArrayHasKey('type', $capturedAttrs);
+        $this->assertEquals('module', $capturedAttrs['type']);
     }
 }

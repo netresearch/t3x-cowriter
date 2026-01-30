@@ -29,6 +29,10 @@ return [
         'path'   => '/cowriter/complete',
         'target' => AjaxController::class . '::completeAction',
     ],
+    'tx_cowriter_stream' => [
+        'path'   => '/cowriter/stream',
+        'target' => AjaxController::class . '::streamAction',
+    ],
     'tx_cowriter_configurations' => [
         'path'   => '/cowriter/configurations',
         'target' => AjaxController::class . '::getConfigurationsAction',

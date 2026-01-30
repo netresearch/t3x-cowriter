@@ -26,10 +26,10 @@ Supported providers
 Configuration steps
 -------------------
 
-1.  Go to :guilabel:`Admin Tools` > :guilabel:`Settings` > :guilabel:`Extension Configuration`
-2.  Select :guilabel:`nr_llm`
-3.  Choose your preferred LLM provider
-4.  Enter your API key for the selected provider
+1.  Navigate to :guilabel:`Admin Tools` > :guilabel:`LLM Management`
+2.  Add a provider (e.g., OpenAI with your API key)
+3.  Create a model configuration
+4.  Create an LLM configuration and set it as default
 
 ..  tip::
 

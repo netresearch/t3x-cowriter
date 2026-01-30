@@ -34,6 +34,13 @@ final readonly class CompleteRequest
      */
     private const string MODEL_NAME_PATTERN = '/^[a-zA-Z0-9][-a-zA-Z0-9_.:\/]*$/';
 
+    /**
+     * Maximum allowed prompt length in characters.
+     * Prevents denial-of-wallet attacks and excessive token consumption.
+     * 32KB is generous for most use cases while providing a safety limit.
+     */
+    private const int MAX_PROMPT_LENGTH = 32768;
+
     public function __construct(
         public string $prompt,
         public ?string $configuration,
@@ -85,11 +92,13 @@ final readonly class CompleteRequest
     }
 
     /**
-     * Check if the request is valid (has non-empty prompt).
+     * Check if the request is valid (has non-empty prompt within length limits).
      */
     public function isValid(): bool
     {
-        return trim($this->prompt) !== '';
+        $trimmed = trim($this->prompt);
+
+        return $trimmed !== '' && strlen($trimmed) <= self::MAX_PROMPT_LENGTH;
     }
 
     /**

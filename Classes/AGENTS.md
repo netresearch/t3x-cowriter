@@ -12,6 +12,9 @@
 | Domain/DTO/CompleteResponse.php | Response DTO with HTML escaping |
 | Domain/DTO/UsageData.php | Token usage statistics |
 | EventListener/InjectAjaxUrlsListener.php | AJAX URL injection for frontend |
+| Service/RateLimiterInterface.php | Rate limiter abstraction for DI |
+| Service/RateLimiterService.php | Sliding window rate limiter implementation |
+| Service/RateLimitResult.php | Rate limit check result DTO |
 
 ## PHP 8.5 Patterns (REQUIRED)
 

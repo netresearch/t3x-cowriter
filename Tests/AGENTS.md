@@ -16,18 +16,33 @@
 
 ### AjaxControllerTest
 
+#### Chat Action Tests
 | # | Test Name | Purpose |
 |---|-----------|---------|
-| 1 | completeActionReturnsSuccessForValidPrompt | Happy path |
-| 2 | completeActionReturnsErrorWhenNoPromptProvided | Validation |
-| 3 | completeActionReturnsErrorWhenNoConfigurationAvailable | No default config |
-| 4 | completeActionParsesModelOverridePrefix | #cw:model parsing |
-| 5 | completeActionEscapesHtmlInResponse | XSS prevention |
-| 6 | completeActionHandlesProviderException | Provider errors |
-| 7 | completeActionHandlesRateLimitException | Rate limit 429 |
-| 8 | completeActionUsesConfigurationFromIdentifier | Named config |
-| 9 | completeActionIncludesUsageStatistics | Token tracking |
-| 10 | completeActionRejectsInvalidPrompts | DataProvider tests |
+| 1 | chatActionReturnsJsonResponse | Happy path |
+| 2 | chatActionReturnsErrorForInvalidJson | JSON parsing |
+| 3 | chatActionHandlesProviderException | Provider errors |
+| 4 | chatActionEscapesHtmlInResponse | XSS prevention |
+
+#### Complete Action Tests
+| # | Test Name | Purpose |
+|---|-----------|---------|
+| 5 | completeActionReturnsSuccessForValidPrompt | Happy path |
+| 6 | completeActionReturnsErrorWhenNoPromptProvided | Validation |
+| 7 | completeActionReturnsErrorWhenNoConfigurationAvailable | No default config |
+| 8 | completeActionReturns404WhenConfigurationIdentifierNotFound | Named config missing |
+| 9 | completeActionAppliesModelOverride | #cw:model parsing |
+| 10 | completeActionEscapesHtmlInResponse | XSS prevention |
+| 11 | completeActionHandlesProviderException | Provider errors |
+| 12 | completeActionUsesConfigurationFromIdentifier | Named config |
+| 13 | completeActionIncludesUsageStatistics | Token tracking |
+| 14 | completeActionRejectsInvalidPrompts | DataProvider tests |
+
+#### GetConfigurations Action Tests
+| # | Test Name | Purpose |
+|---|-----------|---------|
+| 15 | getConfigurationsActionReturnsAvailableConfigs | List configurations |
+| 16 | getConfigurationsActionReturnsEmptyArray | No configs available |
 
 ### CompleteRequestTest
 
@@ -80,13 +95,23 @@ Tests/
 │   │       ├── CompleteRequestTest.php
 │   │       ├── CompleteResponseTest.php
 │   │       └── UsageDataTest.php
-│   └── EventListener/
-│       └── InjectAjaxUrlsListenerTest.php
+│   ├── EventListener/
+│   │   └── InjectAjaxUrlsListenerTest.php
+│   └── Service/
+│       ├── RateLimiterServiceTest.php
+│       └── RateLimitResultTest.php
 ├── Integration/
+│   ├── AbstractIntegrationTestCase.php   # Base class with shared fixtures
 │   └── Controller/
 │       └── AjaxControllerIntegrationTest.php
-└── E2E/
-    └── CowriterWorkflowTest.php
+├── E2E/
+│   ├── AbstractE2ETestCase.php           # Base class for E2E tests
+│   └── CowriterWorkflowTest.php
+├── JavaScript/                           # Vitest tests for frontend
+│   └── Ckeditor/
+│       └── AIService.test.js
+└── Support/
+    └── TestQueryResult.php
 ```
 
 ## PHPUnit Attributes

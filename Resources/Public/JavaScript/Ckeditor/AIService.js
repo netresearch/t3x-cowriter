@@ -41,12 +41,13 @@
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null}}
      * @private
      */
     _routes = {
         chat: null,
         complete: null,
+        stream: null,
     };
 
     constructor() {
@@ -54,6 +55,7 @@ export class AIService {
         if (typeof TYPO3 !== 'undefined' && TYPO3.settings && TYPO3.settings.ajaxUrls) {
             this._routes.chat = TYPO3.settings.ajaxUrls.tx_cowriter_chat || null;
             this._routes.complete = TYPO3.settings.ajaxUrls.tx_cowriter_complete || null;
+            this._routes.stream = TYPO3.settings.ajaxUrls.tx_cowriter_stream || null;
         }
     }
 
@@ -120,6 +122,76 @@ export class AIService {
         }
 
         return response.json();
+    }
+
+    /**
+     * Send a streaming completion request using Server-Sent Events.
+     *
+     * @param {string} prompt - The prompt to complete
+     * @param {CompletionOptions} [options={}] - Optional completion parameters
+     * @param {function(string): void} onChunk - Callback for each content chunk
+     * @returns {Promise<{done: boolean, model?: string}>} Final completion status
+     */
+    async completeStream(prompt, options = {}, onChunk) {
+        if (!this._routes.stream) {
+            // Fall back to non-streaming if stream route not available
+            const result = await this.complete(prompt, options);
+            if (onChunk && result.content) {
+                onChunk(result.content);
+            }
+            return { done: true, model: result.model };
+        }
+
+        const response = await fetch(this._routes.stream, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt, ...options }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let lastData = { done: false };
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+                        if (data.content && onChunk) {
+                            onChunk(data.content);
+                        }
+                        if (data.done) {
+                            lastData = data;
+                        }
+                    } catch (e) {
+                        if (e.message && !e.message.includes('JSON')) {
+                            throw e;
+                        }
+                        // Ignore JSON parse errors for incomplete chunks
+                    }
+                }
+            }
+        }
+
+        return lastData;
     }
 }
 

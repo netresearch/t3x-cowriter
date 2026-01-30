@@ -19,6 +19,9 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -30,6 +33,7 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use stdClass;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Http\JsonResponse;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
@@ -40,6 +44,8 @@ final class AjaxControllerTest extends TestCase
     private AjaxController $subject;
     private LlmServiceManagerInterface&MockObject $llmServiceManagerMock;
     private LlmConfigurationRepository&MockObject $configRepositoryMock;
+    private RateLimiterInterface&MockObject $rateLimiterMock;
+    private Context&MockObject $contextMock;
     private LoggerInterface&MockObject $loggerMock;
 
     protected function setUp(): void
@@ -48,11 +54,29 @@ final class AjaxControllerTest extends TestCase
 
         $this->llmServiceManagerMock = $this->createMock(LlmServiceManagerInterface::class);
         $this->configRepositoryMock  = $this->createMock(LlmConfigurationRepository::class);
+        $this->rateLimiterMock       = $this->createMock(RateLimiterInterface::class);
+        $this->contextMock           = $this->createMock(Context::class);
         $this->loggerMock            = $this->createMock(LoggerInterface::class);
+
+        // Default: rate limit allows request
+        $this->rateLimiterMock
+            ->method('checkLimit')
+            ->willReturn(new RateLimitResult(
+                allowed: true,
+                limit: 20,
+                remaining: 19,
+                resetTime: time() + 60,
+            ));
+
+        $this->contextMock
+            ->method('getPropertyFromAspect')
+            ->willReturn(1);
 
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
             $this->configRepositoryMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
             $this->loggerMock,
         );
     }
@@ -124,6 +148,122 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->chatAction($request);
 
         $this->assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function chatActionClampsTemperatureToValidRange(): void
+    {
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $options            = ['temperature' => 5.0]; // Out of range (max is 2.0)
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $messages,
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return $options !== null;
+                }),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+
+        $this->assertNotNull($capturedOptions);
+        $this->assertSame(2.0, $capturedOptions->getTemperature());
+    }
+
+    #[Test]
+    public function chatActionClampsTopPToValidRange(): void
+    {
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $options            = ['topP' => -0.5]; // Out of range (min is 0.0)
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $messages,
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return $options !== null;
+                }),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+
+        $this->assertNotNull($capturedOptions);
+        $this->assertSame(0.0, $capturedOptions->getTopP());
+    }
+
+    #[Test]
+    public function chatActionEnforcesMinimumMaxTokens(): void
+    {
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $options            = ['maxTokens' => -100]; // Invalid (must be >= 1)
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $messages,
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return $options !== null;
+                }),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+
+        $this->assertNotNull($capturedOptions);
+        $this->assertSame(1, $capturedOptions->getMaxTokens());
+    }
+
+    #[Test]
+    public function chatActionClampsPenaltiesToValidRange(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $options  = [
+            'frequencyPenalty' => 5.0,  // Out of range (max is 2.0)
+            'presencePenalty'  => -5.0,  // Out of range (min is -2.0)
+        ];
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $messages,
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return $options !== null;
+                }),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+
+        $this->assertNotNull($capturedOptions);
+        $this->assertSame(2.0, $capturedOptions->getFrequencyPenalty());
+        $this->assertSame(-2.0, $capturedOptions->getPresencePenalty());
     }
 
     #[Test]
@@ -582,77 +722,11 @@ final class AjaxControllerTest extends TestCase
      *
      * @param array<LlmConfiguration&MockObject> $items
      *
-     * @return QueryResultInterface
+     * @return QueryResultInterface<LlmConfiguration>
      */
     private function createQueryResultMock(array $items): QueryResultInterface
     {
-        return new class ($items) implements QueryResultInterface {
-            private int $position = 0;
-
-            /** @param array<LlmConfiguration> $items */
-            public function __construct(private readonly array $items) {}
-
-            public function setQuery(\TYPO3\CMS\Extbase\Persistence\QueryInterface $query): void {}
-
-            public function getQuery(): \TYPO3\CMS\Extbase\Persistence\QueryInterface
-            {
-                throw new RuntimeException('Not implemented');
-            }
-
-            public function getFirst(): ?object
-            {
-                return $this->items[0] ?? null;
-            }
-
-            public function toArray(): array
-            {
-                return $this->items;
-            }
-
-            public function count(): int
-            {
-                return count($this->items);
-            }
-
-            public function current(): mixed
-            {
-                return $this->items[$this->position] ?? null;
-            }
-
-            public function next(): void
-            {
-                ++$this->position;
-            }
-
-            public function key(): int
-            {
-                return $this->position;
-            }
-
-            public function valid(): bool
-            {
-                return isset($this->items[$this->position]);
-            }
-
-            public function rewind(): void
-            {
-                $this->position = 0;
-            }
-
-            public function offsetExists(mixed $offset): bool
-            {
-                return isset($this->items[$offset]);
-            }
-
-            public function offsetGet(mixed $offset): mixed
-            {
-                return $this->items[$offset] ?? null;
-            }
-
-            public function offsetSet(mixed $offset, mixed $value): void {}
-
-            public function offsetUnset(mixed $offset): void {}
-        };
+        return new TestQueryResult($items);
     }
 
     /**
@@ -660,78 +734,13 @@ final class AjaxControllerTest extends TestCase
      *
      * @param array<mixed> $items
      *
-     * @return QueryResultInterface
+     * @return QueryResultInterface<object>
      */
     private function createQueryResultMockWithMixedTypes(array $items): QueryResultInterface
     {
-        return new class ($items) implements QueryResultInterface {
-            private int $position = 0;
+        // Filter to objects only for type safety
+        $objects = array_filter($items, static fn (mixed $item): bool => is_object($item));
 
-            /** @param array<mixed> $items */
-            public function __construct(private readonly array $items) {}
-
-            public function setQuery(\TYPO3\CMS\Extbase\Persistence\QueryInterface $query): void {}
-
-            public function getQuery(): \TYPO3\CMS\Extbase\Persistence\QueryInterface
-            {
-                throw new RuntimeException('Not implemented');
-            }
-
-            public function getFirst(): ?object
-            {
-                $first = $this->items[0] ?? null;
-
-                return is_object($first) ? $first : null;
-            }
-
-            public function toArray(): array
-            {
-                return $this->items;
-            }
-
-            public function count(): int
-            {
-                return count($this->items);
-            }
-
-            public function current(): mixed
-            {
-                return $this->items[$this->position] ?? null;
-            }
-
-            public function next(): void
-            {
-                ++$this->position;
-            }
-
-            public function key(): int
-            {
-                return $this->position;
-            }
-
-            public function valid(): bool
-            {
-                return isset($this->items[$this->position]);
-            }
-
-            public function rewind(): void
-            {
-                $this->position = 0;
-            }
-
-            public function offsetExists(mixed $offset): bool
-            {
-                return isset($this->items[$offset]);
-            }
-
-            public function offsetGet(mixed $offset): mixed
-            {
-                return $this->items[$offset] ?? null;
-            }
-
-            public function offsetSet(mixed $offset, mixed $value): void {}
-
-            public function offsetUnset(mixed $offset): void {}
-        };
+        return new TestQueryResult(array_values($objects));
     }
 }

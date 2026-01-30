@@ -1,0 +1,20 @@
+{
+  "name": "@netresearch/t3-cowriter",
+  "version": "3.0.0",
+  "private": true,
+  "description": "TYPO3 AI Cowriter Extension - JavaScript Tests",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint Resources/Public/JavaScript/**/*.js",
+    "lint:fix": "eslint Resources/Public/JavaScript/**/*.js --fix"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^9.0.0",
+    "jsdom": "^26.0.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -38,12 +38,15 @@ export class Cowriter extends Core.Plugin {
         // own sanitization before being inserted into the DOM.
         let sanitized = content;
         let previousLength;
+        let iterations = 0;
+        const maxIterations = 100; // Defensive limit to prevent infinite loops
 
         // Run the replacement multiple times to handle any nested or overlapping tags
         do {
             previousLength = sanitized.length;
             sanitized = sanitized.replace(/<\/?[a-zA-Z][^>]*>/g, '');
-        } while (sanitized.length !== previousLength);
+            iterations++;
+        } while (sanitized.length !== previousLength && iterations < maxIterations);
 
         return sanitized;
     }
@@ -61,8 +64,9 @@ export class Cowriter extends Core.Plugin {
             const button = new UI.ButtonView();
 
             button.set({
-                label: 'Cowriter',
-                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="512" height="512"><path d="M19,10H7V6h2c1.654,0,3-1.346,3-3s-1.346-3-3-3H3C1.346,0,0,1.346,0,3s1.346,3,3,3h2v4c-2.757,0-5,2.243-5,5v3H24v-3c0-2.757-2.243-5-5-5ZM6,15c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1Zm4,0c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1Zm4,0c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1Zm4,0c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1ZM.101,20H23.899c-.465,2.279-2.485,4-4.899,4H5c-2.414,0-4.435-1.721-4.899-4Z"/></svg>'
+                label: 'Cowriter - AI text completion',
+                tooltip: true,
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="512" height="512" aria-hidden="true"><path d="M19,10H7V6h2c1.654,0,3-1.346,3-3s-1.346-3-3-3H3C1.346,0,0,1.346,0,3s1.346,3,3,3h2v4c-2.757,0-5,2.243-5,5v3H24v-3c0-2.757-2.243-5-5-5ZM6,15c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1Zm4,0c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1Zm4,0c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1Zm4,0c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1ZM.101,20H23.899c-.465,2.279-2.485,4-4.899,4H5c-2.414,0-4.435-1.721-4.899-4Z"/></svg>'
             });
 
             button.on('execute', async () => {

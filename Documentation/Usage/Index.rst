@@ -32,3 +32,22 @@ Example prompts
     in web development"
 *   "Create a bullet-point list of benefits for using our e-commerce solution"
 *   "Write a call-to-action paragraph encouraging visitors to contact us"
+
+Model override
+==============
+
+You can override the default model for a specific prompt by using the
+``#cw:`` prefix followed by the model identifier:
+
+..  code-block:: text
+
+    #cw:gpt-5.2-thinking Write a detailed technical analysis of our API architecture
+
+The model name must match a model available in your configured LLM provider.
+Valid model names follow the pattern: alphanumeric characters, hyphens, underscores,
+dots, colons, and forward slashes.
+
+..  tip::
+
+    This feature is useful for switching to a reasoning model (like ``gpt-5.2-thinking``
+    or ``claude-opus-4-5``) for complex prompts while keeping a faster model as the default.

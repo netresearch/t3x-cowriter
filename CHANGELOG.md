@@ -1,4 +1,4 @@
-# 3.0.0
+# 3.0.0 (2026-01-29)
 
 ## BREAKING
 
@@ -29,7 +29,7 @@
 
 - Team der Netresearch DTT GmbH
 
-# 2.0.0
+# 2.0.0 (2025-12-25)
 
 ## BREAKING
 
@@ -54,7 +54,7 @@
 
 - Team der Netresearch DTT GmbH
 
-# 1.2.3
+# 1.2.3 (2024-02-12)
 
 ## FEATURE
 
@@ -65,7 +65,7 @@
 - Norman Golatka
 
 
-# 1.2.2
+# 1.2.2 (2024-02-08)
 
 ## BUGFIX
 
@@ -75,7 +75,7 @@
 
 - Martin Wunderlich
 
-# 1.2.1
+# 1.2.1 (2023-03-30)
 
 ## BUGFIX
 
@@ -85,7 +85,7 @@
 
 - Gitsko
 
-# 1.2.0
+# 1.2.0 (2023-03-30)
 
 ## FEATURE
 
@@ -115,7 +115,7 @@
 - Martin Wunderlich
 - Sebastian Koschel
 
-# 1.1.2
+# 1.1.2 (2023-02-03)
 
 ## MISC
 
@@ -136,7 +136,7 @@
 - André Lademann
 - André Lademann
 
-# 1.1.1
+# 1.1.1 (2023-02-01)
 
 ## MISC
 
@@ -146,7 +146,7 @@
 
 - Gitsko
 
-# 1.1.0
+# 1.1.0 (2023-02-01)
 
 ## FEATURE
 
@@ -156,11 +156,15 @@
 
 - Sebastian Koschel
 
-# 1.0.1
+# 1.0.1 (2023-01-26)
 
-# 1.0.0
+Initial stable release with minor fixes.
 
-# 0.0.2
+# 1.0.0 (2023-01-25)
+
+First major release with CKEditor integration.
+
+# 0.0.2 (2023-01-25)
 
 ## MISC
 
@@ -175,7 +179,7 @@
 - André Lademann
 - Thomas Schöne
 
-# 0.0.1
+# 0.0.1 (2023-01-14)
 
 ## MISC
 

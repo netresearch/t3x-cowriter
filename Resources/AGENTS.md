@@ -17,8 +17,6 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 ```
 Resources/
 ├── Public/
-│   ├── Css/
-│   │   └── editor.css         # CKEditor styles
 │   ├── Icons/
 │   │   ├── Extension.svg      # Extension icon
 │   │   └── Module.svg         # Module icon
@@ -50,6 +48,13 @@ const response = await fetch(TYPO3.settings.ajaxUrls.tx_cowriter_chat, {
     body: JSON.stringify({ messages }),
 });
 
+// For streaming responses, use the stream route
+const response = await fetch(TYPO3.settings.ajaxUrls.tx_cowriter_stream, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, ...options }),
+});
+
 // BAD: Never call LLM APIs directly
 const response = await fetch('https://api.openai.com/v1/chat', {
     headers: { 'Authorization': `Bearer ${apiKey}` }  // NO!
@@ -69,16 +74,23 @@ const response = await fetch('https://api.openai.com/v1/chat', {
 
 **1. AJAX Route Usage**
 ```javascript
-class AIService {
+export class AIService {
+    // Use underscore prefix for private members
+    _routes = {
+        chat: null,
+        complete: null,
+    };
+
     constructor() {
-        this.routes = {
-            chat: TYPO3.settings.ajaxUrls.tx_cowriter_chat,
-            complete: TYPO3.settings.ajaxUrls.tx_cowriter_complete,
-        };
+        if (typeof TYPO3 !== 'undefined' && TYPO3.settings && TYPO3.settings.ajaxUrls) {
+            this._routes.chat = TYPO3.settings.ajaxUrls.tx_cowriter_chat || null;
+            this._routes.complete = TYPO3.settings.ajaxUrls.tx_cowriter_complete || null;
+        }
     }
 
     async chat(messages, options = {}) {
-        const response = await fetch(this.routes.chat, {
+        this._validateRoutes();
+        const response = await fetch(this._routes.chat, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ messages, options }),
@@ -90,14 +102,13 @@ class AIService {
 
 **2. CKEditor Plugin Structure**
 ```javascript
-import { Plugin } from '@ckeditor/ckeditor5-core';
+import { Core, UI } from "@typo3/ckeditor5-bundle.js";
 
-export default class Cowriter extends Plugin {
-    static get pluginName() {
-        return 'Cowriter';
-    }
+export class Cowriter extends Core.Plugin {
+    // Use static property (not getter) for plugin name
+    static pluginName = 'cowriter';
 
-    init() {
+    async init() {
         const editor = this.editor;
         // Plugin initialization...
     }
@@ -134,31 +145,33 @@ export default class Cowriter extends Plugin {
 ### Good: AIService Pattern
 
 ```javascript
-class AIService {
+export class AIService {
+    _routes = {
+        chat: null,
+        complete: null,
+    };
+
     constructor() {
-        this.routes = {
-            chat: TYPO3.settings.ajaxUrls.tx_cowriter_chat,
-            complete: TYPO3.settings.ajaxUrls.tx_cowriter_complete,
-        };
+        if (typeof TYPO3 !== 'undefined' && TYPO3.settings && TYPO3.settings.ajaxUrls) {
+            this._routes.chat = TYPO3.settings.ajaxUrls.tx_cowriter_chat || null;
+            this._routes.complete = TYPO3.settings.ajaxUrls.tx_cowriter_complete || null;
+        }
     }
 
     async chat(messages, options = {}) {
-        try {
-            const response = await fetch(this.routes.chat, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages, options }),
-            });
+        this._validateRoutes();
+        const response = await fetch(this._routes.chat, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages, options }),
+        });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Chat error:', error);
-            throw error;
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
         }
+
+        return response.json();
     }
 }
 ```

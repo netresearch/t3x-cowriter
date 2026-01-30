@@ -16,10 +16,11 @@ use TYPO3\CMS\Core\Attribute\AsEventListener;
 use TYPO3\CMS\Core\Page\Event\BeforeJavaScriptsRenderingEvent;
 
 /**
- * Event listener to inject AJAX URLs into the JavaScript settings.
+ * Event listener to inject AJAX URLs for the cowriter CKEditor plugin.
  *
- * This makes AJAX routes available to the CKEditor cowriter plugin
- * via TYPO3.settings.ajaxUrls.
+ * Injects URLs as a JSON data element (not executable JavaScript) and loads
+ * an external module to parse them. This approach is CSP-compliant and does
+ * not require 'unsafe-inline' in the Content-Security-Policy.
  */
 #[AsEventListener(identifier: 'cowriter-inject-ajax-urls')]
 final readonly class InjectAjaxUrlsListener
@@ -30,47 +31,47 @@ final readonly class InjectAjaxUrlsListener
 
     public function __invoke(BeforeJavaScriptsRenderingEvent $event): void
     {
-        // Only inject for inline JS (not external files)
+        // Only inject for inline context (backend pages)
         if (!$event->isInline()) {
             return;
         }
 
+        // Add JSON data element (type="application/json" is not executed)
         $event->getAssetCollector()->addInlineJavaScript(
-            'cowriter-ajax-urls',
-            $this->buildInlineJs(),
-            [],
+            'cowriter-ajax-urls-data',
+            $this->buildJsonData(),
+            ['type'     => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
+            ['priority' => true],
+        );
+
+        // Load the URL loader module that reads from the JSON data
+        $event->getAssetCollector()->addJavaScript(
+            'cowriter-url-loader',
+            'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/UrlLoader.js',
+            ['type'     => 'module'],
             ['priority' => true],
         );
     }
 
     /**
-     * Build inline JavaScript to inject AJAX URLs.
+     * Build JSON data containing AJAX URLs.
+     *
+     * This is NOT executable JavaScript - it's JSON data that will be
+     * parsed by the UrlLoader.js module.
      */
-    private function buildInlineJs(): string
+    private function buildJsonData(): string
     {
         $urls = [
             'tx_cowriter_chat' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('tx_cowriter_chat'),
             'tx_cowriter_complete' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('tx_cowriter_complete'),
+            'tx_cowriter_stream' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('tx_cowriter_stream'),
             'tx_cowriter_configurations' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('tx_cowriter_configurations'),
         ];
 
-        $urlsJson = json_encode($urls, JSON_THROW_ON_ERROR);
-
-        return <<<JS
-            (function() {
-                if (typeof TYPO3 === 'undefined') return;
-                TYPO3.settings = TYPO3.settings || {};
-                TYPO3.settings.ajaxUrls = TYPO3.settings.ajaxUrls || {};
-                var cowriterUrls = {$urlsJson};
-                for (var key in cowriterUrls) {
-                    if (cowriterUrls.hasOwnProperty(key)) {
-                        TYPO3.settings.ajaxUrls[key] = cowriterUrls[key];
-                    }
-                }
-            })();
-            JS;
+        return json_encode($urls, JSON_THROW_ON_ERROR);
     }
 }

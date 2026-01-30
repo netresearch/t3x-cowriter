@@ -6,6 +6,10 @@
 composer.lock
 *.zip
 
+# Node.js
+node_modules/
+package-lock.json
+
 # PHP CS Fixer
 .php-cs-fixer.cache
 .php-cs-fixer.php
