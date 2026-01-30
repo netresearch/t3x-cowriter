@@ -52,10 +52,10 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
     {
         parent::setUp();
 
-        $this->llmServiceMock = $this->createMock(LlmServiceManagerInterface::class);
-        $this->configRepoMock = $this->createMock(LlmConfigurationRepository::class);
+        $this->llmServiceMock  = $this->createMock(LlmServiceManagerInterface::class);
+        $this->configRepoMock  = $this->createMock(LlmConfigurationRepository::class);
         $this->rateLimiterMock = $this->createMock(RateLimiterInterface::class);
-        $this->contextMock = $this->createMock(Context::class);
+        $this->contextMock     = $this->createMock(Context::class);
 
         // Default: rate limiter allows requests
         $this->rateLimiterMock->method('checkLimit')->willReturn(
