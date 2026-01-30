@@ -102,36 +102,53 @@ jobs:
                 name: Unit Tests
                 if: ${{ always() && steps.install.conclusion == 'success' }}
                 run: |
-                    php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/UnitTests.xml --coverage-clover .Build/coverage/clover.xml
-
-            -   id: codecov
-                name: Upload coverage to Codecov
-                if: ${{ always() && steps.unit-tests.conclusion == 'success' }}
-                uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-                with:
-                    files: .Build/coverage/clover.xml
-                    fail_ci_if_error: false
+                    php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/UnitTests.xml --coverage-clover .Build/coverage/unit.xml
 
             -   id: integration-tests
                 name: Integration Tests
                 if: ${{ always() && steps.install.conclusion == 'success' }}
                 run: |
-                    .Build/bin/phpunit -c Build/phpunit/IntegrationTests.xml
+                    php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/IntegrationTests.xml --coverage-clover .Build/coverage/integration.xml
 
             -   id: e2e-tests
                 name: E2E Tests
                 if: ${{ always() && steps.install.conclusion == 'success' }}
                 run: |
-                    .Build/bin/phpunit -c Build/phpunit/E2ETests.xml
+                    php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/E2ETests.xml --coverage-clover .Build/coverage/e2e.xml
 
             -   id: functional-tests
                 name: Functional Tests
                 if: ${{ always() && steps.install.conclusion == 'success' }}
                 run: |
                     if [ -f "Build/phpunit/FunctionalTests.xml" ]; then
-                        .Build/bin/phpunit -c Build/phpunit/FunctionalTests.xml
+                        php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/FunctionalTests.xml --coverage-clover .Build/coverage/functional.xml
                     else
                         echo "FunctionalTests.xml not found, skipping..."
                     fi
                 env:
                     typo3DatabaseDriver: pdo_sqlite
+
+            -   id: setup-node
+                name: Set up Node.js
+                if: ${{ always() && steps.install.conclusion == 'success' }}
+                uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+                with:
+                    node-version: '22'
+
+            -   id: npm-install
+                name: Install npm dependencies
+                if: ${{ always() && steps.setup-node.conclusion == 'success' }}
+                run: npm install
+
+            -   id: js-tests
+                name: JavaScript Tests
+                if: ${{ always() && steps.npm-install.conclusion == 'success' }}
+                run: npm run test:coverage
+
+            -   id: codecov
+                name: Upload coverage to Codecov
+                if: ${{ always() && steps.install.conclusion == 'success' }}
+                uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+                with:
+                    files: .Build/coverage/unit.xml,.Build/coverage/integration.xml,.Build/coverage/e2e.xml,.Build/coverage/functional.xml,coverage/lcov.info
+                    fail_ci_if_error: false

@@ -9,6 +9,7 @@ composer.lock
 # Node.js
 node_modules/
 package-lock.json
+coverage/
 
 # PHP CS Fixer
 .php-cs-fixer.cache
