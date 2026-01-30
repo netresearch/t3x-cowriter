@@ -19,6 +19,8 @@ use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\RateLimitResult;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
@@ -28,6 +30,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 /**
@@ -59,7 +62,7 @@ abstract class AbstractE2ETestCase extends TestCase
      *
      * @param array<CompletionResponse> $responseQueue Responses to return from chat() calls
      *
-     * @return array{controller: AjaxController, serviceManager: LlmServiceManagerInterface&MockObject, configRepo: LlmConfigurationRepository&MockObject}
+     * @return array{controller: AjaxController, serviceManager: LlmServiceManagerInterface&MockObject, configRepo: LlmConfigurationRepository&MockObject, rateLimiter: RateLimiterInterface&MockObject, context: Context&MockObject}
      */
     protected function createCompleteStack(array $responseQueue = []): array
     {
@@ -74,10 +77,22 @@ abstract class AbstractE2ETestCase extends TestCase
         // Create configuration repository mock
         $configRepo = $this->createMock(LlmConfigurationRepository::class);
 
+        // Create rate limiter mock (default: allow all requests)
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        // Create context mock (default: return user ID 1)
+        $context = $this->createMock(Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
         // Create controller with mocked dependencies
         $controller = new AjaxController(
             $serviceManager,
             $configRepo,
+            $rateLimiter,
+            $context,
             $this->logger,
         );
 
@@ -85,6 +100,8 @@ abstract class AbstractE2ETestCase extends TestCase
             'controller'     => $controller,
             'serviceManager' => $serviceManager,
             'configRepo'     => $configRepo,
+            'rateLimiter'    => $rateLimiter,
+            'context'        => $context,
         ];
     }
 

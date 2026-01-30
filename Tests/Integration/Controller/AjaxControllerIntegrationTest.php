@@ -18,6 +18,8 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
 use Override;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,6 +27,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 /**
@@ -39,6 +42,8 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
     private AjaxController $subject;
     private LlmServiceManagerInterface&MockObject $llmServiceMock;
     private LlmConfigurationRepository&MockObject $configRepoMock;
+    private RateLimiterInterface&MockObject $rateLimiterMock;
+    private Context&MockObject $contextMock;
 
     #[Override]
     protected function setUp(): void
@@ -47,10 +52,22 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
 
         $this->llmServiceMock = $this->createMock(LlmServiceManagerInterface::class);
         $this->configRepoMock = $this->createMock(LlmConfigurationRepository::class);
+        $this->rateLimiterMock = $this->createMock(RateLimiterInterface::class);
+        $this->contextMock = $this->createMock(Context::class);
+
+        // Default: rate limiter allows requests
+        $this->rateLimiterMock->method('checkLimit')->willReturn(
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        // Default: context returns user ID
+        $this->contextMock->method('getPropertyFromAspect')->willReturn(1);
 
         $this->subject = new AjaxController(
             $this->llmServiceMock,
             $this->configRepoMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
             new NullLogger(),
         );
     }
