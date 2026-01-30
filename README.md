@@ -2,11 +2,7 @@
 
 <!-- CI/Quality -->
 [![CI](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml/badge.svg)](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/netresearch/t3x-cowriter/graph/badge.svg)](https://codecov.io/gh/netresearch/t3x-cowriter)
-
-<!-- Security -->
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/netresearch/t3x-cowriter/badge)](https://scorecard.dev/viewer/?uri=github.com/netresearch/t3x-cowriter)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10050/badge)](https://www.bestpractices.dev/projects/10050)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/netresearch/t3x-cowriter/badge)](https://securityscorecards.dev/viewer/?uri=github.com/netresearch/t3x-cowriter)
 
 <!-- Standards -->
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%2010-brightgreen.svg)](https://phpstan.org/)
