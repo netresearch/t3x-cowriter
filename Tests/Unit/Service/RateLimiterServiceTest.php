@@ -12,12 +12,14 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\Service;
 
 use Netresearch\T3Cowriter\Service\RateLimiterService;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 
+#[AllowMockObjectsWithoutExpectations]
 #[CoversClass(RateLimiterService::class)]
 final class RateLimiterServiceTest extends TestCase
 {

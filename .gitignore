@@ -33,6 +33,9 @@ index.html
 # Documentation generated
 Documentation-GENERATED-temp/
 
+# Conformance reports (generated)
+.conformance-reports/
+
 # direnv
 .envrc
 .direnv/

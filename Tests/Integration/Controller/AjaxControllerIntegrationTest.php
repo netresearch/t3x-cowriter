@@ -22,6 +22,7 @@ use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
 use Override;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -36,6 +37,7 @@ use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
  * Tests complete request/response flows through the controller
  * with mocked LLM service responses.
  */
+#[AllowMockObjectsWithoutExpectations]
 #[CoversClass(AjaxController::class)]
 final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
 {

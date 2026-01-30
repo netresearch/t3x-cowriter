@@ -15,6 +15,7 @@ use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -26,6 +27,7 @@ use RuntimeException;
  * Tests the full path from AjaxController through LlmServiceManager
  * and back, verifying correct data flow, XSS escaping, and error handling.
  */
+#[AllowMockObjectsWithoutExpectations]
 #[CoversClass(AjaxController::class)]
 final class CowriterWorkflowTest extends AbstractE2ETestCase
 {

@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\EventListener;
 
 use Netresearch\T3Cowriter\EventListener\InjectAjaxUrlsListener;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -21,6 +22,7 @@ use TYPO3\CMS\Core\Http\Uri;
 use TYPO3\CMS\Core\Page\AssetCollector;
 use TYPO3\CMS\Core\Page\Event\BeforeJavaScriptsRenderingEvent;
 
+#[AllowMockObjectsWithoutExpectations]
 #[CoversClass(InjectAjaxUrlsListener::class)]
 final class InjectAjaxUrlsListenerTest extends TestCase
 {
@@ -64,7 +66,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
             ->method('addInlineJavaScript')
             ->with(
                 'cowriter-ajax-urls-data',
-                $this->isType('string'),
+                $this->isString(),
                 ['type'     => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
                 ['priority' => true],
             );
