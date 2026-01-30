@@ -150,5 +150,6 @@ jobs:
                 if: ${{ always() && steps.install.conclusion == 'success' }}
                 uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
                 with:
+                    token: ${{ secrets.CODECOV_TOKEN }}
                     files: .Build/coverage/unit.xml,.Build/coverage/integration.xml,.Build/coverage/e2e.xml,.Build/coverage/functional.xml,coverage/lcov.info
                     fail_ci_if_error: false
