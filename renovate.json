@@ -4,7 +4,7 @@
     "config:recommended"
   ],
   "automergeType": "pr",
-  "platformAutomerge": false,
+  "platformAutomerge": true,
   "packageRules": [
     {
       "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
