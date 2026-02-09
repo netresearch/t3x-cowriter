@@ -56,8 +56,7 @@ export class Cowriter extends Core.Plugin {
         this._service = new AIService();
 
         const editor = this.editor,
-            model = editor.model,
-            view = editor.view;
+            model = editor.model;
 
         // Button to add text at current text cursor position:
         editor.ui.componentFactory.add(Cowriter.pluginName, () => {
