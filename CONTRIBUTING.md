@@ -80,4 +80,4 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Questions?
 
-Open an issue or contact the maintainers at info@netresearch.de.
+Open an issue or contact the maintainers via [GitHub Issues](https://github.com/netresearch/t3x-cowriter/issues).
