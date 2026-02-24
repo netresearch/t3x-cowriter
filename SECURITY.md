@@ -18,7 +18,7 @@ vulnerability, please report it responsibly.
 **DO NOT** create a public GitHub issue for security vulnerabilities.
 
 Instead, please report security vulnerabilities via email to:
-**security@netresearch.de**
+**[GitHub Security Advisories](https://github.com/netresearch/t3x-cowriter/security/advisories/new)**
 
 Include the following information:
 - Type of vulnerability
