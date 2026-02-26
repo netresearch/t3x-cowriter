@@ -3,14 +3,14 @@
 
 .PHONY: help
 help: ## Show available targets
-	@awk 'BEGIN{FS=":.*##";print "\nUsage: make <target>\n"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "  %-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # ===================================
 # DDEV Environment Commands
 # ===================================
 
 .PHONY: up
-up: start setup ## Complete startup (start DDEV + run setup) - ONE COMMAND TO RULE THEM ALL
+up: start setup ## Complete startup (start DDEV + run setup)
 
 .PHONY: start
 start: ## Start DDEV environment
@@ -49,6 +49,22 @@ ssh: ## SSH into DDEV web container
 install: ## Install composer dependencies
 	composer install
 
+.PHONY: cgl
+cgl: ## Check code style (dry-run)
+	composer ci:test:php:cgl
+
+.PHONY: cgl-fix
+cgl-fix: ## Fix code style
+	composer ci:cgl
+
+.PHONY: phpstan
+phpstan: ## Run PHPStan static analysis
+	composer ci:test:php:phpstan
+
+.PHONY: rector
+rector: ## Run Rector dry-run
+	composer ci:test:php:rector
+
 .PHONY: lint
 lint: ## Run all linters (PHP syntax + PHPStan + code style)
 	@echo "==> Running PHP lint..."
@@ -61,38 +77,41 @@ lint: ## Run all linters (PHP syntax + PHPStan + code style)
 	composer ci:test:php:rector
 	@echo "All linters passed"
 
-.PHONY: format
-format: ## Auto-fix code style issues (PSR-12)
-	composer ci:php:rector
-	composer ci:php:cgl
+.PHONY: ci
+ci: ## Run complete CI pipeline (pre-commit checks)
+	composer ci:test
 
-.PHONY: typecheck
-typecheck: ## Run PHPStan static analysis
-	composer ci:test:php:phpstan
+# ===================================
+# Test Commands
+# ===================================
 
 .PHONY: test
-test: test-unit test-integration test-e2e ## Run all tests (unit + integration + e2e)
+test: test-unit test-functional ## Run all tests (unit + functional)
 
 .PHONY: test-unit
-test-unit: ## Run unit tests only
-	ddev exec -d /var/www/t3_cowriter .Build/bin/phpunit -c Build/phpunit/UnitTests.xml
+test-unit: ## Run unit tests
+	composer ci:test:php:unit
+
+.PHONY: test-functional
+test-functional: ## Run functional tests
+	composer ci:test:php:functional
 
 .PHONY: test-integration
-test-integration: ## Run integration tests only
-	ddev exec -d /var/www/t3_cowriter .Build/bin/phpunit -c Build/phpunit/IntegrationTests.xml
+test-integration: ## Run integration tests
+	composer ci:test:php:integration
 
 .PHONY: test-e2e
-test-e2e: ## Run E2E tests only
-	ddev exec -d /var/www/t3_cowriter .Build/bin/phpunit -c Build/phpunit/E2ETests.xml
+test-e2e: ## Run E2E tests
+	composer ci:test:php:e2e
 
 .PHONY: test-coverage
 test-coverage: ## Generate test coverage report (unit + integration)
 	ddev exec -d /var/www/t3_cowriter php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/UnitTests.xml --coverage-html var/coverage/unit
 	ddev exec -d /var/www/t3_cowriter php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/IntegrationTests.xml --coverage-html var/coverage/integration
 
-.PHONY: ci
-ci: ## Run complete CI pipeline (pre-commit checks)
-	composer ci:test
+# ===================================
+# Cleanup
+# ===================================
 
 .PHONY: clean
 clean: ## Clean temporary files and caches
