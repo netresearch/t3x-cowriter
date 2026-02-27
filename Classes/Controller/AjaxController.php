@@ -344,8 +344,8 @@ final readonly class AjaxController
             }
 
             $list[] = [
-                'identifier' => $config->getIdentifier(),
-                'name'       => $config->getName(),
+                'identifier' => htmlspecialchars($config->getIdentifier(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'name'       => htmlspecialchars($config->getName(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
                 'isDefault'  => $config->isDefault(),
             ];
         }
@@ -369,6 +369,11 @@ final readonly class AjaxController
     }
 
     /**
+     * Maximum tokens upper bound to prevent denial-of-wallet attacks.
+     */
+    private const MAX_TOKENS_UPPER_BOUND = 16384;
+
+    /**
      * Create ChatOptions from array of options with range validation.
      *
      * Validates and clamps numeric parameters to their valid ranges:
@@ -376,7 +381,11 @@ final readonly class AjaxController
      * - topP: 0.0 to 1.0
      * - frequencyPenalty: -2.0 to 2.0
      * - presencePenalty: -2.0 to 2.0
-     * - maxTokens: minimum 1
+     * - maxTokens: 1 to 16384
+     *
+     * Security: provider, model, and systemPrompt overrides from the client
+     * are intentionally ignored. These are controlled server-side via
+     * LlmConfiguration records in the nr-llm extension.
      *
      * @param array<string, mixed> $options
      */
@@ -390,7 +399,7 @@ final readonly class AjaxController
             ? $this->clampFloat((float) $options['temperature'], 0.0, 2.0)
             : null;
         $maxTokens = isset($options['maxTokens']) && is_numeric($options['maxTokens'])
-            ? max(1, (int) $options['maxTokens'])
+            ? $this->clampInt((int) $options['maxTokens'], 1, self::MAX_TOKENS_UPPER_BOUND)
             : null;
         $topP = isset($options['topP']) && is_numeric($options['topP'])
             ? $this->clampFloat((float) $options['topP'], 0.0, 1.0)
@@ -404,18 +413,8 @@ final readonly class AjaxController
         $responseFormat = isset($options['responseFormat']) && is_string($options['responseFormat'])
             ? $options['responseFormat']
             : null;
-        $systemPrompt = isset($options['systemPrompt']) && is_string($options['systemPrompt'])
-            ? $options['systemPrompt']
-            : null;
-        /** @var array<int, string>|null $stopSequences */
         $stopSequences = isset($options['stopSequences']) && is_array($options['stopSequences'])
-            ? $options['stopSequences']
-            : null;
-        $provider = isset($options['provider']) && is_string($options['provider'])
-            ? $options['provider']
-            : null;
-        $model = isset($options['model']) && is_string($options['model'])
-            ? $options['model']
+            ? array_values(array_filter($options['stopSequences'], is_string(...)))
             : null;
 
         return new ChatOptions(
@@ -425,10 +424,7 @@ final readonly class AjaxController
             frequencyPenalty: $frequencyPenalty,
             presencePenalty: $presencePenalty,
             responseFormat: $responseFormat,
-            systemPrompt: $systemPrompt,
-            stopSequences: $stopSequences,
-            provider: $provider,
-            model: $model,
+            stopSequences: $stopSequences !== [] ? $stopSequences : null,
         );
     }
 
@@ -436,6 +432,14 @@ final readonly class AjaxController
      * Clamp a float value to a range.
      */
     private function clampFloat(float $value, float $min, float $max): float
+    {
+        return max($min, min($max, $value));
+    }
+
+    /**
+     * Clamp an integer value to a range.
+     */
+    private function clampInt(int $value, int $min, int $max): int
     {
         return max($min, min($max, $value));
     }

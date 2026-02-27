@@ -93,7 +93,10 @@ export class Cowriter extends Core.Plugin {
                     content = this._sanitizeContent(rawContent);
                 } catch (error) {
                     console.error('Cowriter error:', error);
-                    errorMessage = `[Cowriter Error: ${error.message}] `;
+                    // Sanitize error message before inserting into editor to prevent XSS
+                    const safeMessage = (error.message || 'Unknown error')
+                        .replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' })[c]);
+                    errorMessage = `[Cowriter Error: ${safeMessage}] `;
                 }
 
                 model.change((writer) => {
