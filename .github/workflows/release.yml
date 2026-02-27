@@ -58,6 +58,7 @@ jobs:
             --exclude='.php-cs-fixer.cache' \
             --exclude='AGENTS.md' \
             --exclude='Classes/AGENTS.md' \
+            --exclude='Resources/AGENTS.md' \
             --exclude='Makefile' \
             --exclude='docs' \
             --exclude='eslint.config.js' \
@@ -85,6 +86,7 @@ jobs:
             -x '.php-cs-fixer.cache' \
             -x 'AGENTS.md' \
             -x 'Classes/AGENTS.md' \
+            -x 'Resources/AGENTS.md' \
             -x 'Makefile' \
             -x 'docs/*' \
             -x 'eslint.config.js' \

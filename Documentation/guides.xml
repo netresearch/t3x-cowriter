@@ -4,8 +4,8 @@
         xsi:schemaLocation="https://www.phpdoc.org/guides vendor/phpdocumentor/guides-cli/resources/schema/guides.xsd"
         theme="typo3docs">
     <project title="AI Cowriter for TYPO3"
-             version="3.0"
-             release="3.0.0"
+             version="4.0"
+             release="4.0.0"
              copyright="Netresearch DTT GmbH"/>
     <extension extension-key="t3_cowriter"
                vendor="netresearch"
