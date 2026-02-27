@@ -1,0 +1,115 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+permissions: {}
+jobs:
+  release:
+    name: Build, sign and release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # 2.36.0
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+
+      - name: Install composer dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+      - name: Create release archives
+        run: |
+          ARCHIVE_NAME="t3-cowriter-${{ steps.version.outputs.version }}"
+          mkdir -p dist
+
+          tar czf "dist/${ARCHIVE_NAME}.tar.gz" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.ddev' \
+            --exclude='.Build' \
+            --exclude='Tests' \
+            --exclude='dist' \
+            --exclude='.editorconfig' \
+            --exclude='.gitattributes' \
+            --exclude='.gitignore' \
+            --exclude='.php-cs-fixer.cache' \
+            --exclude='Makefile' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='node_modules' \
+            --exclude='phpunit.xml' \
+            --exclude='Build' \
+            .
+
+          # Create zip with the same exclusions
+          zip -r "dist/${ARCHIVE_NAME}.zip" . \
+            -x '.git/*' \
+            -x '.github/*' \
+            -x '.ddev/*' \
+            -x '.Build/*' \
+            -x 'Tests/*' \
+            -x 'dist/*' \
+            -x '.editorconfig' \
+            -x '.gitattributes' \
+            -x '.gitignore' \
+            -x '.php-cs-fixer.cache' \
+            -x 'Makefile' \
+            -x 'package.json' \
+            -x 'package-lock.json' \
+            -x 'node_modules/*' \
+            -x 'phpunit.xml' \
+            -x 'Build/*'
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@17ae1740179002c89186b61233e0f892c3118b11 # v0.23.0
+        with:
+          path: .
+          format: spdx-json
+          output-file: dist/t3-cowriter-${{ steps.version.outputs.version }}.sbom.spdx.json
+
+      - name: Generate SHA256 checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS.txt
+
+      - name: Sign artifacts with Cosign (keyless)
+        working-directory: dist
+        run: |
+          for file in *.tar.gz *.zip *.spdx.json SHA256SUMS.txt; do
+            cosign sign-blob --yes "$file" --output-signature "${file}.sig" --output-certificate "${file}.pem"
+          done
+
+      - name: Generate build provenance attestation
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-path: |
+            dist/t3-cowriter-${{ steps.version.outputs.version }}.tar.gz
+            dist/t3-cowriter-${{ steps.version.outputs.version }}.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        with:
+          generate_release_notes: true
+          files: dist/*
+          fail_on_unmatched_files: true
