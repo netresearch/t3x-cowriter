@@ -1,9 +1,19 @@
 # 4.0.0 (2026-02-27)
 
+## BREAKING
+
+- Requires PHP 8.2+ and TYPO3 v13.4+ or v14.0+ (dropped TYPO3 v12 support)
+- Requires nr-llm extension for LLM provider abstraction (no standalone operation)
+- Removed direct OpenAI/Ollama API support from JavaScript frontend
+- API keys now managed exclusively by nr-llm extension (not in extension settings)
+
 ## FEATURE
 
 - TYPO3 v13.4 LTS support added alongside v14
 - PHP 8.2, 8.3, 8.4, 8.5 support (widened from 8.5-only)
+- Rate limiting: 20 requests/minute per backend user
+- Server-Sent Events streaming for real-time completions
+- Configuration selector for multiple LLM configurations
 - Enterprise CI/CD: PR quality gates, release with SBOM/Cosign signing, SLSA Level 3 provenance, security scanning
 - PHP modernization via Rector
 - TYPO3 conformance fixes

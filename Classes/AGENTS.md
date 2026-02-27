@@ -70,7 +70,7 @@ make test-unit
 make test-coverage
 
 # PHPStan level 10
-make typecheck
+make phpstan
 ```
 
 ## Code Style
@@ -118,7 +118,7 @@ public static function success(CompletionResponse $response): self
 
 1. **PHPStan level 10:** Zero errors
 2. **HTML escaping:** All LLM output escaped
-3. **Exception handling:** RateLimitException, ProviderException
+3. **Exception handling:** ProviderException, RateLimitResult handling
 4. **Type safety:** All properties typed
 5. **Tests first:** TDD approach
 
@@ -129,8 +129,12 @@ public static function success(CompletionResponse $response): self
 ```php
 public function completeAction(ServerRequestInterface $request): ResponseInterface
 {
-    $dto = CompleteRequest::fromRequest($request);
+    $rateLimitResult = $this->checkRateLimit();
+    if (!$rateLimitResult->allowed) {
+        return $this->rateLimitedResponse($rateLimitResult);
+    }
 
+    $dto = CompleteRequest::fromRequest($request);
     if (!$dto->isValid()) {
         return new JsonResponse(
             CompleteResponse::error('No prompt provided')->jsonSerialize(),
@@ -143,10 +147,10 @@ public function completeAction(ServerRequestInterface $request): ResponseInterfa
         return new JsonResponse(
             CompleteResponse::success($response)->jsonSerialize()
         );
-    } catch (RateLimitException $e) {
+    } catch (ProviderException $e) {
         return new JsonResponse(
-            CompleteResponse::rateLimited($e->getRetryAfter())->jsonSerialize(),
-            429
+            CompleteResponse::error('LLM provider error occurred')->jsonSerialize(),
+            500
         );
     }
 }

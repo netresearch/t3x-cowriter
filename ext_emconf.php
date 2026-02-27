@@ -8,16 +8,15 @@
 declare(strict_types=1);
 
 $EM_CONF[$_EXTKEY] = [
-    'title'            => 'AI Cowriter',
-    'description'      => 'With the help of AI you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.',
-    'category'         => 'misc',
-    'author'           => 'Team der Netresearch DTT GmbH',
-    'author_email'     => '',
-    'author_company'   => 'Netresearch DTT GmbH',
-    'clearCacheOnLoad' => 0,
-    'version'          => '4.0.0',
-    'state'            => 'stable',
-    'constraints'      => [
+    'title'          => 'AI Cowriter',
+    'description'    => 'With the help of AI you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.',
+    'category'       => 'be',
+    'author'         => 'Team der Netresearch DTT GmbH',
+    'author_email'   => '',
+    'author_company' => 'Netresearch DTT GmbH',
+    'version'        => '4.0.0',
+    'state'          => 'stable',
+    'constraints'    => [
         'depends' => [
             'php'          => '8.2.0-8.9.99',
             'typo3'        => '13.4.0-14.4.99',
@@ -26,10 +25,5 @@ $EM_CONF[$_EXTKEY] = [
         ],
         'conflicts' => [],
         'suggests'  => [],
-    ],
-    'autoload' => [
-        'psr-4' => [
-            'Netresearch\\T3Cowriter\\' => 'Classes/',
-        ],
     ],
 ];

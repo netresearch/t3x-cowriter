@@ -190,7 +190,12 @@ export class AIService {
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = JSON.parse(line.slice(6));
+                        let data;
+                        try {
+                            data = JSON.parse(line.slice(6));
+                        } catch {
+                            continue; // Skip malformed SSE chunks
+                        }
                         if (data.error) {
                             throw new Error(data.error);
                         }
