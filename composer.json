@@ -11,6 +11,10 @@
         {
             "type": "vcs",
             "url": "https://github.com/netresearch/t3x-nr-llm"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/netresearch/t3x-nr-vault"
         }
     ],
     "minimum-stability": "dev",
@@ -54,11 +58,11 @@
         "docs": "https://github.com/netresearch/t3x-cowriter"
     },
     "require": {
-        "php": "^8.5",
+        "php": "^8.2",
         "typo3/cms-core": "^13.4 || ^14.0",
         "typo3/cms-backend": "^13.4 || ^14.0",
         "typo3/cms-rte-ckeditor": "^13.4 || ^14.0",
-        "netresearch/nr-llm": "^0.1"
+        "netresearch/nr-llm": "dev-feat/php82-typo3-v13"
     },
     "require-dev": {
         "typo3/testing-framework": "^8.0 || ^9.0",
