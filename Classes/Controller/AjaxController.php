@@ -51,11 +51,11 @@ final readonly class AjaxController
         PROMPT;
 
     public function __construct(
-        private readonly LlmServiceManagerInterface $llmServiceManager,
-        private readonly LlmConfigurationRepository $configurationRepository,
-        private readonly RateLimiterInterface $rateLimiter,
-        private readonly Context $context,
-        private readonly LoggerInterface $logger,
+        private LlmServiceManagerInterface $llmServiceManager,
+        private LlmConfigurationRepository $configurationRepository,
+        private RateLimiterInterface $rateLimiter,
+        private Context $context,
+        private LoggerInterface $logger,
     ) {}
 
     /**
@@ -163,7 +163,7 @@ final readonly class AjaxController
 
         // Resolve configuration (from identifier or default)
         $configuration = $this->resolveConfiguration($dto->configuration);
-        if ($configuration === null) {
+        if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
                 CompleteResponse::error(
                     'No LLM configuration available. Please configure the nr_llm extension.',
@@ -249,7 +249,7 @@ final readonly class AjaxController
 
         // Resolve configuration (from identifier or default)
         $configuration = $this->resolveConfiguration($dto->configuration);
-        if ($configuration === null) {
+        if (!$configuration instanceof LlmConfiguration) {
             return $this->sseErrorResponse(
                 'No LLM configuration available. Please configure the nr_llm extension.',
                 404,
@@ -342,6 +342,7 @@ final readonly class AjaxController
             if (!$config instanceof LlmConfiguration) {
                 continue;
             }
+
             $list[] = [
                 'identifier' => $config->getIdentifier(),
                 'name'       => $config->getName(),

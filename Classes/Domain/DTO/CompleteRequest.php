@@ -79,6 +79,7 @@ final readonly class CompleteRequest
                 $modelOverride = $candidateModel;
                 $prompt        = trim(substr($rawPrompt, strlen($matches[0])));
             }
+
             // If invalid model name, keep the original prompt unchanged (ignore the prefix)
         }
 

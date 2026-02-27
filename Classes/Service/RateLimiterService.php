@@ -108,7 +108,7 @@ final readonly class RateLimiterService implements RateLimiterInterface
         // Filter to ensure we only have integer timestamps
         return array_values(array_filter(
             $data,
-            static fn (mixed $value): bool => is_int($value),
+            is_int(...),
         ));
     }
 
