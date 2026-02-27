@@ -22,17 +22,17 @@ final readonly class RateLimiterService implements RateLimiterInterface
     /**
      * Default requests per minute limit.
      */
-    private const int DEFAULT_REQUESTS_PER_MINUTE = 20;
+    private const DEFAULT_REQUESTS_PER_MINUTE = 20;
 
     /**
      * Window size in seconds (1 minute).
      */
-    private const int WINDOW_SIZE_SECONDS = 60;
+    private const WINDOW_SIZE_SECONDS = 60;
 
     /**
      * Cache key prefix for rate limit entries.
      */
-    private const string CACHE_PREFIX = 'cowriter_ratelimit_';
+    private const CACHE_PREFIX = 'cowriter_ratelimit_';
 
     public function __construct(
         private FrontendInterface $cache,

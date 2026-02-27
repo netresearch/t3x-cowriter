@@ -24,20 +24,20 @@ final readonly class CompleteRequest
     /**
      * Pattern to match model override prefix: #cw:model-name followed by space.
      */
-    private const string MODEL_OVERRIDE_PATTERN = '/^#cw:(\S+)\s+/';
+    private const MODEL_OVERRIDE_PATTERN = '/^#cw:(\S+)\s+/';
 
     /**
      * Allowed characters in model names (alphanumeric, hyphens, underscores, dots, colons, slashes).
      * Examples: gpt-4o, claude-3-opus-20240229, mistral/mixtral-8x7b, openai:gpt-4.
      */
-    private const string MODEL_NAME_PATTERN = '/^[a-zA-Z0-9][-a-zA-Z0-9_.:\/]*$/';
+    private const MODEL_NAME_PATTERN = '/^[a-zA-Z0-9][-a-zA-Z0-9_.:\/]*$/';
 
     /**
      * Maximum allowed prompt length in characters.
      * Prevents denial-of-wallet attacks and excessive token consumption.
      * 32KB is generous for most use cases while providing a safety limit.
      */
-    private const int MAX_PROMPT_LENGTH = 32768;
+    private const MAX_PROMPT_LENGTH = 32768;
 
     public function __construct(
         public string $prompt,

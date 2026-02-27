@@ -30,10 +30,10 @@ $config
     // Enable fixers that might change behavior (you control which via setRules)
     ->setRiskyAllowed(true)
     ->setRules([
-        // Base style + modern PHP (8.5+ required)
+        // Base style + modern PHP (8.2+ required)
         '@Symfony'          => true,
         '@PER-CS2x0'        => true,
-        '@PHP8x4Migration'  => true,
+        '@PHP8x2Migration'  => true,
 
         // --- Your original customizations (kept / refined) ---
         'declare_strict_types' => true,

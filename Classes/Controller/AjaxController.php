@@ -43,7 +43,7 @@ final readonly class AjaxController
     /**
      * System prompt for the cowriter assistant.
      */
-    private const string SYSTEM_PROMPT = <<<'PROMPT'
+    private const SYSTEM_PROMPT = <<<'PROMPT'
         You are a professional writing assistant integrated into a CMS editor.
         Your task is to improve, enhance, or generate text based on the user's request.
         Respond ONLY with the improved/generated text, without any explanations,
