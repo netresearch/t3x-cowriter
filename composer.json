@@ -54,11 +54,11 @@
         "docs": "https://github.com/netresearch/t3x-cowriter"
     },
     "require": {
-        "php": "^8.2",
+        "php": "^8.5",
         "typo3/cms-core": "^13.4 || ^14.0",
         "typo3/cms-backend": "^13.4 || ^14.0",
         "typo3/cms-rte-ckeditor": "^13.4 || ^14.0",
-        "netresearch/nr-llm": "dev-main"
+        "netresearch/nr-llm": "^0.1"
     },
     "require-dev": {
         "typo3/testing-framework": "^8.0 || ^9.0",

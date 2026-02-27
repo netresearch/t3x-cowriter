@@ -47,5 +47,8 @@ jobs:
         with:
           node-version: 22
 
+      - name: Generate lockfile
+        run: npm i --package-lock-only
+
       - name: npm audit
         run: npm audit --audit-level=high
