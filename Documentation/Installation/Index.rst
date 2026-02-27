@@ -16,13 +16,14 @@ The extension is installed via Composer only.
 Composer installation
 =====================
 
-Install both the cowriter extension and its dependency:
+Install via Composer (the :composer:`netresearch/nr-llm` dependency is installed
+automatically):
 
 ..  code-block:: bash
 
-    composer require netresearch/t3-cowriter netresearch/nr-llm
+    composer require netresearch/t3-cowriter
 
-After installation, activate both extensions in the TYPO3 Extension Manager or via CLI:
+After installation, activate the extensions in the TYPO3 Extension Manager or via CLI:
 
 ..  code-block:: bash
 
@@ -35,7 +36,7 @@ Version matrix
 ==============  ==============  ================
 Extension       TYPO3           PHP
 ==============  ==============  ================
-3.x             13.4 - 14.0     8.2 - 8.5
+3.x             13.4 - 14       8.2 - 8.5
 2.x             12.4            8.2 - 8.4
 1.x             11.5            7.4 - 8.1
 ==============  ==============  ================

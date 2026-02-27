@@ -79,9 +79,12 @@ Add to your RTE configuration YAML:
 
 ```yaml
 editor:
-  externalPlugins:
-    cowriter:
-      resource: "EXT:t3_cowriter/Resources/Public/JavaScript/Plugins/cowriter/"
+  config:
+    importModules:
+      - { module: '@netresearch/t3_cowriter/cowriter', exports: ['Cowriter'] }
+    toolbar:
+      items:
+        - cowriter
 ```
 
 ## Usage
@@ -96,8 +99,8 @@ editor:
 Prefix your prompt with `#cw:model-name` to use a specific model:
 
 ```
-#cw:gpt-4o Improve this text
-#cw:claude-sonnet-4-20250514 Make this more professional
+#cw:gpt-5.2-thinking Improve this text
+#cw:claude-opus-4-5 Make this more professional
 ```
 
 ## Architecture
