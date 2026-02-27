@@ -655,6 +655,165 @@ final class AjaxControllerTest extends TestCase
     }
 
     // ===========================================
+    // Stream Action Tests
+    // ===========================================
+
+    #[Test]
+    public function streamActionRejectsEmptyPrompt(): void
+    {
+        $request  = $this->createRequestWithJsonBody(['prompt' => '']);
+        $response = $this->subject->streamAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $this->assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+    }
+
+    #[Test]
+    public function streamActionReturnsRateLimitedResponse(): void
+    {
+        $this->rateLimiterMock = $this->createMock(RateLimiterInterface::class);
+        $this->rateLimiterMock
+            ->method('checkLimit')
+            ->willReturn(new RateLimitResult(
+                allowed: false,
+                limit: 20,
+                remaining: 0,
+                resetTime: time() + 30,
+            ));
+
+        $this->subject = new AjaxController(
+            $this->llmServiceManagerMock,
+            $this->configRepositoryMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
+            $this->loggerMock,
+        );
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        $this->assertSame(429, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function streamActionFallsBackToCompleteWhenStreamingNotSupported(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(false);
+
+        $completionResponse = $this->createCompletionResponse('Fallback response');
+        $this->llmServiceManagerMock
+            ->method('chat')
+            ->willReturn($completionResponse);
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test prompt']);
+        $response = $this->subject->streamAction($request);
+
+        // Fallback returns JSON (via executeCompletion), not SSE
+        $this->assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertTrue($data['success']);
+    }
+
+    #[Test]
+    public function streamActionReturns404WhenNoConfiguration(): void
+    {
+        $this->configRepositoryMock->method('findDefault')->willReturn(null);
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test prompt']);
+        $response = $this->subject->streamAction($request);
+
+        $this->assertSame(404, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function streamActionReturnsSseResponseWhenStreamingSupported(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        // Return a generator that yields chunks
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->willReturnCallback(function () {
+                yield 'Hello ';
+                yield 'World';
+            });
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+        $this->assertSame('no-cache', $response->getHeaderLine('Cache-Control'));
+
+        // Verify rate limit headers are present
+        $this->assertTrue($response->hasHeader('X-RateLimit-Limit'));
+    }
+
+    #[Test]
+    public function streamActionEscapesHtmlInSseChunks(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->willReturnCallback(function () {
+                yield '<script>alert(1)</script>';
+            });
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+
+        // Verify HTML is escaped in SSE data
+        $this->assertStringNotContainsString('<script>', $body);
+        $this->assertStringContainsString('&lt;script&gt;', $body);
+    }
+
+    #[Test]
+    public function streamActionHandlesProviderException(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->willThrowException(new ProviderException('Stream failed'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        $this->assertSame(500, $response->getStatusCode());
+        $this->assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+    }
+
+    // ===========================================
     // Security Tests
     // ===========================================
 

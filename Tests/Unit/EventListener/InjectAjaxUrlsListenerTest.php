@@ -119,6 +119,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $this->assertIsArray($decoded);
         $this->assertArrayHasKey('tx_cowriter_chat', $decoded);
         $this->assertArrayHasKey('tx_cowriter_complete', $decoded);
+        $this->assertArrayHasKey('tx_cowriter_stream', $decoded);
         $this->assertArrayHasKey('tx_cowriter_configurations', $decoded);
     }
 
@@ -148,6 +149,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         $this->assertContains('tx_cowriter_chat', $generatedRoutes);
         $this->assertContains('tx_cowriter_complete', $generatedRoutes);
+        $this->assertContains('tx_cowriter_stream', $generatedRoutes);
         $this->assertContains('tx_cowriter_configurations', $generatedRoutes);
     }
 
@@ -220,6 +222,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $decoded = json_decode($capturedJson, true);
         $this->assertEquals('/typo3/ajax/tx_cowriter_chat', $decoded['tx_cowriter_chat']);
         $this->assertEquals('/typo3/ajax/tx_cowriter_complete', $decoded['tx_cowriter_complete']);
+        $this->assertEquals('/typo3/ajax/tx_cowriter_stream', $decoded['tx_cowriter_stream']);
         $this->assertEquals('/typo3/ajax/tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
     }
 

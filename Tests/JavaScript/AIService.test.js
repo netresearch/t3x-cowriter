@@ -192,6 +192,141 @@ describe('AIService', () => {
         });
     });
 
+    describe('completeStream', () => {
+        it('should fall back to complete() when stream route is null', async () => {
+            const mockResponse = {
+                success: true,
+                content: 'Generated text',
+                model: 'gpt-4',
+            };
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            });
+
+            const service = new AIService();
+            // stream route is null by default (not set in TYPO3Mock)
+            expect(service._routes.stream).toBeNull();
+
+            const chunks = [];
+            const result = await service.completeStream('Hello', {}, (chunk) => chunks.push(chunk));
+
+            expect(result).toEqual({ done: true, model: 'gpt-4' });
+            expect(chunks).toEqual(['Generated text']);
+            // Should have called the complete endpoint, not stream
+            expect(globalThis.fetch).toHaveBeenCalledWith('/typo3/ajax/tx_cowriter_complete', expect.any(Object));
+        });
+
+        it('should parse SSE stream with multiple chunks', async () => {
+            // Setup stream route
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const sseData = [
+                'data: {"content":"Hello "}\n\n',
+                'data: {"content":"World"}\n\n',
+                'data: {"done":true,"model":"test-model"}\n\n',
+            ].join('');
+
+            const encoder = new TextEncoder();
+            const readable = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseData));
+                    controller.close();
+                },
+            });
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                body: readable,
+            });
+
+            const service = new ServiceClass();
+            const chunks = [];
+            const result = await service.completeStream('Test', {}, (chunk) => chunks.push(chunk));
+
+            expect(chunks).toEqual(['Hello ', 'World']);
+            expect(result.done).toBe(true);
+            expect(result.model).toBe('test-model');
+        });
+
+        it('should throw on SSE error data', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const sseData = 'data: {"error":"Provider failed"}\n\n';
+            const encoder = new TextEncoder();
+            const readable = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseData));
+                    controller.close();
+                },
+            });
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                body: readable,
+            });
+
+            const service = new ServiceClass();
+            await expect(service.completeStream('Test', {}, () => {})).rejects.toThrow('Provider failed');
+        });
+
+        it('should throw when response has no body', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                body: null,
+            });
+
+            const service = new ServiceClass();
+            await expect(service.completeStream('Test', {}, () => {})).rejects.toThrow(
+                'Streaming not supported: response has no body'
+            );
+        });
+
+        it('should parse SSE error from non-ok response', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 400,
+                text: () => Promise.resolve('data: {"error":"No prompt provided"}\n\n'),
+            });
+
+            const service = new ServiceClass();
+            await expect(service.completeStream('', {}, () => {})).rejects.toThrow('No prompt provided');
+        });
+
+        it('should handle JSON error from non-ok response', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                text: () => Promise.resolve('{"error":"Server error"}'),
+            });
+
+            const service = new ServiceClass();
+            await expect(service.completeStream('Test', {}, () => {})).rejects.toThrow('Server error');
+        });
+    });
+
     describe('exports', () => {
         it('should not export legacy APIType or AIServiceOptions', async () => {
             const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');

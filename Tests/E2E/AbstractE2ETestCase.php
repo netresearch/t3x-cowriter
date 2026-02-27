@@ -19,6 +19,7 @@ use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
@@ -27,7 +28,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
-use RuntimeException;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
@@ -197,78 +197,6 @@ abstract class AbstractE2ETestCase extends TestCase
      */
     protected function createQueryResultMock(array $items): QueryResultInterface
     {
-        return new class ($items) implements QueryResultInterface {
-            private int $position = 0;
-
-            /** @param array<LlmConfiguration> $items */
-            public function __construct(private readonly array $items) {}
-
-            public function setQuery(\TYPO3\CMS\Extbase\Persistence\QueryInterface $query): void {}
-
-            public function getQuery(): \TYPO3\CMS\Extbase\Persistence\QueryInterface
-            {
-                throw new RuntimeException('Not implemented');
-            }
-
-            public function getFirst(): ?object
-            {
-                return $this->items[0] ?? null;
-            }
-
-            public function toArray(): array
-            {
-                return $this->items;
-            }
-
-            public function count(): int
-            {
-                return count($this->items);
-            }
-
-            public function current(): mixed
-            {
-                return $this->items[$this->position] ?? null;
-            }
-
-            public function key(): int
-            {
-                return $this->position;
-            }
-
-            public function next(): void
-            {
-                ++$this->position;
-            }
-
-            public function rewind(): void
-            {
-                $this->position = 0;
-            }
-
-            public function valid(): bool
-            {
-                return isset($this->items[$this->position]);
-            }
-
-            public function offsetExists(mixed $offset): bool
-            {
-                return isset($this->items[$offset]);
-            }
-
-            public function offsetGet(mixed $offset): mixed
-            {
-                return $this->items[$offset] ?? null;
-            }
-
-            public function offsetSet(mixed $offset, mixed $value): void
-            {
-                throw new RuntimeException('Read-only');
-            }
-
-            public function offsetUnset(mixed $offset): void
-            {
-                throw new RuntimeException('Read-only');
-            }
-        };
+        return new TestQueryResult($items);
     }
 }

@@ -1,1 +1,4 @@
-RTE.default.preset = cowriter
+# Uncomment the line below to use the cowriter RTE preset as the default for all RTE fields.
+# Alternatively, add the cowriter plugin to your existing preset via YAML configuration.
+# See README.md "Option B: Extend your existing preset" for details.
+# RTE.default.preset = cowriter

@@ -151,8 +151,23 @@ export class AIService {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            // Try JSON first, then SSE format (backend may return text/event-stream errors)
+            const text = await response.text().catch(() => '');
+            let errorMessage = `HTTP ${response.status}`;
+            try {
+                const json = JSON.parse(text);
+                errorMessage = json.error || errorMessage;
+            } catch {
+                // Try SSE format: "data: {"error": "..."}\n\n"
+                const match = text.match(/^data:\s*(.+)/m);
+                if (match) {
+                    try {
+                        const sseData = JSON.parse(match[1]);
+                        errorMessage = sseData.error || errorMessage;
+                    } catch { /* use HTTP status fallback */ }
+                }
+            }
+            throw new Error(errorMessage);
         }
 
         if (!response.body) {
