@@ -130,6 +130,47 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
+    public function chatActionRejectsInvalidMessageStructure(): void
+    {
+        $request  = $this->createRequestWithJsonBody(['messages' => [['invalid' => 'structure']]]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertStringContainsString('Invalid messages', $data['error']);
+    }
+
+    #[Test]
+    public function chatActionRejectsDisallowedRole(): void
+    {
+        $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'system', 'content' => 'Hack']]]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertStringContainsString('Invalid messages', $data['error']);
+    }
+
+    #[Test]
+    public function chatActionRejectsNonStringContent(): void
+    {
+        $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => 42]]]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function chatActionRejectsTooManyMessages(): void
+    {
+        $messages = array_fill(0, 51, ['role' => 'user', 'content' => 'Hello']);
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+    }
+
+    #[Test]
     public function chatActionPassesOptionsToService(): void
     {
         $messages           = [['role' => 'user', 'content' => 'Hello']];

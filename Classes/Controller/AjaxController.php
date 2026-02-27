@@ -41,6 +41,21 @@ use TYPO3\CMS\Core\Http\Stream;
 final readonly class AjaxController
 {
     /**
+     * Maximum number of messages in a chat conversation.
+     */
+    private const MAX_MESSAGES = 50;
+
+    /**
+     * Maximum content length per message in characters (matches CompleteRequest::MAX_PROMPT_LENGTH).
+     */
+    private const MAX_MESSAGE_CONTENT_LENGTH = 32768;
+
+    /**
+     * Allowed message roles. The 'system' role is controlled server-side only.
+     */
+    private const ALLOWED_ROLES = ['user', 'assistant'];
+
+    /**
      * System prompt for the cowriter assistant.
      */
     private const SYSTEM_PROMPT = <<<'PROMPT'
@@ -88,14 +103,22 @@ final readonly class AjaxController
             return new JsonResponse(['error' => 'Invalid JSON structure'], 400);
         }
 
-        /** @var array<int, array{role: string, content: string}> $messages */
-        $messages = isset($body['messages']) && is_array($body['messages']) ? $body['messages'] : [];
+        $rawMessages = isset($body['messages']) && is_array($body['messages']) ? $body['messages'] : [];
         /** @var array<string, mixed> $optionsData */
         $optionsData = isset($body['options']) && is_array($body['options']) ? $body['options'] : [];
         $options     = $this->createChatOptions($optionsData);
 
-        if ($messages === []) {
+        if ($rawMessages === []) {
             return new JsonResponse(['error' => 'Messages array is required'], 400);
+        }
+
+        // Validate and sanitize messages: enforce structure, roles, count, and content length
+        $messages = $this->validateMessages($rawMessages);
+        if ($messages === null) {
+            return new JsonResponse(
+                ['error' => 'Invalid messages: each message must have a valid role (user/assistant) and string content'],
+                400,
+            );
         }
 
         try {
@@ -430,20 +453,12 @@ final readonly class AjaxController
             : null;
         $stopSequences = null;
         if (isset($options['stopSequences']) && is_array($options['stopSequences'])) {
-            $filtered      = array_values(array_filter($options['stopSequences'], is_string(...)));
+            $filtered = array_values(array_filter(
+                array_slice($options['stopSequences'], 0, self::MAX_STOP_SEQUENCES),
+                is_string(...),
+            ));
             $stopSequences = $filtered !== [] ? $filtered : null;
         }
-
-        // Return null if no recognized options were provided (all values are null)
-        $chatOptions = new ChatOptions(
-            temperature: $temperature,
-            maxTokens: $maxTokens,
-            topP: $topP,
-            frequencyPenalty: $frequencyPenalty,
-            presencePenalty: $presencePenalty,
-            responseFormat: $responseFormat,
-            stopSequences: $stopSequences,
-        );
 
         // If none of the recognized options had values, treat as "no options"
         if ($temperature === null && $maxTokens === null && $topP === null
@@ -452,7 +467,62 @@ final readonly class AjaxController
             return null;
         }
 
-        return $chatOptions;
+        return new ChatOptions(
+            temperature: $temperature,
+            maxTokens: $maxTokens,
+            topP: $topP,
+            frequencyPenalty: $frequencyPenalty,
+            presencePenalty: $presencePenalty,
+            responseFormat: $responseFormat,
+            stopSequences: $stopSequences,
+        );
+    }
+
+    /**
+     * Maximum number of stop sequences allowed.
+     */
+    private const MAX_STOP_SEQUENCES = 10;
+
+    /**
+     * Validate and sanitize chat messages.
+     *
+     * Enforces structure, allowed roles, count limit, and content length.
+     *
+     * @param array<mixed> $rawMessages
+     *
+     * @return array<int, array{role: string, content: string}>|null Validated messages or null on failure
+     */
+    private function validateMessages(array $rawMessages): ?array
+    {
+        if (count($rawMessages) > self::MAX_MESSAGES) {
+            return null;
+        }
+
+        $validated = [];
+        foreach ($rawMessages as $message) {
+            if (!is_array($message)) {
+                return null;
+            }
+
+            $role    = $message['role'] ?? null;
+            $content = $message['content'] ?? null;
+
+            if (!is_string($role) || !in_array($role, self::ALLOWED_ROLES, true)) {
+                return null;
+            }
+
+            if (!is_string($content)) {
+                return null;
+            }
+
+            if (mb_strlen($content, 'UTF-8') > self::MAX_MESSAGE_CONTENT_LENGTH) {
+                return null;
+            }
+
+            $validated[] = ['role' => $role, 'content' => $content];
+        }
+
+        return $validated;
     }
 
     /**
@@ -523,7 +593,13 @@ final readonly class AjaxController
      */
     private function sseErrorResponse(string $message, int $statusCode): Response
     {
-        $body = 'data: ' . json_encode(['error' => $message], JSON_THROW_ON_ERROR) . "\n\n";
+        try {
+            $json = json_encode(['error' => $message], JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            $json = '{"error":"An error occurred"}';
+        }
+
+        $body = 'data: ' . $json . "\n\n";
 
         $stream = new Stream('php://temp', 'rw');
         $stream->write($body);

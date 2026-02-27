@@ -34,8 +34,13 @@ export function loadCowriterUrls() {
         TYPO3.settings = TYPO3.settings || {};
         TYPO3.settings.ajaxUrls = TYPO3.settings.ajaxUrls || {};
 
-        // Merge cowriter URLs
-        Object.assign(TYPO3.settings.ajaxUrls, urls);
+        // Merge only expected cowriter URL keys (defense-in-depth against prototype pollution)
+        const allowedKeys = ['tx_cowriter_chat', 'tx_cowriter_complete', 'tx_cowriter_stream', 'tx_cowriter_configurations'];
+        for (const key of allowedKeys) {
+            if (Object.prototype.hasOwnProperty.call(urls, key) && typeof urls[key] === 'string') {
+                TYPO3.settings.ajaxUrls[key] = urls[key];
+            }
+        }
     } catch (error) {
         console.error('Cowriter: Failed to parse URL data', error);
     }

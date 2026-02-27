@@ -85,7 +85,7 @@ describe('UrlLoader', () => {
             const dataElement = document.createElement('script');
             dataElement.type = 'application/json';
             dataElement.id = 'cowriter-ajax-urls-data';
-            dataElement.textContent = JSON.stringify({ test_route: '/test' });
+            dataElement.textContent = JSON.stringify({ tx_cowriter_chat: '/test' });
             document.body.appendChild(dataElement);
 
             vi.resetModules();
@@ -97,7 +97,7 @@ describe('UrlLoader', () => {
 
             expect(globalThis.TYPO3.settings).toBeDefined();
             expect(globalThis.TYPO3.settings.ajaxUrls).toBeDefined();
-            expect(globalThis.TYPO3.settings.ajaxUrls.test_route).toBe('/test');
+            expect(globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_chat).toBe('/test');
         });
 
         it('should handle invalid JSON gracefully', async () => {
@@ -150,7 +150,7 @@ describe('UrlLoader', () => {
             const dataElement = document.createElement('script');
             dataElement.type = 'application/json';
             dataElement.id = 'cowriter-ajax-urls-data';
-            dataElement.textContent = JSON.stringify({ new_route: '/new' });
+            dataElement.textContent = JSON.stringify({ tx_cowriter_chat: '/new' });
             document.body.appendChild(dataElement);
 
             vi.resetModules();
@@ -162,7 +162,41 @@ describe('UrlLoader', () => {
             loadCowriterUrls();
 
             expect(TYPO3Mock.settings.ajaxUrls.existing_route).toBe('/existing');
-            expect(TYPO3Mock.settings.ajaxUrls.new_route).toBe('/new');
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_chat).toBe('/new');
+        });
+
+        it('should only accept allowed cowriter URL keys', async () => {
+            const dataElement = document.createElement('script');
+            dataElement.type = 'application/json';
+            dataElement.id = 'cowriter-ajax-urls-data';
+            dataElement.textContent = JSON.stringify({
+                tx_cowriter_chat: '/chat',
+                tx_cowriter_complete: '/complete',
+                tx_cowriter_stream: '/stream',
+                tx_cowriter_configurations: '/configs',
+                __proto__: { polluted: true },
+                malicious_route: '/evil',
+                constructor: '/hack',
+            });
+            document.body.appendChild(dataElement);
+
+            vi.resetModules();
+            globalThis.TYPO3 = TYPO3Mock;
+
+            const { loadCowriterUrls } = await import(
+                '../../Resources/Public/JavaScript/Ckeditor/UrlLoader.js'
+            );
+            loadCowriterUrls();
+
+            // Allowed keys should be set
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_chat).toBe('/chat');
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_complete).toBe('/complete');
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream).toBe('/stream');
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_configurations).toBe('/configs');
+
+            // Non-allowed keys should be filtered out
+            expect(TYPO3Mock.settings.ajaxUrls.malicious_route).toBeUndefined();
+            expect(TYPO3Mock.settings.ajaxUrls.constructor).not.toBe('/hack');
         });
     });
 });

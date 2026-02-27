@@ -268,7 +268,6 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
     {
         // Arrange
         $messages = [
-            ['role' => 'system', 'content' => 'You are a helpful assistant.'],
             ['role' => 'user', 'content' => 'Hello!'],
             ['role' => 'assistant', 'content' => 'Hi there!'],
             ['role' => 'user', 'content' => 'How are you?'],
