@@ -57,14 +57,17 @@ Option 2: Custom RTE configuration
 ----------------------------------
 
 If you have your own RTE configuration file
-(:file:`your_ext/Configuration/RTE/YourConfig.yml`), add the external plugin:
+(:file:`your_ext/Configuration/RTE/YourConfig.yaml`), add the Cowriter module:
 
 ..  code-block:: yaml
 
     editor:
-      externalPlugins:
-        cowriter:
-          resource: "EXT:t3_cowriter/Resources/Public/JavaScript/Plugins/cowriter/"
+      config:
+        importModules:
+          - { module: '@netresearch/t3_cowriter/cowriter', exports: ['Cowriter'] }
+        toolbar:
+          items:
+            - cowriter
 
 Security considerations
 =======================

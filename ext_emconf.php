@@ -8,7 +8,7 @@
 declare(strict_types=1);
 
 $EM_CONF[$_EXTKEY] = [
-    'title'            => 't3_cowriter',
+    'title'            => 'AI Cowriter',
     'description'      => 'With the help of AI you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.',
     'category'         => 'misc',
     'author'           => 'Team der Netresearch DTT GmbH',

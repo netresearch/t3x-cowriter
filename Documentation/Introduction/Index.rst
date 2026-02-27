@@ -25,8 +25,8 @@ Features
 *   Seamless integration with CKEditor in TYPO3 backend
 *   AI-powered content generation based on your prompts
 *   Multi-provider support via nr-llm (OpenAI, Claude, Gemini, and more)
-*   Support for TYPO3 v14.0+
-*   Compatible with PHP 8.5+
+*   Support for TYPO3 v13.4 and v14.0
+*   Compatible with PHP 8.2 - 8.5
 
 Demo
 ====
@@ -37,7 +37,7 @@ Try it out with our TYPO3 mock:
 Requirements
 ============
 
-*   TYPO3 v14.0 or higher
-*   PHP 8.5 or higher
+*   TYPO3 v13.4 or v14.0
+*   PHP 8.2 or higher
 *   netresearch/nr-llm extension (for LLM provider configuration)
 *   CKEditor (rte_ckeditor) extension

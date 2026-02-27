@@ -1,0 +1,4 @@
+# AI Cowriter (t3_cowriter) - TypoScript Setup
+# This file is intentionally empty. The extension registers its
+# CKEditor integration via RTE presets and JavaScript modules,
+# and does not require TypoScript setup configuration.
