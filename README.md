@@ -7,10 +7,12 @@
 <!-- Security -->
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/netresearch/t3x-cowriter/badge)](https://securityscorecards.dev/viewer/?uri=github.com/netresearch/t3x-cowriter)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11853/badge)](https://www.bestpractices.dev/projects/11853)
+[![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev)
 
 <!-- Standards -->
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%2010-brightgreen.svg)](https://phpstan.org/)
-[![PHP 8.5+](https://img.shields.io/badge/PHP-8.5%2B-blue.svg)](https://www.php.net/)
+[![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-blue.svg)](https://www.php.net/)
+[![TYPO3 v13](https://img.shields.io/badge/TYPO3-v13-orange.svg)](https://typo3.org/)
 [![TYPO3 v14](https://img.shields.io/badge/TYPO3-v14-orange.svg)](https://typo3.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 [![Latest Release](https://img.shields.io/github/v/release/netresearch/t3x-cowriter)](https://github.com/netresearch/t3x-cowriter/releases)
@@ -38,8 +40,8 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 
 ## Requirements
 
-- PHP 8.5+
-- TYPO3 v14
+- PHP 8.2+
+- TYPO3 v13 or v14
 - [netresearch/nr-llm](https://github.com/netresearch/t3x-nr-llm) extension (LLM provider abstraction)
 
 ## Installation
@@ -119,7 +121,7 @@ All LLM requests are proxied through the TYPO3 backend. API keys are stored encr
 ### Prerequisites
 
 - DDEV for local development
-- PHP 8.5+ with required extensions
+- PHP 8.2+ with required extensions
 
 ### Setup
 
