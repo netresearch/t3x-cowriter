@@ -14,4 +14,4 @@ declare(strict_types=1);
  * API keys are securely stored on the server and accessed via AJAX.
  */
 $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
-    = 'EXT:t3_cowriter/Configuration/RTE/Pluginv12.yaml';
+    = 'EXT:t3_cowriter/Configuration/RTE/Cowriter.yaml';
