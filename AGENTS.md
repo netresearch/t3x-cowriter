@@ -184,10 +184,10 @@ namespace Netresearch\T3Cowriter\Controller;
 use Psr\Http\Message\ResponseInterface;
 use TYPO3\CMS\Core\Http\JsonResponse;
 
-final class AjaxController
+final readonly class AjaxController
 {
     public function __construct(
-        private readonly LlmServiceManager $llmServiceManager,
+        private LlmServiceManagerInterface $llmServiceManager,
     ) {}
 
     public function chatAction(ServerRequestInterface $request): ResponseInterface
@@ -260,10 +260,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\Http\JsonResponse;
 
-final class AjaxController
+final readonly class AjaxController
 {
     public function __construct(
-        private readonly LlmServiceManager $llmServiceManager,
+        private LlmServiceManagerInterface $llmServiceManager,
     ) {}
 
     public function chatAction(ServerRequestInterface $request): ResponseInterface

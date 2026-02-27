@@ -192,35 +192,11 @@ describe('AIService', () => {
         });
     });
 
-    describe('legacy exports', () => {
-        it('should export APIType for backward compatibility', async () => {
+    describe('exports', () => {
+        it('should not export legacy APIType or AIServiceOptions', async () => {
             const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
-            expect(module.APIType).toEqual({
-                OPENAI: 'openai',
-                OLLAMA: 'ollama',
-            });
-        });
-
-        it('should export AIServiceOptions with deprecation warning', async () => {
-            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
-
-            new module.AIServiceOptions();
-
-            expect(warnSpy).toHaveBeenCalledWith(
-                'AIServiceOptions is deprecated. Configuration is now handled by the nr-llm extension.'
-            );
-            warnSpy.mockRestore();
-        });
-
-        it('should have no-op validate method on AIServiceOptions', async () => {
-            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
-
-            const options = new module.AIServiceOptions();
-            expect(() => options.validate()).not.toThrow();
-
-            warnSpy.mockRestore();
+            expect(module.APIType).toBeUndefined();
+            expect(module.AIServiceOptions).toBeUndefined();
         });
     });
 });

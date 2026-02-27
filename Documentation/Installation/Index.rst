@@ -42,8 +42,8 @@ Extension       TYPO3           PHP
 1.x             11.5            7.4 - 8.1
 ==============  ==============  ================
 
-Migration from 2.x
-==================
+Migration to 4.x
+=================
 
 Version 4.0.0 introduces significant architectural changes:
 

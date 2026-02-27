@@ -147,7 +147,7 @@ export class AIService {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ prompt, ...options }),
+            body: JSON.stringify({ prompt, options }),
         });
 
         if (!response.ok) {
@@ -192,27 +192,5 @@ export class AIService {
         }
 
         return lastData;
-    }
-}
-
-// Legacy exports for backward compatibility (deprecated)
-// These will be removed in a future version
-export const APIType = {
-    OPENAI: 'openai',
-    OLLAMA: 'ollama',
-};
-
-export class AIServiceOptions {
-    /**
-     * @deprecated Use the new AIService() without options. Configuration is now handled by nr-llm.
-     */
-    constructor() {
-        console.warn(
-            'AIServiceOptions is deprecated. Configuration is now handled by the nr-llm extension.'
-        );
-    }
-
-    validate() {
-        // No-op for backward compatibility
     }
 }

@@ -108,8 +108,9 @@ Tests/
 │   ├── AbstractE2ETestCase.php           # Base class for E2E tests
 │   └── CowriterWorkflowTest.php
 ├── JavaScript/                           # Vitest tests for frontend
-│   └── Ckeditor/
-│       └── AIService.test.js
+│   ├── AIService.test.js
+│   ├── cowriter.test.js
+│   └── UrlLoader.test.js
 └── Support/
     └── TestQueryResult.php
 ```
