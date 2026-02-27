@@ -50,7 +50,7 @@ return static function (RectorConfig $rectorConfig): void {
 
         // PHP 8.2+ support
         LevelSetList::UP_TO_PHP_82,
-        Typo3LevelSetList::UP_TO_TYPO3_13,
+        Typo3LevelSetList::UP_TO_TYPO3_14,
     ]);
 
     // Skip some rules

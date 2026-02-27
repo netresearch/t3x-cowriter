@@ -220,10 +220,10 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         ($this->subject)($event);
 
         $decoded = json_decode($capturedJson, true);
-        $this->assertEquals('/typo3/ajax/tx_cowriter_chat', $decoded['tx_cowriter_chat']);
-        $this->assertEquals('/typo3/ajax/tx_cowriter_complete', $decoded['tx_cowriter_complete']);
-        $this->assertEquals('/typo3/ajax/tx_cowriter_stream', $decoded['tx_cowriter_stream']);
-        $this->assertEquals('/typo3/ajax/tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
+        $this->assertSame('/typo3/ajax/tx_cowriter_chat', $decoded['tx_cowriter_chat']);
+        $this->assertSame('/typo3/ajax/tx_cowriter_complete', $decoded['tx_cowriter_complete']);
+        $this->assertSame('/typo3/ajax/tx_cowriter_stream', $decoded['tx_cowriter_stream']);
+        $this->assertSame('/typo3/ajax/tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
     }
 
     #[Test]
@@ -252,7 +252,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         ($this->subject)($event);
 
-        $this->assertEquals(
+        $this->assertSame(
             'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/UrlLoader.js',
             $capturedSrc,
         );
@@ -285,6 +285,6 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         ($this->subject)($event);
 
         $this->assertArrayHasKey('type', $capturedAttrs);
-        $this->assertEquals('module', $capturedAttrs['type']);
+        $this->assertSame('module', $capturedAttrs['type']);
     }
 }
