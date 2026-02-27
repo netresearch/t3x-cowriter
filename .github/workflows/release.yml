@@ -51,15 +51,22 @@ jobs:
             --exclude='.Build' \
             --exclude='Tests' \
             --exclude='dist' \
+            --exclude='.conformance-reports' \
             --exclude='.editorconfig' \
             --exclude='.gitattributes' \
             --exclude='.gitignore' \
             --exclude='.php-cs-fixer.cache' \
+            --exclude='AGENTS.md' \
+            --exclude='Classes/AGENTS.md' \
             --exclude='Makefile' \
+            --exclude='docs' \
+            --exclude='eslint.config.js' \
             --exclude='package.json' \
             --exclude='package-lock.json' \
             --exclude='node_modules' \
             --exclude='phpunit.xml' \
+            --exclude='renovate.json' \
+            --exclude='vitest.config.js' \
             --exclude='Build' \
             .
 
@@ -71,15 +78,22 @@ jobs:
             -x '.Build/*' \
             -x 'Tests/*' \
             -x 'dist/*' \
+            -x '.conformance-reports/*' \
             -x '.editorconfig' \
             -x '.gitattributes' \
             -x '.gitignore' \
             -x '.php-cs-fixer.cache' \
+            -x 'AGENTS.md' \
+            -x 'Classes/AGENTS.md' \
             -x 'Makefile' \
+            -x 'docs/*' \
+            -x 'eslint.config.js' \
             -x 'package.json' \
             -x 'package-lock.json' \
             -x 'node_modules/*' \
             -x 'phpunit.xml' \
+            -x 'renovate.json' \
+            -x 'vitest.config.js' \
             -x 'Build/*'
 
       - name: Generate SBOM
