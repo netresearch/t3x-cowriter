@@ -154,6 +154,40 @@ final class UsageDataTest extends TestCase
         $this->assertSame($totalTokens, $usageData->totalTokens);
     }
 
+    #[Test]
+    public function jsonSerializeWithHighPrecisionCost(): void
+    {
+        $usageData = new UsageData(
+            promptTokens: 1,
+            completionTokens: 1,
+            totalTokens: 2,
+            estimatedCost: 0.000001234,
+        );
+
+        $json = $usageData->jsonSerialize();
+
+        $this->assertSame(0.000001234, $json['estimatedCost']);
+        // Verify it survives JSON round-trip
+        $encoded = json_encode($json);
+        $decoded = json_decode($encoded, true);
+        $this->assertSame(0.000001234, $decoded['estimatedCost']);
+    }
+
+    #[Test]
+    public function jsonSerializeWithZeroCost(): void
+    {
+        $usageData = new UsageData(
+            promptTokens: 10,
+            completionTokens: 20,
+            totalTokens: 30,
+            estimatedCost: 0.0,
+        );
+
+        $json = $usageData->jsonSerialize();
+
+        $this->assertSame(0.0, $json['estimatedCost']);
+    }
+
     /**
      * @return iterable<string, array{int, int}>
      */

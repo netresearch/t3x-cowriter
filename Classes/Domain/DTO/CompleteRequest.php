@@ -24,20 +24,20 @@ final readonly class CompleteRequest
     /**
      * Pattern to match model override prefix: #cw:model-name followed by space.
      */
-    private const string MODEL_OVERRIDE_PATTERN = '/^#cw:(\S+)\s+/';
+    private const MODEL_OVERRIDE_PATTERN = '/^#cw:(\S+)\s+/';
 
     /**
      * Allowed characters in model names (alphanumeric, hyphens, underscores, dots, colons, slashes).
      * Examples: gpt-4o, claude-3-opus-20240229, mistral/mixtral-8x7b, openai:gpt-4.
      */
-    private const string MODEL_NAME_PATTERN = '/^[a-zA-Z0-9][-a-zA-Z0-9_.:\/]*$/';
+    private const MODEL_NAME_PATTERN = '/^[a-zA-Z0-9][-a-zA-Z0-9_.:\/]*$/';
 
     /**
      * Maximum allowed prompt length in characters.
      * Prevents denial-of-wallet attacks and excessive token consumption.
      * 32KB is generous for most use cases while providing a safety limit.
      */
-    private const int MAX_PROMPT_LENGTH = 32768;
+    private const MAX_PROMPT_LENGTH = 32768;
 
     public function __construct(
         public string $prompt,
@@ -54,7 +54,11 @@ final readonly class CompleteRequest
     {
         $body = $request->getParsedBody();
 
-        // Handle JSON body (from getContents) or parsed form data
+        // Handle JSON body (from getContents) or parsed form data.
+        // Note: json_decode() intentionally used without JSON_THROW_ON_ERROR here —
+        // invalid JSON silently returns null, which is handled by the is_array() check below.
+        // This avoids coupling the DTO factory to exception handling; the caller (AjaxController)
+        // already validates JSON with JSON_THROW_ON_ERROR before reaching this method.
         if ($body === null) {
             $contents = $request->getBody()->getContents();
             if ($contents !== '') {
@@ -79,6 +83,7 @@ final readonly class CompleteRequest
                 $modelOverride = $candidateModel;
                 $prompt        = trim(substr($rawPrompt, strlen($matches[0])));
             }
+
             // If invalid model name, keep the original prompt unchanged (ignore the prefix)
         }
 
@@ -96,7 +101,7 @@ final readonly class CompleteRequest
     {
         $trimmed = trim($this->prompt);
 
-        return $trimmed !== '' && strlen($trimmed) <= self::MAX_PROMPT_LENGTH;
+        return $trimmed !== '' && mb_strlen($trimmed, 'UTF-8') <= self::MAX_PROMPT_LENGTH;
     }
 
     /**

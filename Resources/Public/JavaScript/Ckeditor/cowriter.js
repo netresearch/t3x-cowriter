@@ -20,6 +20,13 @@ export class Cowriter extends Core.Plugin {
     _service;
 
     /**
+     * Guards against concurrent LLM requests from double-clicks.
+     * @type {boolean}
+     * @private
+     */
+    _isProcessing = false;
+
+    /**
      * Sanitize AI-generated content by removing HTML/XML tags
      * @param {string} content - The content to sanitize
      * @returns {string} - The sanitized content
@@ -69,39 +76,51 @@ export class Cowriter extends Core.Plugin {
             });
 
             button.on('execute', async () => {
-                const selection = editor.model.document.selection;
-
-                const ranges = (Array.from(selection.getRanges()) ?? []);
-                let promptRange, prompt;
-                for (const range of ranges) {
-                    for (const item of range.getItems()) {
-                        prompt = item.data;
-                        promptRange = range;
-                        break;
-                    }
-                }
-
-                if (prompt === undefined || promptRange === undefined) return;
-
-                let content = "";
-                let errorMessage = "";
+                if (this._isProcessing) return;
+                this._isProcessing = true;
 
                 try {
-                    // Use the complete endpoint via TYPO3 AJAX
-                    const result = await this._service.complete(prompt, {});
-                    const rawContent = result.content || '';
-                    content = this._sanitizeContent(rawContent);
-                } catch (error) {
-                    console.error('Cowriter error:', error);
-                    errorMessage = `[Cowriter Error: ${error.message}] `;
-                }
+                    const selection = editor.model.document.selection;
 
-                model.change((writer) => {
-                    writer.remove(promptRange);
-                    const insertPosition = selection.getFirstPosition();
-                    writer.insert(errorMessage + content, insertPosition);
-                    writer.setSelection(null);
-                });
+                    const ranges = Array.from(selection.getRanges());
+                    let promptRange, prompt;
+                    for (const range of ranges) {
+                        for (const item of range.getItems()) {
+                            if (item.data !== undefined && item.data !== '') {
+                                prompt = item.data;
+                                promptRange = range;
+                                break;
+                            }
+                        }
+                        if (prompt !== undefined) break;
+                    }
+
+                    if (prompt === undefined || promptRange === undefined) return;
+
+                    let content = "";
+                    let errorMessage = "";
+
+                    try {
+                        // Use the complete endpoint via TYPO3 AJAX
+                        const result = await this._service.complete(prompt, {});
+                        const rawContent = result.content || '';
+                        content = this._sanitizeContent(rawContent);
+                    } catch (error) {
+                        console.error('Cowriter error:', error);
+                        // Error messages are inserted as text nodes by writer.insert(),
+                        // so no HTML escaping is needed (CKEditor treats them as plain text)
+                        errorMessage = `[Cowriter Error: ${error.message || 'Unknown error'}] `;
+                    }
+
+                    model.change((writer) => {
+                        writer.remove(promptRange);
+                        const insertPosition = selection.getFirstPosition();
+                        if (!insertPosition) return;
+                        writer.insert(errorMessage + content, insertPosition);
+                    });
+                } finally {
+                    this._isProcessing = false;
+                }
             });
 
             return button;

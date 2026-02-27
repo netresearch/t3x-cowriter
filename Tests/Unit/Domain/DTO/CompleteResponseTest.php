@@ -30,6 +30,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertTrue($response->success);
         $this->assertSame('Generated text', $response->content);
         $this->assertSame('test-model', $response->model);
+        $this->assertSame('stop', $response->finishReason);
         $this->assertNotNull($response->usage);
         $this->assertNull($response->error);
         $this->assertNull($response->retryAfter);
@@ -96,6 +97,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertFalse($response->success);
         $this->assertNull($response->content);
         $this->assertNull($response->model);
+        $this->assertNull($response->finishReason);
         $this->assertNull($response->usage);
         $this->assertSame('Something went wrong', $response->error);
         $this->assertNull($response->retryAfter);
@@ -109,6 +111,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertFalse($response->success);
         $this->assertNull($response->content);
         $this->assertNull($response->model);
+        $this->assertNull($response->finishReason);
         $this->assertNull($response->usage);
         $this->assertStringContainsString('rate limit', strtolower($response->error ?? ''));
         $this->assertSame(60, $response->retryAfter);
@@ -125,6 +128,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertTrue($json['success']);
         $this->assertSame('Result', $json['content']);
         $this->assertSame('test-model', $json['model']);
+        $this->assertSame('stop', $json['finishReason']);
         $this->assertIsArray($json['usage']);
         $this->assertSame(100, $json['usage']['promptTokens']);
         $this->assertSame(200, $json['usage']['completionTokens']);
@@ -144,6 +148,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertSame('Test error', $json['error']);
         $this->assertArrayNotHasKey('content', $json);
         $this->assertArrayNotHasKey('model', $json);
+        $this->assertArrayNotHasKey('finishReason', $json);
         $this->assertArrayNotHasKey('usage', $json);
         $this->assertArrayNotHasKey('retryAfter', $json);
     }
@@ -157,6 +162,76 @@ final class CompleteResponseTest extends TestCase
 
         $this->assertFalse($json['success']);
         $this->assertSame(120, $json['retryAfter']);
+    }
+
+    // ===========================================
+    // Cycle 32: Edge Case Coverage Tests
+    // ===========================================
+
+    #[Test]
+    public function successHandlesEmptyModelAndFinishReason(): void
+    {
+        $usage = new UsageStatistics(
+            promptTokens: 10,
+            completionTokens: 20,
+            totalTokens: 30,
+        );
+
+        $completionResponse = new CompletionResponse(
+            content: 'Result',
+            model: '',
+            usage: $usage,
+            finishReason: '',
+            provider: 'test',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        $this->assertTrue($response->success);
+        $this->assertSame('Result', $response->content);
+        $this->assertSame('', $response->model);
+        $this->assertSame('', $response->finishReason);
+    }
+
+    #[Test]
+    public function jsonSerializeOmitsRetryAfterWhenNull(): void
+    {
+        $response = CompleteResponse::error('Some error');
+
+        $json = $response->jsonSerialize();
+
+        $this->assertArrayNotHasKey('retryAfter', $json);
+        $this->assertNull($response->retryAfter);
+    }
+
+    #[Test]
+    public function rateLimitedWithZeroRetryAfter(): void
+    {
+        $response = CompleteResponse::rateLimited(0);
+
+        $json = $response->jsonSerialize();
+
+        $this->assertFalse($json['success']);
+        $this->assertSame(0, $json['retryAfter']);
+    }
+
+    #[Test]
+    public function successEscapesFinishReasonWithSpecialCharacters(): void
+    {
+        $usage = new UsageStatistics(10, 20, 30);
+
+        $completionResponse = new CompletionResponse(
+            content: 'text',
+            model: 'model',
+            usage: $usage,
+            finishReason: 'stop<script>',
+            provider: 'test',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        $this->assertStringNotContainsString('<script>', $response->finishReason);
+        $this->assertStringContainsString('&lt;script&gt;', $response->finishReason);
     }
 
     private function createCompletionResponse(

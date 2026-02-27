@@ -221,6 +221,32 @@ final class CompleteRequestTest extends TestCase
     }
 
     #[Test]
+    public function isValidReturnsTrueForPromptAtExactMaxLength(): void
+    {
+        $maxLengthPrompt = str_repeat('a', 32768);
+        $dto             = new CompleteRequest(
+            prompt: $maxLengthPrompt,
+            configuration: null,
+            modelOverride: null,
+        );
+
+        $this->assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseForPromptExceedingMaxLength(): void
+    {
+        $tooLongPrompt = str_repeat('a', 32769);
+        $dto           = new CompleteRequest(
+            prompt: $tooLongPrompt,
+            configuration: null,
+            modelOverride: null,
+        );
+
+        $this->assertFalse($dto->isValid());
+    }
+
+    #[Test]
     public function fromRequestUsesFormDataWhenNoJsonBody(): void
     {
         $bodyMock = $this->createMock(StreamInterface::class);
@@ -237,6 +263,134 @@ final class CompleteRequestTest extends TestCase
 
         $this->assertSame('From form data', $dto->prompt);
         $this->assertSame('form-config', $dto->configuration);
+    }
+
+    // ===========================================
+    // Cycle 32: Edge Case Coverage Tests
+    // ===========================================
+
+    #[Test]
+    public function fromRequestWithModelOverrideAndMultipleSpaces(): void
+    {
+        $request = $this->createRequestWithJsonBody([
+            'prompt' => '#cw:gpt-4o   Write with multiple spaces',
+        ]);
+
+        $dto = CompleteRequest::fromRequest($request);
+
+        $this->assertSame('gpt-4o', $dto->modelOverride);
+        $this->assertSame('Write with multiple spaces', $dto->prompt);
+    }
+
+    #[Test]
+    public function fromRequestWithModelOverrideButOnlyWhitespaceAfterPrefix(): void
+    {
+        $request = $this->createRequestWithJsonBody([
+            'prompt' => '#cw:gpt-4o   ',
+        ]);
+
+        $dto = CompleteRequest::fromRequest($request);
+
+        $this->assertSame('gpt-4o', $dto->modelOverride);
+        $this->assertSame('', $dto->prompt);
+        $this->assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function fromRequestWithModelNameStartingWithDigit(): void
+    {
+        $request = $this->createRequestWithJsonBody([
+            'prompt' => '#cw:9gpt-4 Test prompt',
+        ]);
+
+        $dto = CompleteRequest::fromRequest($request);
+
+        // Digit-first model names are valid per pattern [a-zA-Z0-9]
+        $this->assertSame('9gpt-4', $dto->modelOverride);
+        $this->assertSame('Test prompt', $dto->prompt);
+    }
+
+    #[Test]
+    public function isValidHandlesUnicodeContentLength(): void
+    {
+        // Multi-byte characters: each emoji is 1 character but multiple bytes
+        $maxLengthUnicode = str_repeat('🎉', 32768);
+        $dto              = new CompleteRequest(
+            prompt: $maxLengthUnicode,
+            configuration: null,
+            modelOverride: null,
+        );
+
+        $this->assertTrue($dto->isValid());
+
+        $tooLongUnicode = str_repeat('🎉', 32769);
+        $dto2           = new CompleteRequest(
+            prompt: $tooLongUnicode,
+            configuration: null,
+            modelOverride: null,
+        );
+
+        $this->assertFalse($dto2->isValid());
+    }
+
+    #[Test]
+    public function fromRequestWithNullParsedBodyAndEmptyJsonContents(): void
+    {
+        $bodyMock = $this->createMock(StreamInterface::class);
+        $bodyMock->method('getContents')->willReturn('');
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getBody')->willReturn($bodyMock);
+        $request->method('getParsedBody')->willReturn(null);
+
+        $dto = CompleteRequest::fromRequest($request);
+
+        $this->assertSame('', $dto->prompt);
+        $this->assertNull($dto->configuration);
+        $this->assertNull($dto->modelOverride);
+    }
+
+    #[Test]
+    public function fromRequestWithNullParsedBodyAndInvalidJsonContents(): void
+    {
+        $bodyMock = $this->createMock(StreamInterface::class);
+        $bodyMock->method('getContents')->willReturn('not json at all');
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getBody')->willReturn($bodyMock);
+        $request->method('getParsedBody')->willReturn(null);
+
+        $dto = CompleteRequest::fromRequest($request);
+
+        $this->assertSame('', $dto->prompt);
+    }
+
+    #[Test]
+    public function fromRequestWithEmptyStringConfiguration(): void
+    {
+        $request = $this->createRequestWithJsonBody([
+            'prompt'        => 'Test',
+            'configuration' => '',
+        ]);
+
+        $dto = CompleteRequest::fromRequest($request);
+
+        // Empty string configuration should be treated as null
+        $this->assertNull($dto->configuration);
+    }
+
+    #[Test]
+    public function fromRequestWithArrayConfiguration(): void
+    {
+        $request = $this->createRequestWithJsonBody([
+            'prompt'        => 'Test',
+            'configuration' => ['nested' => 'value'],
+        ]);
+
+        $dto = CompleteRequest::fromRequest($request);
+
+        // Non-scalar configuration should be treated as null
+        $this->assertNull($dto->configuration);
     }
 
     private function createRequestWithJsonBody(array $data): ServerRequestInterface

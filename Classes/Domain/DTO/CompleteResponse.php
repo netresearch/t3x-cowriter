@@ -25,6 +25,7 @@ final readonly class CompleteResponse implements JsonSerializable
         public bool $success,
         public ?string $content,
         public ?string $model,
+        public ?string $finishReason,
         public ?UsageData $usage,
         public ?string $error,
         public ?int $retryAfter,
@@ -41,6 +42,7 @@ final readonly class CompleteResponse implements JsonSerializable
             success: true,
             content: htmlspecialchars($response->content, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             model: htmlspecialchars($response->model ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            finishReason: htmlspecialchars($response->finishReason ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             usage: UsageData::fromUsageStatistics($response->usage),
             error: null,
             retryAfter: null,
@@ -56,6 +58,7 @@ final readonly class CompleteResponse implements JsonSerializable
             success: false,
             content: null,
             model: null,
+            finishReason: null,
             usage: null,
             error: $message,
             retryAfter: null,
@@ -77,6 +80,7 @@ final readonly class CompleteResponse implements JsonSerializable
             success: false,
             content: null,
             model: null,
+            finishReason: null,
             usage: null,
             error: 'Rate limit exceeded. Please try again later.',
             retryAfter: $retryAfter,
@@ -93,9 +97,10 @@ final readonly class CompleteResponse implements JsonSerializable
         $data = ['success' => $this->success];
 
         if ($this->success) {
-            $data['content'] = $this->content;
-            $data['model']   = $this->model;
-            $data['usage']   = $this->usage?->jsonSerialize();
+            $data['content']      = $this->content;
+            $data['model']        = $this->model;
+            $data['finishReason'] = $this->finishReason;
+            $data['usage']        = $this->usage?->jsonSerialize();
         } else {
             $data['error'] = $this->error;
             if ($this->retryAfter !== null) {

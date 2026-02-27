@@ -41,9 +41,34 @@ use TYPO3\CMS\Core\Http\Stream;
 final readonly class AjaxController
 {
     /**
+     * Maximum number of messages in a chat conversation.
+     */
+    private const MAX_MESSAGES = 50;
+
+    /**
+     * Maximum content length per message in characters (matches CompleteRequest::MAX_PROMPT_LENGTH).
+     */
+    private const MAX_MESSAGE_CONTENT_LENGTH = 32768;
+
+    /**
+     * Allowed message roles. The 'system' role is controlled server-side only.
+     */
+    private const ALLOWED_ROLES = ['user', 'assistant'];
+
+    /**
+     * Maximum tokens upper bound to prevent denial-of-wallet attacks.
+     */
+    private const MAX_TOKENS_UPPER_BOUND = 16384;
+
+    /**
+     * Maximum number of stop sequences allowed.
+     */
+    private const MAX_STOP_SEQUENCES = 10;
+
+    /**
      * System prompt for the cowriter assistant.
      */
-    private const string SYSTEM_PROMPT = <<<'PROMPT'
+    private const SYSTEM_PROMPT = <<<'PROMPT'
         You are a professional writing assistant integrated into a CMS editor.
         Your task is to improve, enhance, or generate text based on the user's request.
         Respond ONLY with the improved/generated text, without any explanations,
@@ -51,11 +76,11 @@ final readonly class AjaxController
         PROMPT;
 
     public function __construct(
-        private readonly LlmServiceManagerInterface $llmServiceManager,
-        private readonly LlmConfigurationRepository $configurationRepository,
-        private readonly RateLimiterInterface $rateLimiter,
-        private readonly Context $context,
-        private readonly LoggerInterface $logger,
+        private LlmServiceManagerInterface $llmServiceManager,
+        private LlmConfigurationRepository $configurationRepository,
+        private RateLimiterInterface $rateLimiter,
+        private Context $context,
+        private LoggerInterface $logger,
     ) {}
 
     /**
@@ -81,21 +106,29 @@ final readonly class AjaxController
                 JSON_THROW_ON_ERROR,
             );
         } catch (JsonException) {
-            return new JsonResponse(['error' => 'Invalid JSON in request body'], 400);
+            return new JsonResponse(['success' => false, 'error' => 'Invalid JSON in request body'], 400);
         }
 
         if (!is_array($body)) {
-            return new JsonResponse(['error' => 'Invalid JSON structure'], 400);
+            return new JsonResponse(['success' => false, 'error' => 'Invalid JSON structure'], 400);
         }
 
-        /** @var array<int, array{role: string, content: string}> $messages */
-        $messages = isset($body['messages']) && is_array($body['messages']) ? $body['messages'] : [];
+        $rawMessages = isset($body['messages']) && is_array($body['messages']) ? $body['messages'] : [];
         /** @var array<string, mixed> $optionsData */
         $optionsData = isset($body['options']) && is_array($body['options']) ? $body['options'] : [];
         $options     = $this->createChatOptions($optionsData);
 
-        if ($messages === []) {
-            return new JsonResponse(['error' => 'Messages array is required'], 400);
+        if ($rawMessages === []) {
+            return new JsonResponse(['success' => false, 'error' => 'Messages array is required'], 400);
+        }
+
+        // Validate and sanitize messages: enforce structure, roles, count, and content length
+        $messages = $this->validateMessages($rawMessages);
+        if ($messages === null) {
+            return new JsonResponse(
+                ['success' => false, 'error' => 'Invalid messages: each message must have a valid role (user/assistant) and string content'],
+                400,
+            );
         }
 
         try {
@@ -103,6 +136,7 @@ final readonly class AjaxController
 
             // Escape HTML to prevent XSS attacks (defense in depth for all string values)
             return $this->jsonResponseWithRateLimitHeaders([
+                'success'      => true,
                 'content'      => htmlspecialchars($response->content, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
                 'model'        => htmlspecialchars($response->model ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
                 'finishReason' => htmlspecialchars($response->finishReason ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
@@ -111,7 +145,7 @@ final readonly class AjaxController
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['error' => 'LLM provider error occurred'],
+                ['success' => false, 'error' => 'LLM provider error occurred. Please try again later.'],
                 $rateLimitResult,
                 500,
             );
@@ -122,7 +156,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['error' => 'An unexpected error occurred'],
+                ['success' => false, 'error' => 'An unexpected error occurred.'],
                 $rateLimitResult,
                 500,
             );
@@ -163,7 +197,7 @@ final readonly class AjaxController
 
         // Resolve configuration (from identifier or default)
         $configuration = $this->resolveConfiguration($dto->configuration);
-        if ($configuration === null) {
+        if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
                 CompleteResponse::error(
                     'No LLM configuration available. Please configure the nr_llm extension.',
@@ -173,6 +207,20 @@ final readonly class AjaxController
             );
         }
 
+        return $this->executeCompletion($dto, $configuration, $rateLimitResult);
+    }
+
+    /**
+     * Execute the completion request (shared by completeAction and streamAction fallback).
+     *
+     * Separated to avoid double rate-limiting and consumed request body
+     * when streamAction falls back to non-streaming mode.
+     */
+    private function executeCompletion(
+        CompleteRequest $dto,
+        LlmConfiguration $configuration,
+        RateLimitResult $rateLimitResult,
+    ): ResponseInterface {
         try {
             $messages = [
                 ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
@@ -249,7 +297,7 @@ final readonly class AjaxController
 
         // Resolve configuration (from identifier or default)
         $configuration = $this->resolveConfiguration($dto->configuration);
-        if ($configuration === null) {
+        if (!$configuration instanceof LlmConfiguration) {
             return $this->sseErrorResponse(
                 'No LLM configuration available. Please configure the nr_llm extension.',
                 404,
@@ -258,8 +306,8 @@ final readonly class AjaxController
 
         // Check if streaming is supported
         if (!$this->llmServiceManager->supportsFeature('streaming')) {
-            // Fall back to non-streaming response if streaming is not supported
-            return $this->completeAction($request);
+            // Fall back to non-streaming completion (reuse already-parsed DTO and rate limit)
+            return $this->executeCompletion($dto, $configuration, $rateLimitResult);
         }
 
         // Build the streaming response using a generator
@@ -342,9 +390,10 @@ final readonly class AjaxController
             if (!$config instanceof LlmConfiguration) {
                 continue;
             }
+
             $list[] = [
-                'identifier' => $config->getIdentifier(),
-                'name'       => $config->getName(),
+                'identifier' => htmlspecialchars($config->getIdentifier(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'name'       => htmlspecialchars($config->getName(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
                 'isDefault'  => $config->isDefault(),
             ];
         }
@@ -375,7 +424,11 @@ final readonly class AjaxController
      * - topP: 0.0 to 1.0
      * - frequencyPenalty: -2.0 to 2.0
      * - presencePenalty: -2.0 to 2.0
-     * - maxTokens: minimum 1
+     * - maxTokens: 1 to 16384
+     *
+     * Security: provider, model, and systemPrompt overrides from the client
+     * are intentionally ignored. These are controlled server-side via
+     * LlmConfiguration records in the nr-llm extension.
      *
      * @param array<string, mixed> $options
      */
@@ -389,7 +442,7 @@ final readonly class AjaxController
             ? $this->clampFloat((float) $options['temperature'], 0.0, 2.0)
             : null;
         $maxTokens = isset($options['maxTokens']) && is_numeric($options['maxTokens'])
-            ? max(1, (int) $options['maxTokens'])
+            ? $this->clampInt((int) $options['maxTokens'], 1, self::MAX_TOKENS_UPPER_BOUND)
             : null;
         $topP = isset($options['topP']) && is_numeric($options['topP'])
             ? $this->clampFloat((float) $options['topP'], 0.0, 1.0)
@@ -401,21 +454,24 @@ final readonly class AjaxController
             ? $this->clampFloat((float) $options['presencePenalty'], -2.0, 2.0)
             : null;
         $responseFormat = isset($options['responseFormat']) && is_string($options['responseFormat'])
+            && in_array($options['responseFormat'], ['text', 'json', 'markdown'], true)
             ? $options['responseFormat']
             : null;
-        $systemPrompt = isset($options['systemPrompt']) && is_string($options['systemPrompt'])
-            ? $options['systemPrompt']
-            : null;
-        /** @var array<int, string>|null $stopSequences */
-        $stopSequences = isset($options['stopSequences']) && is_array($options['stopSequences'])
-            ? $options['stopSequences']
-            : null;
-        $provider = isset($options['provider']) && is_string($options['provider'])
-            ? $options['provider']
-            : null;
-        $model = isset($options['model']) && is_string($options['model'])
-            ? $options['model']
-            : null;
+        $stopSequences = null;
+        if (isset($options['stopSequences']) && is_array($options['stopSequences'])) {
+            $filtered = array_values(array_filter(
+                array_slice($options['stopSequences'], 0, self::MAX_STOP_SEQUENCES),
+                is_string(...),
+            ));
+            $stopSequences = $filtered !== [] ? $filtered : null;
+        }
+
+        // If none of the recognized options had values, treat as "no options"
+        if ($temperature === null && $maxTokens === null && $topP === null
+            && $frequencyPenalty === null && $presencePenalty === null
+            && $responseFormat === null && $stopSequences === null) {
+            return null;
+        }
 
         return new ChatOptions(
             temperature: $temperature,
@@ -424,17 +480,64 @@ final readonly class AjaxController
             frequencyPenalty: $frequencyPenalty,
             presencePenalty: $presencePenalty,
             responseFormat: $responseFormat,
-            systemPrompt: $systemPrompt,
             stopSequences: $stopSequences,
-            provider: $provider,
-            model: $model,
         );
+    }
+
+    /**
+     * Validate and sanitize chat messages.
+     *
+     * Enforces structure, allowed roles, count limit, and content length.
+     *
+     * @param array<mixed> $rawMessages
+     *
+     * @return array<int, array{role: string, content: string}>|null Validated messages or null on failure
+     */
+    private function validateMessages(array $rawMessages): ?array
+    {
+        if (count($rawMessages) > self::MAX_MESSAGES) {
+            return null;
+        }
+
+        $validated = [];
+        foreach ($rawMessages as $message) {
+            if (!is_array($message)) {
+                return null;
+            }
+
+            $role    = $message['role'] ?? null;
+            $content = $message['content'] ?? null;
+
+            if (!is_string($role) || !in_array($role, self::ALLOWED_ROLES, true)) {
+                return null;
+            }
+
+            if (!is_string($content)) {
+                return null;
+            }
+
+            if (mb_strlen($content, 'UTF-8') > self::MAX_MESSAGE_CONTENT_LENGTH) {
+                return null;
+            }
+
+            $validated[] = ['role' => $role, 'content' => $content];
+        }
+
+        return $validated;
     }
 
     /**
      * Clamp a float value to a range.
      */
     private function clampFloat(float $value, float $min, float $max): float
+    {
+        return max($min, min($max, $value));
+    }
+
+    /**
+     * Clamp an integer value to a range.
+     */
+    private function clampInt(int $value, int $min, int $max): int
     {
         return max($min, min($max, $value));
     }
@@ -491,7 +594,13 @@ final readonly class AjaxController
      */
     private function sseErrorResponse(string $message, int $statusCode): Response
     {
-        $body = 'data: ' . json_encode(['error' => $message], JSON_THROW_ON_ERROR) . "\n\n";
+        try {
+            $json = json_encode(['error' => $message], JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            $json = '{"error":"An error occurred"}';
+        }
+
+        $body = 'data: ' . $json . "\n\n";
 
         $stream = new Stream('php://temp', 'rw');
         $stream->write($body);

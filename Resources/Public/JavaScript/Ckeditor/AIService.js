@@ -147,12 +147,31 @@ export class AIService {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ prompt, ...options }),
+            body: JSON.stringify({ prompt, options }),
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            // Try JSON first, then SSE format (backend may return text/event-stream errors)
+            const text = await response.text().catch(() => '');
+            let errorMessage = `HTTP ${response.status}`;
+            try {
+                const json = JSON.parse(text);
+                errorMessage = json.error || errorMessage;
+            } catch {
+                // Try SSE format: "data: {"error": "..."}\n\n"
+                const match = text.match(/^data:\s*(.+)/m);
+                if (match) {
+                    try {
+                        const sseData = JSON.parse(match[1]);
+                        errorMessage = sseData.error || errorMessage;
+                    } catch { /* use HTTP status fallback */ }
+                }
+            }
+            throw new Error(errorMessage);
+        }
+
+        if (!response.body) {
+            throw new Error('Streaming not supported: response has no body');
         }
 
         const reader = response.body.getReader();
@@ -160,18 +179,23 @@ export class AIService {
         let buffer = '';
         let lastData = { done: false };
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
 
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    try {
-                        const data = JSON.parse(line.slice(6));
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        let data;
+                        try {
+                            data = JSON.parse(line.slice(6));
+                        } catch {
+                            continue; // Skip malformed SSE chunks
+                        }
                         if (data.error) {
                             throw new Error(data.error);
                         }
@@ -181,38 +205,31 @@ export class AIService {
                         if (data.done) {
                             lastData = data;
                         }
-                    } catch (e) {
-                        if (e.message && !e.message.includes('JSON')) {
-                            throw e;
-                        }
-                        // Ignore JSON parse errors for incomplete chunks
                     }
                 }
             }
+
+            // Flush any remaining bytes from the TextDecoder's internal buffer
+            buffer += decoder.decode();
+
+            // Process any remaining data in the buffer
+            if (buffer.trim().startsWith('data: ')) {
+                try {
+                    const data = JSON.parse(buffer.trim().slice(6));
+                    if (data.content && onChunk) {
+                        onChunk(data.content);
+                    }
+                    if (data.done) {
+                        lastData = data;
+                    }
+                } catch {
+                    // Ignore incomplete final chunk
+                }
+            }
+        } finally {
+            reader.releaseLock();
         }
 
         return lastData;
-    }
-}
-
-// Legacy exports for backward compatibility (deprecated)
-// These will be removed in a future version
-export const APIType = {
-    OPENAI: 'openai',
-    OLLAMA: 'ollama',
-};
-
-export class AIServiceOptions {
-    /**
-     * @deprecated Use the new AIService() without options. Configuration is now handled by nr-llm.
-     */
-    constructor() {
-        console.warn(
-            'AIServiceOptions is deprecated. Configuration is now handled by the nr-llm extension.'
-        );
-    }
-
-    validate() {
-        // No-op for backward compatibility
     }
 }

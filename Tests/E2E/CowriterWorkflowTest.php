@@ -262,7 +262,6 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         // Act: Send multi-turn conversation
         $request = $this->createJsonRequest([
             'messages' => [
-                ['role' => 'system', 'content' => 'You are a writing assistant.'],
                 ['role' => 'user', 'content' => 'How should I improve this text?'],
                 ['role' => 'assistant', 'content' => 'I suggest making it more concise.'],
                 ['role' => 'user', 'content' => 'Can you show me the improved version?'],

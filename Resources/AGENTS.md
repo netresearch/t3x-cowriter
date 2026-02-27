@@ -9,8 +9,9 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 
 ### Components
 
-- **AIService.js** - API client for backend communication
+- **AIService.js** - API client for backend communication (chat, complete, stream)
 - **cowriter.js** - CKEditor 5 plugin integration
+- **UrlLoader.js** - CSP-compliant AJAX URL injection from data attributes
 
 ### File Structure
 
@@ -23,7 +24,8 @@ Resources/
 │   └── JavaScript/
 │       └── Ckeditor/
 │           ├── AIService.js   # AJAX API client
-│           └── cowriter.js    # CKEditor plugin
+│           ├── cowriter.js    # CKEditor plugin
+│           └── UrlLoader.js   # CSP-compliant URL loader
 ```
 
 ## Architecture
@@ -79,6 +81,7 @@ export class AIService {
     _routes = {
         chat: null,
         complete: null,
+        stream: null,
     };
 
     constructor() {
@@ -149,6 +152,7 @@ export class AIService {
     _routes = {
         chat: null,
         complete: null,
+        stream: null,
     };
 
     constructor() {
@@ -229,7 +233,7 @@ class AIService {
 ### CKEditor Integration
 
 - **Plugin pattern:** Extend CKEditor Plugin class
-- **Static methods:** Use static get pluginName()
+- **Static property:** Use `static pluginName = 'name'`
 - **Editor reference:** Access via this.editor
 - **Commands:** Register via editor.commands.add()
 

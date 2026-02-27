@@ -10,6 +10,7 @@ declare(strict_types=1);
 use Rector\CodingStyle\Rector\Catch_\CatchExceptionNameMatchingTypeRector;
 use Rector\Config\RectorConfig;
 use Rector\DeadCode\Rector\ClassMethod\RemoveUnusedPrivateMethodParameterRector;
+use Rector\DeadCode\Rector\ClassMethod\RemoveUnusedPublicMethodParameterRector;
 use Rector\DeadCode\Rector\ClassMethod\RemoveUselessParamTagRector;
 use Rector\DeadCode\Rector\ClassMethod\RemoveUselessReturnTagRector;
 use Rector\DeadCode\Rector\Property\RemoveUselessVarTagRector;
@@ -20,6 +21,7 @@ use Ssch\TYPO3Rector\Set\Typo3LevelSetList;
 
 return static function (RectorConfig $rectorConfig): void {
     $rectorConfig->paths([
+        __DIR__ . '/../Classes',
         __DIR__ . '/../Configuration',
         __DIR__ . '/../Resources',
         __DIR__ . '/../ext_*.php',
@@ -48,7 +50,7 @@ return static function (RectorConfig $rectorConfig): void {
 
         // PHP 8.2+ support
         LevelSetList::UP_TO_PHP_82,
-        Typo3LevelSetList::UP_TO_TYPO3_13,
+        Typo3LevelSetList::UP_TO_TYPO3_14,
     ]);
 
     // Skip some rules
@@ -59,5 +61,6 @@ return static function (RectorConfig $rectorConfig): void {
         RemoveUselessReturnTagRector::class,
         RemoveUselessVarTagRector::class,
         RemoveUnusedPrivateMethodParameterRector::class,
+        RemoveUnusedPublicMethodParameterRector::class,
     ]);
 };

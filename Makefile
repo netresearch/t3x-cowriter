@@ -86,7 +86,7 @@ ci: ## Run complete CI pipeline (pre-commit checks)
 # ===================================
 
 .PHONY: test
-test: test-unit test-functional ## Run all tests (unit + functional)
+test: test-unit test-integration test-e2e test-functional ## Run all tests
 
 .PHONY: test-unit
 test-unit: ## Run unit tests

@@ -9,7 +9,7 @@ set -e
 echo "=== Installing all TYPO3 versions ==="
 echo ""
 
-# For v3.0.0, only TYPO3 v14 is supported
+# For v4.0.0, only TYPO3 v14 is installed by default (v13.4 also supported)
 install-v14
 
 echo ""

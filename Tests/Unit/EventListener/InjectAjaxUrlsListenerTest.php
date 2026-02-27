@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Http\Uri;
 use TYPO3\CMS\Core\Page\AssetCollector;
@@ -26,13 +27,15 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 {
     private InjectAjaxUrlsListener $subject;
     private BackendUriBuilder&MockObject $backendUriBuilderMock;
+    private LoggerInterface&MockObject $loggerMock;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
-        $this->subject               = new InjectAjaxUrlsListener($this->backendUriBuilderMock);
+        $this->loggerMock            = $this->createMock(LoggerInterface::class);
+        $this->subject               = new InjectAjaxUrlsListener($this->backendUriBuilderMock, $this->loggerMock);
     }
 
     #[Test]
@@ -119,6 +122,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $this->assertIsArray($decoded);
         $this->assertArrayHasKey('tx_cowriter_chat', $decoded);
         $this->assertArrayHasKey('tx_cowriter_complete', $decoded);
+        $this->assertArrayHasKey('tx_cowriter_stream', $decoded);
         $this->assertArrayHasKey('tx_cowriter_configurations', $decoded);
     }
 
@@ -148,6 +152,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         $this->assertContains('tx_cowriter_chat', $generatedRoutes);
         $this->assertContains('tx_cowriter_complete', $generatedRoutes);
+        $this->assertContains('tx_cowriter_stream', $generatedRoutes);
         $this->assertContains('tx_cowriter_configurations', $generatedRoutes);
     }
 
@@ -218,9 +223,10 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         ($this->subject)($event);
 
         $decoded = json_decode($capturedJson, true);
-        $this->assertEquals('/typo3/ajax/tx_cowriter_chat', $decoded['tx_cowriter_chat']);
-        $this->assertEquals('/typo3/ajax/tx_cowriter_complete', $decoded['tx_cowriter_complete']);
-        $this->assertEquals('/typo3/ajax/tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
+        $this->assertSame('/typo3/ajax/tx_cowriter_chat', $decoded['tx_cowriter_chat']);
+        $this->assertSame('/typo3/ajax/tx_cowriter_complete', $decoded['tx_cowriter_complete']);
+        $this->assertSame('/typo3/ajax/tx_cowriter_stream', $decoded['tx_cowriter_stream']);
+        $this->assertSame('/typo3/ajax/tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
     }
 
     #[Test]
@@ -249,7 +255,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         ($this->subject)($event);
 
-        $this->assertEquals(
+        $this->assertSame(
             'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/UrlLoader.js',
             $capturedSrc,
         );
@@ -282,6 +288,6 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         ($this->subject)($event);
 
         $this->assertArrayHasKey('type', $capturedAttrs);
-        $this->assertEquals('module', $capturedAttrs['type']);
+        $this->assertSame('module', $capturedAttrs['type']);
     }
 }

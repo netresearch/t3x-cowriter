@@ -16,6 +16,12 @@ namespace Netresearch\T3Cowriter\Service;
  */
 final readonly class RateLimitResult
 {
+    /**
+     * Retry-after value in seconds, eagerly computed at construction time
+     * to avoid time drift between multiple calls.
+     */
+    public int $retryAfter;
+
     public function __construct(
         /** Whether the request is allowed. */
         public bool $allowed,
@@ -25,7 +31,9 @@ final readonly class RateLimitResult
         public int $remaining,
         /** Unix timestamp when the rate limit resets. */
         public int $resetTime,
-    ) {}
+    ) {
+        $this->retryAfter = max(0, $this->resetTime - time());
+    }
 
     /**
      * Get rate limit headers for HTTP response.
@@ -46,6 +54,6 @@ final readonly class RateLimitResult
      */
     public function getRetryAfter(): int
     {
-        return max(0, $this->resetTime - time());
+        return $this->retryAfter;
     }
 }

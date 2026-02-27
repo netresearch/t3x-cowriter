@@ -7,10 +7,12 @@
 <!-- Security -->
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/netresearch/t3x-cowriter/badge)](https://securityscorecards.dev/viewer/?uri=github.com/netresearch/t3x-cowriter)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11853/badge)](https://www.bestpractices.dev/projects/11853)
+[![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev)
 
 <!-- Standards -->
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%2010-brightgreen.svg)](https://phpstan.org/)
-[![PHP 8.5+](https://img.shields.io/badge/PHP-8.5%2B-blue.svg)](https://www.php.net/)
+[![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-blue.svg)](https://www.php.net/)
+[![TYPO3 v13](https://img.shields.io/badge/TYPO3-v13-orange.svg)](https://typo3.org/)
 [![TYPO3 v14](https://img.shields.io/badge/TYPO3-v14-orange.svg)](https://typo3.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 [![Latest Release](https://img.shields.io/github/v/release/netresearch/t3x-cowriter)](https://github.com/netresearch/t3x-cowriter/releases)
@@ -38,8 +40,8 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 
 ## Requirements
 
-- PHP 8.5+
-- TYPO3 v14
+- PHP 8.2+
+- TYPO3 v13 or v14
 - [netresearch/nr-llm](https://github.com/netresearch/t3x-nr-llm) extension (LLM provider abstraction)
 
 ## Installation
@@ -77,9 +79,12 @@ Add to your RTE configuration YAML:
 
 ```yaml
 editor:
-  externalPlugins:
-    cowriter:
-      resource: "EXT:t3_cowriter/Resources/Public/JavaScript/Plugins/cowriter/"
+  config:
+    importModules:
+      - { module: '@netresearch/t3_cowriter/cowriter', exports: ['Cowriter'] }
+    toolbar:
+      items:
+        - cowriter
 ```
 
 ## Usage
@@ -94,8 +99,8 @@ editor:
 Prefix your prompt with `#cw:model-name` to use a specific model:
 
 ```
-#cw:gpt-4o Improve this text
-#cw:claude-sonnet-4-20250514 Make this more professional
+#cw:gpt-5.2-thinking Improve this text
+#cw:claude-opus-4-5 Make this more professional
 ```
 
 ## Architecture
@@ -119,7 +124,7 @@ All LLM requests are proxied through the TYPO3 backend. API keys are stored encr
 ### Prerequisites
 
 - DDEV for local development
-- PHP 8.5+ with required extensions
+- PHP 8.2+ with required extensions
 
 ### Setup
 
@@ -132,13 +137,17 @@ ddev install-v14
 ### Testing
 
 ```bash
-# Run all tests
+# Run all quality checks (lint, phpstan, rector, code style)
 make ci
+
+# Run all tests (unit, functional, integration, e2e)
+make test
 
 # Individual test suites
 make test-unit           # Unit tests
 make test-functional     # Functional tests
 make test-integration    # Integration tests
+make test-e2e            # End-to-end tests
 
 # Code quality
 make lint               # PHP-CS-Fixer
@@ -151,7 +160,7 @@ Target: >80% code coverage
 
 ```bash
 make test-coverage
-open .Build/coverage/html/index.html
+open var/coverage/unit/index.html
 ```
 
 ## Security
@@ -159,12 +168,14 @@ open .Build/coverage/html/index.html
 - API keys stored in nr-llm with sodium encryption
 - All backend AJAX endpoints require TYPO3 authentication
 - LLM output HTML-escaped to prevent XSS
-- CSRF protection via TYPO3 middleware
+- TYPO3 backend route authentication with nonce-based URL tokens
 - Content Security Policy (CSP) compatible
 
-## Migration from v2.x
+## Migration to v4.x
 
-Version 3.0 removes the frontend-only architecture. API keys are no longer stored in extension settings.
+Version 4.0 requires TYPO3 v13.4+ and PHP 8.2+. It removes the frontend-only architecture
+and uses the nr-llm extension for provider-agnostic LLM access. API keys are no longer stored
+in extension settings.
 
 See [CHANGELOG.md](CHANGELOG.md) for migration details.
 

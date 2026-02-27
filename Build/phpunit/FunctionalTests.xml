@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/12.0/phpunit.xsd"
          backupGlobals="true"
          beStrictAboutTestsThatDoNotTestAnything="false"
          bootstrap="../../.Build/vendor/typo3/testing-framework/Resources/Core/Build/FunctionalTestsBootstrap.php"
@@ -20,8 +20,8 @@
     </php>
     <coverage>
         <report>
-            <clover outputFile=".Build/logs/clover-functional.xml"/>
-            <html outputDirectory=".Build/logs/html-functional"/>
+            <clover outputFile="../../.Build/logs/clover-functional.xml"/>
+            <html outputDirectory="../../.Build/logs/html-functional"/>
         </report>
     </coverage>
     <source>
