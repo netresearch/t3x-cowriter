@@ -51,7 +51,7 @@ ddev install-v14
 
 | TYPO3 | PHP | Status |
 |-------|-----|--------|
-| 13.4 LTS | 8.2, 8.3, 8.4 | Supported |
+| 13.4 LTS | 8.2, 8.3, 8.4, 8.5 | Supported |
 | 14.0 | 8.2, 8.3, 8.4, 8.5 | Supported |
 
 ### Component Overview

@@ -16,14 +16,14 @@
 | Service/RateLimiterService.php | Sliding window rate limiter implementation |
 | Service/RateLimitResult.php | Rate limit check result DTO |
 
-## PHP 8.5 Patterns (REQUIRED)
+## PHP 8.2+ Patterns (REQUIRED)
 
 ```php
 // Readonly classes
 final readonly class CompleteRequest { }
 
-// Typed constants
-private const string SYSTEM_PROMPT = '...';
+// Constants (untyped for PHP 8.2 compatibility)
+private const SYSTEM_PROMPT = '...';
 
 // Constructor promotion with DI
 public function __construct(
