@@ -102,6 +102,8 @@ final class AjaxControllerTest extends TestCase
 
         $this->assertInstanceOf(JsonResponse::class, $response);
         $this->assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertTrue($data['success']);
     }
 
     #[Test]
@@ -137,6 +139,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->assertSame(400, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
         $this->assertStringContainsString('Invalid messages', $data['error']);
     }
 
@@ -148,6 +151,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->assertSame(400, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
         $this->assertStringContainsString('Invalid messages', $data['error']);
     }
 
@@ -324,6 +328,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->assertSame(500, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
         $this->assertStringContainsString('provider', strtolower($data['error']));
         $this->assertStringContainsString('try again', strtolower($data['error']));
     }
@@ -347,6 +352,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->assertSame(500, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
         $this->assertStringContainsString('unexpected', strtolower($data['error']));
         $this->assertStringEndsWith('.', $data['error']);
     }
@@ -371,6 +377,7 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->chatAction($request);
 
         $data = $this->decodeJsonResponse($response);
+        $this->assertTrue($data['success']);
         $this->assertStringNotContainsString('<script>', $data['content']);
         $this->assertStringNotContainsString('<img', $data['model']);
         $this->assertStringNotContainsString('<div', $data['finishReason']);
@@ -403,6 +410,7 @@ final class AjaxControllerTest extends TestCase
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
         $this->assertSame('Improved text', $data['content']);
+        $this->assertSame('stop', $data['finishReason']);
     }
 
     #[Test]

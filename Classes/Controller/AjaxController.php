@@ -106,11 +106,11 @@ final readonly class AjaxController
                 JSON_THROW_ON_ERROR,
             );
         } catch (JsonException) {
-            return new JsonResponse(['error' => 'Invalid JSON in request body'], 400);
+            return new JsonResponse(['success' => false, 'error' => 'Invalid JSON in request body'], 400);
         }
 
         if (!is_array($body)) {
-            return new JsonResponse(['error' => 'Invalid JSON structure'], 400);
+            return new JsonResponse(['success' => false, 'error' => 'Invalid JSON structure'], 400);
         }
 
         $rawMessages = isset($body['messages']) && is_array($body['messages']) ? $body['messages'] : [];
@@ -119,14 +119,14 @@ final readonly class AjaxController
         $options     = $this->createChatOptions($optionsData);
 
         if ($rawMessages === []) {
-            return new JsonResponse(['error' => 'Messages array is required'], 400);
+            return new JsonResponse(['success' => false, 'error' => 'Messages array is required'], 400);
         }
 
         // Validate and sanitize messages: enforce structure, roles, count, and content length
         $messages = $this->validateMessages($rawMessages);
         if ($messages === null) {
             return new JsonResponse(
-                ['error' => 'Invalid messages: each message must have a valid role (user/assistant) and string content'],
+                ['success' => false, 'error' => 'Invalid messages: each message must have a valid role (user/assistant) and string content'],
                 400,
             );
         }
@@ -136,6 +136,7 @@ final readonly class AjaxController
 
             // Escape HTML to prevent XSS attacks (defense in depth for all string values)
             return $this->jsonResponseWithRateLimitHeaders([
+                'success'      => true,
                 'content'      => htmlspecialchars($response->content, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
                 'model'        => htmlspecialchars($response->model ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
                 'finishReason' => htmlspecialchars($response->finishReason ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
@@ -144,7 +145,7 @@ final readonly class AjaxController
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['error' => 'LLM provider error occurred. Please try again later.'],
+                ['success' => false, 'error' => 'LLM provider error occurred. Please try again later.'],
                 $rateLimitResult,
                 500,
             );
@@ -155,7 +156,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['error' => 'An unexpected error occurred.'],
+                ['success' => false, 'error' => 'An unexpected error occurred.'],
                 $rateLimitResult,
                 500,
             );

@@ -209,6 +209,9 @@ export class AIService {
                 }
             }
 
+            // Flush any remaining bytes from the TextDecoder's internal buffer
+            buffer += decoder.decode();
+
             // Process any remaining data in the buffer
             if (buffer.trim().startsWith('data: ')) {
                 try {

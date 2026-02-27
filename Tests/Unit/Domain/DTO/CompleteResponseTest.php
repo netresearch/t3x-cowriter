@@ -30,6 +30,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertTrue($response->success);
         $this->assertSame('Generated text', $response->content);
         $this->assertSame('test-model', $response->model);
+        $this->assertSame('stop', $response->finishReason);
         $this->assertNotNull($response->usage);
         $this->assertNull($response->error);
         $this->assertNull($response->retryAfter);
@@ -96,6 +97,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertFalse($response->success);
         $this->assertNull($response->content);
         $this->assertNull($response->model);
+        $this->assertNull($response->finishReason);
         $this->assertNull($response->usage);
         $this->assertSame('Something went wrong', $response->error);
         $this->assertNull($response->retryAfter);
@@ -109,6 +111,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertFalse($response->success);
         $this->assertNull($response->content);
         $this->assertNull($response->model);
+        $this->assertNull($response->finishReason);
         $this->assertNull($response->usage);
         $this->assertStringContainsString('rate limit', strtolower($response->error ?? ''));
         $this->assertSame(60, $response->retryAfter);
@@ -125,6 +128,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertTrue($json['success']);
         $this->assertSame('Result', $json['content']);
         $this->assertSame('test-model', $json['model']);
+        $this->assertSame('stop', $json['finishReason']);
         $this->assertIsArray($json['usage']);
         $this->assertSame(100, $json['usage']['promptTokens']);
         $this->assertSame(200, $json['usage']['completionTokens']);
@@ -144,6 +148,7 @@ final class CompleteResponseTest extends TestCase
         $this->assertSame('Test error', $json['error']);
         $this->assertArrayNotHasKey('content', $json);
         $this->assertArrayNotHasKey('model', $json);
+        $this->assertArrayNotHasKey('finishReason', $json);
         $this->assertArrayNotHasKey('usage', $json);
         $this->assertArrayNotHasKey('retryAfter', $json);
     }

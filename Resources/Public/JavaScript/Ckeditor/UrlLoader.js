@@ -34,7 +34,8 @@ export function loadCowriterUrls() {
         TYPO3.settings = TYPO3.settings || {};
         TYPO3.settings.ajaxUrls = TYPO3.settings.ajaxUrls || {};
 
-        // Merge only expected cowriter URL keys (defense-in-depth against prototype pollution)
+        // Merge only expected cowriter URL keys (defense-in-depth against prototype pollution).
+        // Keep in sync with Configuration/Backend/AjaxRoutes.php
         const allowedKeys = ['tx_cowriter_chat', 'tx_cowriter_complete', 'tx_cowriter_stream', 'tx_cowriter_configurations'];
         for (const key of allowedKeys) {
             if (Object.prototype.hasOwnProperty.call(urls, key) && typeof urls[key] === 'string') {

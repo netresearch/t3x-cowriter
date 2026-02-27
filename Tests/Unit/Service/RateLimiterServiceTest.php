@@ -148,7 +148,7 @@ final class RateLimiterServiceTest extends TestCase
         $service->checkLimit('user-2');
 
         $this->assertCount(2, $cacheKeys);
-        $this->assertNotEquals($cacheKeys[0], $cacheKeys[1]);
+        $this->assertNotSame($cacheKeys[0], $cacheKeys[1]);
     }
 
     #[Test]
