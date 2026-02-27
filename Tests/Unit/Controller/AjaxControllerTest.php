@@ -1182,6 +1182,273 @@ final class AjaxControllerTest extends TestCase
     }
 
     // ===========================================
+    // Cycle 31: Edge Case Coverage Tests
+    // ===========================================
+
+    #[Test]
+    public function chatActionRejectsMessageWithExplicitNullRole(): void
+    {
+        $request  = $this->createRequestWithJsonBody(['messages' => [['role' => null, 'content' => 'Hello']]]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
+    }
+
+    #[Test]
+    public function chatActionRejectsMessageWithExplicitNullContent(): void
+    {
+        $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => null]]]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
+    }
+
+    #[Test]
+    public function chatActionRejectsNonArrayMessage(): void
+    {
+        $request  = $this->createRequestWithJsonBody(['messages' => ['just a string']]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+    }
+
+    #[Test]
+    #[DataProvider('invalidResponseFormatProvider')]
+    public function chatActionRejectsInvalidResponseFormat(string $format): void
+    {
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $options            = ['responseFormat' => $format];
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $messages,
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return true;
+                }),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+
+        // Invalid format not recognized → no options created (null)
+        $this->assertNull($capturedOptions);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidResponseFormatProvider(): iterable
+    {
+        yield 'xml' => ['xml'];
+        yield 'html' => ['html'];
+        yield 'raw' => ['raw'];
+        yield 'csv' => ['csv'];
+    }
+
+    #[Test]
+    public function chatActionAcceptsAllValidResponseFormats(): void
+    {
+        foreach (['text', 'json', 'markdown'] as $format) {
+            $messages           = [['role' => 'user', 'content' => 'Hello']];
+            $options            = ['responseFormat' => $format];
+            $completionResponse = $this->createCompletionResponse('Response');
+
+            $capturedOptions = null;
+            $this->llmServiceManagerMock
+                ->method('chat')
+                ->with(
+                    $messages,
+                    $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                        $capturedOptions = $options;
+
+                        return true;
+                    }),
+                )
+                ->willReturn($completionResponse);
+
+            $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+            $this->subject->chatAction($request);
+
+            $this->assertNotNull($capturedOptions, "Format '$format' should produce ChatOptions");
+            $this->assertSame($format, $capturedOptions->getResponseFormat());
+        }
+    }
+
+    #[Test]
+    public function chatActionReturnsNullOptionsForEmptyOptionsArray(): void
+    {
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with($messages, null)
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => []]);
+        $this->subject->chatAction($request);
+    }
+
+    #[Test]
+    public function chatActionClampsAllParametersAtBoundarySimultaneously(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $options  = [
+            'temperature'      => 0.0,
+            'topP'             => 1.0,
+            'maxTokens'        => 16384,
+            'frequencyPenalty' => -2.0,
+            'presencePenalty'  => 2.0,
+        ];
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $messages,
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return $options !== null;
+                }),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+
+        $this->assertNotNull($capturedOptions);
+        $this->assertSame(0.0, $capturedOptions->getTemperature());
+        $this->assertSame(1.0, $capturedOptions->getTopP());
+        $this->assertSame(16384, $capturedOptions->getMaxTokens());
+        $this->assertSame(-2.0, $capturedOptions->getFrequencyPenalty());
+        $this->assertSame(2.0, $capturedOptions->getPresencePenalty());
+    }
+
+    #[Test]
+    public function chatActionLimitsStopSequencesToMaximum(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        // 15 stop sequences, but max is 10
+        $options = ['stopSequences' => array_map(fn ($i) => "stop$i", range(1, 15))];
+
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $messages,
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return $options !== null;
+                }),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+
+        $this->assertNotNull($capturedOptions);
+        $this->assertCount(10, $capturedOptions->getStopSequences());
+    }
+
+    #[Test]
+    public function chatActionReturnsNullOptionsWhenAllStopSequencesAreInvalid(): void
+    {
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $options            = ['stopSequences' => [42, null, true, 3.14]];
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with($messages, null)
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+    }
+
+    #[Test]
+    public function chatActionAcceptsExactly50Messages(): void
+    {
+        $messages           = array_fill(0, 50, ['role' => 'user', 'content' => 'Hello']);
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $this->llmServiceManagerMock
+            ->method('chat')
+            ->willReturn($completionResponse);
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function streamActionSseOutputContainsDoneEvent(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->willReturnCallback(function () {
+                yield 'chunk1';
+                yield 'chunk2';
+            });
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+
+        // Verify SSE structure: content chunks + done event
+        $this->assertStringContainsString('"content":', $body);
+        $this->assertStringContainsString('"done":true', $body);
+    }
+
+    #[Test]
+    public function chatActionHandlesNonArrayBodyGracefully(): void
+    {
+        $bodyMock = $this->createMock(StreamInterface::class);
+        $bodyMock->method('getContents')->willReturn('"just a string"');
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getBody')->willReturn($bodyMock);
+
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
+        $this->assertStringContainsString('Invalid JSON structure', $data['error']);
+    }
+
+    // ===========================================
     // Helper Methods
     // ===========================================
 

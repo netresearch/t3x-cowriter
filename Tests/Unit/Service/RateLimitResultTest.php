@@ -84,6 +84,42 @@ final class RateLimitResultTest extends TestCase
     }
 
     #[Test]
+    public function retryAfterIsComputedEagerlyAtConstruction(): void
+    {
+        $resetTime = time() + 30;
+        $result    = new RateLimitResult(
+            allowed: false,
+            limit: 20,
+            remaining: 0,
+            resetTime: $resetTime,
+        );
+
+        $firstCall  = $result->getRetryAfter();
+        $secondCall = $result->getRetryAfter();
+
+        // Both calls should return the same pre-computed value
+        $this->assertSame($firstCall, $secondCall);
+        // The retryAfter public property should match
+        $this->assertSame($result->retryAfter, $firstCall);
+    }
+
+    #[Test]
+    public function getHeadersContainsExactlyThreeHeaders(): void
+    {
+        $result = new RateLimitResult(
+            allowed: true,
+            limit: 50,
+            remaining: 49,
+            resetTime: time() + 60,
+        );
+
+        $headers = $result->getHeaders();
+
+        $this->assertCount(3, $headers);
+        $this->assertSame(['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'], array_keys($headers));
+    }
+
+    #[Test]
     public function deniedResultHasZeroRemaining(): void
     {
         $result = new RateLimitResult(

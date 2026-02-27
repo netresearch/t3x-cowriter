@@ -164,6 +164,76 @@ final class CompleteResponseTest extends TestCase
         $this->assertSame(120, $json['retryAfter']);
     }
 
+    // ===========================================
+    // Cycle 32: Edge Case Coverage Tests
+    // ===========================================
+
+    #[Test]
+    public function successHandlesEmptyModelAndFinishReason(): void
+    {
+        $usage = new UsageStatistics(
+            promptTokens: 10,
+            completionTokens: 20,
+            totalTokens: 30,
+        );
+
+        $completionResponse = new CompletionResponse(
+            content: 'Result',
+            model: '',
+            usage: $usage,
+            finishReason: '',
+            provider: 'test',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        $this->assertTrue($response->success);
+        $this->assertSame('Result', $response->content);
+        $this->assertSame('', $response->model);
+        $this->assertSame('', $response->finishReason);
+    }
+
+    #[Test]
+    public function jsonSerializeOmitsRetryAfterWhenNull(): void
+    {
+        $response = CompleteResponse::error('Some error');
+
+        $json = $response->jsonSerialize();
+
+        $this->assertArrayNotHasKey('retryAfter', $json);
+        $this->assertNull($response->retryAfter);
+    }
+
+    #[Test]
+    public function rateLimitedWithZeroRetryAfter(): void
+    {
+        $response = CompleteResponse::rateLimited(0);
+
+        $json = $response->jsonSerialize();
+
+        $this->assertFalse($json['success']);
+        $this->assertSame(0, $json['retryAfter']);
+    }
+
+    #[Test]
+    public function successEscapesFinishReasonWithSpecialCharacters(): void
+    {
+        $usage = new UsageStatistics(10, 20, 30);
+
+        $completionResponse = new CompletionResponse(
+            content: 'text',
+            model: 'model',
+            usage: $usage,
+            finishReason: 'stop<script>',
+            provider: 'test',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        $this->assertStringNotContainsString('<script>', $response->finishReason);
+        $this->assertStringContainsString('&lt;script&gt;', $response->finishReason);
+    }
+
     private function createCompletionResponse(
         string $content,
         int $promptTokens = 10,

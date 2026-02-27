@@ -104,6 +104,49 @@ describe('Cowriter Plugin', () => {
         });
     });
 
+    describe('_sanitizeContent edge cases', () => {
+        let plugin;
+
+        beforeEach(() => {
+            plugin = new Cowriter();
+        });
+
+        it('should handle content with only opening tags (no closing)', () => {
+            const result = plugin._sanitizeContent('<div><p>unclosed');
+            expect(result).toBe('unclosed');
+        });
+
+        it('should handle self-referencing nested tags', () => {
+            const result = plugin._sanitizeContent('<div><div>inner</div></div>');
+            expect(result).toBe('inner');
+        });
+
+        it('should complete within iteration limit for pathological input', () => {
+            // Create input that strips one tag per iteration
+            const nested = '<a>'.repeat(100) + 'core' + '</a>'.repeat(100);
+            const start = performance.now();
+            const result = plugin._sanitizeContent(nested);
+            const duration = performance.now() - start;
+
+            expect(result).toBe('core');
+            // Should complete quickly (under 100ms)
+            expect(duration).toBeLessThan(100);
+        });
+
+        it('should handle empty tags', () => {
+            expect(plugin._sanitizeContent('<br><hr><img src="x">')).toBe('');
+        });
+
+        it('should handle tags with newlines in attributes', () => {
+            const input = '<div\nclass="test"\nid="main">content</div>';
+            expect(plugin._sanitizeContent(input)).toBe('content');
+        });
+
+        it('should preserve plain text with angle brackets in math', () => {
+            expect(plugin._sanitizeContent('2 < 3 and 5 > 4')).toBe('2 < 3 and 5 > 4');
+        });
+    });
+
     describe('init', () => {
         it('should register button with editor UI', async () => {
             const addedComponents = {};

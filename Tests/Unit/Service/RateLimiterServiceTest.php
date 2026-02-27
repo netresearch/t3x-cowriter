@@ -226,6 +226,91 @@ final class RateLimiterServiceTest extends TestCase
     }
 
     #[Test]
+    public function constructorAcceptsExactlyOneRequestPerMinute(): void
+    {
+        $this->cacheMock->method('get')->willReturn(false);
+        $this->cacheMock->expects($this->once())->method('set');
+
+        $service = new RateLimiterService($this->cacheMock, 1);
+        $result  = $service->checkLimit('user-123');
+
+        $this->assertTrue($result->allowed);
+        $this->assertSame(1, $result->limit);
+        $this->assertSame(0, $result->remaining); // 1 - 1 (the new request)
+    }
+
+    #[Test]
+    public function checkLimitWithSpecialCharacterIdentifier(): void
+    {
+        $cacheKeys = [];
+        $this->cacheMock->method('get')->willReturn(false);
+        $this->cacheMock->method('set')
+            ->willReturnCallback(function (string $key) use (&$cacheKeys): bool {
+                $cacheKeys[] = $key;
+
+                return true;
+            });
+
+        $service = new RateLimiterService($this->cacheMock, 20);
+
+        // All these should produce valid cache keys via md5
+        $service->checkLimit('');
+        $service->checkLimit("user\x00with\x00nulls");
+        $service->checkLimit(str_repeat('a', 1000));
+
+        $this->assertCount(3, $cacheKeys);
+        foreach ($cacheKeys as $key) {
+            // Cache key should be prefix + md5 hash (32 hex chars)
+            $this->assertMatchesRegularExpression('/^cowriter_ratelimit_[a-f0-9]{32}$/', $key);
+        }
+    }
+
+    #[Test]
+    public function checkLimitMultipleRapidSequentialCalls(): void
+    {
+        $storedData = [];
+        $this->cacheMock->method('get')
+            ->willReturnCallback(function () use (&$storedData) {
+                return $storedData !== [] ? $storedData : false;
+            });
+        $this->cacheMock->method('set')
+            ->willReturnCallback(function (string $key, array $data) use (&$storedData): bool {
+                $storedData = $data;
+
+                return true;
+            });
+
+        $service = new RateLimiterService($this->cacheMock, 5);
+
+        // Make 5 rapid requests (should all be allowed)
+        for ($i = 0; $i < 5; ++$i) {
+            $result = $service->checkLimit('user-rapid');
+            $this->assertTrue($result->allowed, "Request $i should be allowed");
+        }
+
+        // 6th request should be denied
+        $result = $service->checkLimit('user-rapid');
+        $this->assertFalse($result->allowed, 'Request 6 should be denied');
+        $this->assertSame(0, $result->remaining);
+    }
+
+    #[Test]
+    public function checkLimitResetTimeCalculationForEmptyWindow(): void
+    {
+        $this->cacheMock->method('get')->willReturn(false);
+        $this->cacheMock->expects($this->once())->method('set');
+
+        $service = new RateLimiterService($this->cacheMock, 20);
+        $before  = time();
+        $result  = $service->checkLimit('user-123');
+        $after   = time();
+
+        // Reset time should be approximately now + 60 seconds
+        $this->assertGreaterThanOrEqual($before + 60, $result->resetTime);
+        $this->assertLessThanOrEqual($after + 60, $result->resetTime);
+    }
+
+    #[Test]
     public function checkLimitDeniesAtExactLimit(): void
     {
         $now = time();

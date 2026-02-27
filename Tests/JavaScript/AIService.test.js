@@ -327,6 +327,233 @@ describe('AIService', () => {
         });
     });
 
+    describe('constructor edge cases', () => {
+        it('should handle partial TYPO3 settings with some routes missing', async () => {
+            globalThis.TYPO3 = {
+                settings: {
+                    ajaxUrls: {
+                        tx_cowriter_chat: '/chat',
+                        // complete and stream not set
+                    },
+                },
+            };
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const service = new ServiceClass();
+            expect(service._routes.chat).toBe('/chat');
+            expect(service._routes.complete).toBeNull();
+            expect(service._routes.stream).toBeNull();
+        });
+
+        it('should handle TYPO3 with settings but no ajaxUrls', async () => {
+            globalThis.TYPO3 = { settings: {} };
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const service = new ServiceClass();
+            expect(service._routes.chat).toBeNull();
+            expect(service._routes.complete).toBeNull();
+        });
+    });
+
+    describe('completeStream edge cases', () => {
+        it('should call onChunk exactly once per content chunk', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const sseData = [
+                'data: {"content":"one"}\n\n',
+                'data: {"content":"two"}\n\n',
+                'data: {"content":"three"}\n\n',
+                'data: {"done":true}\n\n',
+            ].join('');
+
+            const encoder = new TextEncoder();
+            const readable = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseData));
+                    controller.close();
+                },
+            });
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                body: readable,
+            });
+
+            const service = new ServiceClass();
+            const onChunk = vi.fn();
+            await service.completeStream('Test', {}, onChunk);
+
+            expect(onChunk).toHaveBeenCalledTimes(3);
+            expect(onChunk).toHaveBeenNthCalledWith(1, 'one');
+            expect(onChunk).toHaveBeenNthCalledWith(2, 'two');
+            expect(onChunk).toHaveBeenNthCalledWith(3, 'three');
+        });
+
+        it('should skip malformed SSE data lines gracefully', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const sseData = [
+                'data: {"content":"valid"}\n\n',
+                'data: not-json\n\n',
+                'data: {"content":"also-valid"}\n\n',
+                'data: {"done":true}\n\n',
+            ].join('');
+
+            const encoder = new TextEncoder();
+            const readable = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseData));
+                    controller.close();
+                },
+            });
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                body: readable,
+            });
+
+            const service = new ServiceClass();
+            const chunks = [];
+            await service.completeStream('Test', {}, (chunk) => chunks.push(chunk));
+
+            // Malformed line skipped, valid chunks received
+            expect(chunks).toEqual(['valid', 'also-valid']);
+        });
+
+        it('should ignore SSE chunks with empty content', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const sseData = [
+                'data: {"content":""}\n\n',
+                'data: {"content":"real"}\n\n',
+                'data: {"done":true}\n\n',
+            ].join('');
+
+            const encoder = new TextEncoder();
+            const readable = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseData));
+                    controller.close();
+                },
+            });
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                body: readable,
+            });
+
+            const service = new ServiceClass();
+            const chunks = [];
+            await service.completeStream('Test', {}, (chunk) => chunks.push(chunk));
+
+            // Empty content is falsy, so onChunk is not called for it
+            expect(chunks).toEqual(['real']);
+        });
+
+        it('should handle non-ok response with plain text fallback', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 503,
+                text: () => Promise.resolve('Service Unavailable'),
+            });
+
+            const service = new ServiceClass();
+            await expect(service.completeStream('Test', {}, () => {})).rejects.toThrow('HTTP 503');
+        });
+
+        it('should handle text() failure in non-ok response', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 502,
+                text: () => Promise.reject(new Error('Cannot read body')),
+            });
+
+            const service = new ServiceClass();
+            await expect(service.completeStream('Test', {}, () => {})).rejects.toThrow('HTTP 502');
+        });
+
+        it('should process remaining buffer data after stream ends', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            // Data without trailing newline - remains in buffer
+            const sseData = 'data: {"content":"buffered"}\n\ndata: {"done":true}';
+
+            const encoder = new TextEncoder();
+            const readable = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseData));
+                    controller.close();
+                },
+            });
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                body: readable,
+            });
+
+            const service = new ServiceClass();
+            const chunks = [];
+            const result = await service.completeStream('Test', {}, (chunk) => chunks.push(chunk));
+
+            expect(chunks).toContain('buffered');
+            expect(result.done).toBe(true);
+        });
+    });
+
+    describe('complete edge cases', () => {
+        it('should fall back to HTTP status when error response has no error field', async () => {
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 422,
+                json: () => Promise.resolve({ message: 'Validation failed' }),
+            });
+
+            const service = new AIService();
+            await expect(service.complete('Hello')).rejects.toThrow('HTTP 422');
+        });
+
+        it('should always send application/json content type', async () => {
+            const mockResponse = { success: true, content: 'text' };
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            });
+
+            const service = new AIService();
+            await service.complete('test');
+
+            const fetchCall = globalThis.fetch.mock.calls[0];
+            expect(fetchCall[1].headers['Content-Type']).toBe('application/json');
+        });
+    });
+
     describe('exports', () => {
         it('should not export legacy APIType or AIServiceOptions', async () => {
             const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');

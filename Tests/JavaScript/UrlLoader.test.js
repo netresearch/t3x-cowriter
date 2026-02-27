@@ -199,4 +199,99 @@ describe('UrlLoader', () => {
             expect(TYPO3Mock.settings.ajaxUrls.constructor).not.toBe('/hack');
         });
     });
+
+    describe('edge cases', () => {
+        it('should reject non-string values in URL data', async () => {
+            const dataElement = document.createElement('script');
+            dataElement.type = 'application/json';
+            dataElement.id = 'cowriter-ajax-urls-data';
+            dataElement.textContent = JSON.stringify({
+                tx_cowriter_chat: 123,
+                tx_cowriter_complete: null,
+                tx_cowriter_stream: true,
+                tx_cowriter_configurations: '/valid',
+            });
+            document.body.appendChild(dataElement);
+
+            vi.resetModules();
+            globalThis.TYPO3 = TYPO3Mock;
+
+            const { loadCowriterUrls } = await import(
+                '../../Resources/Public/JavaScript/Ckeditor/UrlLoader.js'
+            );
+            loadCowriterUrls();
+
+            // Only string values should be accepted
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_chat).toBeUndefined();
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_complete).toBeUndefined();
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream).toBeUndefined();
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_configurations).toBe('/valid');
+        });
+
+        it('should handle data element with whitespace around JSON', async () => {
+            const dataElement = document.createElement('script');
+            dataElement.type = 'application/json';
+            dataElement.id = 'cowriter-ajax-urls-data';
+            dataElement.textContent = '  \n  {"tx_cowriter_chat": "/chat"}  \n  ';
+            document.body.appendChild(dataElement);
+
+            vi.resetModules();
+            globalThis.TYPO3 = TYPO3Mock;
+
+            const { loadCowriterUrls } = await import(
+                '../../Resources/Public/JavaScript/Ckeditor/UrlLoader.js'
+            );
+            loadCowriterUrls();
+
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_chat).toBe('/chat');
+        });
+
+        it('should be idempotent when called multiple times', async () => {
+            const dataElement = document.createElement('script');
+            dataElement.type = 'application/json';
+            dataElement.id = 'cowriter-ajax-urls-data';
+            dataElement.textContent = JSON.stringify({
+                tx_cowriter_chat: '/chat',
+                tx_cowriter_complete: '/complete',
+            });
+            document.body.appendChild(dataElement);
+
+            vi.resetModules();
+            globalThis.TYPO3 = TYPO3Mock;
+
+            const { loadCowriterUrls } = await import(
+                '../../Resources/Public/JavaScript/Ckeditor/UrlLoader.js'
+            );
+
+            // Call twice
+            loadCowriterUrls();
+            loadCowriterUrls();
+
+            // Should still have correct values
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_chat).toBe('/chat');
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_complete).toBe('/complete');
+        });
+
+        it('should not set URL for allowed key missing from data', async () => {
+            const dataElement = document.createElement('script');
+            dataElement.type = 'application/json';
+            dataElement.id = 'cowriter-ajax-urls-data';
+            dataElement.textContent = JSON.stringify({
+                tx_cowriter_chat: '/chat',
+                // tx_cowriter_complete intentionally omitted
+            });
+            document.body.appendChild(dataElement);
+
+            vi.resetModules();
+            globalThis.TYPO3 = TYPO3Mock;
+
+            const { loadCowriterUrls } = await import(
+                '../../Resources/Public/JavaScript/Ckeditor/UrlLoader.js'
+            );
+            loadCowriterUrls();
+
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_chat).toBe('/chat');
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_complete).toBeUndefined();
+        });
+    });
 });
