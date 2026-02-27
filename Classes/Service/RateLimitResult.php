@@ -14,17 +14,22 @@ namespace Netresearch\T3Cowriter\Service;
  *
  * @internal
  */
-final readonly class RateLimitResult
+final class RateLimitResult
 {
+    /**
+     * Cached retry-after value to avoid time drift between multiple calls.
+     */
+    private ?int $cachedRetryAfter = null;
+
     public function __construct(
         /** Whether the request is allowed. */
-        public bool $allowed,
+        public readonly bool $allowed,
         /** Maximum requests allowed per window. */
-        public int $limit,
+        public readonly int $limit,
         /** Remaining requests in current window. */
-        public int $remaining,
+        public readonly int $remaining,
         /** Unix timestamp when the rate limit resets. */
-        public int $resetTime,
+        public readonly int $resetTime,
     ) {}
 
     /**
@@ -43,9 +48,12 @@ final readonly class RateLimitResult
 
     /**
      * Get Retry-After header value in seconds.
+     *
+     * The value is cached on first call to ensure consistency when used
+     * in both the response body and Retry-After header.
      */
     public function getRetryAfter(): int
     {
-        return max(0, $this->resetTime - time());
+        return $this->cachedRetryAfter ??= max(0, $this->resetTime - time());
     }
 }

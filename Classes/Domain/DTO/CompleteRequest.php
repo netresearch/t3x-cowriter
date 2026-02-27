@@ -97,7 +97,7 @@ final readonly class CompleteRequest
     {
         $trimmed = trim($this->prompt);
 
-        return $trimmed !== '' && strlen($trimmed) <= self::MAX_PROMPT_LENGTH;
+        return $trimmed !== '' && mb_strlen($trimmed, 'UTF-8') <= self::MAX_PROMPT_LENGTH;
     }
 
     /**

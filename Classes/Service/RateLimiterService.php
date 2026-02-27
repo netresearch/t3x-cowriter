@@ -16,6 +16,11 @@ use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
  *
  * Implements a sliding window rate limiting algorithm using TYPO3's cache framework.
  * Tracks requests per backend user with configurable limits.
+ *
+ * Note: The read-then-write pattern is not atomic, so concurrent requests from
+ * the same user may slightly exceed the limit (TOCTOU). This is acceptable for
+ * a backend AJAX endpoint with low concurrency — the rate limiter serves as a
+ * safety net, not a billing boundary.
  */
 final readonly class RateLimiterService implements RateLimiterInterface
 {

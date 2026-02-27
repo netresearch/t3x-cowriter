@@ -173,6 +173,20 @@ final readonly class AjaxController
             );
         }
 
+        return $this->executeCompletion($dto, $configuration, $rateLimitResult);
+    }
+
+    /**
+     * Execute the completion request (shared by completeAction and streamAction fallback).
+     *
+     * Separated to avoid double rate-limiting and consumed request body
+     * when streamAction falls back to non-streaming mode.
+     */
+    private function executeCompletion(
+        CompleteRequest $dto,
+        LlmConfiguration $configuration,
+        RateLimitResult $rateLimitResult,
+    ): ResponseInterface {
         try {
             $messages = [
                 ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
@@ -258,8 +272,8 @@ final readonly class AjaxController
 
         // Check if streaming is supported
         if (!$this->llmServiceManager->supportsFeature('streaming')) {
-            // Fall back to non-streaming response if streaming is not supported
-            return $this->completeAction($request);
+            // Fall back to non-streaming completion (reuse already-parsed DTO and rate limit)
+            return $this->executeCompletion($dto, $configuration, $rateLimitResult);
         }
 
         // Build the streaming response using a generator
@@ -411,21 +425,34 @@ final readonly class AjaxController
             ? $this->clampFloat((float) $options['presencePenalty'], -2.0, 2.0)
             : null;
         $responseFormat = isset($options['responseFormat']) && is_string($options['responseFormat'])
+            && in_array($options['responseFormat'], ['text', 'json', 'markdown'], true)
             ? $options['responseFormat']
             : null;
-        $stopSequences = isset($options['stopSequences']) && is_array($options['stopSequences'])
-            ? array_values(array_filter($options['stopSequences'], is_string(...)))
-            : null;
+        $stopSequences = null;
+        if (isset($options['stopSequences']) && is_array($options['stopSequences'])) {
+            $filtered      = array_values(array_filter($options['stopSequences'], is_string(...)));
+            $stopSequences = $filtered !== [] ? $filtered : null;
+        }
 
-        return new ChatOptions(
+        // Return null if no recognized options were provided (all values are null)
+        $chatOptions = new ChatOptions(
             temperature: $temperature,
             maxTokens: $maxTokens,
             topP: $topP,
             frequencyPenalty: $frequencyPenalty,
             presencePenalty: $presencePenalty,
             responseFormat: $responseFormat,
-            stopSequences: $stopSequences !== [] ? $stopSequences : null,
+            stopSequences: $stopSequences,
         );
+
+        // If none of the recognized options had values, treat as "no options"
+        if ($temperature === null && $maxTokens === null && $topP === null
+            && $frequencyPenalty === null && $presencePenalty === null
+            && $responseFormat === null && $stopSequences === null) {
+            return null;
+        }
+
+        return $chatOptions;
     }
 
     /**
