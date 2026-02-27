@@ -156,7 +156,7 @@ Target: >80% code coverage
 
 ```bash
 make test-coverage
-open .Build/coverage/html/index.html
+open var/coverage/unit/index.html
 ```
 
 ## Security
@@ -167,9 +167,11 @@ open .Build/coverage/html/index.html
 - CSRF protection via TYPO3 middleware
 - Content Security Policy (CSP) compatible
 
-## Migration from v2.x
+## Migration to v4.x
 
-Version 3.0 removes the frontend-only architecture. API keys are no longer stored in extension settings.
+Version 4.0 requires TYPO3 v13.4+ and PHP 8.2+. It removes the frontend-only architecture
+and uses the nr-llm extension for provider-agnostic LLM access. API keys are no longer stored
+in extension settings.
 
 See [CHANGELOG.md](CHANGELOG.md) for migration details.
 

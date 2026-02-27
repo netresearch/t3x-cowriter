@@ -233,7 +233,7 @@ class AIService {
 ### CKEditor Integration
 
 - **Plugin pattern:** Extend CKEditor Plugin class
-- **Static methods:** Use static get pluginName()
+- **Static property:** Use `static pluginName = 'name'`
 - **Editor reference:** Access via this.editor
 - **Commands:** Register via editor.commands.add()
 

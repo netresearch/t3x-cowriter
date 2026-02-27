@@ -27,7 +27,7 @@ private const SYSTEM_PROMPT = '...';
 
 // Constructor promotion with DI
 public function __construct(
-    private readonly LlmServiceManagerInterface $llmManager,
+    private readonly LlmServiceManagerInterface $llmServiceManager,
 ) {}
 ```
 
@@ -44,19 +44,19 @@ content: htmlspecialchars($response->content, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
 // Use LlmServiceManagerInterface for all LLM operations
 $configuration = $this->configurationRepository->findDefault();
 $options = $configuration->toChatOptions();
-$response = $this->llmManager->chat($messages, $options);
+$response = $this->llmServiceManager->chat($messages, $options);
 ```
 
 ### Response Handling
 
 ```php
-// Handle rate limits gracefully
+// Handle errors gracefully — rate limiting is done via RateLimiterService,
+// not via provider exceptions
 try {
-    $response = $this->llmManager->chat($messages, $options);
-} catch (RateLimitException $e) {
-    return CompleteResponse::rateLimited($e->getRetryAfter());
+    $response = $this->llmServiceManager->chat($messages, $options);
+    return CompleteResponse::success($response);
 } catch (ProviderException $e) {
-    return CompleteResponse::error($e->getMessage());
+    return CompleteResponse::error('LLM provider error occurred');
 }
 ```
 
@@ -139,7 +139,7 @@ public function completeAction(ServerRequestInterface $request): ResponseInterfa
     }
 
     try {
-        $response = $this->llmManager->chat($messages, $options);
+        $response = $this->llmServiceManager->chat($messages, $options);
         return new JsonResponse(
             CompleteResponse::success($response)->jsonSerialize()
         );
@@ -159,7 +159,7 @@ public function completeAction(ServerRequestInterface $request): ResponseInterfa
 public function completeAction($request)
 {
     $body = json_decode($request->getBody()->getContents(), true);
-    $response = $this->llmManager->chat($body['messages']);
+    $response = $this->llmServiceManager->chat($body['messages']);
     return new JsonResponse(['content' => $response->content]); // XSS risk!
 }
 ```

@@ -5,7 +5,7 @@
     "license": [
         "GPL-3.0-or-later"
     ],
-    "homepage": "https://github.com/netresearch/t3-cowriter",
+    "homepage": "https://github.com/netresearch/t3x-cowriter",
     "readme": "README.md",
     "repositories": [
         {
@@ -49,9 +49,9 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/netresearch/t3-cowriter/issues",
-        "source": "https://github.com/netresearch/t3-cowriter",
-        "docs": "https://github.com/netresearch/t3-cowriter"
+        "issues": "https://github.com/netresearch/t3x-cowriter/issues",
+        "source": "https://github.com/netresearch/t3x-cowriter",
+        "docs": "https://github.com/netresearch/t3x-cowriter"
     },
     "require": {
         "php": "^8.2",
@@ -152,6 +152,7 @@
         ],
         "ci:test:all": [
             "@ci:test:php:unit",
+            "@ci:test:php:functional",
             "@ci:test:php:integration",
             "@ci:test:php:e2e"
         ]

@@ -13,9 +13,9 @@ Once the extension is installed and configured:
 
 1.  Open any content element with a rich text field in the TYPO3 backend
 2.  You will see a new AI Cowriter button in the CKEditor toolbar
-3.  Click the button to open the AI prompt dialog
-4.  Enter a description of the text you want to generate
-5.  The AI will generate content based on your prompt and insert it into the editor
+3.  Select the text you want to improve or use as a prompt
+4.  Click the Cowriter button — the selected text is sent to the AI
+5.  The AI-generated response replaces the selected text in the editor
 
 Tips for effective prompts
 ==========================

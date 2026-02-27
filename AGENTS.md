@@ -181,13 +181,23 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
+use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
+use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Http\JsonResponse;
 
 final readonly class AjaxController
 {
     public function __construct(
         private LlmServiceManagerInterface $llmServiceManager,
+        private LlmConfigurationRepository $configurationRepository,
+        private RateLimiterInterface $rateLimiter,
+        private Context $context,
+        private LoggerInterface $logger,
     ) {}
 
     public function chatAction(ServerRequestInterface $request): ResponseInterface
@@ -218,7 +228,7 @@ final readonly class AjaxController
 Before committing:
 
 1. **Lint passed:** `make lint`
-2. **Style fixed:** `make format`
+2. **Style fixed:** `make cgl-fix`
 3. **Tests pass:** `make test`
 4. **Static analysis:** No new PHPStan errors
 5. **Rector check:** No modernization suggestions
@@ -255,7 +265,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
-use Netresearch\NrLlm\Service\LlmServiceManager;
+use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\Http\JsonResponse;
@@ -311,7 +321,7 @@ const response = await fetch(TYPO3.settings.ajaxUrls.tx_cowriter_chat, {
 - **LLM not responding:** Check nr-llm extension configuration
 - **AJAX 403 error:** User not logged into backend
 - **PHPStan errors:** Update baseline: `composer ci:test:php:phpstan:baseline`
-- **Code style fails:** Run `make format` to auto-fix
+- **Code style fails:** Run `make cgl-fix` to auto-fix
 
 ## House Rules
 
