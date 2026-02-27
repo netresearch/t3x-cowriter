@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Http\Uri;
 use TYPO3\CMS\Core\Page\AssetCollector;
@@ -26,13 +27,15 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 {
     private InjectAjaxUrlsListener $subject;
     private BackendUriBuilder&MockObject $backendUriBuilderMock;
+    private LoggerInterface&MockObject $loggerMock;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
-        $this->subject               = new InjectAjaxUrlsListener($this->backendUriBuilderMock);
+        $this->loggerMock            = $this->createMock(LoggerInterface::class);
+        $this->subject               = new InjectAjaxUrlsListener($this->backendUriBuilderMock, $this->loggerMock);
     }
 
     #[Test]

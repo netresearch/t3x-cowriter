@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\EventListener;
 
+use JsonException;
+use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Attribute\AsEventListener;
 use TYPO3\CMS\Core\Page\Event\BeforeJavaScriptsRenderingEvent;
@@ -25,6 +27,7 @@ final readonly class InjectAjaxUrlsListener
 {
     public function __construct(
         private BackendUriBuilder $backendUriBuilder,
+        private LoggerInterface $logger,
     ) {}
 
     public function __invoke(BeforeJavaScriptsRenderingEvent $event): void
@@ -34,21 +37,29 @@ final readonly class InjectAjaxUrlsListener
             return;
         }
 
-        // Add JSON data element (type="application/json" is not executed)
-        $event->getAssetCollector()->addInlineJavaScript(
-            'cowriter-ajax-urls-data',
-            $this->buildJsonData(),
-            ['type'     => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
-            ['priority' => true],
-        );
+        try {
+            // Add JSON data element (type="application/json" is not executed)
+            $event->getAssetCollector()->addInlineJavaScript(
+                'cowriter-ajax-urls-data',
+                $this->buildJsonData(),
+                ['type'     => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
+                ['priority' => true],
+            );
 
-        // Load the URL loader module that reads from the JSON data
-        $event->getAssetCollector()->addJavaScript(
-            'cowriter-url-loader',
-            'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/UrlLoader.js',
-            ['type'     => 'module'],
-            ['priority' => true],
-        );
+            // Load the URL loader module that reads from the JSON data
+            $event->getAssetCollector()->addJavaScript(
+                'cowriter-url-loader',
+                'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/UrlLoader.js',
+                ['type'     => 'module'],
+                ['priority' => true],
+            );
+        } catch (JsonException $e) {
+            // Graceful degradation: page renders but cowriter plugin won't function.
+            // This is extremely unlikely since BackendUriBuilder produces valid UTF-8 strings.
+            $this->logger->error('Cowriter: Failed to encode AJAX URLs as JSON', [
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

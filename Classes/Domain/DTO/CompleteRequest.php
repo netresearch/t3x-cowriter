@@ -54,7 +54,11 @@ final readonly class CompleteRequest
     {
         $body = $request->getParsedBody();
 
-        // Handle JSON body (from getContents) or parsed form data
+        // Handle JSON body (from getContents) or parsed form data.
+        // Note: json_decode() intentionally used without JSON_THROW_ON_ERROR here —
+        // invalid JSON silently returns null, which is handled by the is_array() check below.
+        // This avoids coupling the DTO factory to exception handling; the caller (AjaxController)
+        // already validates JSON with JSON_THROW_ON_ERROR before reaching this method.
         if ($body === null) {
             $contents = $request->getBody()->getContents();
             if ($contents !== '') {
