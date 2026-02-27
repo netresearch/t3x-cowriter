@@ -1,7 +1,8 @@
 # AI Agent Development Guide
 
 **Project:** t3_cowriter - AI-powered content writing assistant for TYPO3 CKEditor
-**Type:** TYPO3 CMS Extension (PHP 8.5+ + JavaScript/ES6)
+**Type:** TYPO3 CMS Extension (PHP 8.2+ / JavaScript/ES6)
+**TYPO3:** 13.4 LTS + 14.0
 **License:** GPL-3.0-or-later
 
 ## Quick Start
@@ -25,9 +26,9 @@ make urls                    # Show access URLs
 
 ### Prerequisites
 
-- **PHP:** 8.5+ with extensions: dom, libxml
+- **PHP:** 8.2+ (CI tests 8.2, 8.3, 8.4, 8.5) with extensions: dom, libxml
 - **Composer:** Latest stable
-- **TYPO3:** 14.0+
+- **TYPO3:** 13.4 LTS or 14.0+
 - **DDEV:** For local development
 - **Docker:** For DDEV and docs rendering
 
@@ -46,6 +47,13 @@ ddev install-v14
 
 ## Architecture
 
+### Supported Version Matrix
+
+| TYPO3 | PHP | Status |
+|-------|-----|--------|
+| 13.4 LTS | 8.2, 8.3, 8.4 | Supported |
+| 14.0 | 8.2, 8.3, 8.4, 8.5 | Supported |
+
 ### Component Overview
 
 ```
@@ -53,6 +61,7 @@ t3_cowriter/
 ├── Classes/Controller/         # PHP AJAX endpoints (nr-llm integration)
 ├── Configuration/              # TYPO3 configuration
 │   ├── Backend/AjaxRoutes.php  # AJAX route definitions
+│   ├── RTE/Cowriter.yaml       # CKEditor plugin registration
 │   └── Services.yaml           # DI container
 ├── Resources/Public/JavaScript/ # CKEditor plugin
 │   └── Ckeditor/
@@ -87,6 +96,9 @@ CKEditor ← Response ← TYPO3 AJAX ← AjaxController ← nr-llm ← Response
 
 **CI is authoritative** - always verify fixes pass in GitHub Actions CI before merging.
 Run tests locally via composer (same as CI), not via DDEV.
+
+CI runs a **multi-version matrix**: PHP 8.2, 8.3, 8.4, 8.5 x TYPO3 ^13.4, ^14.0.
+See `.github/workflows/ci.yml` for the full matrix definition.
 
 ### Quality Checks
 
@@ -134,13 +146,30 @@ composer ci:test:php:rector
 composer ci:rector                  # Apply changes
 ```
 
+## CI/CD Workflows
+
+All workflows are in `.github/workflows/`. Key workflows:
+
+| Workflow | File | Purpose |
+|----------|------|---------|
+| **CI** | `ci.yml` | Multi-version matrix: PHP 8.2-8.5 x TYPO3 v13.4/v14.0 (lint, phpstan, unit, functional tests) |
+| **PR Quality Gates** | `pr-quality.yml` | Auto-approve, Copilot review, merge readiness checks |
+| **Release** | `release.yml` | SBOM generation, Cosign signing, GitHub Release creation |
+| **SLSA Provenance** | `slsa-provenance.yml` | SLSA Level 3 supply-chain provenance attestation |
+| **Security** | `security.yml` | Dependency audit, Trivy scanning, security analysis |
+| **CodeQL** | `codeql.yml` | GitHub code scanning for vulnerabilities |
+| **Dependency Review** | `dependency-review.yml` | Review new dependencies in PRs |
+| **Scorecard** | `scorecard.yml` | OpenSSF Scorecard supply-chain security |
+| **Publish to TER** | `publish-to-ter.yml` | TYPO3 Extension Repository publishing |
+| **Auto-merge Deps** | `auto-merge-deps.yml` | Auto-merge Renovate dependency updates |
+
 ## Code Style
 
 ### PHP Standards
 
 - **Base:** PSR-12 + PER-CS 2.0
 - **Strict types:** Required in all files (`declare(strict_types=1);`)
-- **PHP version:** 8.5+ features allowed
+- **PHP version:** 8.2+ baseline (code must be compatible with PHP 8.2 through 8.5)
 - **Config:** `Build/.php-cs-fixer.dist.php`
 
 ### Key Rules
@@ -272,9 +301,10 @@ const response = await fetch(TYPO3.settings.ajaxUrls.tx_cowriter_chat, {
 ## When Stuck
 
 1. **Architecture:** Check nr-llm repository for LLM integration patterns
-2. **CKEditor 5:** See TYPO3 rte_ckeditor documentation
+2. **CKEditor 5:** See TYPO3 rte_ckeditor documentation; plugin registered in `Configuration/RTE/Cowriter.yaml`
 3. **AJAX Routes:** Check `Configuration/Backend/AjaxRoutes.php`
 4. **DI Issues:** Verify `Configuration/Services.yaml` registration
+5. **Version compatibility:** Code must work on both TYPO3 v13.4 and v14.0; check CI matrix in `.github/workflows/ci.yml`
 
 ### Common Issues
 
@@ -294,7 +324,7 @@ const response = await fetch(TYPO3.settings.ajaxUrls.tx_cowriter_chat, {
 
 ### Dependencies
 
-- **Latest stable:** Use current TYPO3 14.0+ and PHP 8.5+
+- **Supported versions:** TYPO3 13.4 LTS + 14.0, PHP 8.2+
 - **Renovate:** Auto-updates enabled
 - **nr-llm:** Primary LLM abstraction layer
 
@@ -309,10 +339,15 @@ const response = await fetch(TYPO3.settings.ajaxUrls.tx_cowriter_chat, {
 **Directory-specific guides:**
 - **[Classes/AGENTS.md](Classes/AGENTS.md)** - PHP backend components
 - **[Resources/AGENTS.md](Resources/AGENTS.md)** - JavaScript/CKEditor integration
+- **[Tests/AGENTS.md](Tests/AGENTS.md)** - Test suite structure
 
 **Configuration:**
-- **[composer.json](composer.json)** - Dependencies & scripts
+- **[composer.json](composer.json)** - Dependencies & scripts (PHP ^8.2, TYPO3 ^13.4 || ^14.0)
+- **[Configuration/RTE/Cowriter.yaml](Configuration/RTE/Cowriter.yaml)** - CKEditor plugin registration
 - **[Build/](Build/)** - Development tools configuration
+
+**CI/CD:**
+- **[.github/workflows/](/.github/workflows/)** - GitHub Actions workflows
 
 **Documentation:**
 - **[Documentation/](Documentation/)** - RST documentation
