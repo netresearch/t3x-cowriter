@@ -104,7 +104,7 @@
             "web-dir": ".Build/public"
         },
         "branch-alias": {
-            "dev-main": "3.0.x-dev"
+            "dev-main": "4.0.x-dev"
         }
     },
     "scripts": {
