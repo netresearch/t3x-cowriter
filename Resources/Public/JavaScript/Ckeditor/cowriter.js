@@ -71,7 +71,7 @@ export class Cowriter extends Core.Plugin {
             button.on('execute', async () => {
                 const selection = editor.model.document.selection;
 
-                const ranges = (Array.from(selection.getRanges()) ?? []);
+                const ranges = Array.from(selection.getRanges());
                 let promptRange, prompt;
                 for (const range of ranges) {
                     for (const item of range.getItems()) {
@@ -93,17 +93,15 @@ export class Cowriter extends Core.Plugin {
                     content = this._sanitizeContent(rawContent);
                 } catch (error) {
                     console.error('Cowriter error:', error);
-                    // Sanitize error message before inserting into editor to prevent XSS
-                    const safeMessage = (error.message || 'Unknown error')
-                        .replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' })[c]);
-                    errorMessage = `[Cowriter Error: ${safeMessage}] `;
+                    // Error messages are inserted as text nodes by writer.insert(),
+                    // so no HTML escaping is needed (CKEditor treats them as plain text)
+                    errorMessage = `[Cowriter Error: ${error.message || 'Unknown error'}] `;
                 }
 
                 model.change((writer) => {
                     writer.remove(promptRange);
                     const insertPosition = selection.getFirstPosition();
                     writer.insert(errorMessage + content, insertPosition);
-                    writer.setSelection(null);
                 });
             });
 

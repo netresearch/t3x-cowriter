@@ -155,22 +155,26 @@ export class AIService {
             throw new Error(error.error || `HTTP ${response.status}`);
         }
 
+        if (!response.body) {
+            throw new Error('Streaming not supported: response has no body');
+        }
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let lastData = { done: false };
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
 
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    try {
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
                         const data = JSON.parse(line.slice(6));
                         if (data.error) {
                             throw new Error(data.error);
@@ -181,14 +185,26 @@ export class AIService {
                         if (data.done) {
                             lastData = data;
                         }
-                    } catch (e) {
-                        if (e.message && !e.message.includes('JSON')) {
-                            throw e;
-                        }
-                        // Ignore JSON parse errors for incomplete chunks
                     }
                 }
             }
+
+            // Process any remaining data in the buffer
+            if (buffer.trim().startsWith('data: ')) {
+                try {
+                    const data = JSON.parse(buffer.trim().slice(6));
+                    if (data.content && onChunk) {
+                        onChunk(data.content);
+                    }
+                    if (data.done) {
+                        lastData = data;
+                    }
+                } catch {
+                    // Ignore incomplete final chunk
+                }
+            }
+        } finally {
+            reader.releaseLock();
         }
 
         return lastData;
