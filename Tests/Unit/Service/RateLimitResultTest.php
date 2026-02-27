@@ -29,9 +29,9 @@ final class RateLimitResultTest extends TestCase
         );
 
         $this->assertTrue($result->allowed);
-        $this->assertEquals(100, $result->limit);
-        $this->assertEquals(75, $result->remaining);
-        $this->assertEquals($resetTime, $result->resetTime);
+        $this->assertSame(100, $result->limit);
+        $this->assertSame(75, $result->remaining);
+        $this->assertSame($resetTime, $result->resetTime);
     }
 
     #[Test]
@@ -47,9 +47,9 @@ final class RateLimitResultTest extends TestCase
 
         $headers = $result->getHeaders();
 
-        $this->assertEquals('100', $headers['X-RateLimit-Limit']);
-        $this->assertEquals('75', $headers['X-RateLimit-Remaining']);
-        $this->assertEquals((string) $resetTime, $headers['X-RateLimit-Reset']);
+        $this->assertSame('100', $headers['X-RateLimit-Limit']);
+        $this->assertSame('75', $headers['X-RateLimit-Remaining']);
+        $this->assertSame((string) $resetTime, $headers['X-RateLimit-Reset']);
     }
 
     #[Test]
@@ -80,7 +80,7 @@ final class RateLimitResultTest extends TestCase
             resetTime: time() - 10, // Past time
         );
 
-        $this->assertEquals(0, $result->getRetryAfter());
+        $this->assertSame(0, $result->getRetryAfter());
     }
 
     #[Test]
@@ -94,6 +94,6 @@ final class RateLimitResultTest extends TestCase
         );
 
         $this->assertFalse($result->allowed);
-        $this->assertEquals(0, $result->remaining);
+        $this->assertSame(0, $result->remaining);
     }
 }

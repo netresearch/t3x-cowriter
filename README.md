@@ -137,13 +137,17 @@ ddev install-v14
 ### Testing
 
 ```bash
-# Run all tests
+# Run all quality checks (lint, phpstan, rector, code style)
 make ci
+
+# Run all tests (unit, functional, integration, e2e)
+make test
 
 # Individual test suites
 make test-unit           # Unit tests
 make test-functional     # Functional tests
 make test-integration    # Integration tests
+make test-e2e            # End-to-end tests
 
 # Code quality
 make lint               # PHP-CS-Fixer
@@ -164,7 +168,7 @@ open var/coverage/unit/index.html
 - API keys stored in nr-llm with sodium encryption
 - All backend AJAX endpoints require TYPO3 authentication
 - LLM output HTML-escaped to prevent XSS
-- CSRF protection via TYPO3 middleware
+- TYPO3 backend route authentication with nonce-based URL tokens
 - Content Security Policy (CSP) compatible
 
 ## Migration to v4.x

@@ -7,6 +7,9 @@
 
 declare(strict_types=1);
 
+use TYPO3\CMS\Core\Cache\Backend\DatabaseBackend;
+use TYPO3\CMS\Core\Cache\Frontend\VariableFrontend;
+
 defined('TYPO3') || exit;
 
 /**
@@ -26,8 +29,8 @@ $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
  */
 if (!isset($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cowriter_ratelimit'])) {
     $GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cowriter_ratelimit'] = [
-        'frontend' => TYPO3\CMS\Core\Cache\Frontend\VariableFrontend::class,
-        'backend'  => TYPO3\CMS\Core\Cache\Backend\DatabaseBackend::class,
+        'frontend' => VariableFrontend::class,
+        'backend'  => DatabaseBackend::class,
         'options'  => [
             'defaultLifetime' => 120,
         ],

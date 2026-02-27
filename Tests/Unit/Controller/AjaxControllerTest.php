@@ -325,6 +325,7 @@ final class AjaxControllerTest extends TestCase
         $this->assertSame(500, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
         $this->assertStringContainsString('provider', strtolower($data['error']));
+        $this->assertStringContainsString('try again', strtolower($data['error']));
     }
 
     #[Test]
@@ -347,6 +348,7 @@ final class AjaxControllerTest extends TestCase
         $this->assertSame(500, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
         $this->assertStringContainsString('unexpected', strtolower($data['error']));
+        $this->assertStringEndsWith('.', $data['error']);
     }
 
     #[Test]
@@ -950,6 +952,197 @@ final class AjaxControllerTest extends TestCase
         $this->assertNull($capturedOptions->getSystemPrompt());
         // Temperature should still be passed through
         $this->assertSame(0.5, $capturedOptions->getTemperature());
+    }
+
+    #[Test]
+    public function chatActionReturnsRateLimitHeaders(): void
+    {
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $completionResponse = $this->createCompletionResponse('Hi');
+
+        $this->llmServiceManagerMock
+            ->method('chat')
+            ->willReturn($completionResponse);
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertTrue($response->hasHeader('X-RateLimit-Limit'));
+        $this->assertTrue($response->hasHeader('X-RateLimit-Remaining'));
+        $this->assertTrue($response->hasHeader('X-RateLimit-Reset'));
+        $this->assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+    }
+
+    #[Test]
+    public function chatActionReturns429WhenRateLimited(): void
+    {
+        $this->rateLimiterMock = $this->createMock(RateLimiterInterface::class);
+        $this->rateLimiterMock
+            ->method('checkLimit')
+            ->willReturn(new RateLimitResult(
+                allowed: false,
+                limit: 20,
+                remaining: 0,
+                resetTime: time() + 30,
+            ));
+
+        $this->subject = new AjaxController(
+            $this->llmServiceManagerMock,
+            $this->configRepositoryMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
+            $this->loggerMock,
+        );
+
+        $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => 'Hello']]]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(429, $response->getStatusCode());
+        $this->assertTrue($response->hasHeader('Retry-After'));
+    }
+
+    #[Test]
+    public function completeActionReturns429WhenRateLimited(): void
+    {
+        $this->rateLimiterMock = $this->createMock(RateLimiterInterface::class);
+        $this->rateLimiterMock
+            ->method('checkLimit')
+            ->willReturn(new RateLimitResult(
+                allowed: false,
+                limit: 20,
+                remaining: 0,
+                resetTime: time() + 30,
+            ));
+
+        $this->subject = new AjaxController(
+            $this->llmServiceManagerMock,
+            $this->configRepositoryMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
+            $this->loggerMock,
+        );
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->completeAction($request);
+
+        $this->assertSame(429, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
+        $this->assertArrayHasKey('retryAfter', $data);
+    }
+
+    #[Test]
+    public function chatActionRejectsMessageContentExceedingMaxLength(): void
+    {
+        // 32769 characters = over the 32768 limit
+        $longContent = str_repeat('a', 32769);
+        $request     = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => $longContent]]]);
+        $response    = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function chatActionAcceptsMessageContentAtExactMaxLength(): void
+    {
+        // Exactly 32768 characters = at the limit
+        $exactContent       = str_repeat('a', 32768);
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $this->llmServiceManagerMock
+            ->method('chat')
+            ->willReturn($completionResponse);
+
+        $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => $exactContent]]]);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function chatActionPassesResponseFormatOption(): void
+    {
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $options            = ['responseFormat' => 'json'];
+        $completionResponse = $this->createCompletionResponse('{}');
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $messages,
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return $options !== null;
+                }),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+
+        $this->assertNotNull($capturedOptions);
+        $this->assertSame('json', $capturedOptions->getResponseFormat());
+    }
+
+    #[Test]
+    public function streamActionHandlesGenericThrowable(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->willThrowException(new RuntimeException('Unexpected failure'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        $this->assertSame(500, $response->getStatusCode());
+        $this->assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+    }
+
+    #[Test]
+    public function streamActionAppliesModelOverride(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->with(
+                $this->anything(),
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return true;
+                }),
+            )
+            ->willReturnCallback(function () {
+                yield 'Hello';
+            });
+
+        $request = $this->createRequestWithJsonBody(['prompt' => '#cw:claude-3-opus Test']);
+        $this->subject->streamAction($request);
+
+        $this->assertNotNull($capturedOptions);
+        $this->assertSame('claude-3-opus', $capturedOptions->getModel());
     }
 
     #[Test]

@@ -32,12 +32,6 @@ Features
 *   Support for TYPO3 v13.4 and v14
 *   Compatible with PHP 8.2 - 8.5
 
-Demo
-====
-
-Try it out with our TYPO3 mock:
-`Live Demo <https://t3ai.surge.sh/>`__
-
 Requirements
 ============
 

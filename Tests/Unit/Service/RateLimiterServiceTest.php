@@ -9,12 +9,14 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Service;
 
+use InvalidArgumentException;
 use Netresearch\T3Cowriter\Service\RateLimiterService;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 
 #[AllowMockObjectsWithoutExpectations]
@@ -39,8 +41,8 @@ final class RateLimiterServiceTest extends TestCase
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
-        $this->assertEquals(20, $result->limit);
-        $this->assertEquals(19, $result->remaining);
+        $this->assertSame(20, $result->limit);
+        $this->assertSame(19, $result->remaining);
     }
 
     #[Test]
@@ -61,8 +63,8 @@ final class RateLimiterServiceTest extends TestCase
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
-        $this->assertEquals(20, $result->limit);
-        $this->assertEquals(14, $result->remaining); // 20 - 6 (5 existing + 1 new)
+        $this->assertSame(20, $result->limit);
+        $this->assertSame(14, $result->remaining); // 20 - 6 (5 existing + 1 new)
     }
 
     #[Test]
@@ -81,8 +83,8 @@ final class RateLimiterServiceTest extends TestCase
         $result  = $service->checkLimit('user-123');
 
         $this->assertFalse($result->allowed);
-        $this->assertEquals(20, $result->limit);
-        $this->assertEquals(0, $result->remaining);
+        $this->assertSame(20, $result->limit);
+        $this->assertSame(0, $result->remaining);
     }
 
     #[Test]
@@ -112,7 +114,7 @@ final class RateLimiterServiceTest extends TestCase
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
-        $this->assertEquals(17, $result->remaining); // 20 - 3
+        $this->assertSame(17, $result->remaining); // 20 - 3
     }
 
     #[Test]
@@ -125,8 +127,8 @@ final class RateLimiterServiceTest extends TestCase
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
-        $this->assertEquals(5, $result->limit);
-        $this->assertEquals(4, $result->remaining);
+        $this->assertSame(5, $result->limit);
+        $this->assertSame(4, $result->remaining);
     }
 
     #[Test]
@@ -163,8 +165,8 @@ final class RateLimiterServiceTest extends TestCase
         $this->assertArrayHasKey('X-RateLimit-Limit', $headers);
         $this->assertArrayHasKey('X-RateLimit-Remaining', $headers);
         $this->assertArrayHasKey('X-RateLimit-Reset', $headers);
-        $this->assertEquals('20', $headers['X-RateLimit-Limit']);
-        $this->assertEquals('19', $headers['X-RateLimit-Remaining']);
+        $this->assertSame('20', $headers['X-RateLimit-Limit']);
+        $this->assertSame('19', $headers['X-RateLimit-Remaining']);
     }
 
     #[Test]
@@ -203,6 +205,71 @@ final class RateLimiterServiceTest extends TestCase
 
         $this->assertTrue($result->allowed);
         // Should only count the valid integer entry + new one = 2
-        $this->assertEquals(18, $result->remaining);
+        $this->assertSame(18, $result->remaining);
+    }
+
+    #[Test]
+    public function constructorRejectsZeroRequestsPerMinute(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('requestsPerMinute must be >= 1');
+
+        new RateLimiterService($this->cacheMock, 0);
+    }
+
+    #[Test]
+    public function constructorRejectsNegativeRequestsPerMinute(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new RateLimiterService($this->cacheMock, -5);
+    }
+
+    #[Test]
+    public function checkLimitDeniesAtExactLimit(): void
+    {
+        $now = time();
+        // Exactly at limit (5 requests with limit of 5)
+        $requests = [];
+        for ($i = 0; $i < 5; ++$i) {
+            $requests[] = $now - $i;
+        }
+        $this->cacheMock->method('get')->willReturn($requests);
+        $this->cacheMock->expects($this->never())->method('set');
+
+        $service = new RateLimiterService($this->cacheMock, 5);
+        $result  = $service->checkLimit('user-123');
+
+        $this->assertFalse($result->allowed);
+        $this->assertSame(5, $result->limit);
+        $this->assertSame(0, $result->remaining);
+    }
+
+    #[Test]
+    public function checkLimitFailsOpenOnCacheGetException(): void
+    {
+        $this->cacheMock->method('get')->willThrowException(new RuntimeException('Cache unavailable'));
+
+        $service = new RateLimiterService($this->cacheMock, 20);
+        $result  = $service->checkLimit('user-123');
+
+        // Fail-open: request should be allowed
+        $this->assertTrue($result->allowed);
+        $this->assertSame(20, $result->limit);
+        $this->assertSame(20, $result->remaining);
+    }
+
+    #[Test]
+    public function checkLimitFailsOpenOnCacheSetException(): void
+    {
+        $this->cacheMock->method('get')->willReturn(false);
+        $this->cacheMock->method('set')->willThrowException(new RuntimeException('Cache write failed'));
+
+        $service = new RateLimiterService($this->cacheMock, 20);
+        $result  = $service->checkLimit('user-123');
+
+        // Fail-open: request should be allowed even if write fails
+        $this->assertTrue($result->allowed);
+        $this->assertSame(20, $result->limit);
     }
 }

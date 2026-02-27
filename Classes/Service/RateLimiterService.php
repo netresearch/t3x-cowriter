@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Service;
 
+use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
+use Throwable;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 
 /**
@@ -21,6 +24,9 @@ use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
  * the same user may slightly exceed the limit (TOCTOU). This is acceptable for
  * a backend AJAX endpoint with low concurrency — the rate limiter serves as a
  * safety net, not a billing boundary.
+ *
+ * Cache failures are handled fail-open: if the cache backend is unavailable,
+ * requests are allowed rather than blocking all users.
  */
 final readonly class RateLimiterService implements RateLimiterInterface
 {
@@ -42,7 +48,14 @@ final readonly class RateLimiterService implements RateLimiterInterface
     public function __construct(
         private FrontendInterface $cache,
         private int $requestsPerMinute = self::DEFAULT_REQUESTS_PER_MINUTE,
-    ) {}
+        private ?LoggerInterface $logger = null,
+    ) {
+        if ($this->requestsPerMinute < 1) {
+            throw new InvalidArgumentException(
+                sprintf('requestsPerMinute must be >= 1, got %d', $this->requestsPerMinute),
+            );
+        }
+    }
 
     /**
      * Check if a request is allowed for the given user identifier.
@@ -53,41 +66,56 @@ final readonly class RateLimiterService implements RateLimiterInterface
      */
     public function checkLimit(string $userIdentifier): RateLimitResult
     {
-        $cacheKey   = $this->getCacheKey($userIdentifier);
-        $now        = time();
-        $windowData = $this->getWindowData($cacheKey);
+        $now = time();
 
-        // Clean expired entries from the window
-        $windowData = $this->cleanExpiredEntries($windowData, $now);
+        try {
+            $cacheKey   = $this->getCacheKey($userIdentifier);
+            $windowData = $this->getWindowData($cacheKey);
 
-        // Count requests in current window
-        $requestCount = count($windowData);
+            // Clean expired entries from the window
+            $windowData = $this->cleanExpiredEntries($windowData, $now);
 
-        // Calculate reset time (oldest entry + window size, or now + window size if empty)
-        $resetTime = $windowData !== []
-            ? min($windowData) + self::WINDOW_SIZE_SECONDS
-            : $now + self::WINDOW_SIZE_SECONDS;
+            // Count requests in current window
+            $requestCount = count($windowData);
 
-        // Check if limit exceeded
-        if ($requestCount >= $this->requestsPerMinute) {
+            // Calculate reset time (oldest entry + window size, or now + window size if empty)
+            $resetTime = $windowData !== []
+                ? min($windowData) + self::WINDOW_SIZE_SECONDS
+                : $now + self::WINDOW_SIZE_SECONDS;
+
+            // Check if limit exceeded
+            if ($requestCount >= $this->requestsPerMinute) {
+                return new RateLimitResult(
+                    allowed: false,
+                    limit: $this->requestsPerMinute,
+                    remaining: 0,
+                    resetTime: $resetTime,
+                );
+            }
+
+            // Request is allowed - record it
+            $windowData[] = $now;
+            $this->setWindowData($cacheKey, $windowData);
+
             return new RateLimitResult(
-                allowed: false,
+                allowed: true,
                 limit: $this->requestsPerMinute,
-                remaining: 0,
+                remaining: $this->requestsPerMinute - count($windowData),
                 resetTime: $resetTime,
             );
+        } catch (Throwable $e) {
+            // Fail-open: if cache backend is unavailable, allow the request
+            $this->logger?->warning('Rate limiter cache error, failing open', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            return new RateLimitResult(
+                allowed: true,
+                limit: $this->requestsPerMinute,
+                remaining: $this->requestsPerMinute,
+                resetTime: $now + self::WINDOW_SIZE_SECONDS,
+            );
         }
-
-        // Request is allowed - record it
-        $windowData[] = $now;
-        $this->setWindowData($cacheKey, $windowData);
-
-        return new RateLimitResult(
-            allowed: true,
-            limit: $this->requestsPerMinute,
-            remaining: $this->requestsPerMinute - count($windowData),
-            resetTime: $resetTime,
-        );
     }
 
     /**

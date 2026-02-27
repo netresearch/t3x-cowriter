@@ -56,6 +56,16 @@ final readonly class AjaxController
     private const ALLOWED_ROLES = ['user', 'assistant'];
 
     /**
+     * Maximum tokens upper bound to prevent denial-of-wallet attacks.
+     */
+    private const MAX_TOKENS_UPPER_BOUND = 16384;
+
+    /**
+     * Maximum number of stop sequences allowed.
+     */
+    private const MAX_STOP_SEQUENCES = 10;
+
+    /**
      * System prompt for the cowriter assistant.
      */
     private const SYSTEM_PROMPT = <<<'PROMPT'
@@ -134,7 +144,7 @@ final readonly class AjaxController
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['error' => 'LLM provider error occurred'],
+                ['error' => 'LLM provider error occurred. Please try again later.'],
                 $rateLimitResult,
                 500,
             );
@@ -145,7 +155,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['error' => 'An unexpected error occurred'],
+                ['error' => 'An unexpected error occurred.'],
                 $rateLimitResult,
                 500,
             );
@@ -406,11 +416,6 @@ final readonly class AjaxController
     }
 
     /**
-     * Maximum tokens upper bound to prevent denial-of-wallet attacks.
-     */
-    private const MAX_TOKENS_UPPER_BOUND = 16384;
-
-    /**
      * Create ChatOptions from array of options with range validation.
      *
      * Validates and clamps numeric parameters to their valid ranges:
@@ -477,11 +482,6 @@ final readonly class AjaxController
             stopSequences: $stopSequences,
         );
     }
-
-    /**
-     * Maximum number of stop sequences allowed.
-     */
-    private const MAX_STOP_SEQUENCES = 10;
 
     /**
      * Validate and sanitize chat messages.

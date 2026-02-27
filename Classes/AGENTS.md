@@ -56,7 +56,9 @@ try {
     $response = $this->llmServiceManager->chat($messages, $options);
     return CompleteResponse::success($response);
 } catch (ProviderException $e) {
-    return CompleteResponse::error('LLM provider error occurred');
+    return CompleteResponse::error('LLM provider error occurred. Please try again later.');
+} catch (\Throwable $e) {
+    return CompleteResponse::error('An unexpected error occurred.');
 }
 ```
 

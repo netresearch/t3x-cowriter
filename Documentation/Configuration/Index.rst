@@ -77,7 +77,7 @@ ensuring that:
 
 *   API keys are never exposed to the frontend
 *   All requests are authenticated via TYPO3's backend session
-*   Content generation is logged and auditable
+*   Error conditions are logged for debugging
 
 ..  warning::
 

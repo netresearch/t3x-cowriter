@@ -126,6 +126,7 @@ abstract class AbstractIntegrationTestCase extends TestCase
      * Get realistic OpenAI-style response content variations.
      *
      * Note: Avoid apostrophes in test data since they get HTML-escaped to &apos;
+     * Uses deterministic index based on test class name for reproducible results.
      *
      * @return array{original: string, improved: string}
      */
@@ -146,7 +147,10 @@ abstract class AbstractIntegrationTestCase extends TestCase
             ],
         ];
 
-        return $pairs[array_rand($pairs)];
+        // Deterministic selection based on test class name for reproducibility
+        $index = crc32(static::class) % count($pairs);
+
+        return $pairs[$index];
     }
 
     /**

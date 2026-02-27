@@ -82,7 +82,7 @@ CKEditor ← Response ← TYPO3 AJAX ← AjaxController ← nr-llm ← Response
 
 | Route | Path | Method | Purpose |
 |-------|------|--------|---------|
-| `tx_cowriter_chat` | `/cowriter/chat` | `chatAction` | Multi-turn chat conversations |
+| `tx_cowriter_chat` | `/cowriter/chat` | `chatAction` | Chat completion with message array (stateless) |
 | `tx_cowriter_complete` | `/cowriter/complete` | `completeAction` | Single prompt completion |
 | `tx_cowriter_stream` | `/cowriter/stream` | `streamAction` | Streaming completion via SSE |
 | `tx_cowriter_configurations` | `/cowriter/configurations` | `getConfigurationsAction` | List available LLM configurations |
@@ -152,7 +152,7 @@ All workflows are in `.github/workflows/`. Key workflows:
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| **CI** | `ci.yml` | Multi-version matrix: PHP 8.2-8.5 x TYPO3 v13.4/v14.0 (lint, phpstan, unit, functional tests) |
+| **CI** | `ci.yml` | Multi-version matrix: PHP 8.2-8.5 x TYPO3 v13.4/v14.0 (lint, phpstan, unit, functional, integration, e2e tests) |
 | **PR Quality Gates** | `pr-quality.yml` | Auto-approve, Copilot review, merge readiness checks |
 | **Release** | `release.yml` | SBOM generation, Cosign signing, GitHub Release creation |
 | **SLSA Provenance** | `slsa-provenance.yml` | SLSA Level 3 supply-chain provenance attestation |

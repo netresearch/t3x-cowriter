@@ -221,6 +221,32 @@ final class CompleteRequestTest extends TestCase
     }
 
     #[Test]
+    public function isValidReturnsTrueForPromptAtExactMaxLength(): void
+    {
+        $maxLengthPrompt = str_repeat('a', 32768);
+        $dto             = new CompleteRequest(
+            prompt: $maxLengthPrompt,
+            configuration: null,
+            modelOverride: null,
+        );
+
+        $this->assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseForPromptExceedingMaxLength(): void
+    {
+        $tooLongPrompt = str_repeat('a', 32769);
+        $dto           = new CompleteRequest(
+            prompt: $tooLongPrompt,
+            configuration: null,
+            modelOverride: null,
+        );
+
+        $this->assertFalse($dto->isValid());
+    }
+
+    #[Test]
     public function fromRequestUsesFormDataWhenNoJsonBody(): void
     {
         $bodyMock = $this->createMock(StreamInterface::class);

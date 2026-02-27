@@ -26,7 +26,11 @@ final readonly class UsageData implements JsonSerializable
         public int $completionTokens,
         public int $totalTokens,
         public ?float $estimatedCost = null,
-    ) {}
+    ) {
+        assert($this->promptTokens >= 0, 'promptTokens must be non-negative');
+        assert($this->completionTokens >= 0, 'completionTokens must be non-negative');
+        assert($this->totalTokens >= 0, 'totalTokens must be non-negative');
+    }
 
     /**
      * Create from nr-llm UsageStatistics.
