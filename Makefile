@@ -10,7 +10,7 @@ help: ## Show available targets
 # ===================================
 
 .PHONY: up
-up: start setup ollama ## Complete startup (start DDEV + run setup + check Ollama)
+up: start setup docs ollama ## Complete startup (start DDEV + install + render docs + check Ollama)
 
 .PHONY: start
 start: ## Start DDEV environment
