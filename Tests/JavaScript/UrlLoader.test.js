@@ -200,6 +200,37 @@ describe('UrlLoader', () => {
         });
     });
 
+    describe('auto-initialization', () => {
+        it('should add DOMContentLoaded listener when document is loading', async () => {
+            const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+
+            // Override readyState to 'loading'
+            Object.defineProperty(document, 'readyState', {
+                value: 'loading',
+                writable: true,
+                configurable: true,
+            });
+
+            vi.resetModules();
+            globalThis.TYPO3 = TYPO3Mock;
+
+            await import('../../Resources/Public/JavaScript/Ckeditor/UrlLoader.js');
+
+            expect(addEventListenerSpy).toHaveBeenCalledWith(
+                'DOMContentLoaded',
+                expect.any(Function)
+            );
+
+            // Restore readyState
+            Object.defineProperty(document, 'readyState', {
+                value: 'complete',
+                writable: true,
+                configurable: true,
+            });
+            addEventListenerSpy.mockRestore();
+        });
+    });
+
     describe('edge cases', () => {
         it('should reject non-string values in URL data', async () => {
             const dataElement = document.createElement('script');

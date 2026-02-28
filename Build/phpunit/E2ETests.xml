@@ -7,7 +7,7 @@
          cacheResult="false"
          colors="true"
          failOnRisky="true"
-         failOnWarning="false"
+         failOnWarning="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
 >
     <testsuites>
