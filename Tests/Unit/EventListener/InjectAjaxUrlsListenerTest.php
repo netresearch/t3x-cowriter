@@ -151,10 +151,10 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         ($this->subject)($event);
 
-        $this->assertContains('tx_cowriter_chat', $generatedRoutes);
-        $this->assertContains('tx_cowriter_complete', $generatedRoutes);
-        $this->assertContains('tx_cowriter_stream', $generatedRoutes);
-        $this->assertContains('tx_cowriter_configurations', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_chat', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_complete', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_stream', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_configurations', $generatedRoutes);
     }
 
     #[Test]
@@ -224,10 +224,10 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         ($this->subject)($event);
 
         $decoded = json_decode($capturedJson, true);
-        $this->assertSame('/typo3/ajax/tx_cowriter_chat', $decoded['tx_cowriter_chat']);
-        $this->assertSame('/typo3/ajax/tx_cowriter_complete', $decoded['tx_cowriter_complete']);
-        $this->assertSame('/typo3/ajax/tx_cowriter_stream', $decoded['tx_cowriter_stream']);
-        $this->assertSame('/typo3/ajax/tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
+        $this->assertSame('/typo3/ajax/ajax_tx_cowriter_chat', $decoded['tx_cowriter_chat']);
+        $this->assertSame('/typo3/ajax/ajax_tx_cowriter_complete', $decoded['tx_cowriter_complete']);
+        $this->assertSame('/typo3/ajax/ajax_tx_cowriter_stream', $decoded['tx_cowriter_stream']);
+        $this->assertSame('/typo3/ajax/ajax_tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
     }
 
     #[Test]
@@ -387,7 +387,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
             ->expects($this->once())
             ->method('error')
             ->with(
-                'Cowriter: Failed to encode AJAX URLs as JSON',
+                'Cowriter: Failed to inject AJAX URLs',
                 $this->callback(static fn (array $context): bool => isset($context['exception']) && is_string($context['exception'])),
             );
 

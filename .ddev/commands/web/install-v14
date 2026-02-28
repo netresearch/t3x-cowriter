@@ -71,5 +71,5 @@ vendor/bin/typo3 cache:flush
 
 echo ""
 echo "=== TYPO3 v14.0 installed successfully ==="
-echo "Backend: https://v14.${DDEV_HOSTNAME}/typo3/"
+echo "Backend: https://v14.${DDEV_SITENAME}.ddev.site/typo3/"
 echo "Login: admin / Joh316!!"
