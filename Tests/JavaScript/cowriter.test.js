@@ -290,7 +290,7 @@ describe('Cowriter Plugin', () => {
                 getItems: () => [{ data: 'prompt' }],
             };
             mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
-            vi.spyOn(console, 'error').mockImplementation(() => {});
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
             await capturedButton.fire('execute');
 
@@ -298,6 +298,7 @@ describe('Cowriter Plugin', () => {
                 expect.stringContaining('Unknown error'),
                 expect.anything()
             );
+            errorSpy.mockRestore();
         });
 
         it('should reset _isProcessing after completion', async () => {
@@ -316,10 +317,11 @@ describe('Cowriter Plugin', () => {
                 getItems: () => [{ data: 'prompt' }],
             };
             mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
-            vi.spyOn(console, 'error').mockImplementation(() => {});
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
             await capturedButton.fire('execute');
             expect(plugin._isProcessing).toBe(false);
+            errorSpy.mockRestore();
         });
 
         it('should handle null insertPosition gracefully', async () => {
