@@ -374,7 +374,7 @@ final class CompleteRequestFuzzTest extends TestCase
     {
         // Generate 50 random binary payloads and verify no crashes
         for ($i = 0; $i < 50; ++$i) {
-            $length    = random_int(0, 1000);
+            $length    = random_int(1, 1000);
             $binaryStr = random_bytes($length);
 
             $bodyMock = $this->createStub(StreamInterface::class);

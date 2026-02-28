@@ -29,8 +29,13 @@ jobs:
       - name: Install dependencies
         run: composer install --no-progress
 
+      - name: Generate coverage for infection
+        run: |
+          mkdir -p .Build/logs
+          .Build/bin/phpunit -c Build/phpunit/UnitTests.xml --testsuite="Unit Tests" --coverage-xml=.Build/logs/coverage-xml --log-junit=.Build/logs/junit.xml
+
       - name: Run mutation testing
-        run: .Build/bin/infection --threads=4 --no-progress --logger-github --test-framework-options="--configuration=Build/phpunit/UnitTests.xml --testsuite='Unit Tests'"
+        run: .Build/bin/infection --threads=4 --no-progress --logger-github --skip-initial-tests --coverage=.Build/logs --test-framework-options="--testsuite='Unit Tests'"
         env:
           INFECTION_DASHBOARD_API_KEY: ${{ secrets.INFECTION_DASHBOARD_API_KEY }}
 
