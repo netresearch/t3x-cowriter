@@ -11,6 +11,7 @@ namespace Netresearch\T3Cowriter\EventListener;
 
 use JsonException;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Backend\Routing\Exception\RouteNotFoundException;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Attribute\AsEventListener;
 use TYPO3\CMS\Core\Page\Event\BeforeJavaScriptsRenderingEvent;
@@ -53,10 +54,9 @@ final readonly class InjectAjaxUrlsListener
                 ['type'     => 'module'],
                 ['priority' => true],
             );
-        } catch (JsonException $e) {
+        } catch (JsonException|RouteNotFoundException $e) {
             // Graceful degradation: page renders but cowriter plugin won't function.
-            // This is extremely unlikely since BackendUriBuilder produces valid UTF-8 strings.
-            $this->logger->error('Cowriter: Failed to encode AJAX URLs as JSON', [
+            $this->logger->error('Cowriter: Failed to inject AJAX URLs', [
                 'exception' => $e->getMessage(),
             ]);
         }
@@ -72,13 +72,13 @@ final readonly class InjectAjaxUrlsListener
     {
         $urls = [
             'tx_cowriter_chat' => (string) $this->backendUriBuilder
-                ->buildUriFromRoute('tx_cowriter_chat'),
+                ->buildUriFromRoute('ajax_tx_cowriter_chat'),
             'tx_cowriter_complete' => (string) $this->backendUriBuilder
-                ->buildUriFromRoute('tx_cowriter_complete'),
+                ->buildUriFromRoute('ajax_tx_cowriter_complete'),
             'tx_cowriter_stream' => (string) $this->backendUriBuilder
-                ->buildUriFromRoute('tx_cowriter_stream'),
+                ->buildUriFromRoute('ajax_tx_cowriter_stream'),
             'tx_cowriter_configurations' => (string) $this->backendUriBuilder
-                ->buildUriFromRoute('tx_cowriter_configurations'),
+                ->buildUriFromRoute('ajax_tx_cowriter_configurations'),
         ];
 
         return json_encode($urls, JSON_THROW_ON_ERROR);
