@@ -14,13 +14,14 @@ PACKAGE_NAME="netresearch/t3-cowriter"
 
 echo "=== Installing TYPO3 ${TYPO3_VERSION} ==="
 
-# Create database if not exists and grant access
-mariadb -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+# Drop and recreate database for clean install
+mariadb -e "DROP DATABASE IF EXISTS ${DB_NAME};"
+mariadb -e "CREATE DATABASE ${DB_NAME};"
 mariadb -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO 'db'@'%'; FLUSH PRIVILEGES;"
 
-# Clean install directory
-rm -rf ${INSTALL_DIR}/* ${INSTALL_DIR}/.[!.]*
-mkdir -p ${INSTALL_DIR}
+# Clean install directory and fix ownership (volume may be root-owned)
+sudo rm -rf ${INSTALL_DIR}/* ${INSTALL_DIR}/.[!.]*
+sudo chown "$(id -u):$(id -g)" ${INSTALL_DIR}
 cd ${INSTALL_DIR}
 
 # Create TYPO3 project
@@ -49,7 +50,7 @@ vendor/bin/typo3 setup \
     --username=db \
     --password=db \
     --admin-username=admin \
-    --admin-user-password='Joh316!' \
+    --admin-user-password='Joh316!!' \
     --admin-email=admin@example.com \
     --project-name="TYPO3 v14 - t3_cowriter" \
     --no-interaction \
@@ -71,4 +72,4 @@ vendor/bin/typo3 cache:flush
 echo ""
 echo "=== TYPO3 v14.0 installed successfully ==="
 echo "Backend: https://v14.${DDEV_HOSTNAME}/typo3/"
-echo "Login: admin / Joh316!"
+echo "Login: admin / Joh316!!"

@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Service;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 
 /**
@@ -45,8 +46,10 @@ final readonly class RateLimiterService implements RateLimiterInterface
      */
     private const CACHE_PREFIX = 'cowriter_ratelimit_';
 
+    private FrontendInterface $cache;
+
     public function __construct(
-        private FrontendInterface $cache,
+        CacheManager $cacheManager,
         private int $requestsPerMinute = self::DEFAULT_REQUESTS_PER_MINUTE,
         private ?LoggerInterface $logger = null,
     ) {
@@ -55,6 +58,8 @@ final readonly class RateLimiterService implements RateLimiterInterface
                 sprintf('requestsPerMinute must be >= 1, got %d', $this->requestsPerMinute),
             );
         }
+
+        $this->cache = $cacheManager->getCache('cowriter_ratelimit');
     }
 
     /**

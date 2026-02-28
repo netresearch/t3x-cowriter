@@ -13,7 +13,6 @@ services:
 
   Netresearch\T3Cowriter\Service\RateLimiterService:
     arguments:
-      $cache: '@cache.cowriter_ratelimit'
       $requestsPerMinute: 20
 
   Netresearch\T3Cowriter\Service\RateLimiterInterface:
