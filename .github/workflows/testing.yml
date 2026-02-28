@@ -30,7 +30,7 @@ jobs:
         run: composer install --no-progress
 
       - name: Run mutation testing
-        run: .Build/bin/infection --threads=4 --no-progress --logger-github --test-framework-options="--testsuite='Unit Tests'"
+        run: .Build/bin/infection --threads=4 --no-progress --logger-github --test-framework-options="--configuration=Build/phpunit/UnitTests.xml --testsuite='Unit Tests'"
         env:
           INFECTION_DASHBOARD_API_KEY: ${{ secrets.INFECTION_DASHBOARD_API_KEY }}
 
