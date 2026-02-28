@@ -199,4 +199,24 @@ abstract class AbstractE2ETestCase extends TestCase
     {
         return new TestQueryResult($items);
     }
+
+    /**
+     * Parse SSE response body into decoded JSON events.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function parseSseEvents(string $body): array
+    {
+        $events = [];
+        foreach (explode("\n\n", trim($body)) as $raw) {
+            $raw = trim($raw);
+            if ($raw === '' || !str_starts_with($raw, 'data: ')) {
+                continue;
+            }
+            $json     = substr($raw, 6); // strip "data: "
+            $events[] = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        }
+
+        return $events;
+    }
 }

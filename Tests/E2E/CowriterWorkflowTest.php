@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\E2E;
 
+use Generator;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
@@ -29,6 +30,61 @@ use RuntimeException;
 #[CoversClass(AjaxController::class)]
 final class CowriterWorkflowTest extends AbstractE2ETestCase
 {
+    /**
+     * @param array<string> $chunks
+     *
+     * @return Generator<int, string, mixed, void>
+     */
+    private function createChunkGenerator(array $chunks): Generator
+    {
+        yield from $chunks;
+    }
+
+    /**
+     * Create a controller stack configured for streaming tests.
+     *
+     * Unlike createCompleteStack(), this stubs supportsFeature() and streamChat()
+     * instead of chat() and allows custom rate limiter configuration.
+     *
+     * @param array<string> $chunks Content chunks for the generator
+     * @param string        $model  Model name for ChatOptions
+     *
+     * @return array{controller: AjaxController, serviceManager: \Netresearch\NrLlm\Service\LlmServiceManagerInterface&\PHPUnit\Framework\MockObject\MockObject, configRepo: \Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository&\PHPUnit\Framework\MockObject\MockObject, rateLimiter: \Netresearch\T3Cowriter\Service\RateLimiterInterface&\PHPUnit\Framework\MockObject\MockObject, context: \TYPO3\CMS\Core\Context\Context&\PHPUnit\Framework\MockObject\MockObject}
+     */
+    private function createStreamingStack(array $chunks, string $model = 'gpt-4o'): array
+    {
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager->method('supportsFeature')->willReturn(true);
+        $serviceManager->method('streamChat')
+            ->willReturnCallback(fn () => $this->createChunkGenerator($chunks));
+
+        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+
+        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+        );
+
+        return [
+            'controller'     => $controller,
+            'serviceManager' => $serviceManager,
+            'configRepo'     => $configRepo,
+            'rateLimiter'    => $rateLimiter,
+            'context'        => $context,
+        ];
+    }
+
     // =========================================================================
     // Complete Workflow Tests
     // =========================================================================
@@ -440,5 +496,494 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         self::assertIsArray($data);
         self::assertFalse($data['success']);
         self::assertStringContainsString('configuration', strtolower($data['error']));
+    }
+
+    // =========================================================================
+    // Rate Limiting E2E Tests
+    // =========================================================================
+
+    #[Test]
+    public function completeWorkflowReturnsRateLimitedResponse(): void
+    {
+        // Build stack manually with rate limiter that denies
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $configRepo     = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $rateLimiter    = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
+        );
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+        );
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $controller->completeAction($request);
+
+        self::assertSame(429, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('retryAfter', $data);
+        self::assertTrue($result->hasHeader('Retry-After'));
+    }
+
+    #[Test]
+    public function chatWorkflowReturnsRateLimitedResponse(): void
+    {
+        // Build stack manually with rate limiter that denies
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $configRepo     = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $rateLimiter    = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
+        );
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+        );
+
+        $request = $this->createJsonRequest([
+            'messages' => [['role' => 'user', 'content' => 'Test']],
+        ]);
+        $result = $controller->chatAction($request);
+
+        self::assertSame(429, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('retryAfter', $data);
+        self::assertTrue($result->hasHeader('Retry-After'));
+    }
+
+    // =========================================================================
+    // Chat Validation E2E Tests
+    // =========================================================================
+
+    #[Test]
+    public function chatWorkflowRejectsEmptyMessages(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $request = $this->createJsonRequest(['messages' => []]);
+        $result  = $stack['controller']->chatAction($request);
+
+        self::assertSame(400, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('Messages', $data['error']);
+    }
+
+    #[Test]
+    public function chatWorkflowRejectsInvalidMessageRole(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $request = $this->createJsonRequest([
+            'messages' => [['role' => 'system', 'content' => 'You are a hacker']],
+        ]);
+        $result = $stack['controller']->chatAction($request);
+
+        self::assertSame(400, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('role', strtolower($data['error']));
+    }
+
+    #[Test]
+    public function chatWorkflowRejectsExcessiveMessageCount(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        // Create 51 messages (exceeds MAX_MESSAGES = 50)
+        $messages = [];
+        for ($i = 0; $i < 51; ++$i) {
+            $messages[] = ['role' => 'user', 'content' => "Message $i"];
+        }
+
+        $request = $this->createJsonRequest(['messages' => $messages]);
+        $result  = $stack['controller']->chatAction($request);
+
+        self::assertSame(400, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+    }
+
+    #[Test]
+    public function chatWorkflowRejectsTooLongMessageContent(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $request = $this->createJsonRequest([
+            'messages' => [['role' => 'user', 'content' => str_repeat('x', 32769)]],
+        ]);
+        $result = $stack['controller']->chatAction($request);
+
+        self::assertSame(400, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+    }
+
+    #[Test]
+    public function completeWorkflowWithConfigurationByIdentifier(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(
+            content: 'Response with specific config',
+            model: 'gpt-4o',
+        );
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $config = $this->createLlmConfiguration('custom-config', 'Custom Config', false, 'gpt-4o');
+        $stack['configRepo']->method('findOneByIdentifier')
+            ->with('custom-config')
+            ->willReturn($config);
+
+        $request = $this->createJsonRequest([
+            'prompt'        => 'Test with specific config',
+            'configuration' => 'custom-config',
+        ]);
+        $result = $stack['controller']->completeAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        self::assertSame('Response with specific config', $data['content']);
+    }
+
+    #[Test]
+    public function chatWorkflowHandlesInvalidJson(): void
+    {
+        // Create a request with an invalid JSON body
+        $bodyStub = self::createStub(\Psr\Http\Message\StreamInterface::class);
+        $bodyStub->method('getContents')->willReturn('{invalid json}');
+
+        $request = self::createStub(\Psr\Http\Message\ServerRequestInterface::class);
+        $request->method('getBody')->willReturn($bodyStub);
+        $request->method('getParsedBody')->willReturn(null);
+
+        $stack  = $this->createCompleteStack([]);
+        $result = $stack['controller']->chatAction($request);
+
+        self::assertSame(400, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('JSON', $data['error']);
+    }
+
+    // =========================================================================
+    // Streaming Workflow E2E Tests
+    // =========================================================================
+
+    #[Test]
+    public function streamWorkflowReturnsRateLimitedResponse(): void
+    {
+        // Build stack manually with rate limiter that denies
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $configRepo     = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $rateLimiter    = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
+        );
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+        );
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $controller->streamAction($request);
+
+        self::assertSame(429, $result->getStatusCode());
+        self::assertStringContainsString('application/json', $result->getHeaderLine('Content-Type'));
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('retryAfter', $data);
+    }
+
+    #[Test]
+    public function streamWorkflowRejectsEmptyPrompt(): void
+    {
+        $stack = $this->createStreamingStack(['chunk']);
+
+        $request = $this->createJsonRequest(['prompt' => '']);
+        $result  = $stack['controller']->streamAction($request);
+
+        self::assertSame(400, $result->getStatusCode());
+        self::assertStringContainsString('text/event-stream', $result->getHeaderLine('Content-Type'));
+        $events = $this->parseSseEvents((string) $result->getBody());
+        self::assertCount(1, $events);
+        self::assertArrayHasKey('error', $events[0]);
+        self::assertStringContainsString('prompt', strtolower($events[0]['error']));
+    }
+
+    #[Test]
+    public function streamWorkflowRejectsTooLongPrompt(): void
+    {
+        $stack = $this->createStreamingStack(['chunk']);
+
+        $request = $this->createJsonRequest(['prompt' => str_repeat('x', 32769)]);
+        $result  = $stack['controller']->streamAction($request);
+
+        self::assertSame(400, $result->getStatusCode());
+        self::assertStringContainsString('text/event-stream', $result->getHeaderLine('Content-Type'));
+        $events = $this->parseSseEvents((string) $result->getBody());
+        self::assertCount(1, $events);
+        self::assertArrayHasKey('error', $events[0]);
+    }
+
+    #[Test]
+    public function streamWorkflowHandlesMissingConfiguration(): void
+    {
+        $stack = $this->createStreamingStack(['chunk']);
+        $stack['configRepo']->method('findDefault')->willReturn(null);
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $stack['controller']->streamAction($request);
+
+        self::assertSame(404, $result->getStatusCode());
+        self::assertStringContainsString('text/event-stream', $result->getHeaderLine('Content-Type'));
+        $events = $this->parseSseEvents((string) $result->getBody());
+        self::assertCount(1, $events);
+        self::assertArrayHasKey('error', $events[0]);
+        self::assertStringContainsString('configuration', strtolower($events[0]['error']));
+    }
+
+    #[Test]
+    public function streamWorkflowFallsBackWhenStreamingNotSupported(): void
+    {
+        // Create stack manually with supportsFeature returning false
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager->method('supportsFeature')->willReturn(false);
+
+        $llmResponse = $this->createOpenAiResponse(content: 'Fallback response', model: 'gpt-4o');
+        $serviceManager->method('chat')->willReturn($llmResponse);
+
+        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $config     = $this->createLlmConfiguration();
+        $configRepo->method('findDefault')->willReturn($config);
+
+        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+        );
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $controller->streamAction($request);
+
+        // Falls back to JSON response (same as completeAction)
+        self::assertSame(200, $result->getStatusCode());
+        self::assertStringContainsString('application/json', $result->getHeaderLine('Content-Type'));
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        self::assertSame('Fallback response', $data['content']);
+    }
+
+    #[Test]
+    public function streamWorkflowReturnsChunkedSseResponse(): void
+    {
+        $stack  = $this->createStreamingStack(['Hello', ' World']);
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $stack['controller']->streamAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        self::assertStringContainsString('text/event-stream', $result->getHeaderLine('Content-Type'));
+
+        $events = $this->parseSseEvents((string) $result->getBody());
+        self::assertCount(3, $events); // 2 content + 1 done
+
+        // Content chunks
+        self::assertSame('Hello', $events[0]['content']);
+        self::assertSame(' World', $events[1]['content']);
+
+        // Done event
+        self::assertTrue($events[2]['done']);
+        self::assertSame('gpt-4o', $events[2]['model']);
+    }
+
+    #[Test]
+    public function streamWorkflowEscapesXssInChunks(): void
+    {
+        $stack  = $this->createStreamingStack(['<script>alert(1)</script>']);
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $stack['controller']->streamAction($request);
+
+        $events = $this->parseSseEvents((string) $result->getBody());
+        self::assertCount(2, $events); // 1 content + 1 done
+
+        // XSS content must be escaped
+        self::assertStringNotContainsString('<script>', $events[0]['content']);
+        self::assertStringContainsString('&lt;script&gt;', $events[0]['content']);
+    }
+
+    #[Test]
+    public function streamWorkflowEscapesXssInModelName(): void
+    {
+        $stack = $this->createStreamingStack(['Hello']);
+
+        // Create config with XSS in model name
+        $chatOptions = $this->createChatOptionsStub('<img onerror=alert(1)>');
+        $config      = self::createStub(\Netresearch\NrLlm\Domain\Model\LlmConfiguration::class);
+        $config->method('getIdentifier')->willReturn('test');
+        $config->method('getName')->willReturn('Test');
+        $config->method('isDefault')->willReturn(true);
+        $config->method('toChatOptions')->willReturn($chatOptions);
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $stack['controller']->streamAction($request);
+
+        $events    = $this->parseSseEvents((string) $result->getBody());
+        $doneEvent = end($events);
+        self::assertTrue($doneEvent['done']);
+        self::assertStringNotContainsString('<img', $doneEvent['model']);
+        self::assertStringContainsString('&lt;img', $doneEvent['model']);
+    }
+
+    #[Test]
+    public function streamWorkflowHandlesProviderException(): void
+    {
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager->method('supportsFeature')->willReturn(true);
+        $serviceManager->method('streamChat')
+            ->willThrowException(new ProviderException('API key expired'));
+
+        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $config     = $this->createLlmConfiguration();
+        $configRepo->method('findDefault')->willReturn($config);
+
+        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+        );
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $controller->streamAction($request);
+
+        self::assertSame(500, $result->getStatusCode());
+        self::assertStringContainsString('text/event-stream', $result->getHeaderLine('Content-Type'));
+        $events = $this->parseSseEvents((string) $result->getBody());
+        self::assertCount(1, $events);
+        self::assertArrayHasKey('error', $events[0]);
+    }
+
+    #[Test]
+    public function streamWorkflowHandlesUnexpectedException(): void
+    {
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager->method('supportsFeature')->willReturn(true);
+        $serviceManager->method('streamChat')
+            ->willThrowException(new RuntimeException('Connection timeout'));
+
+        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $config     = $this->createLlmConfiguration();
+        $configRepo->method('findDefault')->willReturn($config);
+
+        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+        );
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $controller->streamAction($request);
+
+        self::assertSame(500, $result->getStatusCode());
+        self::assertStringContainsString('text/event-stream', $result->getHeaderLine('Content-Type'));
+        $events = $this->parseSseEvents((string) $result->getBody());
+        self::assertCount(1, $events);
+        self::assertArrayHasKey('error', $events[0]);
+    }
+
+    #[Test]
+    public function streamWorkflowIncludesRateLimitHeaders(): void
+    {
+        $stack  = $this->createStreamingStack(['Hello']);
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $request = $this->createJsonRequest(['prompt' => 'Test']);
+        $result  = $stack['controller']->streamAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        self::assertTrue($result->hasHeader('X-RateLimit-Limit'));
+        self::assertTrue($result->hasHeader('X-RateLimit-Remaining'));
+        self::assertTrue($result->hasHeader('X-RateLimit-Reset'));
+        self::assertSame('20', $result->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $result->getHeaderLine('X-RateLimit-Remaining'));
+    }
+
+    #[Test]
+    public function streamWorkflowWithModelOverride(): void
+    {
+        $stack  = $this->createStreamingStack(['Response']);
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        // Send prompt with model override prefix
+        $request = $this->createJsonRequest(['prompt' => '#cw:custom-model Test prompt']);
+        $result  = $stack['controller']->streamAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $events = $this->parseSseEvents((string) $result->getBody());
+
+        // Done event should have the overridden model name
+        $doneEvent = end($events);
+        self::assertTrue($doneEvent['done']);
+        self::assertSame('custom-model', $doneEvent['model']);
     }
 }

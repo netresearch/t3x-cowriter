@@ -1,0 +1,44 @@
+#!/bin/bash
+
+## Description: Import Ollama provider, models, and sample configurations
+## Usage: seed-ollama [database]
+## Example: ddev seed-ollama
+## Example: ddev seed-ollama v14
+
+# Get the DDEV project root
+DDEV_APPROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SQL_FILE="${DDEV_APPROOT}/sql/seed-ollama.sql"
+
+# Default to v14 if no database specified
+DATABASE="${1:-v14}"
+
+if [ ! -f "$SQL_FILE" ]; then
+    echo "Error: SQL file not found: $SQL_FILE"
+    exit 1
+fi
+
+echo "Importing Ollama seed data into database: $DATABASE"
+echo ""
+
+# Import the SQL file via ddev mysql
+cat "$SQL_FILE" | ddev mysql -d "$DATABASE"
+
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "Seed data imported successfully!"
+    echo ""
+    echo "Pre-configured LLM setup:"
+    echo "  Provider: Local Ollama (http://ollama:11434)"
+    echo "  Models:   qwen3:0.6b (default), gemma3:1b, smollm2:360m"
+    echo "  Configs:  General Purpose, Content Summarizer, Creative Writing"
+    echo ""
+    echo "You can now:"
+    echo "  - Access Admin Tools > LLM in TYPO3 backend"
+    echo "  - Use 'ddev ollama list' to verify the model is available"
+    echo "  - Test with 'ddev ollama chat' for interactive chat"
+else
+    echo ""
+    echo "Error importing seed data. Check database exists and tables are created."
+    echo "Run: ddev exec -d /var/www/html/$DATABASE vendor/bin/typo3 database:updateschema"
+    exit 1
+fi
