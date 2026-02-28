@@ -524,6 +524,36 @@ describe('AIService', () => {
             expect(chunks).toContain('buffered');
             expect(result.done).toBe(true);
         });
+
+        it('should call onChunk for content in final buffer flush', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            // Content chunk WITHOUT trailing \n\n stays in buffer until flush
+            const sseData = 'data: {"content":"final-chunk"}';
+
+            const encoder = new TextEncoder();
+            const readable = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseData));
+                    controller.close();
+                },
+            });
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                body: readable,
+            });
+
+            const service = new ServiceClass();
+            const chunks = [];
+            await service.completeStream('Test', {}, (chunk) => chunks.push(chunk));
+
+            // The content from the final buffer flush should be delivered via onChunk
+            expect(chunks).toContain('final-chunk');
+        });
     });
 
     describe('complete edge cases', () => {

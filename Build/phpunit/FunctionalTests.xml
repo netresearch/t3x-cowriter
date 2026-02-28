@@ -18,12 +18,6 @@
         <env name="TYPO3_PATH_ROOT" value="../../.Build/public"/>
         <env name="TYPO3_PATH_WEB" value="../../.Build/public"/>
     </php>
-    <coverage>
-        <report>
-            <clover outputFile="../../.Build/logs/clover-functional.xml"/>
-            <html outputDirectory="../../.Build/logs/html-functional"/>
-        </report>
-    </coverage>
     <source>
         <include>
             <directory suffix=".php">../../Classes/</directory>
