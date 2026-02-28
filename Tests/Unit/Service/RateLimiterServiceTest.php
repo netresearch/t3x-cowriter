@@ -16,6 +16,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 
@@ -102,9 +103,9 @@ final class RateLimiterServiceTest extends TestCase
             ->method('set')
             ->with(
                 $this->anything(),
-                $this->callback(function (array $data): bool {
-                    // Should have 3 entries: 2 current + 1 new
-                    return count($data) === 3;
+                $this->callback(static function (array $data): bool {
+                    // Should have 3 entries: 2 current + 1 new, with sequential 0-based keys
+                    return count($data) === 3 && array_keys($data) === range(0, 2);
                 }),
                 $this->anything(),
                 $this->anything(),
@@ -198,7 +199,17 @@ final class RateLimiterServiceTest extends TestCase
             null,
             time() - 10, // Only this is valid
         ]);
-        $this->cacheMock->expects($this->once())->method('set');
+        $this->cacheMock->expects($this->once())
+            ->method('set')
+            ->with(
+                $this->anything(),
+                $this->callback(static function (array $data): bool {
+                    // Should have 2 entries (1 valid int + 1 new) with sequential 0-based keys
+                    return count($data) === 2 && array_keys($data) === [0, 1];
+                }),
+                $this->anything(),
+                $this->anything(),
+            );
 
         $service = new RateLimiterService($this->cacheMock, 20);
         $result  = $service->checkLimit('user-123');
@@ -336,12 +347,16 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willThrowException(new RuntimeException('Cache unavailable'));
 
         $service = new RateLimiterService($this->cacheMock, 20);
+        $before  = time();
         $result  = $service->checkLimit('user-123');
 
         // Fail-open: request should be allowed
         $this->assertTrue($result->allowed);
         $this->assertSame(20, $result->limit);
         $this->assertSame(20, $result->remaining);
+        // Kills Plus mutant: resetTime should be now + 60, not now - 60
+        $this->assertGreaterThanOrEqual($before + 59, $result->resetTime);
+        $this->assertLessThanOrEqual($before + 61, $result->resetTime);
     }
 
     #[Test]
@@ -356,5 +371,138 @@ final class RateLimiterServiceTest extends TestCase
         // Fail-open: request should be allowed even if write fails
         $this->assertTrue($result->allowed);
         $this->assertSame(20, $result->limit);
+    }
+
+    #[Test]
+    public function checkLimitLogsWarningOnCacheException(): void
+    {
+        // Kills MethodCallRemoval, ArrayItemRemoval, and ArrayItem mutants on logger call
+        $this->cacheMock->method('get')->willThrowException(new RuntimeException('Cache unavailable'));
+
+        $loggerMock = $this->createMock(LoggerInterface::class);
+        $loggerMock
+            ->expects($this->once())
+            ->method('warning')
+            ->with(
+                'Rate limiter cache error, failing open',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'Cache unavailable'),
+            );
+
+        $service = new RateLimiterService($this->cacheMock, 20, $loggerMock);
+        $result  = $service->checkLimit('user-123');
+
+        $this->assertTrue($result->allowed);
+    }
+
+    #[Test]
+    public function checkLimitResetTimeUsesOldestEntryPlusWindow(): void
+    {
+        // Kills Plus mutant ($now + self::WINDOW_SIZE_SECONDS → $now - self::WINDOW_SIZE_SECONDS)
+        $now = time();
+        $this->cacheMock->method('get')->willReturn(false);
+
+        $capturedData = null;
+        $this->cacheMock->method('set')
+            ->willReturnCallback(function (string $key, array $data) use (&$capturedData): bool {
+                $capturedData = $data;
+
+                return true;
+            });
+
+        $service = new RateLimiterService($this->cacheMock, 20);
+        $result  = $service->checkLimit('user-123');
+
+        // For empty window: resetTime should be approximately now + 60
+        // With the minus mutant it would be now - 60 (in the past)
+        $this->assertGreaterThan($now, $result->resetTime);
+        $this->assertGreaterThanOrEqual($now + 59, $result->resetTime);
+    }
+
+    #[Test]
+    public function checkLimitStoresCacheWithSufficientTtl(): void
+    {
+        // Kills DecrementInteger/IncrementInteger/Plus mutants on WINDOW_SIZE_SECONDS + 10
+        $now = time();
+        $this->cacheMock->method('get')->willReturn(false);
+
+        $capturedTtl = null;
+        $this->cacheMock->method('set')
+            ->willReturnCallback(function (string $key, array $data, array $tags, int $lifetime) use (&$capturedTtl): bool {
+                $capturedTtl = $lifetime;
+
+                return true;
+            });
+
+        $service = new RateLimiterService($this->cacheMock, 20);
+        $service->checkLimit('user-123');
+
+        // TTL should be WINDOW_SIZE_SECONDS (60) + 10 = 70
+        $this->assertSame(70, $capturedTtl);
+    }
+
+    #[Test]
+    public function cleanExpiredEntriesUsesStrictGreaterThan(): void
+    {
+        // Kills GreaterThan → GreaterThanOrEqual mutant
+        // Entries exactly at the cutoff boundary (60 seconds ago) should be removed
+        $now = time();
+        $this->cacheMock->method('get')->willReturn([
+            $now - 60, // Exactly at boundary = expired (> cutoff means it must be STRICTLY newer)
+            $now - 30, // Within window = current
+        ]);
+
+        $capturedData = null;
+        $this->cacheMock->method('set')
+            ->willReturnCallback(function (string $key, array $data) use (&$capturedData): bool {
+                $capturedData = $data;
+
+                return true;
+            });
+
+        $service = new RateLimiterService($this->cacheMock, 20);
+        $result  = $service->checkLimit('user-123');
+
+        $this->assertTrue($result->allowed);
+        // With > : boundary entry is excluded, 1 current + 1 new = 2 entries
+        // With >= : boundary entry is included, 1 boundary + 1 current + 1 new = 3 entries
+        $this->assertSame(18, $result->remaining); // 20 - 2
+    }
+
+    #[Test]
+    public function getWindowDataHandlesFalseReturnAsEmptyWindow(): void
+    {
+        // Cache returns false (cache miss)
+        $this->cacheMock->method('get')->willReturn(false);
+        $this->cacheMock->expects($this->once())->method('set');
+
+        $service = new RateLimiterService($this->cacheMock, 20);
+        $result  = $service->checkLimit('user-123');
+
+        $this->assertTrue($result->allowed);
+        $this->assertSame(19, $result->remaining);
+    }
+
+    #[Test]
+    public function getWindowDataHandlesNonArrayCacheDataAsEmpty(): void
+    {
+        // Kills FalseValue ($data === false → $data === true) and
+        // LogicalOr (|| → &&) mutants
+        // Cache returns a non-false, non-array value (e.g., a string or int)
+        // With $data === false: false (data is 'some string', not false)
+        // With !is_array($data): true (string is not array)
+        // Original: false || true = true → returns []
+        // FalseValue: $data === true → false || true = true → same
+        // LogicalOr→And: false && true = false → would NOT return [], but proceed
+        //   to use 'some string' as array → this would cause issues
+
+        $this->cacheMock->method('get')->willReturn('corrupted cache data');
+        $this->cacheMock->expects($this->once())->method('set');
+
+        $service = new RateLimiterService($this->cacheMock, 20);
+        $result  = $service->checkLimit('user-123');
+
+        // Should treat corrupted data as empty window
+        $this->assertTrue($result->allowed);
+        $this->assertSame(19, $result->remaining);
     }
 }

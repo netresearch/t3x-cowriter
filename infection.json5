@@ -17,6 +17,6 @@
     "mutators": {
         "@default": true
     },
-    "minMsi": 70,
-    "minCoveredMsi": 75
+    "minMsi": 80,
+    "minCoveredMsi": 85
 }

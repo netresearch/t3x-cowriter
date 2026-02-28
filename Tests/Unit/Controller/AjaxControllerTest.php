@@ -29,6 +29,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\LoggerInterface;
+use ReflectionMethod;
 use RuntimeException;
 use stdClass;
 use TYPO3\CMS\Core\Context\Context;
@@ -104,6 +105,12 @@ final class AjaxControllerTest extends TestCase
         $this->assertSame(200, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
+        $this->assertSame('Hi there!', $data['content']);
+        // Verify model and finishReason are present (kills Coalesce/ArrayItemRemoval mutants)
+        $this->assertArrayHasKey('model', $data);
+        $this->assertSame('test-model', $data['model']);
+        $this->assertArrayHasKey('finishReason', $data);
+        $this->assertSame('stop', $data['finishReason']);
     }
 
     #[Test]
@@ -119,6 +126,10 @@ final class AjaxControllerTest extends TestCase
 
         $this->assertInstanceOf(JsonResponse::class, $response);
         $this->assertSame(400, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
+        $this->assertArrayHasKey('error', $data);
+        $this->assertStringContainsString('Invalid JSON', $data['error']);
     }
 
     #[Test]
@@ -129,6 +140,9 @@ final class AjaxControllerTest extends TestCase
 
         $this->assertInstanceOf(JsonResponse::class, $response);
         $this->assertSame(400, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
+        $this->assertArrayHasKey('error', $data);
     }
 
     #[Test]
@@ -321,7 +335,10 @@ final class AjaxControllerTest extends TestCase
         $this->loggerMock
             ->expects($this->once())
             ->method('error')
-            ->with('Chat provider error', $this->anything());
+            ->with(
+                'Chat provider error',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'API key invalid'),
+            );
 
         $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
         $response = $this->subject->chatAction($request);
@@ -329,6 +346,7 @@ final class AjaxControllerTest extends TestCase
         $this->assertSame(500, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
         $this->assertFalse($data['success']);
+        $this->assertArrayHasKey('error', $data);
         $this->assertStringContainsString('provider', strtolower($data['error']));
         $this->assertStringContainsString('try again', strtolower($data['error']));
     }
@@ -345,7 +363,11 @@ final class AjaxControllerTest extends TestCase
         $this->loggerMock
             ->expects($this->once())
             ->method('error')
-            ->with('Chat action error', $this->anything());
+            ->with(
+                'Chat action error',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'Unexpected error'
+                    && isset($context['trace']) && is_string($context['trace'])),
+            );
 
         $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
         $response = $this->subject->chatAction($request);
@@ -353,6 +375,7 @@ final class AjaxControllerTest extends TestCase
         $this->assertSame(500, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
         $this->assertFalse($data['success']);
+        $this->assertArrayHasKey('error', $data);
         $this->assertStringContainsString('unexpected', strtolower($data['error']));
         $this->assertStringEndsWith('.', $data['error']);
     }
@@ -382,6 +405,38 @@ final class AjaxControllerTest extends TestCase
         $this->assertStringNotContainsString('<img', $data['model']);
         $this->assertStringNotContainsString('<div', $data['finishReason']);
         $this->assertStringContainsString('&lt;script&gt;', $data['content']);
+    }
+
+    #[Test]
+    public function chatActionEscapesSingleQuotesWithEntHtml5(): void
+    {
+        // ENT_QUOTES|ENT_HTML5 encodes single quotes as &apos;
+        // If mutated to ENT_QUOTES&ENT_HTML5 (=0), single quotes would NOT be encoded
+        $messages           = [['role' => 'user', 'content' => 'Hello']];
+        $completionResponse = new CompletionResponse(
+            content: "It's a <test> with 'quotes'",
+            model: "model's-name",
+            usage: new UsageStatistics(10, 20, 30),
+            finishReason: "it's done",
+            provider: 'test',
+        );
+
+        $this->llmServiceManagerMock
+            ->method('chat')
+            ->willReturn($completionResponse);
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        $data = $this->decodeJsonResponse($response);
+        $this->assertTrue($data['success']);
+        // Verify single quotes are encoded (kills BitwiseOr mutant ENT_QUOTES|ENT_HTML5 → ENT_QUOTES&ENT_HTML5)
+        $this->assertStringContainsString('&apos;', $data['content']);
+        $this->assertStringContainsString('&apos;', $data['model']);
+        $this->assertStringContainsString('&apos;', $data['finishReason']);
+        // Verify model and finishReason have actual values (kills Coalesce mutants)
+        $this->assertSame('model&apos;s-name', $data['model']);
+        $this->assertSame('it&apos;s done', $data['finishReason']);
     }
 
     // ===========================================
@@ -423,6 +478,34 @@ final class AjaxControllerTest extends TestCase
         $this->assertSame(400, $response->getStatusCode());
         $this->assertFalse($data['success']);
         $this->assertStringContainsString('prompt', strtolower($data['error']));
+    }
+
+    #[Test]
+    public function completeActionRejectsTooLongPrompt(): void
+    {
+        // 32769 characters exceeds MAX_PROMPT_LENGTH of 32768
+        $longPrompt = str_repeat('a', 32769);
+        $request    = $this->createRequestWithJsonBody(['prompt' => $longPrompt]);
+        $response   = $this->subject->completeAction($request);
+
+        $data = $this->decodeJsonResponse($response);
+        $this->assertSame(400, $response->getStatusCode());
+        $this->assertFalse($data['success']);
+        $this->assertStringContainsString('maximum allowed length', strtolower($data['error']));
+    }
+
+    #[Test]
+    public function completeActionReportsNoPromptForWhitespaceOnlyInput(): void
+    {
+        // Kills UnwrapTrim mutant: trim($dto->prompt) === '' must use trim,
+        // otherwise whitespace-only would not match '' and fall to 'exceeds' message
+        $request  = $this->createRequestWithJsonBody(['prompt' => '   ']);
+        $response = $this->subject->completeAction($request);
+
+        $data = $this->decodeJsonResponse($response);
+        $this->assertSame(400, $response->getStatusCode());
+        $this->assertFalse($data['success']);
+        $this->assertSame('No prompt provided', $data['error']);
     }
 
     #[Test]
@@ -476,7 +559,11 @@ final class AjaxControllerTest extends TestCase
 
         $this->loggerMock
             ->expects($this->once())
-            ->method('error');
+            ->method('error')
+            ->with(
+                'Cowriter provider error',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'API key invalid'),
+            );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
         $response = $this->subject->completeAction($request);
@@ -484,6 +571,7 @@ final class AjaxControllerTest extends TestCase
         $data = $this->decodeJsonResponse($response);
         $this->assertSame(500, $response->getStatusCode());
         $this->assertFalse($data['success']);
+        $this->assertArrayHasKey('error', $data);
         $this->assertStringContainsString('provider', strtolower($data['error']));
     }
 
@@ -501,7 +589,12 @@ final class AjaxControllerTest extends TestCase
 
         $this->loggerMock
             ->expects($this->once())
-            ->method('error');
+            ->method('error')
+            ->with(
+                'Cowriter unexpected error',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'Unexpected error'
+                    && isset($context['trace']) && is_string($context['trace'])),
+            );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
         $response = $this->subject->completeAction($request);
@@ -509,6 +602,7 @@ final class AjaxControllerTest extends TestCase
         $data = $this->decodeJsonResponse($response);
         $this->assertSame(500, $response->getStatusCode());
         $this->assertFalse($data['success']);
+        $this->assertArrayHasKey('error', $data);
         // Error message should not expose details
         $this->assertStringContainsString('unexpected', strtolower($data['error']));
     }
@@ -587,6 +681,37 @@ final class AjaxControllerTest extends TestCase
         $request = $this->createRequestWithJsonBody([
             'prompt' => '#cw:gpt-4o Improve this text',
         ]);
+        $this->subject->completeAction($request);
+    }
+
+    #[Test]
+    public function completeActionSendsCorrectMessageStructure(): void
+    {
+        // Kills ArrayItemRemoval mutants that remove 'role' keys from messages
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock
+            ->method('findDefault')
+            ->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    // Verify system message has both role and content
+                    return count($messages) === 2
+                        && $messages[0]['role'] === 'system'
+                        && isset($messages[0]['content'])
+                        && $messages[1]['role'] === 'user'
+                        && $messages[1]['content'] === 'Test prompt';
+                }),
+                $this->anything(),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['prompt' => 'Test prompt']);
         $this->subject->completeAction($request);
     }
 
@@ -717,6 +842,37 @@ final class AjaxControllerTest extends TestCase
 
         $this->assertSame(400, $response->getStatusCode());
         $this->assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+        $this->assertStringContainsString('No prompt provided', $body);
+    }
+
+    #[Test]
+    public function streamActionRejectsTooLongPrompt(): void
+    {
+        // 32769 characters exceeds MAX_PROMPT_LENGTH of 32768
+        $longPrompt = str_repeat('a', 32769);
+        $request    = $this->createRequestWithJsonBody(['prompt' => $longPrompt]);
+        $response   = $this->subject->streamAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $this->assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+        $this->assertStringContainsString('Prompt exceeds maximum allowed length', $body);
+    }
+
+    #[Test]
+    public function streamActionReportsNoPromptForWhitespaceOnlyInput(): void
+    {
+        // Kills UnwrapTrim mutant on line 291 for streamAction
+        $request  = $this->createRequestWithJsonBody(['prompt' => '   ']);
+        $response = $this->subject->streamAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+        $this->assertStringContainsString('No prompt provided', $body);
     }
 
     #[Test]
@@ -841,6 +997,133 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
+    public function streamActionEscapesSingleQuotesInSseChunks(): void
+    {
+        // Kills BitwiseOr mutant (ENT_QUOTES|ENT_HTML5 → ENT_QUOTES&ENT_HTML5)
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->willReturnCallback(function () {
+                yield "It's a test";
+            });
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+
+        // Verify single quotes are encoded as &apos; (ENT_HTML5 mode)
+        $this->assertStringContainsString('&apos;', $body);
+    }
+
+    #[Test]
+    public function streamActionSseEventsEndWithDoubleNewline(): void
+    {
+        // Kills ConcatOperandRemoval mutant that removes "\n\n" from done event
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->willReturnCallback(function () {
+                yield 'Hello';
+            });
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+
+        // Every SSE event must end with "\n\n"
+        $this->assertStringEndsWith("\n\n", $body);
+
+        // Each "data: " line must be followed by "\n\n"
+        $this->assertSame(substr_count($body, 'data: '), substr_count($body, "\n\n"));
+    }
+
+    #[Test]
+    public function streamActionSseResponseIsReadableFromStart(): void
+    {
+        // Kills MethodCallRemoval on $stream->rewind() in streamAction
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->willReturnCallback(function () {
+                yield 'chunk';
+            });
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        // Read body WITHOUT rewinding - if rewind() was removed, body would be empty
+        // because the stream pointer would be at the end after writing
+        $body = $response->getBody()->getContents();
+        $this->assertNotEmpty($body);
+        $this->assertStringContainsString('data: ', $body);
+    }
+
+    #[Test]
+    public function streamActionSseDoneEventIncludesModelName(): void
+    {
+        // Kills Coalesce mutant ($options->getModel() ?? '' → '' ?? $options->getModel())
+        // and BitwiseOr on the model encoding
+        $chatOptions = new ChatOptions(model: "test-model's");
+        $config      = $this->createConfigurationMock();
+        // Override toChatOptions to return options with a model containing a single quote
+        $config = $this->createMock(LlmConfiguration::class);
+        $config->method('getIdentifier')->willReturn('default');
+        $config->method('getName')->willReturn('Default Config');
+        $config->method('isDefault')->willReturn(true);
+        $config->method('toChatOptions')->willReturn($chatOptions);
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $this->llmServiceManagerMock
+            ->method('streamChat')
+            ->willReturnCallback(function () {
+                yield 'Hello';
+            });
+
+        $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
+        $response = $this->subject->streamAction($request);
+
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+
+        // Parse the done event (last SSE event)
+        $events    = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
+        $lastEvent = json_decode(substr(end($events), 6), true);
+        $this->assertTrue($lastEvent['done']);
+        // Model with single quote should be HTML-escaped
+        $this->assertSame('test-model&apos;s', $lastEvent['model']);
+    }
+
+    #[Test]
     public function streamActionHandlesProviderException(): void
     {
         $config = $this->createConfigurationMock();
@@ -855,13 +1138,22 @@ final class AjaxControllerTest extends TestCase
             ->method('streamChat')
             ->willThrowException(new ProviderException('Stream failed'));
 
-        $this->loggerMock->expects($this->once())->method('error');
+        $this->loggerMock
+            ->expects($this->once())
+            ->method('error')
+            ->with(
+                'Cowriter streaming provider error',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'Stream failed'),
+            );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
         $response = $this->subject->streamAction($request);
 
         $this->assertSame(500, $response->getStatusCode());
         $this->assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+        $this->assertStringContainsString('provider error', strtolower($body));
     }
 
     // ===========================================
@@ -1008,6 +1300,12 @@ final class AjaxControllerTest extends TestCase
 
         $this->assertSame(429, $response->getStatusCode());
         $this->assertTrue($response->hasHeader('Retry-After'));
+        // Kills Foreach_ mutant: rate limit headers must be present
+        $this->assertTrue($response->hasHeader('X-RateLimit-Limit'));
+        $this->assertTrue($response->hasHeader('X-RateLimit-Remaining'));
+        $this->assertTrue($response->hasHeader('X-RateLimit-Reset'));
+        $this->assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        $this->assertSame('0', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
@@ -1049,6 +1347,29 @@ final class AjaxControllerTest extends TestCase
         $response    = $this->subject->chatAction($request);
 
         $this->assertSame(400, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function chatActionUsesMultiByteStringLengthForContentCheck(): void
+    {
+        // Kills MBString mutant (mb_strlen → strlen)
+        // Multi-byte characters: each emoji is 4 bytes but 1 character
+        // 32768 emojis = 32768 chars (within limit) but 131072 bytes (over limit with strlen)
+        // Use a string that is EXACTLY at the char limit but well over the byte limit
+        $emoji   = '💡'; // 4 bytes in UTF-8
+        $content = str_repeat($emoji, 32768); // 32768 chars, 131072 bytes
+
+        $completionResponse = $this->createCompletionResponse('Response');
+        $this->llmServiceManagerMock
+            ->method('chat')
+            ->willReturn($completionResponse);
+
+        $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => $content]]]);
+        $response = $this->subject->chatAction($request);
+
+        // With mb_strlen: 32768 chars = at limit, should pass (200)
+        // With strlen: 131072 bytes = over limit, would fail (400)
+        $this->assertSame(200, $response->getStatusCode());
     }
 
     #[Test]
@@ -1111,13 +1432,108 @@ final class AjaxControllerTest extends TestCase
             ->method('streamChat')
             ->willThrowException(new RuntimeException('Unexpected failure'));
 
-        $this->loggerMock->expects($this->once())->method('error');
+        $this->loggerMock
+            ->expects($this->once())
+            ->method('error')
+            ->with(
+                'Cowriter streaming unexpected error',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'Unexpected failure'
+                    && isset($context['trace']) && is_string($context['trace'])),
+            );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
         $response = $this->subject->streamAction($request);
 
         $this->assertSame(500, $response->getStatusCode());
         $this->assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+        $this->assertStringContainsString('unexpected', strtolower($body));
+    }
+
+    #[Test]
+    public function sseErrorResponseFallsBackOnJsonEncodeFailure(): void
+    {
+        // Use reflection to call the private sseErrorResponse method
+        // with a string that causes json_encode to fail
+        $method = new ReflectionMethod(AjaxController::class, 'sseErrorResponse');
+
+        // Invalid UTF-8 sequence causes json_encode to fail with JSON_THROW_ON_ERROR
+        $invalidUtf8 = "Error: \xB1\x31";
+
+        $response = $method->invoke($this->subject, $invalidUtf8, 500);
+
+        self::assertSame(500, $response->getStatusCode());
+        self::assertStringContainsString('text/event-stream', $response->getHeaderLine('Content-Type'));
+        $response->getBody()->rewind();
+        $body = $response->getBody()->getContents();
+        // Should fall back to the hardcoded error JSON
+        self::assertStringContainsString('An error occurred', $body);
+        // Must be valid SSE format: "data: JSON\n\n"
+        self::assertStringStartsWith('data: ', $body);
+        self::assertStringEndsWith("\n\n", $body);
+    }
+
+    #[Test]
+    public function sseErrorResponseProducesValidSseFormat(): void
+    {
+        // Kills Concat, ConcatOperandRemoval, and MethodCallRemoval (rewind) mutants
+        $method = new ReflectionMethod(AjaxController::class, 'sseErrorResponse');
+
+        $response = $method->invoke($this->subject, 'Test error message', 400);
+
+        self::assertSame(400, $response->getStatusCode());
+        self::assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+        self::assertSame('no-cache', $response->getHeaderLine('Cache-Control'));
+
+        // Read body WITHOUT rewinding first - kills MethodCallRemoval on $stream->rewind()
+        // If rewind() was removed, the stream pointer would be at end and getContents() returns empty
+        $body = $response->getBody()->getContents();
+        self::assertNotEmpty($body, 'SSE body must be readable without manual rewind');
+
+        // Verify exact SSE format: "data: {JSON}\n\n"
+        self::assertStringStartsWith('data: ', $body);
+        self::assertStringEndsWith("\n\n", $body);
+
+        // Extract JSON payload and verify it's valid
+        $jsonPart = substr($body, 6, -2); // Remove "data: " prefix and "\n\n" suffix
+        $decoded  = json_decode($jsonPart, true);
+        self::assertIsArray($decoded);
+        self::assertSame('Test error message', $decoded['error']);
+    }
+
+    #[Test]
+    public function streamActionSendsCorrectMessageStructure(): void
+    {
+        // Kills ArrayItemRemoval/ArrayItem mutants on streaming message construction
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('supportsFeature')
+            ->with('streaming')
+            ->willReturn(true);
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('streamChat')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    // Verify system message has role and content
+                    return count($messages) === 2
+                        && $messages[0]['role'] === 'system'
+                        && isset($messages[0]['content'])
+                        && $messages[1]['role'] === 'user'
+                        && $messages[1]['content'] === 'Test prompt';
+                }),
+                $this->anything(),
+            )
+            ->willReturnCallback(function () {
+                yield 'Hello';
+            });
+
+        $request = $this->createRequestWithJsonBody(['prompt' => 'Test prompt']);
+        $this->subject->streamAction($request);
     }
 
     #[Test]
@@ -1179,6 +1595,62 @@ final class AjaxControllerTest extends TestCase
         $this->assertStringNotContainsString('<img', $data['configurations'][0]['name']);
         $this->assertStringContainsString('&lt;', $data['configurations'][0]['identifier']);
         $this->assertStringContainsString('&lt;', $data['configurations'][0]['name']);
+    }
+
+    #[Test]
+    public function getConfigurationsActionEscapesSingleQuotesInNames(): void
+    {
+        // Kills BitwiseOr mutants (ENT_QUOTES|ENT_HTML5 → ENT_QUOTES&ENT_HTML5) on identifier/name
+        $config = $this->createConfigurationMock(
+            "config's-id",
+            "Config's Name",
+            true,
+        );
+
+        $queryResult = $this->createQueryResultMock([$config]);
+
+        $this->configRepositoryMock
+            ->method('findActive')
+            ->willReturn($queryResult);
+
+        $request  = $this->createRequestWithJsonBody([]);
+        $response = $this->subject->getConfigurationsAction($request);
+
+        $data = $this->decodeJsonResponse($response);
+        $this->assertTrue($data['success']);
+        $this->assertCount(1, $data['configurations']);
+        $this->assertStringContainsString('&apos;', $data['configurations'][0]['identifier']);
+        $this->assertStringContainsString('&apos;', $data['configurations'][0]['name']);
+    }
+
+    #[Test]
+    public function getConfigurationsActionFiltersContinueCorrectly(): void
+    {
+        // Tests that 'continue' in the foreach works correctly:
+        // With non-LlmConfiguration objects, valid configs AFTER them should still be included
+        $config1 = $this->createConfigurationMock('first', 'First', true);
+        $config2 = $this->createConfigurationMock('second', 'Second', false);
+
+        // Mixed array with a non-LlmConfiguration in the middle
+        $queryResult = $this->createQueryResultMockWithMixedTypes([
+            $config1,
+            new stdClass(),  // Should be skipped by 'continue'
+            $config2,        // Should still be included after the continue
+        ]);
+
+        $this->configRepositoryMock
+            ->method('findActive')
+            ->willReturn($queryResult);
+
+        $request  = $this->createRequestWithJsonBody([]);
+        $response = $this->subject->getConfigurationsAction($request);
+
+        $data = $this->decodeJsonResponse($response);
+        $this->assertTrue($data['success']);
+        // Both valid configs should be present (stdClass filtered by continue)
+        $this->assertCount(2, $data['configurations']);
+        $this->assertSame('first', $data['configurations'][0]['identifier']);
+        $this->assertSame('second', $data['configurations'][1]['identifier']);
     }
 
     // ===========================================
@@ -1387,6 +1859,47 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
+    public function chatActionHandlesStringTypedNumericOptions(): void
+    {
+        // Kills CastFloat/CastInt mutants: without (float)/(int) casts,
+        // string values from JSON would pass through as strings to ChatOptions
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $options  = [
+            'temperature'      => '0.7',  // String, needs (float) cast
+            'maxTokens'        => '1000', // String, needs (int) cast
+            'topP'             => '0.9',
+            'frequencyPenalty' => '0.5',
+            'presencePenalty'  => '-0.5',
+        ];
+        $completionResponse = $this->createCompletionResponse('Response');
+
+        $capturedOptions = null;
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chat')
+            ->with(
+                $messages,
+                $this->callback(function (?ChatOptions $options) use (&$capturedOptions): bool {
+                    $capturedOptions = $options;
+
+                    return $options !== null;
+                }),
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages, 'options' => $options]);
+        $this->subject->chatAction($request);
+
+        $this->assertNotNull($capturedOptions);
+        // Values must be proper types, not strings
+        $this->assertSame(0.7, $capturedOptions->getTemperature());
+        $this->assertSame(1000, $capturedOptions->getMaxTokens());
+        $this->assertSame(0.9, $capturedOptions->getTopP());
+        $this->assertSame(0.5, $capturedOptions->getFrequencyPenalty());
+        $this->assertSame(-0.5, $capturedOptions->getPresencePenalty());
+    }
+
+    #[Test]
     public function chatActionAcceptsExactly50Messages(): void
     {
         $messages           = array_fill(0, 50, ['role' => 'user', 'content' => 'Hello']);
@@ -1426,9 +1939,25 @@ final class AjaxControllerTest extends TestCase
         $response->getBody()->rewind();
         $body = $response->getBody()->getContents();
 
-        // Verify SSE structure: content chunks + done event
-        $this->assertStringContainsString('"content":', $body);
-        $this->assertStringContainsString('"done":true', $body);
+        // Verify SSE structure: each event starts with "data: " and ends with "\n\n"
+        $events = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
+        $this->assertCount(3, $events); // 2 content chunks + 1 done event
+
+        // Verify content chunks are valid SSE data lines
+        foreach ($events as $event) {
+            $this->assertStringStartsWith('data: ', $event);
+            $json = json_decode(substr($event, 6), true);
+            $this->assertIsArray($json);
+        }
+
+        // Verify last event has done:true
+        $lastEvent = json_decode(substr(end($events), 6), true);
+        $this->assertTrue($lastEvent['done']);
+
+        // Verify first two have content
+        $firstEvent = json_decode(substr($events[0], 6), true);
+        $this->assertArrayHasKey('content', $firstEvent);
+        $this->assertSame('chunk1', $firstEvent['content']);
     }
 
     #[Test]
@@ -1446,6 +1975,21 @@ final class AjaxControllerTest extends TestCase
         $data = $this->decodeJsonResponse($response);
         $this->assertFalse($data['success']);
         $this->assertStringContainsString('Invalid JSON structure', $data['error']);
+    }
+
+    #[Test]
+    public function chatActionTreatsNonArrayMessagesAsEmpty(): void
+    {
+        // Kills LogicalAnd mutant (isset && is_array → isset || is_array)
+        // If messages is a string instead of array, it should be treated as []
+        $request  = $this->createRequestWithJsonBody(['messages' => 'not an array']);
+        $response = $this->subject->chatAction($request);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        $this->assertFalse($data['success']);
+        // Should get "Messages array is required" (empty array case)
+        $this->assertStringContainsString('Messages array is required', $data['error']);
     }
 
     // ===========================================

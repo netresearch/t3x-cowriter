@@ -10,7 +10,7 @@ help: ## Show available targets
 # ===================================
 
 .PHONY: up
-up: start setup ## Complete startup (start DDEV + run setup)
+up: start setup ollama ## Complete startup (start DDEV + run setup + check Ollama)
 
 .PHONY: start
 start: ## Start DDEV environment
@@ -108,6 +108,23 @@ test-e2e: ## Run E2E tests
 test-coverage: ## Generate test coverage report (unit + integration)
 	ddev exec -d /var/www/t3_cowriter php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/UnitTests.xml --coverage-html var/coverage/unit
 	ddev exec -d /var/www/t3_cowriter php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/IntegrationTests.xml --coverage-html var/coverage/integration
+
+# ===================================
+# Ollama LLM Commands
+# ===================================
+
+.PHONY: ollama
+ollama: ## Check Ollama status and available models
+	@echo "Ollama Status:"
+	@ddev ollama list || echo "   Model not yet pulled. Run: ddev ollama pull"
+
+.PHONY: seed
+seed: ## Import Ollama seed data (provider, models, configs)
+	ddev seed-ollama
+
+.PHONY: ollama-pull
+ollama-pull: ## Pull default Ollama model
+	ddev ollama pull
 
 # ===================================
 # Cleanup

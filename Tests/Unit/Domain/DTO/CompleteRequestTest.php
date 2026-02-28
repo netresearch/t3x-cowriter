@@ -283,6 +283,23 @@ final class CompleteRequestTest extends TestCase
     }
 
     #[Test]
+    public function fromRequestTrimsPromptAfterModelOverrideExtraction(): void
+    {
+        // Kills UnwrapTrim mutant: trim(substr(...)) → substr(...)
+        // The prompt after prefix extraction has trailing whitespace
+        $request = $this->createRequestWithJsonBody([
+            'prompt' => '#cw:gpt-4o  hello  ',
+        ]);
+
+        $dto = CompleteRequest::fromRequest($request);
+
+        $this->assertSame('gpt-4o', $dto->modelOverride);
+        // With trim: 'hello' (trailing spaces removed)
+        // Without trim: 'hello  ' (trailing spaces preserved)
+        $this->assertSame('hello', $dto->prompt);
+    }
+
+    #[Test]
     public function fromRequestWithModelOverrideButOnlyWhitespaceAfterPrefix(): void
     {
         $request = $this->createRequestWithJsonBody([
