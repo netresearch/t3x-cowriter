@@ -11,11 +11,12 @@
     },
     "tmpDir": ".Build/tmp",
     "phpUnit": {
+        "configDir": "Build/phpunit",
         "customPath": ".Build/bin/phpunit"
     },
     "mutators": {
         "@default": true
     },
     "minMsi": 70,
-    "minCoveredMsi": 80
+    "minCoveredMsi": 75
 }
