@@ -21,16 +21,20 @@ stop: ## Stop DDEV environment
 	ddev stop
 
 .PHONY: setup
-setup: ## Complete setup (install TYPO3 v14)
+setup: ## Complete setup (install TYPO3 v13 + v14)
 	@ddev describe >/dev/null 2>&1 || ddev start
 	ddev install-all
+
+.PHONY: install-v13
+install-v13: ## Install TYPO3 v13 with extension
+	ddev install-v13
 
 .PHONY: install-v14
 install-v14: ## Install TYPO3 v14 with extension
 	ddev install-v14
 
 .PHONY: install-all
-install-all: ## Install all TYPO3 versions (v14)
+install-all: ## Install all TYPO3 versions (v13 + v14)
 	ddev install-all
 
 .PHONY: ddev-restart
@@ -158,6 +162,12 @@ urls: ## Show all access URLs
 	@echo ""
 	@echo "t3_cowriter - Access URLs"
 	@echo "========================="
+	@echo ""
+	@echo "Landing:    https://t3-cowriter.ddev.site/"
+	@echo ""
+	@echo "TYPO3 v13:"
+	@echo "  Frontend: https://v13.t3-cowriter.ddev.site/"
+	@echo "  Backend:  https://v13.t3-cowriter.ddev.site/typo3/"
 	@echo ""
 	@echo "TYPO3 v14:"
 	@echo "  Frontend: https://v14.t3-cowriter.ddev.site/"

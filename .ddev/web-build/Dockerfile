@@ -9,3 +9,6 @@ RUN apt-get update && apt-get install -y php${PHP_VERSION}-pcov && rm -rf /var/l
 RUN apt-get update && \
     apt-get dist-upgrade -y && \
     rm -rf /var/lib/apt/lists/*
+
+# Copy landing page to web root with correct permissions
+COPY --chmod=644 landing-index.html /var/www/html/index.html
