@@ -30,7 +30,7 @@ final readonly class CompleteRequest
      * Allowed characters in model names (alphanumeric, hyphens, underscores, dots, colons, slashes).
      * Examples: gpt-4o, claude-3-opus-20240229, mistral/mixtral-8x7b, openai:gpt-4.
      */
-    private const MODEL_NAME_PATTERN = '/^[a-zA-Z0-9][-a-zA-Z0-9_.:\/]*$/';
+    private const MODEL_NAME_PATTERN = '/^[a-zA-Z0-9][-a-zA-Z0-9_.:\/]{0,255}$/';
 
     /**
      * Maximum allowed prompt length in characters.

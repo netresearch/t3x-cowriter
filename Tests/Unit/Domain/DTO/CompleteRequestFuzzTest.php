@@ -226,7 +226,7 @@ final class CompleteRequestFuzzTest extends TestCase
         yield 'empty object' => ['{}'];
         yield 'nested deeply' => [str_repeat('[', 100) . '1' . str_repeat(']', 100)];
         yield 'very large number' => ['{"prompt":"test","n":' . str_repeat('9', 1000) . '}'];
-        yield 'unicode escape' => ['{"prompt":"\\u0048\\u0065\\u006c\\u006c\\u006f"}'];
+        yield 'invalid unicode escape' => ['{"prompt":"\\u004G"}'];
     }
 
     // ===================================================
@@ -297,7 +297,8 @@ final class CompleteRequestFuzzTest extends TestCase
         yield 'case sensitive prefix' => ['#CW:gpt-4o test', null, '#CW:gpt-4o test'];
         yield 'prefix mid-string' => ['hello #cw:gpt-4o test', null, 'hello #cw:gpt-4o test'];
         yield 'model with all valid chars' => ['#cw:a-b_c.d:e/f test', 'a-b_c.d:e/f', 'test'];
-        yield 'model max valid pattern' => ['#cw:' . str_repeat('a', 200) . ' test', str_repeat('a', 200), 'test'];
+        yield 'model max valid length' => ['#cw:' . str_repeat('a', 256) . ' test', str_repeat('a', 256), 'test'];
+        yield 'model name too long' => ['#cw:' . str_repeat('a', 257) . ' test', null, '#cw:' . str_repeat('a', 257) . ' test'];
     }
 
     // ===================================================
