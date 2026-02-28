@@ -11,7 +11,6 @@
     },
     "tmpDir": ".Build/tmp",
     "phpUnit": {
-        "configDir": "Build/phpunit",
         "customPath": ".Build/bin/phpunit"
     },
     "mutators": {
