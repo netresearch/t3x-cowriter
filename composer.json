@@ -7,18 +7,7 @@
     ],
     "homepage": "https://github.com/netresearch/t3x-cowriter",
     "readme": "README.md",
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/netresearch/t3x-nr-llm"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/netresearch/t3x-nr-vault"
-        }
-    ],
-    "minimum-stability": "dev",
-    "prefer-stable": true,
+    "minimum-stability": "stable",
     "keywords": [
         "typo3",
         "extension",
