@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-use TYPO3\CMS\Core\Cache\Backend\DatabaseBackend;
+use TYPO3\CMS\Core\Cache\Backend\Typo3DatabaseBackend;
 use TYPO3\CMS\Core\Cache\Frontend\VariableFrontend;
 
 defined('TYPO3') || exit;
@@ -25,12 +25,13 @@ $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
  * Register a persistent cache for rate limiting.
  *
  * Uses the database backend by default to persist rate limit data across requests.
- * cache.runtime would reset per-request, making rate limiting non-functional.
+ * The cache is resolved via CacheManager in RateLimiterService (not via DI reference,
+ * because extension caches are not available as DI services during container compilation).
  */
 if (!isset($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cowriter_ratelimit'])) {
     $GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cowriter_ratelimit'] = [
         'frontend' => VariableFrontend::class,
-        'backend'  => DatabaseBackend::class,
+        'backend'  => Typo3DatabaseBackend::class,
         'options'  => [
             'defaultLifetime' => 120,
         ],

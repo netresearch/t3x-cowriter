@@ -18,6 +18,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
+use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 
 #[AllowMockObjectsWithoutExpectations]
@@ -25,11 +26,16 @@ use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 final class RateLimiterServiceTest extends TestCase
 {
     private FrontendInterface&MockObject $cacheMock;
+    private CacheManager&MockObject $cacheManagerMock;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->cacheMock = $this->createMock(FrontendInterface::class);
+        $this->cacheMock        = $this->createMock(FrontendInterface::class);
+        $this->cacheManagerMock = $this->createMock(CacheManager::class);
+        $this->cacheManagerMock->method('getCache')
+            ->with('cowriter_ratelimit')
+            ->willReturn($this->cacheMock);
     }
 
     #[Test]
@@ -38,7 +44,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn(false);
         $this->cacheMock->expects($this->once())->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
@@ -60,7 +66,7 @@ final class RateLimiterServiceTest extends TestCase
         ]);
         $this->cacheMock->expects($this->once())->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
@@ -80,7 +86,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn($requests);
         $this->cacheMock->expects($this->never())->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         $this->assertFalse($result->allowed);
@@ -111,7 +117,7 @@ final class RateLimiterServiceTest extends TestCase
                 $this->anything(),
             );
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
@@ -124,7 +130,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn(false);
         $this->cacheMock->expects($this->once())->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 5);
+        $service = new RateLimiterService($this->cacheManagerMock, 5);
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
@@ -144,7 +150,7 @@ final class RateLimiterServiceTest extends TestCase
                 return true;
             });
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $service->checkLimit('user-1');
         $service->checkLimit('user-2');
 
@@ -158,7 +164,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn(false);
         $this->cacheMock->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         $headers = $result->getHeaders();
@@ -180,7 +186,7 @@ final class RateLimiterServiceTest extends TestCase
         }
         $this->cacheMock->method('get')->willReturn($requests);
 
-        $service    = new RateLimiterService($this->cacheMock, 20);
+        $service    = new RateLimiterService($this->cacheManagerMock, 20);
         $result     = $service->checkLimit('user-123');
         $retryAfter = $result->getRetryAfter();
 
@@ -211,7 +217,7 @@ final class RateLimiterServiceTest extends TestCase
                 $this->anything(),
             );
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
@@ -225,7 +231,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('requestsPerMinute must be >= 1');
 
-        new RateLimiterService($this->cacheMock, 0);
+        new RateLimiterService($this->cacheManagerMock, 0);
     }
 
     #[Test]
@@ -233,7 +239,7 @@ final class RateLimiterServiceTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        new RateLimiterService($this->cacheMock, -5);
+        new RateLimiterService($this->cacheManagerMock, -5);
     }
 
     #[Test]
@@ -242,7 +248,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn(false);
         $this->cacheMock->expects($this->once())->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 1);
+        $service = new RateLimiterService($this->cacheManagerMock, 1);
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
@@ -262,7 +268,7 @@ final class RateLimiterServiceTest extends TestCase
                 return true;
             });
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
 
         // All these should produce valid cache keys via md5
         $service->checkLimit('');
@@ -291,7 +297,7 @@ final class RateLimiterServiceTest extends TestCase
                 return true;
             });
 
-        $service = new RateLimiterService($this->cacheMock, 5);
+        $service = new RateLimiterService($this->cacheManagerMock, 5);
 
         // Make 5 rapid requests (should all be allowed)
         for ($i = 0; $i < 5; ++$i) {
@@ -311,7 +317,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn(false);
         $this->cacheMock->expects($this->once())->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $before  = time();
         $result  = $service->checkLimit('user-123');
         $after   = time();
@@ -333,7 +339,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn($requests);
         $this->cacheMock->expects($this->never())->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 5);
+        $service = new RateLimiterService($this->cacheManagerMock, 5);
         $result  = $service->checkLimit('user-123');
 
         $this->assertFalse($result->allowed);
@@ -346,7 +352,7 @@ final class RateLimiterServiceTest extends TestCase
     {
         $this->cacheMock->method('get')->willThrowException(new RuntimeException('Cache unavailable'));
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $before  = time();
         $result  = $service->checkLimit('user-123');
 
@@ -365,7 +371,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn(false);
         $this->cacheMock->method('set')->willThrowException(new RuntimeException('Cache write failed'));
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         // Fail-open: request should be allowed even if write fails
@@ -388,7 +394,7 @@ final class RateLimiterServiceTest extends TestCase
                 $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'Cache unavailable'),
             );
 
-        $service = new RateLimiterService($this->cacheMock, 20, $loggerMock);
+        $service = new RateLimiterService($this->cacheManagerMock, 20, $loggerMock);
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
@@ -409,7 +415,7 @@ final class RateLimiterServiceTest extends TestCase
                 return true;
             });
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         // For empty window: resetTime should be approximately now + 60
@@ -433,7 +439,7 @@ final class RateLimiterServiceTest extends TestCase
                 return true;
             });
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $service->checkLimit('user-123');
 
         // TTL should be WINDOW_SIZE_SECONDS (60) + 10 = 70
@@ -459,7 +465,7 @@ final class RateLimiterServiceTest extends TestCase
                 return true;
             });
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
@@ -475,7 +481,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn(false);
         $this->cacheMock->expects($this->once())->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         $this->assertTrue($result->allowed);
@@ -498,7 +504,7 @@ final class RateLimiterServiceTest extends TestCase
         $this->cacheMock->method('get')->willReturn('corrupted cache data');
         $this->cacheMock->expects($this->once())->method('set');
 
-        $service = new RateLimiterService($this->cacheMock, 20);
+        $service = new RateLimiterService($this->cacheManagerMock, 20);
         $result  = $service->checkLimit('user-123');
 
         // Should treat corrupted data as empty window

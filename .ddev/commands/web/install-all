@@ -10,7 +10,7 @@ echo "=== Installing all TYPO3 versions ==="
 echo ""
 
 # For v4.0.0, only TYPO3 v14 is installed by default (v13.4 also supported)
-install-v14
+/mnt/ddev_config/commands/web/install-v14
 
 echo ""
 echo "=== All installations complete ==="
@@ -18,4 +18,4 @@ echo ""
 echo "Available environments:"
 echo "  - TYPO3 v14: https://v14.${DDEV_HOSTNAME}/typo3/"
 echo ""
-echo "Login: admin / Joh316!"
+echo "Login: admin / Joh316!!"
