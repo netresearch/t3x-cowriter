@@ -13,7 +13,11 @@ case "$1" in
     pull)
         MODEL="${2:-$DEFAULT_MODEL}"
         echo "Pulling model: $MODEL..."
-        docker exec -it "$OLLAMA_CONTAINER" ollama pull "$MODEL"
+        if [ -t 0 ]; then
+            docker exec -it "$OLLAMA_CONTAINER" ollama pull "$MODEL"
+        else
+            docker exec "$OLLAMA_CONTAINER" ollama pull "$MODEL"
+        fi
         ;;
     list)
         echo "Available models:"
@@ -22,7 +26,11 @@ case "$1" in
     run|chat)
         MODEL="${2:-$DEFAULT_MODEL}"
         echo "Starting chat with: $MODEL (Ctrl+D to exit)"
-        docker exec -it "$OLLAMA_CONTAINER" ollama run "$MODEL"
+        if [ -t 0 ]; then
+            docker exec -it "$OLLAMA_CONTAINER" ollama run "$MODEL"
+        else
+            docker exec -i "$OLLAMA_CONTAINER" ollama run "$MODEL"
+        fi
         ;;
     rm|remove)
         if [ -z "$2" ]; then
@@ -30,7 +38,11 @@ case "$1" in
             exit 1
         fi
         echo "Removing model: $2..."
-        docker exec -it "$OLLAMA_CONTAINER" ollama rm "$2"
+        if [ -t 0 ]; then
+            docker exec -it "$OLLAMA_CONTAINER" ollama rm "$2"
+        else
+            docker exec "$OLLAMA_CONTAINER" ollama rm "$2"
+        fi
         ;;
     status)
         echo "Ollama container status:"

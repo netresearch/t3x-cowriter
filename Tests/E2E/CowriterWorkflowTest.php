@@ -43,19 +43,18 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     /**
      * Create a controller stack configured for streaming tests.
      *
-     * Unlike createCompleteStack(), this stubs supportsFeature() and streamChat()
-     * instead of chat() and allows custom rate limiter configuration.
+     * Unlike createCompleteStack(), this stubs streamChatWithConfiguration()
+     * instead of chatWithConfiguration() and allows custom rate limiter configuration.
      *
      * @param array<string> $chunks Content chunks for the generator
-     * @param string        $model  Model name for ChatOptions
+     * @param string        $model  Model name for configuration
      *
      * @return array{controller: AjaxController, serviceManager: \Netresearch\NrLlm\Service\LlmServiceManagerInterface&\PHPUnit\Framework\MockObject\MockObject, configRepo: \Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository&\PHPUnit\Framework\MockObject\MockObject, rateLimiter: \Netresearch\T3Cowriter\Service\RateLimiterInterface&\PHPUnit\Framework\MockObject\MockObject, context: \TYPO3\CMS\Core\Context\Context&\PHPUnit\Framework\MockObject\MockObject}
      */
     private function createStreamingStack(array $chunks, string $model = 'gpt-4o'): array
     {
         $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
-        $serviceManager->method('supportsFeature')->willReturn(true);
-        $serviceManager->method('streamChat')
+        $serviceManager->method('streamChatWithConfiguration')
             ->willReturnCallback(fn () => $this->createChunkGenerator($chunks));
 
         $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
@@ -262,7 +261,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $config = $this->createLlmConfiguration();
         $stack['configRepo']->method('findDefault')->willReturn($config);
 
-        $stack['serviceManager']->method('chat')
+        $stack['serviceManager']->method('chatWithConfiguration')
             ->willThrowException(new ProviderException('Invalid API key'));
 
         // Act
@@ -286,7 +285,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $config = $this->createLlmConfiguration();
         $stack['configRepo']->method('findDefault')->willReturn($config);
 
-        $stack['serviceManager']->method('chat')
+        $stack['serviceManager']->method('chatWithConfiguration')
             ->willThrowException(new RuntimeException('Unexpected error'));
 
         // Act
@@ -313,7 +312,9 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             model: 'gpt-4o',
         );
 
-        $stack = $this->createCompleteStack([$llmResponse]);
+        $stack  = $this->createCompleteStack([$llmResponse]);
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
 
         // Act: Send multi-turn conversation
         $request = $this->createJsonRequest([
@@ -344,7 +345,9 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             provider: 'test',
         );
 
-        $stack = $this->createCompleteStack([$llmResponse]);
+        $stack  = $this->createCompleteStack([$llmResponse]);
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
 
         // Act
         $request = $this->createJsonRequest([
@@ -771,46 +774,6 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     }
 
     #[Test]
-    public function streamWorkflowFallsBackWhenStreamingNotSupported(): void
-    {
-        // Create stack manually with supportsFeature returning false
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
-        $serviceManager->method('supportsFeature')->willReturn(false);
-
-        $llmResponse = $this->createOpenAiResponse(content: 'Fallback response', model: 'gpt-4o');
-        $serviceManager->method('chat')->willReturn($llmResponse);
-
-        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
-        $config     = $this->createLlmConfiguration();
-        $configRepo->method('findDefault')->willReturn($config);
-
-        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
-        $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
-        );
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
-        $context->method('getPropertyFromAspect')->willReturn(1);
-        $controller = new AjaxController(
-            $serviceManager,
-            $configRepo,
-            $rateLimiter,
-            $context,
-            $this->logger,
-        );
-
-        $request = $this->createJsonRequest(['prompt' => 'Test']);
-        $result  = $controller->streamAction($request);
-
-        // Falls back to JSON response (same as completeAction)
-        self::assertSame(200, $result->getStatusCode());
-        self::assertStringContainsString('application/json', $result->getHeaderLine('Content-Type'));
-        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertIsArray($data);
-        self::assertTrue($data['success']);
-        self::assertSame('Fallback response', $data['content']);
-    }
-
-    #[Test]
     public function streamWorkflowReturnsChunkedSseResponse(): void
     {
         $stack  = $this->createStreamingStack(['Hello', ' World']);
@@ -859,12 +822,11 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $stack = $this->createStreamingStack(['Hello']);
 
         // Create config with XSS in model name
-        $chatOptions = $this->createChatOptionsStub('<img onerror=alert(1)>');
-        $config      = self::createStub(\Netresearch\NrLlm\Domain\Model\LlmConfiguration::class);
+        $config = self::createStub(\Netresearch\NrLlm\Domain\Model\LlmConfiguration::class);
         $config->method('getIdentifier')->willReturn('test');
         $config->method('getName')->willReturn('Test');
         $config->method('isDefault')->willReturn(true);
-        $config->method('toChatOptions')->willReturn($chatOptions);
+        $config->method('getModelId')->willReturn('<img onerror=alert(1)>');
         $stack['configRepo']->method('findDefault')->willReturn($config);
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -881,8 +843,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     public function streamWorkflowHandlesProviderException(): void
     {
         $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
-        $serviceManager->method('supportsFeature')->willReturn(true);
-        $serviceManager->method('streamChat')
+        $serviceManager->method('streamChatWithConfiguration')
             ->willThrowException(new ProviderException('API key expired'));
 
         $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
@@ -917,8 +878,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     public function streamWorkflowHandlesUnexpectedException(): void
     {
         $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
-        $serviceManager->method('supportsFeature')->willReturn(true);
-        $serviceManager->method('streamChat')
+        $serviceManager->method('streamChatWithConfiguration')
             ->willThrowException(new RuntimeException('Connection timeout'));
 
         $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
@@ -968,22 +928,23 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     }
 
     #[Test]
-    public function streamWorkflowWithModelOverride(): void
+    public function streamWorkflowWithModelOverridePrefix(): void
     {
         $stack  = $this->createStreamingStack(['Response']);
         $config = $this->createLlmConfiguration();
         $stack['configRepo']->method('findDefault')->willReturn($config);
 
-        // Send prompt with model override prefix
+        // Send prompt with model override prefix (prefix is stripped from prompt,
+        // but model in done event comes from configuration, not the prefix)
         $request = $this->createJsonRequest(['prompt' => '#cw:custom-model Test prompt']);
         $result  = $stack['controller']->streamAction($request);
 
         self::assertSame(200, $result->getStatusCode());
         $events = $this->parseSseEvents((string) $result->getBody());
 
-        // Done event should have the overridden model name
+        // Done event model comes from configuration (not the prefix)
         $doneEvent = end($events);
         self::assertTrue($doneEvent['done']);
-        self::assertSame('custom-model', $doneEvent['model']);
+        self::assertSame('gpt-4o', $doneEvent['model']);
     }
 }

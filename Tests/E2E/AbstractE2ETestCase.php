@@ -68,7 +68,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
 
         if ($responseQueue !== []) {
-            $serviceManager->method('chat')
+            $serviceManager->method('chatWithConfiguration')
                 ->willReturnOnConsecutiveCalls(...$responseQueue);
         }
 
@@ -185,6 +185,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $config->method('getIdentifier')->willReturn($identifier);
         $config->method('getName')->willReturn($name);
         $config->method('isDefault')->willReturn($isDefault);
+        $config->method('getModelId')->willReturn($model);
         $config->method('toChatOptions')->willReturn($chatOptions);
 
         return $config;

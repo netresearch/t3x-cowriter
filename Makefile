@@ -128,7 +128,7 @@ seed: ## Import Ollama seed data (provider, models, configs)
 
 .PHONY: ollama-pull
 ollama-pull: ## Pull default Ollama model (if not already present)
-	@ddev ollama pull 2>/dev/null || echo "Ollama not ready yet. Pull manually: ddev ollama pull"
+	@ddev ollama pull || echo "Ollama not ready yet. Pull manually: ddev ollama pull"
 
 # ===================================
 # Cleanup

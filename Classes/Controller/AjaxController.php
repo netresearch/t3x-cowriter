@@ -14,7 +14,6 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
-use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -56,16 +55,6 @@ final readonly class AjaxController
     private const ALLOWED_ROLES = ['user', 'assistant'];
 
     /**
-     * Maximum tokens upper bound to prevent denial-of-wallet attacks.
-     */
-    private const MAX_TOKENS_UPPER_BOUND = 16384;
-
-    /**
-     * Maximum number of stop sequences allowed.
-     */
-    private const MAX_STOP_SEQUENCES = 10;
-
-    /**
      * System prompt for the cowriter assistant.
      */
     private const SYSTEM_PROMPT = <<<'PROMPT'
@@ -88,7 +77,7 @@ final readonly class AjaxController
      *
      * Expects JSON body with:
      * - messages: array of {role: string, content: string}
-     * - options: optional array with temperature, maxTokens, etc.
+     * - configuration: optional configuration identifier
      */
     public function chatAction(ServerRequestInterface $request): ResponseInterface
     {
@@ -114,9 +103,6 @@ final readonly class AjaxController
         }
 
         $rawMessages = isset($body['messages']) && is_array($body['messages']) ? $body['messages'] : [];
-        /** @var array<string, mixed> $optionsData */
-        $optionsData = isset($body['options']) && is_array($body['options']) ? $body['options'] : [];
-        $options     = $this->createChatOptions($optionsData);
 
         if ($rawMessages === []) {
             return new JsonResponse(['success' => false, 'error' => 'Messages array is required'], 400);
@@ -131,8 +117,19 @@ final readonly class AjaxController
             );
         }
 
+        // Resolve configuration from request or fall back to default
+        $configIdentifier = isset($body['configuration']) && is_string($body['configuration']) ? $body['configuration'] : null;
+        $configuration    = $this->resolveConfiguration($configIdentifier);
+        if (!$configuration instanceof LlmConfiguration) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                ['success' => false, 'error' => 'No LLM configuration available. Please configure the nr_llm extension.'],
+                $rateLimitResult,
+                404,
+            );
+        }
+
         try {
-            $response = $this->llmServiceManager->chat($messages, $options);
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
 
             // Escape HTML to prevent XSS attacks (defense in depth for all string values)
             return $this->jsonResponseWithRateLimitHeaders([
@@ -227,14 +224,7 @@ final readonly class AjaxController
                 ['role' => 'user', 'content' => $dto->prompt],
             ];
 
-            $options = $configuration->toChatOptions();
-
-            // Apply model override if specified via #cw:model-name prefix
-            if ($dto->modelOverride !== null) {
-                $options = $options->withModel($dto->modelOverride);
-            }
-
-            $response = $this->llmServiceManager->chat($messages, $options);
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
 
             // CompleteResponse.success() handles HTML escaping
             return $this->jsonResponseWithRateLimitHeaders(
@@ -304,31 +294,18 @@ final readonly class AjaxController
             );
         }
 
-        // Check if streaming is supported
-        if (!$this->llmServiceManager->supportsFeature('streaming')) {
-            // Fall back to non-streaming completion (reuse already-parsed DTO and rate limit)
-            return $this->executeCompletion($dto, $configuration, $rateLimitResult);
-        }
-
         // Build the streaming response using a generator
         $messages = [
             ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
             ['role' => 'user', 'content' => $dto->prompt],
         ];
 
-        $options = $configuration->toChatOptions();
-
-        // Apply model override if specified via #cw:model-name prefix
-        if ($dto->modelOverride !== null) {
-            $options = $options->withModel($dto->modelOverride);
-        }
-
         // Collect all chunks and return as SSE-formatted response
         // Note: True streaming requires output buffering disabled which isn't always possible in TYPO3
         // This implementation collects chunks and returns them in SSE format for compatibility
         try {
             $chunks    = [];
-            $generator = $this->llmServiceManager->streamChat($messages, $options);
+            $generator = $this->llmServiceManager->streamChatWithConfiguration($messages, $configuration);
 
             foreach ($generator as $chunk) {
                 $sanitizedChunk = htmlspecialchars($chunk, ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -338,7 +315,7 @@ final readonly class AjaxController
             // Add final "done" event
             $chunks[] = 'data: ' . json_encode([
                 'done'  => true,
-                'model' => htmlspecialchars($options->getModel() ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'model' => htmlspecialchars($configuration->getModelId(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             ], JSON_THROW_ON_ERROR) . "\n\n";
 
             $body = implode('', $chunks);
@@ -417,74 +394,6 @@ final readonly class AjaxController
     }
 
     /**
-     * Create ChatOptions from array of options with range validation.
-     *
-     * Validates and clamps numeric parameters to their valid ranges:
-     * - temperature: 0.0 to 2.0
-     * - topP: 0.0 to 1.0
-     * - frequencyPenalty: -2.0 to 2.0
-     * - presencePenalty: -2.0 to 2.0
-     * - maxTokens: 1 to 16384
-     *
-     * Security: provider, model, and systemPrompt overrides from the client
-     * are intentionally ignored. These are controlled server-side via
-     * LlmConfiguration records in the nr-llm extension.
-     *
-     * @param array<string, mixed> $options
-     */
-    private function createChatOptions(array $options): ?ChatOptions
-    {
-        if ($options === []) {
-            return null;
-        }
-
-        $temperature = isset($options['temperature']) && is_numeric($options['temperature'])
-            ? $this->clampFloat((float) $options['temperature'], 0.0, 2.0)
-            : null;
-        $maxTokens = isset($options['maxTokens']) && is_numeric($options['maxTokens'])
-            ? $this->clampInt((int) $options['maxTokens'], 1, self::MAX_TOKENS_UPPER_BOUND)
-            : null;
-        $topP = isset($options['topP']) && is_numeric($options['topP'])
-            ? $this->clampFloat((float) $options['topP'], 0.0, 1.0)
-            : null;
-        $frequencyPenalty = isset($options['frequencyPenalty']) && is_numeric($options['frequencyPenalty'])
-            ? $this->clampFloat((float) $options['frequencyPenalty'], -2.0, 2.0)
-            : null;
-        $presencePenalty = isset($options['presencePenalty']) && is_numeric($options['presencePenalty'])
-            ? $this->clampFloat((float) $options['presencePenalty'], -2.0, 2.0)
-            : null;
-        $responseFormat = isset($options['responseFormat']) && is_string($options['responseFormat'])
-            && in_array($options['responseFormat'], ['text', 'json', 'markdown'], true)
-            ? $options['responseFormat']
-            : null;
-        $stopSequences = null;
-        if (isset($options['stopSequences']) && is_array($options['stopSequences'])) {
-            $filtered = array_values(array_filter(
-                array_slice($options['stopSequences'], 0, self::MAX_STOP_SEQUENCES),
-                is_string(...),
-            ));
-            $stopSequences = $filtered !== [] ? $filtered : null;
-        }
-
-        // If none of the recognized options had values, treat as "no options"
-        if ($temperature === null && $maxTokens === null && $topP === null
-            && $frequencyPenalty === null && $presencePenalty === null
-            && $responseFormat === null && $stopSequences === null) {
-            return null;
-        }
-
-        return new ChatOptions(
-            temperature: $temperature,
-            maxTokens: $maxTokens,
-            topP: $topP,
-            frequencyPenalty: $frequencyPenalty,
-            presencePenalty: $presencePenalty,
-            responseFormat: $responseFormat,
-            stopSequences: $stopSequences,
-        );
-    }
-
-    /**
      * Validate and sanitize chat messages.
      *
      * Enforces structure, allowed roles, count limit, and content length.
@@ -524,22 +433,6 @@ final readonly class AjaxController
         }
 
         return $validated;
-    }
-
-    /**
-     * Clamp a float value to a range.
-     */
-    private function clampFloat(float $value, float $min, float $max): float
-    {
-        return max($min, min($max, $value));
-    }
-
-    /**
-     * Clamp an integer value to a range.
-     */
-    private function clampInt(int $value, int $min, int $max): int
-    {
-        return max($min, min($max, $value));
     }
 
     /**
