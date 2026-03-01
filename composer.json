@@ -7,18 +7,7 @@
     ],
     "homepage": "https://github.com/netresearch/t3x-cowriter",
     "readme": "README.md",
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/netresearch/t3x-nr-llm"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/netresearch/t3x-nr-vault"
-        }
-    ],
-    "minimum-stability": "dev",
-    "prefer-stable": true,
+    "minimum-stability": "stable",
     "keywords": [
         "typo3",
         "extension",
@@ -62,17 +51,18 @@
         "typo3/cms-core": "^13.4 || ^14.0",
         "typo3/cms-backend": "^13.4 || ^14.0",
         "typo3/cms-rte-ckeditor": "^13.4 || ^14.0",
-        "netresearch/nr-llm": "^0.2"
+        "netresearch/nr-llm": "^0.3"
     },
     "require-dev": {
-        "typo3/testing-framework": "^8.0 || ^9.0",
         "friendsofphp/php-cs-fixer": "^3.87",
+        "infection/infection": "^0.29",
         "overtrue/phplint": "^9.5",
         "phpstan/phpstan": "^2.0",
-        "phpstan/phpstan-strict-rules": "^2.0",
         "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^11.2.5 || ^12.1.2",
-        "ssch/typo3-rector": "^3.0"
+        "ssch/typo3-rector": "^3.0",
+        "typo3/testing-framework": "^8.0 || ^9.0"
     },
     "autoload": {
         "psr-4": {
@@ -93,7 +83,8 @@
         "platform-check": false,
         "allow-plugins": {
             "typo3/cms-composer-installers": true,
-            "typo3/class-alias-loader": true
+            "typo3/class-alias-loader": true,
+            "infection/extension-installer": true
         },
         "audit": {
             "abandoned": "ignore",

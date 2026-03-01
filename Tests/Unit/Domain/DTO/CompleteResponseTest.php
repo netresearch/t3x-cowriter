@@ -234,6 +234,31 @@ final class CompleteResponseTest extends TestCase
         $this->assertStringContainsString('&lt;script&gt;', $response->finishReason);
     }
 
+    #[Test]
+    public function successEscapesSingleQuotesInModelAndFinishReason(): void
+    {
+        // Kills BitwiseOr mutants on model (ENT_QUOTES|ENT_HTML5 → ENT_QUOTES&ENT_HTML5)
+        // and finishReason fields in CompleteResponse::success()
+        $usage = new UsageStatistics(10, 20, 30);
+
+        $completionResponse = new CompletionResponse(
+            content: "It's content",
+            model: "model's-name",
+            usage: $usage,
+            finishReason: "it's done",
+            provider: 'test',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        // With ENT_QUOTES|ENT_HTML5: single quotes become &apos;
+        // With ENT_QUOTES&ENT_HTML5 (=0, ENT_COMPAT): single quotes are NOT encoded
+        $this->assertStringContainsString('&apos;', $response->model);
+        $this->assertStringContainsString('&apos;', $response->finishReason);
+        $this->assertSame('model&apos;s-name', $response->model);
+        $this->assertSame('it&apos;s done', $response->finishReason);
+    }
+
     private function createCompletionResponse(
         string $content,
         int $promptTokens = 10,

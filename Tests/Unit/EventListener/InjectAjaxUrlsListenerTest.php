@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\UriInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Http\Uri;
@@ -150,10 +151,10 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         ($this->subject)($event);
 
-        $this->assertContains('tx_cowriter_chat', $generatedRoutes);
-        $this->assertContains('tx_cowriter_complete', $generatedRoutes);
-        $this->assertContains('tx_cowriter_stream', $generatedRoutes);
-        $this->assertContains('tx_cowriter_configurations', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_chat', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_complete', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_stream', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_configurations', $generatedRoutes);
     }
 
     #[Test]
@@ -223,10 +224,10 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         ($this->subject)($event);
 
         $decoded = json_decode($capturedJson, true);
-        $this->assertSame('/typo3/ajax/tx_cowriter_chat', $decoded['tx_cowriter_chat']);
-        $this->assertSame('/typo3/ajax/tx_cowriter_complete', $decoded['tx_cowriter_complete']);
-        $this->assertSame('/typo3/ajax/tx_cowriter_stream', $decoded['tx_cowriter_stream']);
-        $this->assertSame('/typo3/ajax/tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
+        $this->assertSame('/typo3/ajax/ajax_tx_cowriter_chat', $decoded['tx_cowriter_chat']);
+        $this->assertSame('/typo3/ajax/ajax_tx_cowriter_complete', $decoded['tx_cowriter_complete']);
+        $this->assertSame('/typo3/ajax/ajax_tx_cowriter_stream', $decoded['tx_cowriter_stream']);
+        $this->assertSame('/typo3/ajax/ajax_tx_cowriter_configurations', $decoded['tx_cowriter_configurations']);
     }
 
     #[Test]
@@ -289,5 +290,123 @@ final class InjectAjaxUrlsListenerTest extends TestCase
 
         $this->assertArrayHasKey('type', $capturedAttrs);
         $this->assertSame('module', $capturedAttrs['type']);
+    }
+
+    #[Test]
+    public function invokeHandlesJsonExceptionGracefully(): void
+    {
+        // Return a UriInterface whose __toString produces invalid UTF-8,
+        // causing json_encode(JSON_THROW_ON_ERROR) to throw JsonException
+        $invalidUri = new class implements UriInterface {
+            public function __toString(): string
+            {
+                return "\xB1\x31"; // Invalid UTF-8
+            }
+
+            public function getScheme(): string
+            {
+                return '';
+            }
+
+            public function getAuthority(): string
+            {
+                return '';
+            }
+
+            public function getUserInfo(): string
+            {
+                return '';
+            }
+
+            public function getHost(): string
+            {
+                return '';
+            }
+
+            public function getPort(): ?int
+            {
+                return null;
+            }
+
+            public function getPath(): string
+            {
+                return '';
+            }
+
+            public function getQuery(): string
+            {
+                return '';
+            }
+
+            public function getFragment(): string
+            {
+                return '';
+            }
+
+            public function withScheme(string $scheme): static
+            {
+                return $this;
+            }
+
+            public function withUserInfo(string $user, ?string $password = null): static
+            {
+                return $this;
+            }
+
+            public function withHost(string $host): static
+            {
+                return $this;
+            }
+
+            public function withPort(?int $port): static
+            {
+                return $this;
+            }
+
+            public function withPath(string $path): static
+            {
+                return $this;
+            }
+
+            public function withQuery(string $query): static
+            {
+                return $this;
+            }
+
+            public function withFragment(string $fragment): static
+            {
+                return $this;
+            }
+        };
+
+        $this->backendUriBuilderMock
+            ->method('buildUriFromRoute')
+            ->willReturn($invalidUri);
+
+        $this->loggerMock
+            ->expects($this->once())
+            ->method('error')
+            ->with(
+                'Cowriter: Failed to inject AJAX URLs',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && is_string($context['exception'])),
+            );
+
+        $assetCollector = $this->createMock(AssetCollector::class);
+        // addInlineJavaScript is called by buildJsonData BEFORE json_encode throws,
+        // so we cannot assert it is never called. Instead, verify addJavaScript
+        // is never called because the exception is caught before that line.
+        // Actually, looking at the code flow: buildJsonData() is called inside
+        // addInlineJavaScript's argument, so json_encode throws during the call,
+        // and addInlineJavaScript itself may or may not receive the result.
+        // The key assertion is that the logger IS called.
+
+        $event = new BeforeJavaScriptsRenderingEvent(
+            assetCollector: $assetCollector,
+            isInline: true,
+            priority: false,
+        );
+
+        // Should not throw - exception is caught and logged
+        ($this->subject)($event);
     }
 }

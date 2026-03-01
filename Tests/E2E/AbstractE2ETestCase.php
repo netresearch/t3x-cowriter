@@ -68,7 +68,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
 
         if ($responseQueue !== []) {
-            $serviceManager->method('chat')
+            $serviceManager->method('chatWithConfiguration')
                 ->willReturnOnConsecutiveCalls(...$responseQueue);
         }
 
@@ -185,6 +185,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $config->method('getIdentifier')->willReturn($identifier);
         $config->method('getName')->willReturn($name);
         $config->method('isDefault')->willReturn($isDefault);
+        $config->method('getModelId')->willReturn($model);
         $config->method('toChatOptions')->willReturn($chatOptions);
 
         return $config;
@@ -198,5 +199,25 @@ abstract class AbstractE2ETestCase extends TestCase
     protected function createQueryResultMock(array $items): QueryResultInterface
     {
         return new TestQueryResult($items);
+    }
+
+    /**
+     * Parse SSE response body into decoded JSON events.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function parseSseEvents(string $body): array
+    {
+        $events = [];
+        foreach (explode("\n\n", trim($body)) as $raw) {
+            $raw = trim($raw);
+            if ($raw === '' || !str_starts_with($raw, 'data: ')) {
+                continue;
+            }
+            $json     = substr($raw, 6); // strip "data: "
+            $events[] = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        }
+
+        return $events;
     }
 }

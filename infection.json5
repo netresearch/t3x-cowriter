@@ -1,0 +1,22 @@
+{
+    "$schema": "https://raw.githubusercontent.com/infection/infection/0.29.0/resources/schema.json",
+    "source": {
+        "directories": [
+            "Classes"
+        ]
+    },
+    "logs": {
+        "text": ".Build/logs/infection.log",
+        "summary": ".Build/logs/infection-summary.log"
+    },
+    "tmpDir": ".Build/tmp",
+    "phpUnit": {
+        "configDir": "Build/phpunit",
+        "customPath": ".Build/bin/phpunit"
+    },
+    "mutators": {
+        "@default": true
+    },
+    "minMsi": 80,
+    "minCoveredMsi": 85
+}

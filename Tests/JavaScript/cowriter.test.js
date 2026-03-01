@@ -147,6 +147,233 @@ describe('Cowriter Plugin', () => {
         });
     });
 
+    describe('button execute handler', () => {
+        let plugin;
+        let mockEditor;
+        let buttonCallback;
+        let capturedButton;
+
+        beforeEach(async () => {
+            vi.resetModules();
+
+            // Mock AIService before importing cowriter
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
+                AIService: class MockAIService {
+                    complete = vi.fn().mockResolvedValue({ content: 'AI response', success: true });
+                },
+            }));
+
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
+            Cowriter = module.Cowriter;
+
+            mockEditor = {
+                model: {
+                    document: {
+                        selection: {
+                            getRanges: vi.fn().mockReturnValue([]),
+                            getFirstPosition: vi.fn().mockReturnValue({}),
+                        },
+                    },
+                    change: vi.fn((callback) => callback(mockEditor._writer)),
+                },
+                _writer: {
+                    remove: vi.fn(),
+                    insert: vi.fn(),
+                },
+                view: {},
+                ui: {
+                    componentFactory: {
+                        add: vi.fn((name, callback) => {
+                            buttonCallback = callback;
+                        }),
+                    },
+                },
+            };
+
+            plugin = new Cowriter();
+            plugin.editor = mockEditor;
+            await plugin.init();
+            capturedButton = buttonCallback();
+        });
+
+        afterEach(() => {
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+        });
+
+        it('should do nothing when _isProcessing is true', async () => {
+            plugin._isProcessing = true;
+            await capturedButton.fire('execute');
+            expect(mockEditor.model.document.selection.getRanges).not.toHaveBeenCalled();
+        });
+
+        it('should do nothing when no text is selected', async () => {
+            mockEditor.model.document.selection.getRanges.mockReturnValue([
+                { getItems: () => [{ data: '' }] },
+            ]);
+            await capturedButton.fire('execute');
+            expect(mockEditor.model.change).not.toHaveBeenCalled();
+        });
+
+        it('should do nothing when selection has no data items', async () => {
+            mockEditor.model.document.selection.getRanges.mockReturnValue([
+                { getItems: () => [{}] },
+            ]);
+            await capturedButton.fire('execute');
+            expect(mockEditor.model.change).not.toHaveBeenCalled();
+        });
+
+        it('should call AIService.complete with selected text', async () => {
+            const mockRange = {
+                getItems: () => [{ data: 'write about cats' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+
+            await capturedButton.fire('execute');
+
+            expect(plugin._service.complete).toHaveBeenCalledWith('write about cats', {});
+        });
+
+        it('should insert sanitized AI response into editor', async () => {
+            const mockRange = {
+                getItems: () => [{ data: 'test prompt' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+
+            await capturedButton.fire('execute');
+
+            expect(mockEditor._writer.remove).toHaveBeenCalledWith(mockRange);
+            expect(mockEditor._writer.insert).toHaveBeenCalledWith('AI response', {});
+        });
+
+        it('should sanitize HTML from AI response', async () => {
+            plugin._service.complete = vi
+                .fn()
+                .mockResolvedValue({ content: '<script>alert(1)</script>safe text' });
+            const mockRange = {
+                getItems: () => [{ data: 'prompt' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+
+            await capturedButton.fire('execute');
+
+            expect(mockEditor._writer.insert).toHaveBeenCalledWith(
+                expect.stringContaining('safe text'),
+                expect.anything()
+            );
+            expect(mockEditor._writer.insert).toHaveBeenCalledWith(
+                expect.not.stringContaining('<script>'),
+                expect.anything()
+            );
+        });
+
+        it('should handle AI service errors gracefully', async () => {
+            plugin._service.complete = vi.fn().mockRejectedValue(new Error('API timeout'));
+            const mockRange = {
+                getItems: () => [{ data: 'prompt' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            await capturedButton.fire('execute');
+
+            expect(errorSpy).toHaveBeenCalledWith('Cowriter error:', expect.any(Error));
+            expect(mockEditor._writer.insert).toHaveBeenCalledWith(
+                expect.stringContaining('[Cowriter Error: API timeout]'),
+                expect.anything()
+            );
+            errorSpy.mockRestore();
+        });
+
+        it('should handle AI service errors without message', async () => {
+            plugin._service.complete = vi.fn().mockRejectedValue({});
+            const mockRange = {
+                getItems: () => [{ data: 'prompt' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            await capturedButton.fire('execute');
+
+            expect(mockEditor._writer.insert).toHaveBeenCalledWith(
+                expect.stringContaining('Unknown error'),
+                expect.anything()
+            );
+            errorSpy.mockRestore();
+        });
+
+        it('should reset _isProcessing after completion', async () => {
+            const mockRange = {
+                getItems: () => [{ data: 'prompt' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+
+            await capturedButton.fire('execute');
+            expect(plugin._isProcessing).toBe(false);
+        });
+
+        it('should reset _isProcessing after error', async () => {
+            plugin._service.complete = vi.fn().mockRejectedValue(new Error('fail'));
+            const mockRange = {
+                getItems: () => [{ data: 'prompt' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            await capturedButton.fire('execute');
+            expect(plugin._isProcessing).toBe(false);
+            errorSpy.mockRestore();
+        });
+
+        it('should handle null insertPosition gracefully', async () => {
+            const mockRange = {
+                getItems: () => [{ data: 'prompt' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            mockEditor.model.document.selection.getFirstPosition.mockReturnValue(null);
+
+            await capturedButton.fire('execute');
+
+            expect(mockEditor._writer.remove).toHaveBeenCalled();
+            // insert should not be called when position is null
+            expect(mockEditor._writer.insert).not.toHaveBeenCalled();
+        });
+
+        it('should handle empty content from AI response', async () => {
+            plugin._service.complete = vi.fn().mockResolvedValue({ content: '' });
+            const mockRange = {
+                getItems: () => [{ data: 'prompt' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+
+            await capturedButton.fire('execute');
+
+            expect(mockEditor._writer.insert).toHaveBeenCalledWith('', expect.anything());
+        });
+
+        it('should use first range item with data from multiple ranges', async () => {
+            const range1 = { getItems: () => [{ data: '' }] };
+            const range2 = { getItems: () => [{ data: 'found in range 2' }] };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([range1, range2]);
+
+            await capturedButton.fire('execute');
+
+            expect(plugin._service.complete).toHaveBeenCalledWith('found in range 2', {});
+        });
+
+        it('should handle null content from AI response', async () => {
+            plugin._service.complete = vi.fn().mockResolvedValue({ content: null });
+            const mockRange = {
+                getItems: () => [{ data: 'prompt' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+
+            await capturedButton.fire('execute');
+
+            // content is null, rawContent becomes '', sanitized to ''
+            expect(mockEditor._writer.insert).toHaveBeenCalledWith('', expect.anything());
+        });
+    });
+
     describe('init', () => {
         it('should register button with editor UI', async () => {
             const addedComponents = {};
