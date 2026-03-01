@@ -69,6 +69,17 @@ vendor/bin/typo3 extension:setup
 # Clear cache
 vendor/bin/typo3 cache:flush
 
+# Import demo pages
+echo "Importing demo pages..."
+mariadb ${DB_NAME} < /mnt/ddev_config/sql/seed-pages.sql
+
+# Import LLM configuration (Ollama provider, models, configs)
+echo "Importing LLM seed data..."
+mariadb ${DB_NAME} < /mnt/ddev_config/sql/seed-ollama.sql
+
+# Flush cache after seeding
+vendor/bin/typo3 cache:flush
+
 echo ""
 echo "=== TYPO3 v13.4 installed successfully ==="
 echo "Backend: https://v13.${DDEV_SITENAME}.ddev.site/typo3/"
