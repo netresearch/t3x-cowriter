@@ -51,7 +51,7 @@
         "typo3/cms-core": "^13.4 || ^14.0",
         "typo3/cms-backend": "^13.4 || ^14.0",
         "typo3/cms-rte-ckeditor": "^13.4 || ^14.0",
-        "netresearch/nr-llm": "^0.2"
+        "netresearch/nr-llm": "^0.3"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.87",
