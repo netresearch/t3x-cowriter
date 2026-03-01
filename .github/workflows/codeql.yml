@@ -9,7 +9,7 @@ on:
 permissions: {}
 jobs:
   analyze:
-    uses: netresearch/typo3-ci-workflows/.github/workflows/codeql.yml@5c3daffcc31504594fdb3aa1d150e8d6a95b24c0 # main
+    uses: netresearch/typo3-ci-workflows/.github/workflows/codeql.yml@273cb8fd37b60ae31f72834d9896007623c99bf4 # main
     permissions:
       contents: read
       security-events: write
