@@ -10,7 +10,7 @@ help: ## Show available targets
 # ===================================
 
 .PHONY: up
-up: start setup docs ollama ## Complete startup (start DDEV + install + render docs + check Ollama)
+up: start setup docs ollama-pull ## Complete startup (start DDEV + install + render docs + pull Ollama model)
 
 .PHONY: start
 start: ## Start DDEV environment
@@ -127,8 +127,8 @@ seed: ## Import Ollama seed data (provider, models, configs)
 	ddev seed-ollama
 
 .PHONY: ollama-pull
-ollama-pull: ## Pull default Ollama model
-	ddev ollama pull
+ollama-pull: ## Pull default Ollama model (if not already present)
+	@ddev ollama pull 2>/dev/null || echo "Ollama not ready yet. Pull manually: ddev ollama pull"
 
 # ===================================
 # Cleanup
