@@ -14,7 +14,6 @@ use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
-use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -86,7 +85,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         // Arrange: Setup LLM response
         $pair     = $this->getTextImprovementPair();
         $response = $this->createCompletionResponse($pair['improved']);
-        $this->llmServiceMock->method('chat')->willReturn($response);
+        $this->llmServiceMock->method('chatWithConfiguration')->willReturn($response);
 
         // Act: Send completion request
         $request = $this->createJsonRequest(['prompt' => $pair['original']]);
@@ -119,7 +118,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
             'end_turn',
             'anthropic',
         );
-        $this->llmServiceMock->method('chat')->willReturn($response);
+        $this->llmServiceMock->method('chatWithConfiguration')->willReturn($response);
 
         // Act
         $request = $this->createJsonRequest([
@@ -135,36 +134,26 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
     }
 
     #[Test]
-    public function completeFlowWithModelOverride(): void
+    public function completeFlowWithModelPrefix(): void
     {
-        // Arrange
+        // Arrange: Model override prefix is now handled at prompt level (stripped),
+        // but model comes from configuration
         $config = $this->createLlmConfiguration();
         $this->configRepoMock->method('findDefault')->willReturn($config);
 
-        $capturedOptions = null;
-        $this->llmServiceMock
-            ->expects(self::once())
-            ->method('chat')
-            ->willReturnCallback(function (array $messages, ?ChatOptions $options) use (&$capturedOptions) {
-                $capturedOptions = $options;
+        $response = $this->createCompletionResponse('Gemini response', 'gemini-2.0-flash');
+        $this->llmServiceMock->method('chatWithConfiguration')->willReturn($response);
 
-                return $this->createCompletionResponse('Gemini response', 'gemini-2.0-flash');
-            });
-
-        // Act: Use model override prefix
+        // Act: Use model override prefix (prefix stripped from prompt, model from config)
         $request = $this->createJsonRequest([
             'prompt' => '#cw:gemini-2.0-flash Make this better',
         ]);
         $result = $this->subject->completeAction($request);
 
-        // Assert: Model was overridden
+        // Assert: Response is successful
         $data = $this->assertSuccessfulJsonResponse($result);
         self::assertSame('Gemini response', $data['content']);
         self::assertSame('gemini-2.0-flash', $data['model']);
-
-        // Verify the model override was applied to options
-        self::assertNotNull($capturedOptions);
-        self::assertSame('gemini-2.0-flash', $capturedOptions->getModel());
     }
 
     // =========================================================================
@@ -180,7 +169,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->configRepoMock->method('findDefault')->willReturn($config);
 
         $response = $this->createCompletionResponse($payload);
-        $this->llmServiceMock->method('chat')->willReturn($response);
+        $this->llmServiceMock->method('chatWithConfiguration')->willReturn($response);
 
         // Act
         $request = $this->createJsonRequest(['prompt' => 'Test prompt']);
@@ -246,7 +235,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         // Arrange
         $config = $this->createLlmConfiguration();
         $this->configRepoMock->method('findDefault')->willReturn($config);
-        $this->llmServiceMock->method('chat')
+        $this->llmServiceMock->method('chatWithConfiguration')
             ->willThrowException(new ProviderException('API key invalid'));
 
         // Act
@@ -267,6 +256,9 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
     public function chatFlowWithMultipleMessages(): void
     {
         // Arrange
+        $config = $this->createLlmConfiguration();
+        $this->configRepoMock->method('findDefault')->willReturn($config);
+
         $messages = [
             ['role' => 'user', 'content' => 'Hello!'],
             ['role' => 'assistant', 'content' => 'Hi there!'],
@@ -279,7 +271,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
             100,
             20,
         );
-        $this->llmServiceMock->method('chat')->willReturn($response);
+        $this->llmServiceMock->method('chatWithConfiguration')->willReturn($response);
 
         // Act
         $request = $this->createJsonRequest(['messages' => $messages]);
@@ -295,6 +287,10 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
     #[Test]
     public function chatActionEscapesXssInAllFields(): void
     {
+        // Arrange: Setup configuration
+        $config = $this->createLlmConfiguration();
+        $this->configRepoMock->method('findDefault')->willReturn($config);
+
         // Arrange: Response with XSS in all fields
         $response = new CompletionResponse(
             content: '<script>alert(1)</script>',
@@ -303,7 +299,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
             finishReason: '<svg onload=alert(3)>',
             provider: 'test',
         );
-        $this->llmServiceMock->method('chat')->willReturn($response);
+        $this->llmServiceMock->method('chatWithConfiguration')->willReturn($response);
 
         // Act
         $request = $this->createJsonRequest([
@@ -371,7 +367,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
             promptTokens: 75,
             completionTokens: 150,
         );
-        $this->llmServiceMock->method('chat')->willReturn($response);
+        $this->llmServiceMock->method('chatWithConfiguration')->willReturn($response);
 
         // Act
         $request = $this->createJsonRequest(['prompt' => 'Test prompt']);
@@ -397,7 +393,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->configRepoMock->method('findDefault')->willReturn($config);
 
         $response = $this->createCompletionResponse('Form response');
-        $this->llmServiceMock->method('chat')->willReturn($response);
+        $this->llmServiceMock->method('chatWithConfiguration')->willReturn($response);
 
         // Act: Use form data instead of JSON (no configuration = uses default)
         $request = $this->createFormRequest([
