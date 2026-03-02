@@ -7,6 +7,8 @@ editor:
   config:
     importModules:
       - { module: '@netresearch/t3_cowriter/cowriter', exports: ['Cowriter'] }
+      - { module: '@ckeditor/ckeditor5-font', exports: ['Font'] }
+      - { module: '@ckeditor/ckeditor5-highlight', exports: ['Highlight'] }
 
     toolbar:
       items:
