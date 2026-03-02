@@ -39,6 +39,15 @@ describe('AIService', () => {
             expect(service._routes.taskExecute).toBeNull();
         });
 
+        it('should initialize context route from TYPO3.settings.ajaxUrls', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_context = '/typo3/ajax/tx_cowriter_context';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+            const service = new ServiceClass();
+            expect(service._routes.context).toBe('/typo3/ajax/tx_cowriter_context');
+        });
+
         it('should handle missing TYPO3 global', async () => {
             delete globalThis.TYPO3;
             vi.resetModules();
@@ -637,6 +646,65 @@ describe('AIService', () => {
         });
     });
 
+    describe('getContext', () => {
+        it('should send GET request with query params', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_context = '/typo3/ajax/tx_cowriter_context';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+            const service = new ServiceClass();
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({
+                    success: true,
+                    summary: '3 elements, ~42 words',
+                    wordCount: 42,
+                }),
+            });
+
+            const result = await service.getContext('tt_content', 123, 'bodytext', 'page');
+
+            expect(globalThis.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('tx_cowriter_context'),
+                expect.objectContaining({ method: 'GET' }),
+            );
+            // Verify query params in URL
+            const calledUrl = globalThis.fetch.mock.calls[0][0];
+            expect(calledUrl).toContain('table=tt_content');
+            expect(calledUrl).toContain('uid=123');
+            expect(calledUrl).toContain('scope=page');
+
+            expect(result.success).toBe(true);
+            expect(result.summary).toBe('3 elements, ~42 words');
+            expect(result.wordCount).toBe(42);
+        });
+
+        it('should throw when context route is not configured', async () => {
+            // Default beforeEach does NOT set context route
+            const service = new AIService();
+            await expect(service.getContext('tt_content', 1, 'bodytext', 'page'))
+                .rejects.toThrow('TYPO3 AJAX routes not configured');
+        });
+
+        it('should throw on HTTP error', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_context = '/typo3/ajax/tx_cowriter_context';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+            const service = new ServiceClass();
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 400,
+                json: () => Promise.resolve({ error: 'Invalid request' }),
+            });
+
+            await expect(service.getContext('tt_content', 1, 'bodytext', 'invalid'))
+                .rejects.toThrow('Invalid request');
+        });
+    });
+
     describe('executeTask', () => {
         it('should throw when taskExecute route is not configured', async () => {
             const service = new AIService();
@@ -671,6 +739,9 @@ describe('AIService', () => {
                     contextType: 'selection',
                     adHocRules: 'Be formal',
                     editorCapabilities: '',
+                    contextScope: '',
+                    recordContext: null,
+                    referencePages: [],
                 }),
             });
             expect(result).toEqual(mockResponse);
@@ -727,6 +798,51 @@ describe('AIService', () => {
 
             const service = new ServiceClass();
             await expect(service.executeTask(999, 'text', 'selection')).rejects.toThrow('Task not found');
+        });
+    });
+
+    describe('executeTask extended params', () => {
+        it('should include contextScope and recordContext in request body', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+            const service = new ServiceClass();
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ success: true, content: 'result' }),
+            });
+
+            await service.executeTask(1, 'text', 'selection', '', '', 'page',
+                { table: 'tt_content', uid: 42, field: 'bodytext' },
+                [{ pid: 5, relation: 'reference' }],
+            );
+
+            const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+            expect(body.contextScope).toBe('page');
+            expect(body.recordContext).toEqual({ table: 'tt_content', uid: 42, field: 'bodytext' });
+            expect(body.referencePages).toEqual([{ pid: 5, relation: 'reference' }]);
+        });
+
+        it('should default contextScope to empty and referencePages to empty array', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+            const service = new ServiceClass();
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ success: true, content: 'result' }),
+            });
+
+            await service.executeTask(1, 'text', 'selection');
+
+            const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+            expect(body.contextScope).toBe('');
+            expect(body.recordContext).toBeNull();
+            expect(body.referencePages).toEqual([]);
         });
     });
 
