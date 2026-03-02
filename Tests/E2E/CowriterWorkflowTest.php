@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -75,6 +76,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $rateLimiter,
             $context,
             $this->logger,
+            $this->createMock(ContextAssemblyServiceInterface::class),
         );
 
         return [
@@ -528,6 +530,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $rateLimiter,
             $context,
             $this->logger,
+            $this->createMock(ContextAssemblyServiceInterface::class),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -561,6 +564,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $rateLimiter,
             $context,
             $this->logger,
+            $this->createMock(ContextAssemblyServiceInterface::class),
         );
 
         $request = $this->createJsonRequest([
@@ -721,6 +725,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $rateLimiter,
             $context,
             $this->logger,
+            $this->createMock(ContextAssemblyServiceInterface::class),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -873,6 +878,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $rateLimiter,
             $context,
             $this->logger,
+            $this->createMock(ContextAssemblyServiceInterface::class),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -910,6 +916,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $rateLimiter,
             $context,
             $this->logger,
+            $this->createMock(ContextAssemblyServiceInterface::class),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -1339,6 +1346,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $rateLimiter,
             $context,
             $this->logger,
+            $this->createMock(ContextAssemblyServiceInterface::class),
         );
 
         $request = $this->createJsonRequest([

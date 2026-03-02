@@ -280,7 +280,8 @@ export class AIService {
         }
 
         const params = new URLSearchParams({ table, uid: String(uid), field, scope });
-        const url = `${this._routes.context}&${params.toString()}`;
+        const separator = this._routes.context.includes('?') ? '&' : '?';
+        const url = `${this._routes.context}${separator}${params.toString()}`;
 
         const response = await fetch(url, {
             method: 'GET',

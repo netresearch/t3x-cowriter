@@ -16,6 +16,7 @@ use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
@@ -72,6 +73,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
             $this->rateLimiterMock,
             $this->contextMock,
             new NullLogger(),
+            $this->createMock(ContextAssemblyServiceInterface::class),
         );
     }
 

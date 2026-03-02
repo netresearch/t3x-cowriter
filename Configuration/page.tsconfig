@@ -1,1 +1,3 @@
-RTE.default.preset = cowriter
+# Uncomment to use the cowriter RTE preset as default for all RTE fields.
+# Alternatively, add the cowriter CKEditor plugin to your existing preset.
+# RTE.default.preset = cowriter
