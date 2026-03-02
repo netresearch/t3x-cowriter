@@ -84,7 +84,7 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
         $label = $scopeLabels[$scope] ?? $scope;
 
         return [
-            'summary'   => "$label, ~$wordCount words",
+            'summary'   => sprintf('%s, ~%d words', $label, $wordCount),
             'wordCount' => $wordCount,
         ];
     }
@@ -108,7 +108,7 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
         foreach ($referencePages as $refPage) {
             $refRecords = $this->fetchContentForPage($refPage['pid']);
             if ($refRecords !== []) {
-                $relation = $refPage['relation'] !== '' ? " — Relation: {$refPage['relation']}" : '';
+                $relation = $refPage['relation'] !== '' ? ' — Relation: ' . $refPage['relation'] : '';
                 $text .= "\n\n=== Reference page (pid={$refPage['pid']}){$relation} ===\n";
                 foreach ($refRecords as $record) {
                     $text .= $this->formatSingleRecord($record);
@@ -271,7 +271,7 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
             $isCurrent = $uid === $currentUid;
             $prefix    = $isCurrent ? '=== Current content element' : '--- Content element';
             $suffix    = $isCurrent ? ' ===' : ' ---';
-            $parts[]   = "$prefix (tt_content #$uid)$suffix";
+            $parts[]   = sprintf('%s (tt_content #%d)%s', $prefix, $uid, $suffix);
             $parts[]   = $this->formatSingleRecord($record);
         }
 
@@ -289,7 +289,7 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
             $value = trim(is_scalar($raw) ? (string) $raw : '');
             if ($value !== '') {
                 $label   = ucfirst($field);
-                $lines[] = "$label: $value";
+                $lines[] = sprintf('%s: %s', $label, $value);
             }
         }
 

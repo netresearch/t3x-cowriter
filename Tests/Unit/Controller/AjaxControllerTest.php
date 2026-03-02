@@ -1893,8 +1893,8 @@ final class AjaxControllerTest extends TestCase
                 $this->callback(static function (array $messages) use ($assembledContext): bool {
                     // [0] = scope constraint, [1] = reference context in XML, [last] = user prompt
                     $scopeMsg = $messages[0];
-                    $refMsg = $messages[1];
-                    $userMsg = $messages[count($messages) - 1];
+                    $refMsg   = $messages[1];
+                    $userMsg  = $messages[count($messages) - 1];
 
                     return $scopeMsg['role'] === 'system'
                         && str_contains($scopeMsg['content'], 'selected a portion of text')

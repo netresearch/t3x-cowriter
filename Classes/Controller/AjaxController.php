@@ -398,7 +398,11 @@ final readonly class AjaxController
 
         $list = [];
         foreach ($tasks as $task) {
-            if (!$task instanceof Task || !$task->isActive()) {
+            if (!$task instanceof Task) {
+                continue;
+            }
+
+            if (!$task->isActive()) {
                 continue;
             }
 
@@ -492,11 +496,11 @@ final readonly class AjaxController
         }
 
         // Input is ALWAYS the editor content (the text to transform)
-        $input = $dto->context;
+        $input              = $dto->context;
         $surroundingContext = '';
 
         // For extended scopes, assemble surrounding context as reference (NOT as input)
-        if ($dto->contextScope !== '' && $dto->contextScope !== 'selection' && $dto->contextScope !== 'text'
+        if (!in_array($dto->contextScope, ['', 'selection', 'text'], true)
             && $dto->recordContext !== null
         ) {
             try {
@@ -528,13 +532,14 @@ final readonly class AjaxController
                 . $dto->adHocRules . "\n\n"
                 . "Content to transform:\n" . $input;
         }
+
         $prompt = $task->buildPrompt(['input' => $promptInput]);
 
         // Build messages
         $messages = [];
 
         // Tell the LLM exactly what scope it is working with
-        $isSelection = $dto->contextType === 'selection';
+        $isSelection      = $dto->contextType === 'selection';
         $scopeInstruction = $isSelection
             ? 'The user selected a portion of text. '
                 . 'Return ONLY the transformed selection — '
@@ -547,10 +552,10 @@ final readonly class AjaxController
             $messages[] = [
                 'role'    => 'system',
                 'content' => "<reference_context>\n"
-                    . "Surrounding content from the same page for reference. "
-                    . "Use this to understand the broader context, avoid duplicating information, "
-                    . "and match the existing tone, style, and formatting patterns "
-                    . "(heading levels, list styles). "
+                    . 'Surrounding content from the same page for reference. '
+                    . 'Use this to understand the broader context, avoid duplicating information, '
+                    . 'and match the existing tone, style, and formatting patterns '
+                    . '(heading levels, list styles). '
                     . "Do NOT include this content in your output.\n"
                     . $surroundingContext . "\n"
                     . '</reference_context>',
