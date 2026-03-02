@@ -37,12 +37,55 @@ final readonly class ExecuteTaskRequest
     private const MAX_CAPABILITIES_LENGTH = 2048;
 
     /**
+     * Maximum number of reference pages allowed.
+     */
+    private const MAX_REFERENCE_PAGES = 10;
+
+    /**
      * Allowed context types.
      *
      * @var list<string>
      */
     private const ALLOWED_CONTEXT_TYPES = ['selection', 'content_element'];
 
+    /**
+     * Allowed context scopes.
+     *
+     * @var list<string>
+     */
+    private const ALLOWED_CONTEXT_SCOPES = [
+        '',
+        'selection',
+        'text',
+        'element',
+        'page',
+        'ancestors_1',
+        'ancestors_2',
+    ];
+
+    /**
+     * Context scopes that require a record context.
+     *
+     * @var list<string>
+     */
+    private const SCOPES_REQUIRING_RECORD_CONTEXT = [
+        'element',
+        'page',
+        'ancestors_1',
+        'ancestors_2',
+    ];
+
+    /**
+     * Allowed record context tables.
+     *
+     * @var list<string>
+     */
+    private const ALLOWED_RECORD_TABLES = ['tt_content', 'pages'];
+
+    /**
+     * @param array{table: string, uid: int, field: string}|null $recordContext
+     * @param list<array{pid: int, relation: string}> $referencePages
+     */
     public function __construct(
         public int $taskUid,
         public string $context,
@@ -50,6 +93,9 @@ final readonly class ExecuteTaskRequest
         public string $adHocRules,
         public ?string $configuration,
         public string $editorCapabilities = '',
+        public string $contextScope = '',
+        public ?array $recordContext = null,
+        public array $referencePages = [],
     ) {}
 
     /**
@@ -78,6 +124,9 @@ final readonly class ExecuteTaskRequest
             adHocRules: self::extractString($data, 'adHocRules'),
             configuration: self::extractNullableString($data, 'configuration'),
             editorCapabilities: self::extractString($data, 'editorCapabilities'),
+            contextScope: self::extractString($data, 'contextScope'),
+            recordContext: self::extractRecordContext($data),
+            referencePages: self::extractReferencePages($data),
         );
     }
 
@@ -107,6 +156,24 @@ final readonly class ExecuteTaskRequest
         }
 
         if (mb_strlen($this->editorCapabilities, 'UTF-8') > self::MAX_CAPABILITIES_LENGTH) {
+            return false;
+        }
+
+        if (!in_array($this->contextScope, self::ALLOWED_CONTEXT_SCOPES, true)) {
+            return false;
+        }
+
+        if (in_array($this->contextScope, self::SCOPES_REQUIRING_RECORD_CONTEXT, true) && $this->recordContext === null) {
+            return false;
+        }
+
+        if ($this->recordContext !== null) {
+            if (!in_array($this->recordContext['table'] ?? '', self::ALLOWED_RECORD_TABLES, true)) {
+                return false;
+            }
+        }
+
+        if (count($this->referencePages) > self::MAX_REFERENCE_PAGES) {
             return false;
         }
 
@@ -150,5 +217,57 @@ final readonly class ExecuteTaskRequest
         }
 
         return is_scalar($value) ? (string) $value : null;
+    }
+
+    /**
+     * Extract and validate record context from data array.
+     *
+     * @param array<string, mixed> $data
+     * @return array{table: string, uid: int, field: string}|null
+     */
+    private static function extractRecordContext(array $data): ?array
+    {
+        $rc = $data['recordContext'] ?? null;
+        if (!is_array($rc)) {
+            return null;
+        }
+
+        $table = is_string($rc['table'] ?? null) ? $rc['table'] : '';
+        $uid   = is_numeric($rc['uid'] ?? null) ? (int) $rc['uid'] : 0;
+        $field = is_string($rc['field'] ?? null) ? $rc['field'] : '';
+
+        if ($table === '' || $uid <= 0 || $field === '') {
+            return null;
+        }
+
+        return ['table' => $table, 'uid' => $uid, 'field' => $field];
+    }
+
+    /**
+     * Extract and validate reference pages from data array.
+     *
+     * @param array<string, mixed> $data
+     * @return list<array{pid: int, relation: string}>
+     */
+    private static function extractReferencePages(array $data): array
+    {
+        $pages = $data['referencePages'] ?? [];
+        if (!is_array($pages)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($pages as $page) {
+            if (!is_array($page)) {
+                continue;
+            }
+            $pid      = is_numeric($page['pid'] ?? null) ? (int) $page['pid'] : 0;
+            $relation = is_string($page['relation'] ?? null) ? $page['relation'] : '';
+            if ($pid > 0) {
+                $result[] = ['pid' => $pid, 'relation' => $relation];
+            }
+        }
+
+        return $result;
     }
 }

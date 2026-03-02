@@ -275,6 +275,187 @@ final class ExecuteTaskRequestTest extends TestCase
     }
 
     // =========================================================================
+    // contextScope
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestParsesContextScope(): void
+    {
+        $request = $this->createJsonRequest([
+            'taskUid'      => 1,
+            'context'      => 'text',
+            'contextType'  => 'selection',
+            'contextScope' => 'page',
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertSame('page', $dto->contextScope);
+    }
+
+    #[Test]
+    public function fromRequestDefaultsContextScopeToEmpty(): void
+    {
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertSame('', $dto->contextScope);
+    }
+
+    #[Test]
+    public function isValidAcceptsAllContextScopes(): void
+    {
+        foreach (['', 'selection', 'text', 'element', 'page', 'ancestors_1', 'ancestors_2'] as $scope) {
+            $rc = in_array($scope, ['element', 'page', 'ancestors_1', 'ancestors_2'], true)
+                ? ['table' => 'tt_content', 'uid' => 1, 'field' => 'bodytext']
+                : null;
+            $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', $scope, $rc);
+            self::assertTrue($dto->isValid(), "contextScope '$scope' should be valid");
+        }
+    }
+
+    #[Test]
+    public function isValidRejectsInvalidContextScope(): void
+    {
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', 'invalid_scope');
+        self::assertFalse($dto->isValid());
+    }
+
+    // =========================================================================
+    // recordContext
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestParsesRecordContext(): void
+    {
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertSame(['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'], $dto->recordContext);
+    }
+
+    #[Test]
+    public function fromRequestDefaultsRecordContextToNull(): void
+    {
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->recordContext);
+    }
+
+    #[Test]
+    public function isValidAcceptsValidRecordContext(): void
+    {
+        $dto = new ExecuteTaskRequest(
+            1, 'text', 'selection', '', null, '', 'page',
+            ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        );
+        self::assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidAcceptsNullRecordContext(): void
+    {
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null);
+        self::assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidRejectsRecordContextWithDisallowedTable(): void
+    {
+        $dto = new ExecuteTaskRequest(
+            1, 'text', 'selection', '', null, '', 'page',
+            ['table' => 'be_users', 'uid' => 1, 'field' => 'username'],
+        );
+        self::assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidRequiresRecordContextWhenScopeIsElement(): void
+    {
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', 'element', null);
+        self::assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidRequiresRecordContextWhenScopeIsPage(): void
+    {
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', 'page', null);
+        self::assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidRequiresRecordContextWhenScopeIsAncestors(): void
+    {
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', 'ancestors_1', null);
+        self::assertFalse($dto->isValid());
+    }
+
+    // =========================================================================
+    // referencePages
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestParsesReferencePages(): void
+    {
+        $request = $this->createJsonRequest([
+            'taskUid'        => 1,
+            'context'        => 'text',
+            'contextType'    => 'selection',
+            'referencePages' => [
+                ['pid' => 5, 'relation' => 'reference material'],
+                ['pid' => 12, 'relation' => 'style guide'],
+            ],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertCount(2, $dto->referencePages);
+        self::assertSame(5, $dto->referencePages[0]['pid']);
+        self::assertSame('style guide', $dto->referencePages[1]['relation']);
+    }
+
+    #[Test]
+    public function fromRequestDefaultsReferencePagesToEmpty(): void
+    {
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertSame([], $dto->referencePages);
+    }
+
+    #[Test]
+    public function isValidRejectsTooManyReferencePages(): void
+    {
+        $pages = array_fill(0, 11, ['pid' => 1, 'relation' => 'test']);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null, $pages);
+        self::assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidAcceptsTenReferencePages(): void
+    {
+        $pages = array_fill(0, 10, ['pid' => 1, 'relation' => 'test']);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null, $pages);
+        self::assertTrue($dto->isValid());
+    }
+
+    // =========================================================================
     // XSS / injection payloads
     // =========================================================================
 
