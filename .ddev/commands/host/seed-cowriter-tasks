@@ -1,0 +1,20 @@
+#!/bin/bash
+
+## Description: Seed cowriter AI tasks into tx_nrllm_task table
+## Usage: seed-cowriter-tasks
+## Example: ddev seed-cowriter-tasks
+
+set -e
+
+echo "Seeding cowriter tasks..."
+
+for DB_NAME in v13 v14; do
+    if ddev mysql -d "${DB_NAME}" -e "SELECT 1" >/dev/null 2>&1; then
+        echo "  Importing into ${DB_NAME}..."
+        ddev mysql -d "${DB_NAME}" < .ddev/sql/seed-cowriter-tasks.sql
+    else
+        echo "  Skipping ${DB_NAME} (database not found)"
+    fi
+done
+
+echo "Done. Cowriter tasks seeded."
