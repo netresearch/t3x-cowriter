@@ -72,6 +72,33 @@ export class Cowriter extends Plugin {
         return caps.join(', ');
     }
 
+    /**
+     * Extract record context (table, uid, field) from the CKEditor source element's DOM.
+     *
+     * TYPO3 FormEngine names textareas as: data[table][uid][field]
+     * e.g. data[tt_content][123][bodytext]
+     *
+     * @returns {{table: string, uid: number, field: string}|null}
+     * @private
+     */
+    _getRecordContext() {
+        const el = this.editor.sourceElement;
+        if (!el) return null;
+
+        // The source element may be the textarea itself or a wrapper containing it
+        const textarea = el.tagName === 'TEXTAREA' ? el : el.querySelector('textarea');
+        if (!textarea?.name) return null;
+
+        const match = textarea.name.match(/^data\[(\w+)]\[(\d+)]\[(\w+)]$/);
+        if (!match) return null;
+
+        return {
+            table: match[1],
+            uid: parseInt(match[2], 10),
+            field: match[3],
+        };
+    }
+
     async init() {
         // Initialize the AIService (now uses TYPO3 AJAX backend)
         this._service = new AIService();
@@ -112,10 +139,11 @@ export class Cowriter extends Plugin {
 
                     const fullContent = editor.getData();
                     const caps = this._getEditorCapabilities();
+                    const recordContext = this._getRecordContext();
 
                     // Show the task dialog
                     const dialog = new CowriterDialog(this._service);
-                    const result = await dialog.show(selectedText || '', fullContent, caps);
+                    const result = await dialog.show(selectedText || '', fullContent, caps, recordContext);
 
                     if (result?.content) {
                         model.change((writer) => {

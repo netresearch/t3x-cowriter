@@ -86,6 +86,7 @@ describe('Cowriter Plugin', () => {
                     },
                 },
                 getData: vi.fn().mockReturnValue('<p>Full editor content</p>'),
+                sourceElement: null,
             };
 
             plugin = new Cowriter();
@@ -111,7 +112,7 @@ describe('Cowriter Plugin', () => {
             ]);
             await capturedButton.fire('execute');
 
-            expect(mockDialogShow).toHaveBeenCalledWith('', '<p>Full editor content</p>', '');
+            expect(mockDialogShow).toHaveBeenCalledWith('', '<p>Full editor content</p>', '', null);
         });
 
         it('should open dialog with selected text', async () => {
@@ -126,6 +127,7 @@ describe('Cowriter Plugin', () => {
                 'write about cats',
                 '<p>Full editor content</p>',
                 '',
+                null,
             );
         });
 
@@ -232,6 +234,7 @@ describe('Cowriter Plugin', () => {
                 'found in range 2',
                 '<p>Full editor content</p>',
                 '',
+                null,
             );
         });
 
@@ -245,6 +248,29 @@ describe('Cowriter Plugin', () => {
             expect(mockEditor._writer.remove).not.toHaveBeenCalled();
             // Content still inserted via CKEditor pipeline
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
+        });
+
+        it('should pass record context to dialog', async () => {
+            // Create a textarea to extract context from
+            const textarea = document.createElement('textarea');
+            textarea.name = 'data[tt_content][99][bodytext]';
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(textarea);
+            mockEditor.sourceElement = wrapper;
+
+            const mockRange = {
+                getItems: () => [{ data: 'selected' }],
+            };
+            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+
+            await capturedButton.fire('execute');
+
+            expect(mockDialogShow).toHaveBeenCalledWith(
+                'selected',
+                '<p>Full editor content</p>',
+                '',
+                { table: 'tt_content', uid: 99, field: 'bodytext' },
+            );
         });
     });
 
@@ -300,6 +326,74 @@ describe('Cowriter Plugin', () => {
 
             const caps = plugin._getEditorCapabilities();
             expect(caps).toBe('');
+        });
+    });
+
+    describe('_getRecordContext', () => {
+        it('should parse record context from textarea name attribute', () => {
+            const plugin = new Cowriter();
+
+            const textarea = document.createElement('textarea');
+            textarea.name = 'data[tt_content][123][bodytext]';
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(textarea);
+
+            plugin.editor = {
+                sourceElement: wrapper,
+            };
+
+            const context = plugin._getRecordContext();
+            expect(context).toEqual({
+                table: 'tt_content',
+                uid: 123,
+                field: 'bodytext',
+            });
+        });
+
+        it('should return null when no textarea found', () => {
+            const plugin = new Cowriter();
+            plugin.editor = {
+                sourceElement: document.createElement('div'),
+            };
+
+            const context = plugin._getRecordContext();
+            expect(context).toBeNull();
+        });
+
+        it('should return null when name pattern does not match', () => {
+            const plugin = new Cowriter();
+            const textarea = document.createElement('textarea');
+            textarea.name = 'some-other-format';
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(textarea);
+
+            plugin.editor = { sourceElement: wrapper };
+
+            const context = plugin._getRecordContext();
+            expect(context).toBeNull();
+        });
+
+        it('should handle sourceElement being the textarea itself', () => {
+            const plugin = new Cowriter();
+            const textarea = document.createElement('textarea');
+            textarea.name = 'data[pages][5][description]';
+
+            plugin.editor = { sourceElement: textarea };
+
+            const context = plugin._getRecordContext();
+            expect(context).toEqual({
+                table: 'pages',
+                uid: 5,
+                field: 'description',
+            });
+        });
+
+        it('should return null when sourceElement is null', () => {
+            const plugin = new Cowriter();
+            plugin.editor = { sourceElement: null };
+
+            const context = plugin._getRecordContext();
+            expect(context).toBeNull();
         });
     });
 
