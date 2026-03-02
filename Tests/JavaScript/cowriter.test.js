@@ -75,6 +75,8 @@ describe('Cowriter Plugin', () => {
                     },
                     toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
                 },
+                plugins: { has: vi.fn().mockReturnValue(false) },
+                config: { get: vi.fn().mockReturnValue(undefined) },
                 view: {},
                 ui: {
                     componentFactory: {
@@ -109,7 +111,7 @@ describe('Cowriter Plugin', () => {
             ]);
             await capturedButton.fire('execute');
 
-            expect(mockDialogShow).toHaveBeenCalledWith('', '<p>Full editor content</p>');
+            expect(mockDialogShow).toHaveBeenCalledWith('', '<p>Full editor content</p>', '');
         });
 
         it('should open dialog with selected text', async () => {
@@ -123,6 +125,7 @@ describe('Cowriter Plugin', () => {
             expect(mockDialogShow).toHaveBeenCalledWith(
                 'write about cats',
                 '<p>Full editor content</p>',
+                '',
             );
         });
 
@@ -228,6 +231,7 @@ describe('Cowriter Plugin', () => {
             expect(mockDialogShow).toHaveBeenCalledWith(
                 'found in range 2',
                 '<p>Full editor content</p>',
+                '',
             );
         });
 
@@ -241,6 +245,61 @@ describe('Cowriter Plugin', () => {
             expect(mockEditor._writer.remove).not.toHaveBeenCalled();
             // Content still inserted via CKEditor pipeline
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
+        });
+    });
+
+    describe('_getEditorCapabilities', () => {
+        it('should detect available plugins and return capabilities string', () => {
+            const plugin = new Cowriter();
+            plugin.editor = {
+                plugins: {
+                    has: vi.fn((name) => ['HeadingEditing', 'BoldEditing', 'ItalicEditing',
+                        'ListEditing', 'TableEditing', 'BlockQuoteEditing'].includes(name)),
+                },
+                config: { get: vi.fn().mockReturnValue(undefined) },
+            };
+
+            const caps = plugin._getEditorCapabilities();
+            expect(caps).toContain('headings');
+            expect(caps).toContain('bold');
+            expect(caps).toContain('tables');
+            expect(caps).toContain('lists');
+            expect(caps).not.toContain('highlight');
+        });
+
+        it('should include custom style definitions when configured', () => {
+            const plugin = new Cowriter();
+            plugin.editor = {
+                plugins: { has: vi.fn().mockReturnValue(false) },
+                config: {
+                    get: vi.fn((key) => {
+                        if (key === 'style') {
+                            return {
+                                definitions: [
+                                    { name: 'Lead', element: 'p', classes: ['lead'] },
+                                    { name: 'Muted', element: 'span', classes: ['text-muted'] },
+                                ],
+                            };
+                        }
+                        return undefined;
+                    }),
+                },
+            };
+
+            const caps = plugin._getEditorCapabilities();
+            expect(caps).toContain('Lead');
+            expect(caps).toContain('Muted');
+        });
+
+        it('should return empty string when no plugins available', () => {
+            const plugin = new Cowriter();
+            plugin.editor = {
+                plugins: { has: vi.fn().mockReturnValue(false) },
+                config: { get: vi.fn().mockReturnValue(undefined) },
+            };
+
+            const caps = plugin._getEditorCapabilities();
+            expect(caps).toBe('');
         });
     });
 

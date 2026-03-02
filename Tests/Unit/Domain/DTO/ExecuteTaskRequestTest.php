@@ -227,6 +227,54 @@ final class ExecuteTaskRequestTest extends TestCase
     }
 
     // =========================================================================
+    // editorCapabilities
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestParsesEditorCapabilities(): void
+    {
+        $request = $this->createJsonRequest([
+            'taskUid'            => 1,
+            'context'            => 'text',
+            'contextType'        => 'selection',
+            'adHocRules'         => '',
+            'editorCapabilities' => 'bold, italic, tables, lists',
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+
+        self::assertSame('bold, italic, tables, lists', $dto->editorCapabilities);
+    }
+
+    #[Test]
+    public function fromRequestDefaultsEditorCapabilitiesToEmpty(): void
+    {
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+
+        self::assertSame('', $dto->editorCapabilities);
+    }
+
+    #[Test]
+    public function isValidRejectsTooLongEditorCapabilities(): void
+    {
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, str_repeat('a', 2049));
+        self::assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidAcceptsMaxLengthEditorCapabilities(): void
+    {
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, str_repeat('a', 2048));
+        self::assertTrue($dto->isValid());
+    }
+
+    // =========================================================================
     // XSS / injection payloads
     // =========================================================================
 

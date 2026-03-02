@@ -271,9 +271,10 @@ export class AIService {
      * @param {string} context - The text context to process
      * @param {string} contextType - The context type ('selection' or 'content_element')
      * @param {string} [adHocRules=''] - Optional additional instructions
+     * @param {string} [editorCapabilities=''] - Available editor formatting features
      * @returns {Promise<CompleteResponse>} The task execution result
      */
-    async executeTask(taskUid, context, contextType, adHocRules = '') {
+    async executeTask(taskUid, context, contextType, adHocRules = '', editorCapabilities = '') {
         if (!this._routes.taskExecute) {
             throw new Error(
                 'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
@@ -285,7 +286,7 @@ export class AIService {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ taskUid, context, contextType, adHocRules }),
+            body: JSON.stringify({ taskUid, context, contextType, adHocRules, editorCapabilities }),
         });
 
         if (!response.ok) {

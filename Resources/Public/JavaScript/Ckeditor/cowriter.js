@@ -28,6 +28,50 @@ export class Cowriter extends Plugin {
      */
     _isProcessing = false;
 
+    /**
+     * Detect available CKEditor formatting capabilities at runtime.
+     *
+     * @returns {string} Comma-separated list of available formatting features
+     * @private
+     */
+    _getEditorCapabilities() {
+        const editor = this.editor;
+        const caps = [];
+
+        const pluginMap = [
+            ['HeadingEditing', 'headings (h2, h3, h4)'],
+            ['BoldEditing', 'bold'],
+            ['ItalicEditing', 'italic'],
+            ['UnderlineEditing', 'underline'],
+            ['StrikethroughEditing', 'strikethrough'],
+            ['ListEditing', 'bulleted and numbered lists'],
+            ['TableEditing', 'tables with headers and merged cells'],
+            ['BlockQuoteEditing', 'blockquotes'],
+            ['AlignmentEditing', 'text alignment (left, center, right, justify)'],
+            ['LinkEditing', 'hyperlinks'],
+            ['HorizontalLineEditing', 'horizontal rules (<hr>)'],
+            ['HighlightEditing', 'text highlighting'],
+            ['FontColorEditing', 'font colors'],
+            ['FontBackgroundColorEditing', 'background colors'],
+            ['SubscriptEditing', 'subscript'],
+            ['SuperscriptEditing', 'superscript'],
+        ];
+
+        for (const [plugin, label] of pluginMap) {
+            if (editor.plugins.has(plugin)) {
+                caps.push(label);
+            }
+        }
+
+        const styleConfig = editor.config.get('style');
+        if (styleConfig?.definitions?.length) {
+            const styleNames = styleConfig.definitions.map((d) => d.name);
+            caps.push(`styles: ${styleNames.join(', ')}`);
+        }
+
+        return caps.join(', ');
+    }
+
     async init() {
         // Initialize the AIService (now uses TYPO3 AJAX backend)
         this._service = new AIService();
@@ -67,10 +111,11 @@ export class Cowriter extends Plugin {
                     }
 
                     const fullContent = editor.getData();
+                    const caps = this._getEditorCapabilities();
 
                     // Show the task dialog
                     const dialog = new CowriterDialog(this._service);
-                    const result = await dialog.show(selectedText || '', fullContent);
+                    const result = await dialog.show(selectedText || '', fullContent, caps);
 
                     if (result?.content) {
                         model.change((writer) => {

@@ -250,7 +250,7 @@ describe('CowriterDialog', () => {
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'my selected text', 'selection', '',
+                    1, 'my selected text', 'selection', '', '',
                 );
             });
 
@@ -273,7 +273,7 @@ describe('CowriterDialog', () => {
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'full editor content here', 'content_element', '',
+                    1, 'full editor content here', 'content_element', '', '',
                 );
             });
 
@@ -298,7 +298,7 @@ describe('CowriterDialog', () => {
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'text', 'selection', 'Write in formal tone',
+                    1, 'text', 'selection', 'Write in formal tone', '',
                 );
             });
 
@@ -449,7 +449,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledTimes(2);
                 expect(mockService.executeTask).toHaveBeenLastCalledWith(
-                    2, 'text', 'selection', '',
+                    2, 'text', 'selection', '', '',
                 );
             });
 
