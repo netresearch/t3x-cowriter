@@ -9,10 +9,14 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint Resources/Public/JavaScript/**/*.js",
-    "lint:fix": "eslint Resources/Public/JavaScript/**/*.js --fix"
+    "lint:fix": "eslint Resources/Public/JavaScript/**/*.js --fix",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
+    "@playwright/test": "^1.58.2",
     "@vitest/coverage-v8": "^4.0.0",
     "eslint": "^10.0.0",
     "globals": "^17.0.0",
