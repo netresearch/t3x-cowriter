@@ -37,7 +37,7 @@ use TYPO3\CMS\Core\Http\Stream;
  * Provides backend API endpoints for chat and completion requests,
  * routing them through the centralized LlmServiceManager.
  *
- * SECURITY: All LLM output is HTML-escaped to prevent XSS attacks.
+ * JSON responses carry raw data; HTML escaping is the frontend's responsibility.
  */
 #[AsController]
 final readonly class AjaxController
@@ -135,12 +135,11 @@ final readonly class AjaxController
         try {
             $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
 
-            // Escape HTML to prevent XSS attacks (defense in depth for all string values)
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'      => true,
-                'content'      => htmlspecialchars($response->content, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'model'        => htmlspecialchars($response->model ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'finishReason' => htmlspecialchars($response->finishReason ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'content'      => $response->content,
+                'model'        => $response->model ?? '',
+                'finishReason' => $response->finishReason ?? '',
             ], $rateLimitResult);
         } catch (ProviderException $e) {
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
@@ -172,7 +171,7 @@ final readonly class AjaxController
      * - configuration: optional configuration identifier
      * - options: optional array with temperature, maxTokens, etc.
      *
-     * Response includes usage statistics and properly escaped content.
+     * Response includes usage statistics.
      */
     public function completeAction(ServerRequestInterface $request): ResponseInterface
     {
@@ -230,7 +229,6 @@ final readonly class AjaxController
 
             $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
 
-            // CompleteResponse.success() handles HTML escaping
             return $this->jsonResponseWithRateLimitHeaders(
                 CompleteResponse::success($response)->jsonSerialize(),
                 $rateLimitResult,
@@ -312,14 +310,13 @@ final readonly class AjaxController
             $generator = $this->llmServiceManager->streamChatWithConfiguration($messages, $configuration);
 
             foreach ($generator as $chunk) {
-                $sanitizedChunk = htmlspecialchars($chunk, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                $chunks[]       = 'data: ' . json_encode(['content' => $sanitizedChunk], JSON_THROW_ON_ERROR) . "\n\n";
+                $chunks[] = 'data: ' . json_encode(['content' => $chunk], JSON_THROW_ON_ERROR) . "\n\n";
             }
 
             // Add final "done" event
             $chunks[] = 'data: ' . json_encode([
                 'done'  => true,
-                'model' => htmlspecialchars($configuration->getModelId(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'model' => $configuration->getModelId(),
             ], JSON_THROW_ON_ERROR) . "\n\n";
 
             $body = implode('', $chunks);
@@ -373,8 +370,8 @@ final readonly class AjaxController
             }
 
             $list[] = [
-                'identifier' => htmlspecialchars($config->getIdentifier(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'name'       => htmlspecialchars($config->getName(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'identifier' => $config->getIdentifier(),
+                'name'       => $config->getName(),
                 'isDefault'  => $config->isDefault(),
             ];
         }
@@ -404,9 +401,9 @@ final readonly class AjaxController
 
             $list[] = [
                 'uid'         => $task->getUid(),
-                'identifier'  => htmlspecialchars($task->getIdentifier(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'name'        => htmlspecialchars($task->getName(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'description' => htmlspecialchars($task->getDescription(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'identifier'  => $task->getIdentifier(),
+                'name'        => $task->getName(),
+                'description' => $task->getDescription(),
             ];
         }
 

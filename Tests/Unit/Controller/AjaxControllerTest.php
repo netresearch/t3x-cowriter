@@ -298,46 +298,14 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function chatActionEscapesAllStringFieldsInResponse(): void
+    public function chatActionReturnsRawContentWithoutEscaping(): void
     {
         $messages = [['role' => 'user', 'content' => 'Hello']];
         $config   = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
 
         $completionResponse = new CompletionResponse(
-            content: '<script>alert("xss")</script>',
-            model: '<img src=x onerror=alert(1)>',
-            usage: new UsageStatistics(10, 20, 30),
-            finishReason: '<div onclick="hack()">stop</div>',
-            provider: 'test',
-        );
-
-        $this->llmServiceManagerMock
-            ->method('chatWithConfiguration')
-            ->willReturn($completionResponse);
-
-        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
-        $response = $this->subject->chatAction($request);
-
-        $data = $this->decodeJsonResponse($response);
-        $this->assertTrue($data['success']);
-        $this->assertStringNotContainsString('<script>', $data['content']);
-        $this->assertStringNotContainsString('<img', $data['model']);
-        $this->assertStringNotContainsString('<div', $data['finishReason']);
-        $this->assertStringContainsString('&lt;script&gt;', $data['content']);
-    }
-
-    #[Test]
-    public function chatActionEscapesSingleQuotesWithEntHtml5(): void
-    {
-        // ENT_QUOTES|ENT_HTML5 encodes single quotes as &apos;
-        // If mutated to ENT_QUOTES&ENT_HTML5 (=0), single quotes would NOT be encoded
-        $messages = [['role' => 'user', 'content' => 'Hello']];
-        $config   = $this->createConfigurationMock();
-        $this->configRepositoryMock->method('findDefault')->willReturn($config);
-
-        $completionResponse = new CompletionResponse(
-            content: "It's a <test> with 'quotes'",
+            content: '<p>Hello <strong>world</strong></p>',
             model: "model's-name",
             usage: new UsageStatistics(10, 20, 30),
             finishReason: "it's done",
@@ -353,13 +321,9 @@ final class AjaxControllerTest extends TestCase
 
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
-        // Verify single quotes are encoded (kills BitwiseOr mutant ENT_QUOTES|ENT_HTML5 → ENT_QUOTES&ENT_HTML5)
-        $this->assertStringContainsString('&apos;', $data['content']);
-        $this->assertStringContainsString('&apos;', $data['model']);
-        $this->assertStringContainsString('&apos;', $data['finishReason']);
-        // Verify model and finishReason have actual values (kills Coalesce mutants)
-        $this->assertSame('model&apos;s-name', $data['model']);
-        $this->assertSame('it&apos;s done', $data['finishReason']);
+        $this->assertSame('<p>Hello <strong>world</strong></p>', $data['content']);
+        $this->assertSame("model's-name", $data['model']);
+        $this->assertSame("it's done", $data['finishReason']);
     }
 
     // ===========================================
@@ -448,14 +412,14 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function completeActionEscapesHtmlInResponse(): void
+    public function completeActionReturnsRawHtmlContent(): void
     {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock
             ->method('findDefault')
             ->willReturn($config);
 
-        $completionResponse = $this->createCompletionResponse('<script>alert("xss")</script>');
+        $completionResponse = $this->createCompletionResponse('<p>Improved <strong>text</strong></p>');
         $this->llmServiceManagerMock
             ->method('chatWithConfiguration')
             ->willReturn($completionResponse);
@@ -464,8 +428,7 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->completeAction($request);
 
         $data = $this->decodeJsonResponse($response);
-        $this->assertStringNotContainsString('<script>', $data['content']);
-        $this->assertStringContainsString('&lt;script&gt;', $data['content']);
+        $this->assertSame('<p>Improved <strong>text</strong></p>', $data['content']);
     }
 
     #[Test]
@@ -828,7 +791,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function streamActionEscapesHtmlInSseChunks(): void
+    public function streamActionReturnsRawContentInSseChunks(): void
     {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
@@ -836,7 +799,7 @@ final class AjaxControllerTest extends TestCase
         $this->llmServiceManagerMock
             ->method('streamChatWithConfiguration')
             ->willReturnCallback(function () {
-                yield '<script>alert(1)</script>';
+                yield '<p>Hello</p>';
             });
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
@@ -845,15 +808,15 @@ final class AjaxControllerTest extends TestCase
         $response->getBody()->rewind();
         $body = $response->getBody()->getContents();
 
-        // Verify HTML is escaped in SSE data
-        $this->assertStringNotContainsString('<script>', $body);
-        $this->assertStringContainsString('&lt;script&gt;', $body);
+        // Raw HTML is preserved in SSE data (json_encode escapes / as \/)
+        $events = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
+        $firstEvent = json_decode(substr(reset($events), 6), true);
+        $this->assertSame('<p>Hello</p>', $firstEvent['content']);
     }
 
     #[Test]
-    public function streamActionEscapesSingleQuotesInSseChunks(): void
+    public function streamActionPreservesSpecialCharactersInSseChunks(): void
     {
-        // Kills BitwiseOr mutant (ENT_QUOTES|ENT_HTML5 → ENT_QUOTES&ENT_HTML5)
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
 
@@ -869,8 +832,8 @@ final class AjaxControllerTest extends TestCase
         $response->getBody()->rewind();
         $body = $response->getBody()->getContents();
 
-        // Verify single quotes are encoded as &apos; (ENT_HTML5 mode)
-        $this->assertStringContainsString('&apos;', $body);
+        // Single quotes preserved as-is (no HTML encoding)
+        $this->assertStringContainsString("It's a test", $body);
     }
 
     #[Test]
@@ -950,8 +913,8 @@ final class AjaxControllerTest extends TestCase
         $events    = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
         $lastEvent = json_decode(substr(end($events), 6), true);
         $this->assertTrue($lastEvent['done']);
-        // Model with single quote should be HTML-escaped
-        $this->assertSame('test-model&apos;s', $lastEvent['model']);
+        // Model preserved as-is (no HTML encoding)
+        $this->assertSame("test-model's", $lastEvent['model']);
     }
 
     #[Test]
@@ -1241,11 +1204,11 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function getConfigurationsActionEscapesHtmlInNames(): void
+    public function getConfigurationsActionReturnsRawNames(): void
     {
         $config = $this->createConfigurationMock(
-            '<script>alert(1)</script>',
-            '<img onerror=alert(1) src=x>',
+            'config-with-<special>',
+            'Config & Name',
             true,
         );
 
@@ -1261,37 +1224,9 @@ final class AjaxControllerTest extends TestCase
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
         $this->assertCount(1, $data['configurations']);
-        // Verify HTML entities are escaped
-        $this->assertStringNotContainsString('<script>', $data['configurations'][0]['identifier']);
-        $this->assertStringNotContainsString('<img', $data['configurations'][0]['name']);
-        $this->assertStringContainsString('&lt;', $data['configurations'][0]['identifier']);
-        $this->assertStringContainsString('&lt;', $data['configurations'][0]['name']);
-    }
-
-    #[Test]
-    public function getConfigurationsActionEscapesSingleQuotesInNames(): void
-    {
-        // Kills BitwiseOr mutants (ENT_QUOTES|ENT_HTML5 → ENT_QUOTES&ENT_HTML5) on identifier/name
-        $config = $this->createConfigurationMock(
-            "config's-id",
-            "Config's Name",
-            true,
-        );
-
-        $queryResult = $this->createQueryResultMock([$config]);
-
-        $this->configRepositoryMock
-            ->method('findActive')
-            ->willReturn($queryResult);
-
-        $request  = $this->createRequestWithJsonBody([]);
-        $response = $this->subject->getConfigurationsAction($request);
-
-        $data = $this->decodeJsonResponse($response);
-        $this->assertTrue($data['success']);
-        $this->assertCount(1, $data['configurations']);
-        $this->assertStringContainsString('&apos;', $data['configurations'][0]['identifier']);
-        $this->assertStringContainsString('&apos;', $data['configurations'][0]['name']);
+        // Raw values preserved — no HTML encoding in JSON responses
+        $this->assertSame('config-with-<special>', $data['configurations'][0]['identifier']);
+        $this->assertSame('Config & Name', $data['configurations'][0]['name']);
     }
 
     #[Test]
@@ -1546,9 +1481,9 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function getTasksActionEscapesHtmlInTaskFields(): void
+    public function getTasksActionReturnsRawTaskFields(): void
     {
-        $task = $this->createTaskMock(1, 'xss<test>', 'Name<script>', 'Desc&"quotes"', true);
+        $task = $this->createTaskMock(1, 'fix<test>', 'Fix Grammar & Spelling', 'Desc with "quotes"', true);
 
         $this->taskRepositoryMock
             ->method('findByCategory')
@@ -1557,8 +1492,10 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
 
         $data = $this->decodeJsonResponse($response);
-        self::assertStringNotContainsString('<script>', $data['tasks'][0]['name']);
-        self::assertStringNotContainsString('"quotes"', $data['tasks'][0]['description']);
+        // Raw values preserved — no HTML encoding in JSON responses
+        self::assertSame('fix<test>', $data['tasks'][0]['identifier']);
+        self::assertSame('Fix Grammar & Spelling', $data['tasks'][0]['name']);
+        self::assertSame('Desc with "quotes"', $data['tasks'][0]['description']);
     }
 
     // ===========================================

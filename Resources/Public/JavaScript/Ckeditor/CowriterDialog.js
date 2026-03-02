@@ -192,8 +192,8 @@ export class CowriterDialog {
                         'input[name="cowriter-context"]:checked',
                     )?.value || 'content_element';
                     const context = contextType === 'selection'
-                        ? container.dataset.selectedText
-                        : container.dataset.fullContent;
+                        ? selectedText
+                        : fullContent;
                     const adHocRules = container.querySelector(
                         '[data-role="ad-hoc-rules"]',
                     ).value.trim();
@@ -203,7 +203,11 @@ export class CowriterDialog {
                     );
 
                     if (result.success && result.content) {
-                        preview.textContent = result.content;
+                        preview.replaceChildren();
+                        const safeBody = this._sanitizeHtml(result.content);
+                        while (safeBody.firstChild) {
+                            preview.appendChild(safeBody.firstChild);
+                        }
                         resultContent = result.content;
                         state = 'result';
 
@@ -264,8 +268,6 @@ export class CowriterDialog {
     _buildDialogContent(tasks, selectedText, fullContent) {
         const container = document.createElement('div');
         container.className = 'cowriter-dialog';
-        container.dataset.selectedText = selectedText || '';
-        container.dataset.fullContent = fullContent || '';
 
         // Task selector
         const taskGroup = this._createFormGroup('Task');
@@ -376,6 +378,32 @@ export class CowriterDialog {
         wrapper.appendChild(input);
         wrapper.appendChild(labelEl);
         return wrapper;
+    }
+
+    /**
+     * Parse HTML string safely via DOMParser and remove dangerous elements/attributes.
+     *
+     * DOMParser does NOT execute scripts — parsed content is inert.
+     * We additionally strip script/style/iframe/object/embed/form elements
+     * and all on* event handler attributes.
+     *
+     * @param {string} html
+     * @returns {HTMLElement} The sanitized body element
+     * @private
+     */
+    _sanitizeHtml(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        doc.querySelectorAll('script, style, iframe, object, embed, form')
+            .forEach((el) => el.remove());
+        doc.querySelectorAll('*').forEach((el) => {
+            for (const attr of [...el.attributes]) {
+                if (attr.name.startsWith('on')
+                    || attr.value.toLowerCase().includes('javascript:')) {
+                    el.removeAttribute(attr.name);
+                }
+            }
+        });
+        return doc.body;
     }
 
     /**

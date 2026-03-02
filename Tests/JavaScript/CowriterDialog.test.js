@@ -306,7 +306,13 @@ describe('CowriterDialog', () => {
             await showPromise;
         });
 
-        it('should show result in preview area', async () => {
+        it('should show result in preview area as rich HTML', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<p>Improved <strong>text</strong> content</p>',
+                model: 'gpt-4o',
+            });
+
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('text', 'full');
 
@@ -318,8 +324,11 @@ describe('CowriterDialog', () => {
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
-                expect(preview.textContent).toBe('Improved text content');
                 expect(preview.style.display).toBe('block');
+                // HTML is rendered as DOM, not as literal text
+                expect(preview.querySelector('strong')).not.toBeNull();
+                expect(preview.textContent).toContain('Improved');
+                expect(preview.textContent).toContain('text');
             });
 
             // Model info should be shown

@@ -28,38 +28,6 @@ export class Cowriter extends Plugin {
      */
     _isProcessing = false;
 
-    /**
-     * Sanitize AI-generated content by removing HTML/XML tags
-     * @param {string} content - The content to sanitize
-     * @returns {string} - The sanitized content
-     * @private
-     */
-    _sanitizeContent(content) {
-        // Handle null, undefined, or non-string inputs
-        if (!content || typeof content !== 'string') {
-            return '';
-        }
-
-        // Remove HTML/XML tags from the content
-        // Matches opening tags, closing tags, and self-closing tags
-        // Note: This sanitizes AI-generated output (not user input) to remove
-        // accidental HTML/XML tags. The content will also be processed by CKEditor's
-        // own sanitization before being inserted into the DOM.
-        let sanitized = content;
-        let previousLength;
-        let iterations = 0;
-        const maxIterations = 100; // Defensive limit to prevent infinite loops
-
-        // Run the replacement multiple times to handle any nested or overlapping tags
-        do {
-            previousLength = sanitized.length;
-            sanitized = sanitized.replace(/<\/?[a-zA-Z][^>]*>/g, '');
-            iterations++;
-        } while (sanitized.length !== previousLength && iterations < maxIterations);
-
-        return sanitized;
-    }
-
     async init() {
         // Initialize the AIService (now uses TYPO3 AJAX backend)
         this._service = new AIService();
@@ -105,15 +73,16 @@ export class Cowriter extends Plugin {
                     const result = await dialog.show(selectedText || '', fullContent);
 
                     if (result?.content) {
-                        const sanitized = this._sanitizeContent(result.content);
                         model.change((writer) => {
                             if (promptRange) {
                                 writer.remove(promptRange);
                             }
-                            const insertPosition = selection.getFirstPosition();
-                            if (!insertPosition) return;
-                            writer.insert(sanitized, insertPosition);
                         });
+
+                        // Use CKEditor's HTML processing pipeline (handles schema/sanitization)
+                        const viewFragment = editor.data.processor.toView(result.content);
+                        const modelFragment = editor.data.toModel(viewFragment);
+                        editor.model.insertContent(modelFragment);
                     }
                 } catch (error) {
                     // User cancelled the dialog — no action needed.
