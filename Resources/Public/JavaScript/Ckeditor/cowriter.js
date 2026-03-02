@@ -122,19 +122,13 @@ export class Cowriter extends Plugin {
 
                 try {
                     const selection = editor.model.document.selection;
+                    const selectedRange = selection.getFirstRange();
 
-                    // Extract selected text from editor ranges
-                    const ranges = Array.from(selection.getRanges());
-                    let promptRange, selectedText;
-                    for (const range of ranges) {
-                        for (const item of range.getItems()) {
-                            if (item.data !== undefined && item.data !== '') {
-                                selectedText = item.data;
-                                promptRange = range;
-                                break;
-                            }
-                        }
-                        if (selectedText !== undefined) break;
+                    // Get the selected content as HTML via CKEditor's data pipeline
+                    let selectedText = '';
+                    if (selectedRange && !selectedRange.isCollapsed) {
+                        const content = model.getSelectedContent(selection);
+                        selectedText = editor.data.stringify(content);
                     }
 
                     const fullContent = editor.getData();
@@ -146,16 +140,17 @@ export class Cowriter extends Plugin {
                     const result = await dialog.show(selectedText || '', fullContent, caps, recordContext);
 
                     if (result?.content) {
-                        model.change((writer) => {
-                            if (promptRange) {
-                                writer.remove(promptRange);
-                            }
-                        });
-
                         // Use CKEditor's HTML processing pipeline (handles schema/sanitization)
                         const viewFragment = editor.data.processor.toView(result.content);
                         const modelFragment = editor.data.toModel(viewFragment);
-                        editor.model.insertContent(modelFragment);
+
+                        model.change((writer) => {
+                            if (selectedRange && !selectedRange.isCollapsed) {
+                                // Replace the selected range with the LLM output
+                                writer.setSelection(selectedRange);
+                            }
+                            editor.model.insertContent(modelFragment);
+                        });
                     }
                 } catch (error) {
                     // User cancelled the dialog — no action needed.

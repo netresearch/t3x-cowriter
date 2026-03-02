@@ -601,9 +601,9 @@ describe('CowriterDialog', () => {
             document.querySelector('[data-name="execute"]').click();
 
             await vi.waitFor(() => {
-                // Slider at 3 (page) means contextType='content_element', context='full'
+                // Slider at 3 (page): selection exists so contextType='selection', context='text'
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'full', 'content_element', '', '',
+                    1, 'text', 'selection', '', '',
                     'page', recordContext, [],
                 );
             });
@@ -631,14 +631,14 @@ describe('CowriterDialog', () => {
                 expect(label).not.toBeNull();
             }
 
-            // Execute at stop 4 (ancestors_1) — scope > 0 means content_element
+            // Execute at stop 4 (ancestors_1) — selection exists so contextType='selection'
             slider.value = '4';
             slider.dispatchEvent(new Event('input'));
             document.querySelector('[data-name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'full', 'content_element', '', '',
+                    1, 'text', 'selection', '', '',
                     'ancestors_1', rc, [],
                 );
             });

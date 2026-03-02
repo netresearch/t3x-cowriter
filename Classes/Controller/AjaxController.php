@@ -491,13 +491,16 @@ final readonly class AjaxController
             );
         }
 
-        // Resolve context: for extended scopes, assemble from DB
-        $context = $dto->context;
+        // Input is ALWAYS the editor content (the text to transform)
+        $input = $dto->context;
+        $surroundingContext = '';
+
+        // For extended scopes, assemble surrounding context as reference (NOT as input)
         if ($dto->contextScope !== '' && $dto->contextScope !== 'selection' && $dto->contextScope !== 'text'
             && $dto->recordContext !== null
         ) {
             try {
-                $context = $this->contextAssemblyService->assembleContext(
+                $surroundingContext = $this->contextAssemblyService->assembleContext(
                     $dto->recordContext['table'],
                     $dto->recordContext['uid'],
                     $dto->recordContext['field'],
@@ -517,31 +520,57 @@ final readonly class AjaxController
             }
         }
 
-        // Build prompt from task template — use assembled context
-        $prompt = $task->buildPrompt(['input' => $context]);
+        // Build prompt — inject ad-hoc rules BEFORE the input content so the LLM
+        // processes them as part of the instructions, not as an afterthought.
+        $promptInput = $input;
+        if (trim($dto->adHocRules) !== '') {
+            $promptInput = "ADDITIONAL RULES (follow these exactly — they override default behavior):\n"
+                . $dto->adHocRules . "\n\n"
+                . "Content to transform:\n" . $input;
+        }
+        $prompt = $task->buildPrompt(['input' => $promptInput]);
 
         // Build messages
         $messages = [];
 
-        // Inject editor capabilities as formatting context if provided
+        // Tell the LLM exactly what scope it is working with
+        $isSelection = $dto->contextType === 'selection';
+        $scopeInstruction = $isSelection
+            ? 'The user selected a portion of text. '
+                . 'Return ONLY the transformed selection — '
+                . 'do not add surrounding content or change the scope of the text.'
+            : 'Return the complete transformed content.';
+        $messages[] = ['role' => 'system', 'content' => $scopeInstruction];
+
+        // Inject surrounding context as read-only reference (BEFORE the prompt)
+        if ($surroundingContext !== '') {
+            $messages[] = [
+                'role'    => 'system',
+                'content' => "<reference_context>\n"
+                    . "Surrounding content from the same page for reference. "
+                    . "Use this to understand the broader context, avoid duplicating information, "
+                    . "and match the existing tone, style, and formatting patterns "
+                    . "(heading levels, list styles). "
+                    . "Do NOT include this content in your output.\n"
+                    . $surroundingContext . "\n"
+                    . '</reference_context>',
+            ];
+        }
+
+        // Inject editor capabilities with concrete HTML examples
         if (trim($dto->editorCapabilities) !== '') {
             $messages[] = [
                 'role'    => 'system',
                 'content' => 'The rich text editor supports these formatting features: '
                     . $dto->editorCapabilities
-                    . '. Actively use these HTML elements and styles to improve the visual structure and readability of the output.',
+                    . ". You may use any of these in the output.\n"
+                    . 'For inline styles, use: <span style="color: #hex"> for font colors, '
+                    . '<span style="background-color: #hex"> for background colors, '
+                    . '<mark> for text highlighting.',
             ];
         }
 
         $messages[] = ['role' => 'user', 'content' => $prompt];
-
-        // Append ad-hoc rules as additional instruction if provided
-        if (trim($dto->adHocRules) !== '') {
-            $messages[] = [
-                'role'    => 'user',
-                'content' => 'Additional instructions: ' . $dto->adHocRules,
-            ];
-        }
 
         // Resolve configuration: task's config → request's config → default
         $taskConfig    = $task->getConfiguration();

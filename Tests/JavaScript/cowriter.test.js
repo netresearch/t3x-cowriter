@@ -34,6 +34,18 @@ describe('Cowriter Plugin', () => {
         let capturedButton;
         let mockDialogShow;
 
+        /**
+         * Create a mock selection range.
+         * @param {boolean} collapsed - Whether the range is collapsed (no selection)
+         * @param {string} html - HTML content the selection should return via stringify
+         */
+        function mockSelection(collapsed, html = '') {
+            const range = { isCollapsed: collapsed };
+            mockEditor.model.document.selection.getFirstRange.mockReturnValue(range);
+            mockEditor.model.getSelectedContent.mockReturnValue({ type: 'content' });
+            mockEditor.data.stringify.mockReturnValue(html);
+        }
+
         beforeEach(async () => {
             vi.resetModules();
 
@@ -58,22 +70,25 @@ describe('Cowriter Plugin', () => {
                 model: {
                     document: {
                         selection: {
-                            getRanges: vi.fn().mockReturnValue([]),
+                            getFirstRange: vi.fn().mockReturnValue({ isCollapsed: true }),
                             getFirstPosition: vi.fn().mockReturnValue({}),
                         },
                     },
                     change: vi.fn((callback) => callback(mockEditor._writer)),
                     insertContent: vi.fn(),
+                    getSelectedContent: vi.fn().mockReturnValue({ type: 'content' }),
                 },
                 _writer: {
                     remove: vi.fn(),
                     insert: vi.fn(),
+                    setSelection: vi.fn(),
                 },
                 data: {
                     processor: {
                         toView: vi.fn().mockReturnValue({ type: 'viewFragment' }),
                     },
                     toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
+                    stringify: vi.fn().mockReturnValue(''),
                 },
                 plugins: { has: vi.fn().mockReturnValue(false) },
                 config: { get: vi.fn().mockReturnValue(undefined) },
@@ -103,28 +118,22 @@ describe('Cowriter Plugin', () => {
         it('should do nothing when _isProcessing is true', async () => {
             plugin._isProcessing = true;
             await capturedButton.fire('execute');
-            expect(mockEditor.model.document.selection.getRanges).not.toHaveBeenCalled();
+            expect(mockEditor.model.document.selection.getFirstRange).not.toHaveBeenCalled();
         });
 
         it('should open dialog even without text selection', async () => {
-            mockEditor.model.document.selection.getRanges.mockReturnValue([
-                { getItems: () => [{ data: '' }] },
-            ]);
+            mockSelection(true);
             await capturedButton.fire('execute');
 
             expect(mockDialogShow).toHaveBeenCalledWith('', '<p>Full editor content</p>', '', null);
         });
 
-        it('should open dialog with selected text', async () => {
-            const mockRange = {
-                getItems: () => [{ data: 'write about cats' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
-
+        it('should open dialog with selected HTML', async () => {
+            mockSelection(false, '<p>write about <strong>cats</strong></p>');
             await capturedButton.fire('execute');
 
             expect(mockDialogShow).toHaveBeenCalledWith(
-                'write about cats',
+                '<p>write about <strong>cats</strong></p>',
                 '<p>Full editor content</p>',
                 '',
                 null,
@@ -132,15 +141,9 @@ describe('Cowriter Plugin', () => {
         });
 
         it('should insert dialog result via CKEditor HTML pipeline', async () => {
-            const mockRange = {
-                getItems: () => [{ data: 'test prompt' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
-
+            mockSelection(false, '<p>test prompt</p>');
             await capturedButton.fire('execute');
 
-            // Selection range should be removed first
-            expect(mockEditor._writer.remove).toHaveBeenCalledWith(mockRange);
             // Content inserted via CKEditor's HTML processing pipeline
             expect(mockEditor.data.processor.toView).toHaveBeenCalledWith('AI response');
             expect(mockEditor.data.toModel).toHaveBeenCalledWith({ type: 'viewFragment' });
@@ -151,10 +154,7 @@ describe('Cowriter Plugin', () => {
             mockDialogShow.mockResolvedValue({
                 content: '<p>Formatted <strong>response</strong></p>',
             });
-            const mockRange = {
-                getItems: () => [{ data: 'prompt' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            mockSelection(false, '<p>prompt</p>');
 
             await capturedButton.fire('execute');
 
@@ -166,10 +166,7 @@ describe('Cowriter Plugin', () => {
 
         it('should not insert when dialog is cancelled', async () => {
             mockDialogShow.mockRejectedValue(new Error('User cancelled'));
-            const mockRange = {
-                getItems: () => [{ data: 'prompt' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            mockSelection(false, '<p>prompt</p>');
 
             await capturedButton.fire('execute');
 
@@ -177,10 +174,7 @@ describe('Cowriter Plugin', () => {
         });
 
         it('should reset _isProcessing after completion', async () => {
-            const mockRange = {
-                getItems: () => [{ data: 'prompt' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            mockSelection(false, '<p>prompt</p>');
 
             await capturedButton.fire('execute');
             expect(plugin._isProcessing).toBe(false);
@@ -188,34 +182,28 @@ describe('Cowriter Plugin', () => {
 
         it('should reset _isProcessing after cancel', async () => {
             mockDialogShow.mockRejectedValue(new Error('User cancelled'));
-            const mockRange = {
-                getItems: () => [{ data: 'prompt' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            mockSelection(false, '<p>prompt</p>');
 
             await capturedButton.fire('execute');
             expect(plugin._isProcessing).toBe(false);
         });
 
-        it('should remove selection and insert via CKEditor pipeline', async () => {
-            const mockRange = {
-                getItems: () => [{ data: 'prompt' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+        it('should set selection to range before inserting replacement', async () => {
+            const range = { isCollapsed: false };
+            mockEditor.model.document.selection.getFirstRange.mockReturnValue(range);
+            mockEditor.model.getSelectedContent.mockReturnValue({ type: 'content' });
+            mockEditor.data.stringify.mockReturnValue('<p>prompt</p>');
 
             await capturedButton.fire('execute');
 
-            expect(mockEditor._writer.remove).toHaveBeenCalled();
-            // Insertion handled by CKEditor's insertContent (handles position internally)
+            // Selection set to original range so insertContent replaces it
+            expect(mockEditor._writer.setSelection).toHaveBeenCalledWith(range);
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
         });
 
         it('should handle empty content from dialog result', async () => {
             mockDialogShow.mockResolvedValue({ content: '' });
-            const mockRange = {
-                getItems: () => [{ data: 'prompt' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            mockSelection(false, '<p>prompt</p>');
 
             await capturedButton.fire('execute');
 
@@ -223,29 +211,12 @@ describe('Cowriter Plugin', () => {
             expect(mockEditor.model.change).not.toHaveBeenCalled();
         });
 
-        it('should use first range item with data from multiple ranges', async () => {
-            const range1 = { getItems: () => [{ data: '' }] };
-            const range2 = { getItems: () => [{ data: 'found in range 2' }] };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([range1, range2]);
+        it('should not set selection when no selection exists', async () => {
+            mockSelection(true);
 
             await capturedButton.fire('execute');
 
-            expect(mockDialogShow).toHaveBeenCalledWith(
-                'found in range 2',
-                '<p>Full editor content</p>',
-                '',
-                null,
-            );
-        });
-
-        it('should not remove range when no selection exists', async () => {
-            mockEditor.model.document.selection.getRanges.mockReturnValue([
-                { getItems: () => [{}] },
-            ]);
-
-            await capturedButton.fire('execute');
-
-            expect(mockEditor._writer.remove).not.toHaveBeenCalled();
+            expect(mockEditor._writer.setSelection).not.toHaveBeenCalled();
             // Content still inserted via CKEditor pipeline
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
         });
@@ -258,15 +229,12 @@ describe('Cowriter Plugin', () => {
             wrapper.appendChild(textarea);
             mockEditor.sourceElement = wrapper;
 
-            const mockRange = {
-                getItems: () => [{ data: 'selected' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+            mockSelection(false, '<p>selected</p>');
 
             await capturedButton.fire('execute');
 
             expect(mockDialogShow).toHaveBeenCalledWith(
-                'selected',
+                '<p>selected</p>',
                 '<p>Full editor content</p>',
                 '',
                 { table: 'tt_content', uid: 99, field: 'bodytext' },

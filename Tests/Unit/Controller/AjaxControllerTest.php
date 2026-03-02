@@ -1593,10 +1593,13 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function executeTaskActionAppendsAdHocRules(): void
+    public function executeTaskActionAppendsAdHocRulesToPrompt(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('buildPrompt')->willReturn('Improve: text');
+        // Use callback so the ad-hoc rules injected into {{input}} are visible
+        $task->method('buildPrompt')->willReturnCallback(
+            static fn (array $vars) => 'Improve: ' . ($vars['input'] ?? 'text'),
+        );
         $task->method('getConfiguration')->willReturn(null);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -1611,8 +1614,16 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    return count($messages) === 2
-                        && $messages[1]['content'] === 'Additional instructions: Be formal';
+                    // [0] = scope system message, [1] = user prompt with ad-hoc rules before input
+                    $userMsg = $messages[count($messages) - 1];
+
+                    return $messages[0]['role'] === 'system'
+                        && str_contains($messages[0]['content'], 'selected a portion of text')
+                        && $userMsg['role'] === 'user'
+                        && str_contains($userMsg['content'], 'ADDITIONAL RULES (follow these exactly')
+                        && str_contains($userMsg['content'], 'Be formal')
+                        && str_contains($userMsg['content'], 'Content to transform:')
+                        && str_contains($userMsg['content'], 'text');
                 }),
                 $config,
             )
@@ -1629,7 +1640,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function executeTaskActionInjectsEditorCapabilitiesIntoPrompt(): void
+    public function executeTaskActionInjectsEditorCapabilitiesWithInlineStyleExamples(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('buildPrompt')->willReturn('Improve: text');
@@ -1647,10 +1658,15 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    return count($messages) === 2
+                    // [0] = scope, [1] = capabilities, [2] = user prompt
+                    return count($messages) === 3
                         && $messages[0]['role'] === 'system'
-                        && str_contains($messages[0]['content'], 'bold')
-                        && str_contains($messages[0]['content'], 'tables');
+                        && str_contains($messages[0]['content'], 'selected a portion of text')
+                        && $messages[1]['role'] === 'system'
+                        && str_contains($messages[1]['content'], 'bold')
+                        && str_contains($messages[1]['content'], 'tables')
+                        && str_contains($messages[1]['content'], '<span style="color: #hex">')
+                        && str_contains($messages[1]['content'], '<mark>');
                 }),
                 $config,
             )
@@ -1685,9 +1701,10 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    // Only the user message, no system message for capabilities
-                    return count($messages) === 1
-                        && $messages[0]['role'] === 'user';
+                    // [0] = scope system message, [1] = user message (no capabilities)
+                    return count($messages) === 2
+                        && $messages[0]['role'] === 'system'
+                        && $messages[1]['role'] === 'user';
                 }),
                 $config,
             )
@@ -1847,17 +1864,22 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function executeTaskActionUsesAssembledContextForPageScope(): void
+    public function executeTaskActionUsesAssembledContextAsReferenceNotInput(): void
     {
+        $assembledContext = "=== Content element (tt_content #42) ===\nHeader: Test\nBodytext: Full page content\n";
+
         $this->contextAssemblyMock
             ->method('assembleContext')
-            ->willReturn("=== Content element (tt_content #42) ===\nHeader: Test\nBodytext: Full page content\n");
+            ->willReturn($assembledContext);
 
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('getConfiguration')->willReturn(null);
-        $task->method('buildPrompt')->willReturnCallback(
-            fn (array $vars) => 'Improve: ' . $vars['input'],
-        );
+        // buildPrompt receives the ORIGINAL editor content, not the assembled context
+        $task->method('buildPrompt')
+            ->with(['input' => 'original text'])
+            ->willReturnCallback(
+                fn (array $vars) => 'Improve: ' . $vars['input'],
+            );
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
 
         $config = $this->createConfigurationMock();
@@ -1865,7 +1887,26 @@ final class AjaxControllerTest extends TestCase
 
         $completionResponse = $this->createCompletionResponse('Improved content');
         $this->llmServiceManagerMock
+            ->expects($this->once())
             ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages) use ($assembledContext): bool {
+                    // [0] = scope constraint, [1] = reference context in XML, [last] = user prompt
+                    $scopeMsg = $messages[0];
+                    $refMsg = $messages[1];
+                    $userMsg = $messages[count($messages) - 1];
+
+                    return $scopeMsg['role'] === 'system'
+                        && str_contains($scopeMsg['content'], 'selected a portion of text')
+                        && $refMsg['role'] === 'system'
+                        && str_contains($refMsg['content'], '<reference_context')
+                        && str_contains($refMsg['content'], 'Do NOT include this content in your output')
+                        && str_contains($refMsg['content'], $assembledContext)
+                        && $userMsg['role'] === 'user'
+                        && $userMsg['content'] === 'Improve: original text';
+                }),
+                $config,
+            )
             ->willReturn($completionResponse);
 
         $request = $this->createRequestWithJsonBody([

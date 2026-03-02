@@ -224,10 +224,12 @@ export class CowriterDialog {
                     const slider = container.querySelector('[data-role="context-slider"]');
                     const scopeIndex = parseInt(slider.value, 10);
                     const contextScope = SCOPE_IDS[scopeIndex] || 'selection';
-                    const contextType = scopeIndex === 0 ? 'selection' : 'content_element';
-                    const context = contextType === 'selection'
-                        ? selectedText
-                        : fullContent;
+                    const hasSelection = Boolean(selectedText && selectedText.trim().length > 0);
+                    const contextType = hasSelection ? 'selection' : 'content_element';
+                    // Always send the user's actual working text (selection or full field).
+                    // The contextScope tells the backend what surrounding reference to assemble
+                    // separately — it must NOT replace the input text.
+                    const context = hasSelection ? selectedText : fullContent;
                     const adHocRules = container.querySelector(
                         '[data-role="ad-hoc-rules"]',
                     ).value.trim();
