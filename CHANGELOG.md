@@ -6,9 +6,14 @@
 - Requires nr-llm extension for LLM provider abstraction (no standalone operation)
 - Removed direct OpenAI/Ollama API support from JavaScript frontend
 - API keys now managed exclusively by nr-llm extension (not in extension settings)
+- CKEditor button now opens a task dialog instead of directly replacing selected text
 
 ## FEATURE
 
+- Task-based dialog: select from predefined tasks (Improve, Summarize, Extend, Fix Grammar, Translate EN/DE)
+- Context scope control: choose between selected text or full content element
+- Ad-hoc instructions: add custom rules per request (e.g., "Write in formal tone")
+- Result preview before inserting into the editor with retry option
 - TYPO3 v13.4 LTS support added alongside v14
 - PHP 8.2, 8.3, 8.4, 8.5 support (widened from 8.5-only)
 - Rate limiting: 20 requests/minute per backend user
