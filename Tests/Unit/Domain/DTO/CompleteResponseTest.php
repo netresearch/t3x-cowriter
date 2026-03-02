@@ -37,19 +37,18 @@ final class CompleteResponseTest extends TestCase
     }
 
     #[Test]
-    public function successEscapesHtmlInContent(): void
+    public function successReturnsRawContentWithoutEscaping(): void
     {
-        $completionResponse = $this->createCompletionResponse('<script>alert("xss")</script>');
+        $completionResponse = $this->createCompletionResponse('<p>Hello <strong>world</strong></p>');
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertStringNotContainsString('<script>', $response->content);
-        $this->assertStringContainsString('&lt;script&gt;', $response->content);
+        $this->assertSame('<p>Hello <strong>world</strong></p>', $response->content);
     }
 
     #[Test]
-    #[DataProvider('htmlEscapingProvider')]
-    public function successProperlyEscapesVariousHtmlPatterns(string $input, string $expectedContent): void
+    #[DataProvider('rawContentProvider')]
+    public function successPreservesRawContent(string $input, string $expectedContent): void
     {
         $completionResponse = $this->createCompletionResponse($input);
 
@@ -61,27 +60,23 @@ final class CompleteResponseTest extends TestCase
     /**
      * @return iterable<string, array{string, string}>
      */
-    public static function htmlEscapingProvider(): iterable
+    public static function rawContentProvider(): iterable
     {
-        yield 'script tag' => [
-            '<script>alert(1)</script>',
-            '&lt;script&gt;alert(1)&lt;/script&gt;',
+        yield 'HTML tags preserved' => [
+            '<p>Hello <strong>world</strong></p>',
+            '<p>Hello <strong>world</strong></p>',
         ];
-        yield 'img onerror' => [
-            '<img src=x onerror=alert(1)>',
-            '&lt;img src=x onerror=alert(1)&gt;',
-        ];
-        yield 'single quotes' => [
+        yield 'single quotes preserved' => [
             "Hello 'world'",
-            'Hello &apos;world&apos;',
+            "Hello 'world'",
         ];
-        yield 'double quotes' => [
+        yield 'double quotes preserved' => [
             'Hello "world"',
-            'Hello &quot;world&quot;',
+            'Hello "world"',
         ];
-        yield 'ampersand' => [
+        yield 'ampersand preserved' => [
             'A & B',
-            'A &amp; B',
+            'A & B',
         ];
         yield 'plain text unchanged' => [
             'Just plain text',
@@ -216,7 +211,7 @@ final class CompleteResponseTest extends TestCase
     }
 
     #[Test]
-    public function successEscapesFinishReasonWithSpecialCharacters(): void
+    public function successPreservesSpecialCharactersInFinishReason(): void
     {
         $usage = new UsageStatistics(10, 20, 30);
 
@@ -230,15 +225,12 @@ final class CompleteResponseTest extends TestCase
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertStringNotContainsString('<script>', $response->finishReason);
-        $this->assertStringContainsString('&lt;script&gt;', $response->finishReason);
+        $this->assertSame('stop<script>', $response->finishReason);
     }
 
     #[Test]
-    public function successEscapesSingleQuotesInModelAndFinishReason(): void
+    public function successPreservesSpecialCharactersInModelAndFinishReason(): void
     {
-        // Kills BitwiseOr mutants on model (ENT_QUOTES|ENT_HTML5 → ENT_QUOTES&ENT_HTML5)
-        // and finishReason fields in CompleteResponse::success()
         $usage = new UsageStatistics(10, 20, 30);
 
         $completionResponse = new CompletionResponse(
@@ -251,12 +243,8 @@ final class CompleteResponseTest extends TestCase
 
         $response = CompleteResponse::success($completionResponse);
 
-        // With ENT_QUOTES|ENT_HTML5: single quotes become &apos;
-        // With ENT_QUOTES&ENT_HTML5 (=0, ENT_COMPAT): single quotes are NOT encoded
-        $this->assertStringContainsString('&apos;', $response->model);
-        $this->assertStringContainsString('&apos;', $response->finishReason);
-        $this->assertSame('model&apos;s-name', $response->model);
-        $this->assertSame('it&apos;s done', $response->finishReason);
+        $this->assertSame("model's-name", $response->model);
+        $this->assertSame("it's done", $response->finishReason);
     }
 
     private function createCompletionResponse(
