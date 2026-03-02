@@ -18,6 +18,7 @@ use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
@@ -48,6 +49,7 @@ final class AjaxControllerTest extends TestCase
     private RateLimiterInterface&MockObject $rateLimiterMock;
     private Context&MockObject $contextMock;
     private LoggerInterface&MockObject $loggerMock;
+    private ContextAssemblyServiceInterface&MockObject $contextAssemblyMock;
 
     protected function setUp(): void
     {
@@ -59,6 +61,7 @@ final class AjaxControllerTest extends TestCase
         $this->rateLimiterMock       = $this->createMock(RateLimiterInterface::class);
         $this->contextMock           = $this->createMock(Context::class);
         $this->loggerMock            = $this->createMock(LoggerInterface::class);
+        $this->contextAssemblyMock   = $this->createMock(ContextAssemblyServiceInterface::class);
 
         // Default: rate limit allows request
         $this->rateLimiterMock
@@ -81,6 +84,7 @@ final class AjaxControllerTest extends TestCase
             $this->rateLimiterMock,
             $this->contextMock,
             $this->loggerMock,
+            $this->contextAssemblyMock,
         );
     }
 
@@ -746,6 +750,7 @@ final class AjaxControllerTest extends TestCase
             $this->rateLimiterMock,
             $this->contextMock,
             $this->loggerMock,
+            $this->contextAssemblyMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
@@ -992,6 +997,7 @@ final class AjaxControllerTest extends TestCase
             $this->rateLimiterMock,
             $this->contextMock,
             $this->loggerMock,
+            $this->contextAssemblyMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => 'Hello']]]);
@@ -1027,6 +1033,7 @@ final class AjaxControllerTest extends TestCase
             $this->rateLimiterMock,
             $this->contextMock,
             $this->loggerMock,
+            $this->contextAssemblyMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
@@ -1801,6 +1808,7 @@ final class AjaxControllerTest extends TestCase
             $this->rateLimiterMock,
             $this->contextMock,
             $this->loggerMock,
+            $this->contextAssemblyMock,
         );
 
         $request = $this->createRequestWithJsonBody([
@@ -1836,6 +1844,73 @@ final class AjaxControllerTest extends TestCase
         $data = $this->decodeJsonResponse($response);
         self::assertFalse($data['success']);
         self::assertStringContainsString('configuration', $data['error']);
+    }
+
+    // =========================================================================
+    // getContextAction
+    // =========================================================================
+
+    #[Test]
+    public function getContextActionReturnsSummaryForValidRequest(): void
+    {
+        $this->contextAssemblyMock
+            ->method('getContextSummary')
+            ->with('tt_content', 123, 'bodytext', 'page')
+            ->willReturn(['summary' => '3 elements, ~42 words', 'wordCount' => 42]);
+
+        $request = $this->createStub(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn([
+            'table' => 'tt_content',
+            'uid'   => '123',
+            'field' => 'bodytext',
+            'scope' => 'page',
+        ]);
+
+        $response = $this->subject->getContextAction($request);
+        $body = json_decode((string) $response->getBody(), true);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertTrue($body['success']);
+        self::assertSame('3 elements, ~42 words', $body['summary']);
+        self::assertSame(42, $body['wordCount']);
+    }
+
+    #[Test]
+    public function getContextActionReturns400ForInvalidRequest(): void
+    {
+        $request = $this->createStub(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn([
+            'table' => 'be_users',
+            'uid'   => '1',
+            'field' => 'username',
+            'scope' => 'page',
+        ]);
+
+        $response = $this->subject->getContextAction($request);
+        $body = json_decode((string) $response->getBody(), true);
+
+        self::assertSame(400, $response->getStatusCode());
+        self::assertFalse($body['success']);
+    }
+
+    #[Test]
+    public function getContextActionReturns500OnServiceError(): void
+    {
+        $this->contextAssemblyMock
+            ->method('getContextSummary')
+            ->willThrowException(new \RuntimeException('DB error'));
+
+        $request = $this->createStub(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn([
+            'table' => 'tt_content',
+            'uid'   => '1',
+            'field' => 'bodytext',
+            'scope' => 'element',
+        ]);
+
+        $response = $this->subject->getContextAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
     }
 
     // ===========================================

@@ -17,7 +17,7 @@ use TYPO3\CMS\Core\Database\ConnectionPool;
  * Fetches and formats content from tt_content records based on the requested
  * scope (element, page, ancestor pages) for use as LLM context.
  */
-final readonly class ContextAssemblyService
+final readonly class ContextAssemblyService implements ContextAssemblyServiceInterface
 {
     /**
      * Text fields to extract from tt_content records.

@@ -18,7 +18,9 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
+use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
+use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
@@ -74,6 +76,7 @@ final readonly class AjaxController
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
+        private ContextAssemblyServiceInterface $contextAssemblyService,
     ) {}
 
     /**
@@ -411,6 +414,48 @@ final readonly class AjaxController
             'success' => true,
             'tasks'   => $list,
         ]);
+    }
+
+    /**
+     * Get a lightweight context preview (word count, summary).
+     *
+     * Returns summary information about the content that would be assembled
+     * for the given scope, without building the full context text.
+     */
+    public function getContextAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $dto = ContextRequest::fromQueryParams($request);
+
+        if (!$dto->isValid()) {
+            return new JsonResponse(
+                ['success' => false, 'error' => 'Invalid context request.'],
+                400,
+            );
+        }
+
+        try {
+            $result = $this->contextAssemblyService->getContextSummary(
+                $dto->table,
+                $dto->uid,
+                $dto->field,
+                $dto->scope,
+            );
+
+            return new JsonResponse([
+                'success'   => true,
+                'summary'   => $result['summary'],
+                'wordCount' => $result['wordCount'],
+            ]);
+        } catch (Throwable $e) {
+            $this->logger->error('Context preview error', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            return new JsonResponse(
+                ['success' => false, 'error' => 'Failed to fetch context preview.'],
+                500,
+            );
+        }
     }
 
     /**
