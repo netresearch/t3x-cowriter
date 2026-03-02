@@ -450,9 +450,19 @@ final readonly class AjaxController
         $prompt = $task->buildPrompt(['input' => $dto->context]);
 
         // Build messages
-        $messages = [
-            ['role' => 'user', 'content' => $prompt],
-        ];
+        $messages = [];
+
+        // Inject editor capabilities as formatting context if provided
+        if (trim($dto->editorCapabilities) !== '') {
+            $messages[] = [
+                'role'    => 'system',
+                'content' => 'The rich text editor supports these formatting features: '
+                    . $dto->editorCapabilities
+                    . '. Actively use these HTML elements and styles to improve the visual structure and readability of the output.',
+            ];
+        }
+
+        $messages[] = ['role' => 'user', 'content' => $prompt];
 
         // Append ad-hoc rules as additional instruction if provided
         if (trim($dto->adHocRules) !== '') {

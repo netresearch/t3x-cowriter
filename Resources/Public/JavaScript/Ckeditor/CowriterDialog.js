@@ -42,9 +42,10 @@ export class CowriterDialog {
      *
      * @param {string} selectedText - Currently selected text in the editor
      * @param {string} fullContent - Full content of the editor
+     * @param {string} [editorCapabilities=''] - Available editor formatting features
      * @returns {Promise<DialogResult>} Resolves with content to insert, rejects on cancel
      */
-    async show(selectedText, fullContent) {
+    async show(selectedText, fullContent, editorCapabilities = '') {
         let tasks;
         try {
             const response = await this._service.getTasks();
@@ -57,7 +58,7 @@ export class CowriterDialog {
             return this._showNoTasksModal();
         }
 
-        return this._showModal(tasks, selectedText, fullContent);
+        return this._showModal(tasks, selectedText, fullContent, editorCapabilities);
     }
 
     /**
@@ -143,10 +144,11 @@ export class CowriterDialog {
      * @param {TaskItem[]} tasks
      * @param {string} selectedText
      * @param {string} fullContent
+     * @param {string} editorCapabilities
      * @returns {Promise<DialogResult>}
      * @private
      */
-    _showModal(tasks, selectedText, fullContent) {
+    _showModal(tasks, selectedText, fullContent, editorCapabilities) {
         const container = this._buildDialogContent(tasks, selectedText, fullContent);
         /** @type {'idle'|'loading'|'result'} */
         let state = 'idle';
@@ -199,7 +201,7 @@ export class CowriterDialog {
                     ).value.trim();
 
                     const result = await this._service.executeTask(
-                        taskUid, context, contextType, adHocRules,
+                        taskUid, context, contextType, adHocRules, editorCapabilities,
                     );
 
                     if (result.success && result.content) {

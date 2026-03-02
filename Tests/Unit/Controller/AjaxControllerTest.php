@@ -1622,6 +1622,80 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
+    public function executeTaskActionInjectsEditorCapabilitiesIntoPrompt(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturn('Improve: text');
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    return count($messages) === 2
+                        && $messages[0]['role'] === 'system'
+                        && str_contains($messages[0]['content'], 'bold')
+                        && str_contains($messages[0]['content'], 'tables');
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'            => 1,
+            'context'            => 'text',
+            'contextType'        => 'selection',
+            'editorCapabilities' => 'bold, tables, lists',
+        ]);
+
+        $this->subject->executeTaskAction($request);
+    }
+
+    #[Test]
+    public function executeTaskActionSkipsCapabilitiesWhenEmpty(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturn('Improve: text');
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    // Only the user message, no system message for capabilities
+                    return count($messages) === 1
+                        && $messages[0]['role'] === 'user';
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $this->subject->executeTaskAction($request);
+    }
+
+    #[Test]
     public function executeTaskActionUsesTaskConfiguration(): void
     {
         $taskConfig = $this->createConfigurationMock('task-config', 'Task Config', false);

@@ -670,6 +670,7 @@ describe('AIService', () => {
                     context: 'Hello world',
                     contextType: 'selection',
                     adHocRules: 'Be formal',
+                    editorCapabilities: '',
                 }),
             });
             expect(result).toEqual(mockResponse);
@@ -691,6 +692,25 @@ describe('AIService', () => {
 
             const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
             expect(body.adHocRules).toBe('');
+            expect(body.editorCapabilities).toBe('');
+        });
+
+        it('should include editorCapabilities in request body', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ success: true, content: 'result' }),
+            });
+
+            const service = new ServiceClass();
+            await service.executeTask(1, 'text', 'selection', '', 'bold, tables, lists');
+
+            const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+            expect(body.editorCapabilities).toBe('bold, tables, lists');
         });
 
         it('should throw on non-ok response', async () => {

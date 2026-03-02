@@ -32,6 +32,11 @@ final readonly class ExecuteTaskRequest
     private const MAX_RULES_LENGTH = 4096;
 
     /**
+     * Maximum allowed editor capabilities length in characters.
+     */
+    private const MAX_CAPABILITIES_LENGTH = 2048;
+
+    /**
      * Allowed context types.
      *
      * @var list<string>
@@ -44,6 +49,7 @@ final readonly class ExecuteTaskRequest
         public string $contextType,
         public string $adHocRules,
         public ?string $configuration,
+        public string $editorCapabilities = '',
     ) {}
 
     /**
@@ -71,6 +77,7 @@ final readonly class ExecuteTaskRequest
             contextType: self::extractString($data, 'contextType'),
             adHocRules: self::extractString($data, 'adHocRules'),
             configuration: self::extractNullableString($data, 'configuration'),
+            editorCapabilities: self::extractString($data, 'editorCapabilities'),
         );
     }
 
@@ -96,6 +103,10 @@ final readonly class ExecuteTaskRequest
         }
 
         if (mb_strlen($this->adHocRules, 'UTF-8') > self::MAX_RULES_LENGTH) {
+            return false;
+        }
+
+        if (mb_strlen($this->editorCapabilities, 'UTF-8') > self::MAX_CAPABILITIES_LENGTH) {
             return false;
         }
 
