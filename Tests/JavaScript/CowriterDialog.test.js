@@ -641,4 +641,118 @@ describe('CowriterDialog', () => {
             await showPromise;
         });
     });
+
+    describe('reference page picker', () => {
+        it('should render "Add reference page" button', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+
+            await vi.waitFor(() => {
+                const btn = document.querySelector('[data-role="add-reference"]');
+                expect(btn).not.toBeNull();
+                expect(btn.textContent).toContain('Add reference page');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should add reference page row when button clicked', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull();
+            });
+
+            document.querySelector('[data-role="add-reference"]').click();
+
+            const rows = document.querySelectorAll('[data-role="reference-row"]');
+            expect(rows.length).toBe(1);
+
+            expect(rows[0].querySelector('[data-role="ref-pid"]')).not.toBeNull();
+            expect(rows[0].querySelector('[data-role="ref-relation"]')).not.toBeNull();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should remove reference page row when remove button clicked', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull();
+            });
+
+            document.querySelector('[data-role="add-reference"]').click();
+            document.querySelector('[data-role="add-reference"]').click();
+            expect(document.querySelectorAll('[data-role="reference-row"]').length).toBe(2);
+
+            document.querySelector('[data-role="remove-reference"]').click();
+            expect(document.querySelectorAll('[data-role="reference-row"]').length).toBe(1);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should include reference pages in executeTask call', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const rc = { table: 'tt_content', uid: 1, field: 'bodytext' };
+            const showPromise = dialog.show('text', 'full', '', rc);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull();
+            });
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const row = document.querySelector('[data-role="reference-row"]');
+            row.querySelector('[data-role="ref-pid"]').value = '5';
+            row.querySelector('[data-role="ref-relation"]').value = 'style guide';
+
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                expect(mockService.executeTask).toHaveBeenCalledWith(
+                    1, 'text', 'selection', '', '',
+                    'selection', rc,
+                    [{ pid: 5, relation: 'style guide' }],
+                );
+            });
+
+            document.querySelector('[data-name="execute"]').click();
+            await showPromise;
+        });
+
+        it('should skip reference pages with empty or zero page ID', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const rc = { table: 'tt_content', uid: 1, field: 'bodytext' };
+            const showPromise = dialog.show('text', 'full', '', rc);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull();
+            });
+
+            // Add two rows, one with valid PID, one without
+            document.querySelector('[data-role="add-reference"]').click();
+            document.querySelector('[data-role="add-reference"]').click();
+            const rows = document.querySelectorAll('[data-role="reference-row"]');
+            rows[0].querySelector('[data-role="ref-pid"]').value = '5';
+            rows[0].querySelector('[data-role="ref-relation"]').value = 'ref';
+            // rows[1] left empty (PID = '' which parses to NaN, so pid > 0 is false)
+
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                expect(mockService.executeTask).toHaveBeenCalledWith(
+                    1, 'text', 'selection', '', '',
+                    'selection', rc,
+                    [{ pid: 5, relation: 'ref' }],
+                );
+            });
+
+            document.querySelector('[data-name="execute"]').click();
+            await showPromise;
+        });
+    });
 });

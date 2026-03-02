@@ -206,9 +206,20 @@ export class CowriterDialog {
                         '[data-role="ad-hoc-rules"]',
                     ).value.trim();
 
+                    // Collect reference pages
+                    const refRows = container.querySelectorAll('[data-role="reference-row"]');
+                    const referencePages = [];
+                    for (const row of refRows) {
+                        const pid = parseInt(row.querySelector('[data-role="ref-pid"]')?.value, 10);
+                        const relation = row.querySelector('[data-role="ref-relation"]')?.value?.trim() || '';
+                        if (pid > 0) {
+                            referencePages.push({ pid, relation });
+                        }
+                    }
+
                     const result = await this._service.executeTask(
                         taskUid, context, contextType, adHocRules, editorCapabilities,
-                        contextScope, recordContext, [],
+                        contextScope, recordContext, referencePages,
                     );
 
                     if (result.success && result.content) {
@@ -366,6 +377,37 @@ export class CowriterDialog {
 
         container.appendChild(contextGroup);
 
+        // Reference pages section
+        const refGroup = this._createFormGroup('Reference pages (optional)');
+
+        const refContainer = document.createElement('div');
+        refContainer.dataset.role = 'reference-list';
+        refGroup.appendChild(refContainer);
+
+        const addRefBtn = document.createElement('button');
+        addRefBtn.type = 'button';
+        addRefBtn.className = 'btn btn-sm btn-outline-secondary mt-1';
+        addRefBtn.dataset.role = 'add-reference';
+        addRefBtn.textContent = '+ Add reference page';
+        addRefBtn.addEventListener('click', () => {
+            refContainer.appendChild(this._createReferenceRow());
+        });
+        refGroup.appendChild(addRefBtn);
+
+        container.appendChild(refGroup);
+
+        // Relation presets datalist
+        if (!document.getElementById('cowriter-relation-presets')) {
+            const datalist = document.createElement('datalist');
+            datalist.id = 'cowriter-relation-presets';
+            for (const preset of ['reference material', 'parent topic', 'style guide', 'similar content']) {
+                const option = document.createElement('option');
+                option.value = preset;
+                datalist.appendChild(option);
+            }
+            container.appendChild(datalist);
+        }
+
         // Ad-hoc rules
         const rulesGroup = this._createFormGroup('Additional instructions (optional)');
         const rulesInput = document.createElement('textarea');
@@ -408,6 +450,43 @@ export class CowriterDialog {
         labelEl.textContent = label;
         group.appendChild(labelEl);
         return group;
+    }
+
+    /**
+     * Create a reference page row with page ID, relation, and remove button.
+     * @returns {HTMLElement}
+     * @private
+     */
+    _createReferenceRow() {
+        const row = document.createElement('div');
+        row.className = 'd-flex gap-2 mb-1 align-items-center';
+        row.dataset.role = 'reference-row';
+
+        const pidInput = document.createElement('input');
+        pidInput.type = 'number';
+        pidInput.className = 'form-control form-control-sm';
+        pidInput.dataset.role = 'ref-pid';
+        pidInput.placeholder = 'Page ID';
+        pidInput.style.width = '100px';
+        row.appendChild(pidInput);
+
+        const relationInput = document.createElement('input');
+        relationInput.type = 'text';
+        relationInput.className = 'form-control form-control-sm';
+        relationInput.dataset.role = 'ref-relation';
+        relationInput.placeholder = 'Relation (e.g., style guide, reference)';
+        relationInput.setAttribute('list', 'cowriter-relation-presets');
+        row.appendChild(relationInput);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn btn-sm btn-outline-danger';
+        removeBtn.dataset.role = 'remove-reference';
+        removeBtn.textContent = '\u2715';
+        removeBtn.addEventListener('click', () => row.remove());
+        row.appendChild(removeBtn);
+
+        return row;
     }
 
     /**
