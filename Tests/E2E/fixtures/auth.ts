@@ -1,11 +1,16 @@
-import { test as base, expect, type Page, type FrameLocator } from '@playwright/test';
+import { test as base, expect, type Page, type FrameLocator, type Locator } from '@playwright/test';
 
 /**
  * Extended test fixture with TYPO3 backend authentication.
  *
- * TYPO3 v14 renders CKEditor inside the backend content area.
- * This fixture handles login and provides both the authenticated page
- * and a module frame locator for accessing iframe-based module content.
+ * TYPO3 v14 architecture:
+ * - Module content (CKEditor, forms) is inside an iframe
+ * - Modals are rendered in the top-level page as <dialog> elements
+ *   created by the <typo3-backend-modal> web component
+ *
+ * This fixture provides:
+ * - authenticatedPage: The top-level page (for navigation and modal interactions)
+ * - moduleFrame: FrameLocator for the module content iframe (for CKEditor interactions)
  */
 export const test = base.extend<{
   authenticatedPage: Page;
@@ -38,7 +43,6 @@ export const test = base.extend<{
   },
 
   moduleFrame: async ({ authenticatedPage }, use) => {
-    // TYPO3 v14 may use an iframe for module content
     const frame = authenticatedPage.frameLocator('iframe').first();
     await use(frame);
   },
@@ -47,10 +51,15 @@ export const test = base.extend<{
 export { expect };
 
 /**
+ * Get the module content frame locator.
+ * TYPO3 v14 loads module content (edit forms, CKEditor) inside an iframe.
+ */
+export function getModuleFrame(page: Page): FrameLocator {
+  return page.frameLocator('iframe').first();
+}
+
+/**
  * Navigate to the edit form for a content element's bodytext field.
- *
- * @param page - The authenticated Playwright page
- * @param uid - The tt_content UID to edit (default: 1)
  */
 export async function navigateToContentElement(
   page: Page,
@@ -62,30 +71,22 @@ export async function navigateToContentElement(
 }
 
 /**
- * Wait for CKEditor to fully initialize in the page.
- *
- * @param page - The Playwright page
- * @param timeout - Maximum time to wait in ms (default: 15000)
+ * Wait for CKEditor to fully initialize inside the module iframe.
  */
 export async function waitForCKEditor(
   page: Page,
   timeout = 15000,
 ): Promise<void> {
-  await page.waitForSelector('.ck-editor__main', { timeout });
+  const frame = getModuleFrame(page);
+  await frame.locator('.ck-editor__main').waitFor({ state: 'visible', timeout });
 }
 
 /**
- * Click the cowriter toolbar button to open the dialog.
- *
- * The button is identified by its tooltip text which contains "owriter"
- * (matching both "Cowriter" and the full tooltip text).
- *
- * @param page - The Playwright page with CKEditor loaded
+ * Click the cowriter toolbar button inside the module iframe.
  */
 export async function clickCowriterButton(page: Page): Promise<void> {
-  // CKEditor toolbar buttons use aria-label or data-cke-tooltip-text
-  // Try tooltip first, then fall back to aria-label
-  const button = page.locator(
+  const frame = getModuleFrame(page);
+  const button = frame.locator(
     '.ck-button[data-cke-tooltip-text*="owriter"], ' +
       '.ck-button[aria-label*="owriter"]',
   );
@@ -93,11 +94,15 @@ export async function clickCowriterButton(page: Page): Promise<void> {
 }
 
 /**
- * Wait for the TYPO3 modal dialog to appear.
+ * Wait for the TYPO3 modal dialog to appear and return its locator.
  *
- * @param page - The Playwright page
- * @param timeout - Maximum time to wait in ms (default: 10000)
+ * TYPO3 v14 renders modals as <dialog> elements in the top-level page
+ * (created by <typo3-backend-modal> web component).
+ *
+ * @returns The dialog locator for further interaction
  */
-export async function waitForModal(page: Page, timeout = 10000): Promise<void> {
-  await page.waitForSelector('.modal.show', { timeout });
+export async function waitForModal(page: Page, timeout = 10000): Promise<Locator> {
+  const dialog = page.getByRole('dialog', { name: 'Cowriter' });
+  await dialog.waitFor({ state: 'visible', timeout });
+  return dialog;
 }
