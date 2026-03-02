@@ -1,8 +1,10 @@
 // vim: ts=4 sw=4 expandtab colorcolumn=120
 // @ts-check
 
-import { Core, UI } from "@typo3/ckeditor5-bundle.js";
-import { AIService } from "./AIService.js";
+import { Plugin } from "@ckeditor/ckeditor5-core";
+import { ButtonView } from "@ckeditor/ckeditor5-ui";
+import { AIService } from "@netresearch/t3_cowriter/AIService";
+import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
 
 /**
  * Cowriter CKEditor plugin.
@@ -10,7 +12,7 @@ import { AIService } from "./AIService.js";
  * Provides AI-powered text completion within the TYPO3 backend RTE.
  * Uses the nr-llm extension for LLM provider abstraction.
  */
-export class Cowriter extends Core.Plugin {
+export class Cowriter extends Plugin {
     static pluginName = 'cowriter';
 
     /**
@@ -67,7 +69,7 @@ export class Cowriter extends Core.Plugin {
 
         // Button to add text at current text cursor position:
         editor.ui.componentFactory.add(Cowriter.pluginName, () => {
-            const button = new UI.ButtonView();
+            const button = new ButtonView();
 
             button.set({
                 label: 'Cowriter - AI text completion',
@@ -82,42 +84,43 @@ export class Cowriter extends Core.Plugin {
                 try {
                     const selection = editor.model.document.selection;
 
+                    // Extract selected text from editor ranges
                     const ranges = Array.from(selection.getRanges());
-                    let promptRange, prompt;
+                    let promptRange, selectedText;
                     for (const range of ranges) {
                         for (const item of range.getItems()) {
                             if (item.data !== undefined && item.data !== '') {
-                                prompt = item.data;
+                                selectedText = item.data;
                                 promptRange = range;
                                 break;
                             }
                         }
-                        if (prompt !== undefined) break;
+                        if (selectedText !== undefined) break;
                     }
 
-                    if (prompt === undefined || promptRange === undefined) return;
+                    const fullContent = editor.getData();
 
-                    let content = "";
-                    let errorMessage = "";
+                    // Show the task dialog
+                    const dialog = new CowriterDialog(this._service);
+                    const result = await dialog.show(selectedText || '', fullContent);
 
-                    try {
-                        // Use the complete endpoint via TYPO3 AJAX
-                        const result = await this._service.complete(prompt, {});
-                        const rawContent = result.content || '';
-                        content = this._sanitizeContent(rawContent);
-                    } catch (error) {
-                        console.error('Cowriter error:', error);
-                        // Error messages are inserted as text nodes by writer.insert(),
-                        // so no HTML escaping is needed (CKEditor treats them as plain text)
-                        errorMessage = `[Cowriter Error: ${error.message || 'Unknown error'}] `;
+                    if (result?.content) {
+                        const sanitized = this._sanitizeContent(result.content);
+                        model.change((writer) => {
+                            if (promptRange) {
+                                writer.remove(promptRange);
+                            }
+                            const insertPosition = selection.getFirstPosition();
+                            if (!insertPosition) return;
+                            writer.insert(sanitized, insertPosition);
+                        });
                     }
-
-                    model.change((writer) => {
-                        writer.remove(promptRange);
-                        const insertPosition = selection.getFirstPosition();
-                        if (!insertPosition) return;
-                        writer.insert(errorMessage + content, insertPosition);
-                    });
+                } catch (error) {
+                    // User cancelled the dialog — no action needed.
+                    // Log unexpected errors for debugging (cancellations have message 'User cancelled').
+                    if (error?.message && error.message !== 'User cancelled') {
+                        console.error('[Cowriter]', error);
+                    }
                 } finally {
                     this._isProcessing = false;
                 }

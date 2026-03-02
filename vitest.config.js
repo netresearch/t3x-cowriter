@@ -4,9 +4,25 @@ import { resolve } from 'path';
 export default defineConfig({
     resolve: {
         alias: {
-            '@typo3/ckeditor5-bundle.js': resolve(
+            '@ckeditor/ckeditor5-core': resolve(
                 __dirname,
-                'Tests/JavaScript/__mocks__/ckeditor5-bundle.js'
+                'Tests/JavaScript/__mocks__/ckeditor5-core.js'
+            ),
+            '@ckeditor/ckeditor5-ui': resolve(
+                __dirname,
+                'Tests/JavaScript/__mocks__/ckeditor5-ui.js'
+            ),
+            '@typo3/backend/modal.js': resolve(
+                __dirname,
+                'Tests/JavaScript/__mocks__/typo3-backend-modal.js'
+            ),
+            '@netresearch/t3_cowriter/AIService': resolve(
+                __dirname,
+                'Resources/Public/JavaScript/Ckeditor/AIService.js'
+            ),
+            '@netresearch/t3_cowriter/CowriterDialog': resolve(
+                __dirname,
+                'Resources/Public/JavaScript/Ckeditor/CowriterDialog.js'
             ),
         },
     },

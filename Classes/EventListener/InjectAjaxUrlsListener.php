@@ -79,6 +79,10 @@ final readonly class InjectAjaxUrlsListener
                 ->buildUriFromRoute('ajax_tx_cowriter_stream'),
             'tx_cowriter_configurations' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_configurations'),
+            'tx_cowriter_tasks' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_tasks'),
+            'tx_cowriter_task_execute' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_task_execute'),
         ];
 
         return json_encode($urls, JSON_THROW_ON_ERROR);

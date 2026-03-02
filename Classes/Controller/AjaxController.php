@@ -11,11 +11,14 @@ namespace Netresearch\T3Cowriter\Controller;
 
 use JsonException;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
+use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
@@ -67,6 +70,7 @@ final readonly class AjaxController
     public function __construct(
         private LlmServiceManagerInterface $llmServiceManager,
         private LlmConfigurationRepository $configurationRepository,
+        private TaskRepository $taskRepository,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
@@ -379,6 +383,135 @@ final readonly class AjaxController
             'success'        => true,
             'configurations' => $list,
         ]);
+    }
+
+    /**
+     * Get available cowriter tasks for the frontend dialog.
+     *
+     * Returns active tasks in the 'content' category for the cowriter dialog.
+     *
+     * @param ServerRequestInterface $request Required by TYPO3 AJAX action signature
+     */
+    public function getTasksAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $tasks = $this->taskRepository->findByCategory('content');
+
+        $list = [];
+        foreach ($tasks as $task) {
+            if (!$task instanceof Task || !$task->isActive()) {
+                continue;
+            }
+
+            $list[] = [
+                'uid'         => $task->getUid(),
+                'identifier'  => htmlspecialchars($task->getIdentifier(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'name'        => htmlspecialchars($task->getName(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'description' => htmlspecialchars($task->getDescription(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            ];
+        }
+
+        return new JsonResponse([
+            'success' => true,
+            'tasks'   => $list,
+        ]);
+    }
+
+    /**
+     * Execute a cowriter task with context.
+     *
+     * Loads the task, builds the prompt from its template + context,
+     * optionally appends ad-hoc rules, and executes via LLM.
+     */
+    public function executeTaskAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $rateLimitResult = $this->checkRateLimit();
+        if (!$rateLimitResult->allowed) {
+            return $this->rateLimitedResponse($rateLimitResult);
+        }
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+
+        if (!$dto->isValid()) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error('Invalid task execution request.')->jsonSerialize(),
+                $rateLimitResult,
+                400,
+            );
+        }
+
+        // Load and validate the task
+        $task = $this->taskRepository->findByUid($dto->taskUid);
+        if (!$task instanceof Task || !$task->isActive()) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error('Task not found or inactive.')->jsonSerialize(),
+                $rateLimitResult,
+                404,
+            );
+        }
+
+        // Build prompt from task template
+        $prompt = $task->buildPrompt(['input' => $dto->context]);
+
+        // Build messages
+        $messages = [
+            ['role' => 'user', 'content' => $prompt],
+        ];
+
+        // Append ad-hoc rules as additional instruction if provided
+        if (trim($dto->adHocRules) !== '') {
+            $messages[] = [
+                'role'    => 'user',
+                'content' => 'Additional instructions: ' . $dto->adHocRules,
+            ];
+        }
+
+        // Resolve configuration: task's config → request's config → default
+        $taskConfig    = $task->getConfiguration();
+        $configuration = $taskConfig instanceof LlmConfiguration
+            ? $taskConfig
+            : $this->resolveConfiguration($dto->configuration);
+
+        if (!$configuration instanceof LlmConfiguration) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error(
+                    'No LLM configuration available. Please configure the nr_llm extension.',
+                )->jsonSerialize(),
+                $rateLimitResult,
+                404,
+            );
+        }
+
+        try {
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
+
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::success($response)->jsonSerialize(),
+                $rateLimitResult,
+            );
+        } catch (ProviderException $e) {
+            $this->logger->error('Task execution provider error', [
+                'taskUid'   => $dto->taskUid,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error('LLM provider error occurred. Please try again later.')->jsonSerialize(),
+                $rateLimitResult,
+                500,
+            );
+        } catch (Throwable $e) {
+            $this->logger->error('Task execution unexpected error', [
+                'taskUid'   => $dto->taskUid,
+                'exception' => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error('An unexpected error occurred.')->jsonSerialize(),
+                $rateLimitResult,
+                500,
+            );
+        }
     }
 
     /**

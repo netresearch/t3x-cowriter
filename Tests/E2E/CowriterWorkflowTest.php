@@ -67,9 +67,11 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
 
+        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             $configRepo,
+            $taskRepo,
             $rateLimiter,
             $context,
             $this->logger,
@@ -79,6 +81,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'controller'     => $controller,
             'serviceManager' => $serviceManager,
             'configRepo'     => $configRepo,
+            'taskRepo'       => $taskRepo,
             'rateLimiter'    => $rateLimiter,
             'context'        => $context,
         ];
@@ -517,9 +520,11 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         );
         $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
+        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             $configRepo,
+            $taskRepo,
             $rateLimiter,
             $context,
             $this->logger,
@@ -548,9 +553,11 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         );
         $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
+        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             $configRepo,
+            $taskRepo,
             $rateLimiter,
             $context,
             $this->logger,
@@ -706,9 +713,11 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         );
         $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
+        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             $configRepo,
+            $taskRepo,
             $rateLimiter,
             $context,
             $this->logger,
@@ -856,9 +865,11 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         );
         $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
+        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             $configRepo,
+            $taskRepo,
             $rateLimiter,
             $context,
             $this->logger,
@@ -891,9 +902,11 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         );
         $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
+        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             $configRepo,
+            $taskRepo,
             $rateLimiter,
             $context,
             $this->logger,
@@ -946,5 +959,432 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $doneEvent = end($events);
         self::assertTrue($doneEvent['done']);
         self::assertSame('gpt-4o', $doneEvent['model']);
+    }
+
+    // =========================================================================
+    // Task Execution E2E Tests
+    // =========================================================================
+
+    #[Test]
+    public function getTasksWorkflowReturnsActiveTasks(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $task1        = $this->createTaskMock(1, 'cowriter_improve', 'Improve Text', 'Enhance readability', 'Improve: {{input}}');
+        $task2        = $this->createTaskMock(2, 'cowriter_summarize', 'Summarize', 'Create summary', 'Summarize: {{input}}');
+        $inactiveTask = $this->createTaskMock(3, 'cowriter_draft', 'Draft', 'Draft content', 'Draft: {{input}}', false);
+
+        $stack['taskRepo']->method('findByCategory')
+            ->with('content')
+            ->willReturn($this->createQueryResultMock([$task1, $task2, $inactiveTask]));
+
+        $request = $this->createJsonRequest([]);
+        $result  = $stack['controller']->getTasksAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        // Only active tasks should be returned
+        self::assertCount(2, $data['tasks']);
+        self::assertSame('cowriter_improve', $data['tasks'][0]['identifier']);
+        self::assertSame('cowriter_summarize', $data['tasks'][1]['identifier']);
+    }
+
+    #[Test]
+    public function getTasksWorkflowEscapesXss(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $task = $this->createTaskMock(
+            1,
+            '<script>alert(1)</script>',
+            '<img onerror=hack>',
+            '<svg onload=steal()>',
+            '{{input}}',
+        );
+
+        $stack['taskRepo']->method('findByCategory')->willReturn($this->createQueryResultMock([$task]));
+
+        $request = $this->createJsonRequest([]);
+        $result  = $stack['controller']->getTasksAction($request);
+
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        self::assertCount(1, $data['tasks']);
+        self::assertStringNotContainsString('<script>', $data['tasks'][0]['identifier']);
+        self::assertStringNotContainsString('<img', $data['tasks'][0]['name']);
+        self::assertStringNotContainsString('<svg', $data['tasks'][0]['description']);
+    }
+
+    #[Test]
+    public function getTasksWorkflowReturnsEmptyListWhenNoActiveTasks(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        // One inactive task, one non-Task object
+        $inactiveTask = $this->createTaskMock(1, 'inactive', 'Inactive', 'desc', '{{input}}', false);
+        $stack['taskRepo']->method('findByCategory')->willReturn($this->createQueryResultMock([$inactiveTask]));
+
+        $request = $this->createJsonRequest([]);
+        $result  = $stack['controller']->getTasksAction($request);
+
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        self::assertCount(0, $data['tasks']);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowRejectsNullTask(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $stack['taskRepo']->method('findByUid')->with(999)->willReturn(null);
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 999,
+            'context'     => 'Some text',
+            'contextType' => 'selection',
+            'adHocRules'  => '',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(404, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('not found', $data['error']);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowHandlesUnexpectedException(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $task = $this->createTaskMock(1, 'cowriter_improve', 'Improve', 'desc', '{{input}}');
+        $stack['taskRepo']->method('findByUid')->with(1)->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $stack['serviceManager']->method('chatWithConfiguration')
+            ->willThrowException(new RuntimeException('Connection timed out'));
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'Test text',
+            'contextType' => 'selection',
+            'adHocRules'  => '',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(500, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('unexpected error', $data['error']);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowUsesTaskConfiguration(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(
+            content: 'Result using task-specific config.',
+            model: 'claude-3-sonnet',
+        );
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $taskConfig = $this->createLlmConfiguration('task-specific', 'Task Config', false, 'claude-3-sonnet');
+        $task       = $this->createTaskMock(1, 'cowriter_improve', 'Improve', 'desc', '{{input}}', true, $taskConfig);
+        $stack['taskRepo']->method('findByUid')->with(1)->willReturn($task);
+
+        // Default config should NOT be used since task has its own
+        $stack['configRepo']->method('findDefault')->willReturn(null);
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'Test text',
+            'contextType' => 'selection',
+            'adHocRules'  => '',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        self::assertSame('Result using task-specific config.', $data['content']);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowReturnsErrorWhenNoConfigAvailable(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $task = $this->createTaskMock(1, 'cowriter_improve', 'Improve', 'desc', '{{input}}');
+        $stack['taskRepo']->method('findByUid')->with(1)->willReturn($task);
+
+        // No task config, no default config
+        $stack['configRepo']->method('findDefault')->willReturn(null);
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'Test text',
+            'contextType' => 'selection',
+            'adHocRules'  => '',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(404, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('configuration', strtolower($data['error']));
+    }
+
+    #[Test]
+    public function executeTaskWorkflowSuccess(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(
+            content: 'The enhanced and improved text with better readability.',
+            model: 'gpt-4o',
+            promptTokens: 80,
+            completionTokens: 50,
+        );
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $task = $this->createTaskMock(
+            1,
+            'cowriter_improve',
+            'Improve Text',
+            'Enhance readability',
+            'Improve the following text, keeping the original meaning:\n\n{{input}}',
+        );
+        $stack['taskRepo']->method('findByUid')->with(1)->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'The product is good.',
+            'contextType' => 'selection',
+            'adHocRules'  => '',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        self::assertSame('The enhanced and improved text with better readability.', $data['content']);
+        self::assertSame('gpt-4o', $data['model']);
+        self::assertArrayHasKey('usage', $data);
+        self::assertSame(130, $data['usage']['totalTokens']);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowWithAdHocRules(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(
+            content: 'Formal improved text.',
+            model: 'gpt-4o',
+        );
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $task = $this->createTaskMock(1, 'cowriter_improve', 'Improve', 'desc', 'Improve:\n\n{{input}}');
+        $stack['taskRepo']->method('findByUid')->with(1)->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'Some text.',
+            'contextType' => 'selection',
+            'adHocRules'  => 'Write in formal tone',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        self::assertSame('Formal improved text.', $data['content']);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowEscapesXssFromLlm(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(
+            content: '<script>document.cookie</script>Malicious response',
+            model: 'gpt-4o',
+        );
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $task = $this->createTaskMock(1, 'cowriter_improve', 'Improve', 'desc', '{{input}}');
+        $stack['taskRepo']->method('findByUid')->with(1)->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'Test',
+            'contextType' => 'selection',
+            'adHocRules'  => '',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        self::assertStringNotContainsString('<script>', $data['content']);
+        self::assertStringContainsString('&lt;script&gt;', $data['content']);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowRejectsInvalidRequest(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => 'selection',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(400, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('error', $data);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowRejectsInactiveTask(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $inactiveTask = $this->createTaskMock(5, 'inactive', 'Inactive', 'desc', '{{input}}', false);
+        $stack['taskRepo']->method('findByUid')->with(5)->willReturn($inactiveTask);
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 5,
+            'context'     => 'Some text',
+            'contextType' => 'selection',
+            'adHocRules'  => '',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(404, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowHandlesProviderError(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $task = $this->createTaskMock(1, 'cowriter_improve', 'Improve', 'desc', '{{input}}');
+        $task->method('getConfiguration')->willReturn(null);
+        $stack['taskRepo']->method('findByUid')->with(1)->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $stack['serviceManager']->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('Rate limit exceeded'));
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'Test text',
+            'contextType' => 'selection',
+            'adHocRules'  => '',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(500, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('error', $data);
+    }
+
+    #[Test]
+    public function executeTaskWorkflowReturnsRateLimited(): void
+    {
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $configRepo     = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $taskRepo       = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $rateLimiter    = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
+        );
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $taskRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+        );
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'Test',
+            'contextType' => 'selection',
+            'adHocRules'  => '',
+        ]);
+        $result = $controller->executeTaskAction($request);
+
+        self::assertSame(429, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('retryAfter', $data);
+        self::assertTrue($result->hasHeader('Retry-After'));
+    }
+
+    #[Test]
+    public function executeTaskWorkflowWithContentElementContext(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(
+            content: 'Summary of the full content.',
+            model: 'gpt-4o',
+        );
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $task = $this->createTaskMock(2, 'cowriter_summarize', 'Summarize', 'desc', 'Summarize:\n\n{{input}}');
+        $stack['taskRepo']->method('findByUid')->with(2)->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 2,
+            'context'     => 'Long content of the whole content element that needs summarizing.',
+            'contextType' => 'content_element',
+            'adHocRules'  => '',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertTrue($data['success']);
+        self::assertSame('Summary of the full content.', $data['content']);
     }
 }

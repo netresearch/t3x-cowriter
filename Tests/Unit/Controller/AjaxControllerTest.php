@@ -11,8 +11,10 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
@@ -42,6 +44,7 @@ final class AjaxControllerTest extends TestCase
     private AjaxController $subject;
     private LlmServiceManagerInterface&MockObject $llmServiceManagerMock;
     private LlmConfigurationRepository&MockObject $configRepositoryMock;
+    private TaskRepository&MockObject $taskRepositoryMock;
     private RateLimiterInterface&MockObject $rateLimiterMock;
     private Context&MockObject $contextMock;
     private LoggerInterface&MockObject $loggerMock;
@@ -52,6 +55,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->llmServiceManagerMock = $this->createMock(LlmServiceManagerInterface::class);
         $this->configRepositoryMock  = $this->createMock(LlmConfigurationRepository::class);
+        $this->taskRepositoryMock    = $this->createMock(TaskRepository::class);
         $this->rateLimiterMock       = $this->createMock(RateLimiterInterface::class);
         $this->contextMock           = $this->createMock(Context::class);
         $this->loggerMock            = $this->createMock(LoggerInterface::class);
@@ -73,6 +77,7 @@ final class AjaxControllerTest extends TestCase
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
             $this->configRepositoryMock,
+            $this->taskRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
             $this->loggerMock,
@@ -774,6 +779,7 @@ final class AjaxControllerTest extends TestCase
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
             $this->configRepositoryMock,
+            $this->taskRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
             $this->loggerMock,
@@ -1019,6 +1025,7 @@ final class AjaxControllerTest extends TestCase
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
             $this->configRepositoryMock,
+            $this->taskRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
             $this->loggerMock,
@@ -1053,6 +1060,7 @@ final class AjaxControllerTest extends TestCase
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
             $this->configRepositoryMock,
+            $this->taskRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
             $this->loggerMock,
@@ -1476,6 +1484,368 @@ final class AjaxControllerTest extends TestCase
             finishReason: 'stop',
             provider: 'test-provider',
         );
+    }
+
+    // ===========================================
+    // getTasksAction Tests
+    // ===========================================
+
+    #[Test]
+    public function getTasksActionReturnsEmptyListWhenNoTasks(): void
+    {
+        $this->taskRepositoryMock
+            ->method('findByCategory')
+            ->with('content')
+            ->willReturn(new TestQueryResult([]));
+
+        $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['tasks']);
+    }
+
+    #[Test]
+    public function getTasksActionReturnsActiveTasks(): void
+    {
+        $task1 = $this->createTaskMock(1, 'improve', 'Improve Text', 'Enhance readability', true);
+        $task2 = $this->createTaskMock(2, 'summarize', 'Summarize', 'Create summary', true);
+
+        $this->taskRepositoryMock
+            ->method('findByCategory')
+            ->with('content')
+            ->willReturn(new TestQueryResult([$task1, $task2]));
+
+        $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
+
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertCount(2, $data['tasks']);
+        self::assertSame(1, $data['tasks'][0]['uid']);
+        self::assertSame('improve', $data['tasks'][0]['identifier']);
+        self::assertSame('Improve Text', $data['tasks'][0]['name']);
+        self::assertSame('Enhance readability', $data['tasks'][0]['description']);
+    }
+
+    #[Test]
+    public function getTasksActionFiltersInactiveTasks(): void
+    {
+        $activeTask   = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $inactiveTask = $this->createTaskMock(2, 'old', 'Old Task', 'desc', false);
+
+        $this->taskRepositoryMock
+            ->method('findByCategory')
+            ->willReturn(new TestQueryResult([$activeTask, $inactiveTask]));
+
+        $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
+
+        $data = $this->decodeJsonResponse($response);
+        self::assertCount(1, $data['tasks']);
+        self::assertSame('improve', $data['tasks'][0]['identifier']);
+    }
+
+    #[Test]
+    public function getTasksActionEscapesHtmlInTaskFields(): void
+    {
+        $task = $this->createTaskMock(1, 'xss<test>', 'Name<script>', 'Desc&"quotes"', true);
+
+        $this->taskRepositoryMock
+            ->method('findByCategory')
+            ->willReturn(new TestQueryResult([$task]));
+
+        $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
+
+        $data = $this->decodeJsonResponse($response);
+        self::assertStringNotContainsString('<script>', $data['tasks'][0]['name']);
+        self::assertStringNotContainsString('"quotes"', $data['tasks'][0]['description']);
+    }
+
+    // ===========================================
+    // executeTaskAction Tests
+    // ===========================================
+
+    #[Test]
+    public function executeTaskActionReturnsErrorForInvalidRequest(): void
+    {
+        $request = $this->createRequestWithJsonBody(['taskUid' => 0]);
+
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(400, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('Invalid', $data['error']);
+    }
+
+    #[Test]
+    public function executeTaskActionReturnsErrorForMissingTask(): void
+    {
+        $this->taskRepositoryMock->method('findByUid')->willReturn(null);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 999,
+            'context'     => 'some text',
+            'contextType' => 'selection',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(404, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('not found', $data['error']);
+    }
+
+    #[Test]
+    public function executeTaskActionReturnsErrorForInactiveTask(): void
+    {
+        $task = $this->createTaskMock(1, 'old', 'Old', 'desc', false);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'some text',
+            'contextType' => 'selection',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(404, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionSuccessfulExecution(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')
+            ->with(['input' => 'Hello world'])
+            ->willReturn('Improve: Hello world');
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Improved: Hello world');
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'Hello world',
+            'contextType' => 'selection',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('Improved', $data['content']);
+    }
+
+    #[Test]
+    public function executeTaskActionAppendsAdHocRules(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturn('Improve: text');
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    return count($messages) === 2
+                        && $messages[1]['content'] === 'Additional instructions: Be formal';
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+            'adHocRules'  => 'Be formal',
+        ]);
+
+        $this->subject->executeTaskAction($request);
+    }
+
+    #[Test]
+    public function executeTaskActionUsesTaskConfiguration(): void
+    {
+        $taskConfig = $this->createConfigurationMock('task-config', 'Task Config', false);
+
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturn('Prompt');
+        $task->method('getConfiguration')->willReturn($taskConfig);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with($this->anything(), $taskConfig)
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $this->subject->executeTaskAction($request);
+    }
+
+    #[Test]
+    public function executeTaskActionReturnsErrorOnProviderException(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturn('Prompt');
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('API error'));
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('provider error', $data['error']);
+    }
+
+    #[Test]
+    public function executeTaskActionReturnsErrorOnUnexpectedException(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturn('Prompt');
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new RuntimeException('Unexpected'));
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('unexpected error', $data['error']);
+    }
+
+    #[Test]
+    public function executeTaskActionRateLimited(): void
+    {
+        // Override rate limiter to deny
+        $this->rateLimiterMock = $this->createMock(RateLimiterInterface::class);
+        $this->rateLimiterMock
+            ->method('checkLimit')
+            ->willReturn(new RateLimitResult(
+                allowed: false,
+                limit: 20,
+                remaining: 0,
+                resetTime: time() + 60,
+            ));
+
+        $this->subject = new AjaxController(
+            $this->llmServiceManagerMock,
+            $this->configRepositoryMock,
+            $this->taskRepositoryMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
+            $this->loggerMock,
+        );
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(429, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionReturnsErrorWhenNoConfiguration(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturn('Prompt');
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+        $this->configRepositoryMock->method('findDefault')->willReturn(null);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(404, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('configuration', $data['error']);
+    }
+
+    // ===========================================
+    // Helper Methods
+    // ===========================================
+
+    private function createTaskMock(
+        int $uid,
+        string $identifier,
+        string $name,
+        string $description,
+        bool $isActive,
+    ): Task&MockObject {
+        $mock = $this->createMock(Task::class);
+        $mock->method('getUid')->willReturn($uid);
+        $mock->method('getIdentifier')->willReturn($identifier);
+        $mock->method('getName')->willReturn($name);
+        $mock->method('getDescription')->willReturn($description);
+        $mock->method('isActive')->willReturn($isActive);
+
+        return $mock;
     }
 
     private function createConfigurationMock(

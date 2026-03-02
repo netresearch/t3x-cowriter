@@ -35,4 +35,12 @@ return [
         'path'   => '/cowriter/configurations',
         'target' => AjaxController::class . '::getConfigurationsAction',
     ],
+    'tx_cowriter_tasks' => [
+        'path'   => '/cowriter/tasks',
+        'target' => AjaxController::class . '::getTasksAction',
+    ],
+    'tx_cowriter_task_execute' => [
+        'path'   => '/cowriter/task-execute',
+        'target' => AjaxController::class . '::executeTaskAction',
+    ],
 ];

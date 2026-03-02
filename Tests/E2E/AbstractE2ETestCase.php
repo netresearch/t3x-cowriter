@@ -12,8 +12,10 @@ namespace Netresearch\T3Cowriter\Tests\E2E;
 use GuzzleHttp\Psr7\Response;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
@@ -85,10 +87,14 @@ abstract class AbstractE2ETestCase extends TestCase
         $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
 
+        // Create task repository mock
+        $taskRepo = $this->createMock(TaskRepository::class);
+
         // Create controller with mocked dependencies
         $controller = new AjaxController(
             $serviceManager,
             $configRepo,
+            $taskRepo,
             $rateLimiter,
             $context,
             $this->logger,
@@ -98,6 +104,7 @@ abstract class AbstractE2ETestCase extends TestCase
             'controller'     => $controller,
             'serviceManager' => $serviceManager,
             'configRepo'     => $configRepo,
+            'taskRepo'       => $taskRepo,
             'rateLimiter'    => $rateLimiter,
             'context'        => $context,
         ];
@@ -199,6 +206,32 @@ abstract class AbstractE2ETestCase extends TestCase
     protected function createQueryResultMock(array $items): QueryResultInterface
     {
         return new TestQueryResult($items);
+    }
+
+    /**
+     * Create a mock Task for testing.
+     */
+    protected function createTaskMock(
+        int $uid,
+        string $identifier,
+        string $name,
+        string $description,
+        string $promptTemplate,
+        bool $isActive = true,
+        ?LlmConfiguration $configuration = null,
+    ): Task&MockObject {
+        $mock = $this->createMock(Task::class);
+        $mock->method('getUid')->willReturn($uid);
+        $mock->method('getIdentifier')->willReturn($identifier);
+        $mock->method('getName')->willReturn($name);
+        $mock->method('getDescription')->willReturn($description);
+        $mock->method('isActive')->willReturn($isActive);
+        $mock->method('getConfiguration')->willReturn($configuration);
+        $mock->method('buildPrompt')->willReturnCallback(
+            static fn (array $vars) => str_replace('{{input}}', $vars['input'] ?? '', $promptTemplate),
+        );
+
+        return $mock;
     }
 
     /**
