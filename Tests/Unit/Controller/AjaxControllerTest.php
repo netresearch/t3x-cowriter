@@ -809,7 +809,7 @@ final class AjaxControllerTest extends TestCase
         $body = $response->getBody()->getContents();
 
         // Raw HTML is preserved in SSE data (json_encode escapes / as \/)
-        $events = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
+        $events     = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
         $firstEvent = json_decode(substr(reset($events), 6), true);
         $this->assertSame('<p>Hello</p>', $firstEvent['content']);
     }

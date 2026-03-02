@@ -105,13 +105,13 @@ final class ContextRequestTest extends TestCase
     public static function invalidRequestProvider(): array
     {
         return [
-            'empty table'       => [new ContextRequest('', 1, 'bodytext', 'page')],
-            'disallowed table'  => [new ContextRequest('be_users', 1, 'bodytext', 'page')],
-            'zero uid'          => [new ContextRequest('tt_content', 0, 'bodytext', 'page')],
-            'negative uid'      => [new ContextRequest('tt_content', -1, 'bodytext', 'page')],
-            'empty field'       => [new ContextRequest('tt_content', 1, '', 'page')],
-            'empty scope'       => [new ContextRequest('tt_content', 1, 'bodytext', '')],
-            'invalid scope'     => [new ContextRequest('tt_content', 1, 'bodytext', 'invalid')],
+            'empty table'      => [new ContextRequest('', 1, 'bodytext', 'page')],
+            'disallowed table' => [new ContextRequest('be_users', 1, 'bodytext', 'page')],
+            'zero uid'         => [new ContextRequest('tt_content', 0, 'bodytext', 'page')],
+            'negative uid'     => [new ContextRequest('tt_content', -1, 'bodytext', 'page')],
+            'empty field'      => [new ContextRequest('tt_content', 1, '', 'page')],
+            'empty scope'      => [new ContextRequest('tt_content', 1, 'bodytext', '')],
+            'invalid scope'    => [new ContextRequest('tt_content', 1, 'bodytext', 'invalid')],
         ];
     }
 

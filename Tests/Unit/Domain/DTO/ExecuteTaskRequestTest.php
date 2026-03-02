@@ -359,7 +359,13 @@ final class ExecuteTaskRequestTest extends TestCase
     public function isValidAcceptsValidRecordContext(): void
     {
         $dto = new ExecuteTaskRequest(
-            1, 'text', 'selection', '', null, '', 'page',
+            1,
+            'text',
+            'selection',
+            '',
+            null,
+            '',
+            'page',
             ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
         );
         self::assertTrue($dto->isValid());
@@ -376,7 +382,13 @@ final class ExecuteTaskRequestTest extends TestCase
     public function isValidRejectsRecordContextWithDisallowedTable(): void
     {
         $dto = new ExecuteTaskRequest(
-            1, 'text', 'selection', '', null, '', 'page',
+            1,
+            'text',
+            'selection',
+            '',
+            null,
+            '',
+            'page',
             ['table' => 'be_users', 'uid' => 1, 'field' => 'username'],
         );
         self::assertFalse($dto->isValid());
@@ -443,7 +455,7 @@ final class ExecuteTaskRequestTest extends TestCase
     public function isValidRejectsTooManyReferencePages(): void
     {
         $pages = array_fill(0, 11, ['pid' => 1, 'relation' => 'test']);
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null, $pages);
+        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null, $pages);
         self::assertFalse($dto->isValid());
     }
 
@@ -451,7 +463,7 @@ final class ExecuteTaskRequestTest extends TestCase
     public function isValidAcceptsTenReferencePages(): void
     {
         $pages = array_fill(0, 10, ['pid' => 1, 'relation' => 'test']);
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null, $pages);
+        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null, $pages);
         self::assertTrue($dto->isValid());
     }
 

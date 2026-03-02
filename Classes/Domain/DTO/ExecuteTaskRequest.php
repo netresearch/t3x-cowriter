@@ -84,7 +84,7 @@ final readonly class ExecuteTaskRequest
 
     /**
      * @param array{table: string, uid: int, field: string}|null $recordContext
-     * @param list<array{pid: int, relation: string}> $referencePages
+     * @param list<array{pid: int, relation: string}>            $referencePages
      */
     public function __construct(
         public int $taskUid,
@@ -223,6 +223,7 @@ final readonly class ExecuteTaskRequest
      * Extract and validate record context from data array.
      *
      * @param array<string, mixed> $data
+     *
      * @return array{table: string, uid: int, field: string}|null
      */
     private static function extractRecordContext(array $data): ?array
@@ -247,6 +248,7 @@ final readonly class ExecuteTaskRequest
      * Extract and validate reference pages from data array.
      *
      * @param array<string, mixed> $data
+     *
      * @return list<array{pid: int, relation: string}>
      */
     private static function extractReferencePages(array $data): array
