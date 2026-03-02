@@ -491,8 +491,34 @@ final readonly class AjaxController
             );
         }
 
-        // Build prompt from task template
-        $prompt = $task->buildPrompt(['input' => $dto->context]);
+        // Resolve context: for extended scopes, assemble from DB
+        $context = $dto->context;
+        if ($dto->contextScope !== '' && $dto->contextScope !== 'selection' && $dto->contextScope !== 'text'
+            && $dto->recordContext !== null
+        ) {
+            try {
+                $context = $this->contextAssemblyService->assembleContext(
+                    $dto->recordContext['table'],
+                    $dto->recordContext['uid'],
+                    $dto->recordContext['field'],
+                    $dto->contextScope,
+                    $dto->referencePages,
+                );
+            } catch (Throwable $e) {
+                $this->logger->error('Context assembly error', [
+                    'exception' => $e->getMessage(),
+                ]);
+
+                return $this->jsonResponseWithRateLimitHeaders(
+                    CompleteResponse::error('Failed to assemble context.')->jsonSerialize(),
+                    $rateLimitResult,
+                    500,
+                );
+            }
+        }
+
+        // Build prompt from task template — use assembled context
+        $prompt = $task->buildPrompt(['input' => $context]);
 
         // Build messages
         $messages = [];

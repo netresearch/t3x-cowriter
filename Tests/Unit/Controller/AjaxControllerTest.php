@@ -1846,6 +1846,105 @@ final class AjaxControllerTest extends TestCase
         self::assertStringContainsString('configuration', $data['error']);
     }
 
+    #[Test]
+    public function executeTaskActionUsesAssembledContextForPageScope(): void
+    {
+        $this->contextAssemblyMock
+            ->method('assembleContext')
+            ->willReturn("=== Content element (tt_content #42) ===\nHeader: Test\nBodytext: Full page content\n");
+
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $task->method('buildPrompt')->willReturnCallback(
+            fn (array $vars) => 'Improve: ' . $vars['input'],
+        );
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Improved content');
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'       => 1,
+            'context'       => 'original text',
+            'contextType'   => 'selection',
+            'contextScope'  => 'page',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        $body = json_decode((string) $response->getBody(), true);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertTrue($body['success']);
+    }
+
+    #[Test]
+    public function executeTaskActionUsesOriginalContextForSelectionScope(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $task->method('buildPrompt')->willReturnCallback(
+            fn (array $vars) => 'Improve: ' . $vars['input'],
+        );
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willReturn($completionResponse);
+
+        // contextScope empty means use original context
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'original selected text',
+            'contextType' => 'selection',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        $body = json_decode((string) $response->getBody(), true);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertTrue($body['success']);
+        // assembleContext should NOT have been called
+        $this->contextAssemblyMock->expects(self::never())->method('assembleContext');
+    }
+
+    #[Test]
+    public function executeTaskActionReturns500OnContextAssemblyError(): void
+    {
+        $this->contextAssemblyMock
+            ->method('assembleContext')
+            ->willThrowException(new RuntimeException('DB connection lost'));
+
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $task->method('buildPrompt')->willReturn('Improve: text');
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'       => 1,
+            'context'       => 'original text',
+            'contextType'   => 'selection',
+            'contextScope'  => 'element',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 99, 'field' => 'bodytext'],
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        $body = json_decode((string) $response->getBody(), true);
+
+        self::assertSame(500, $response->getStatusCode());
+        self::assertFalse($body['success']);
+        self::assertStringContainsString('assemble context', $body['error']);
+    }
+
     // =========================================================================
     // getContextAction
     // =========================================================================
