@@ -48,6 +48,8 @@ export class AIService {
         chat: null,
         complete: null,
         stream: null,
+        tasks: null,
+        taskExecute: null,
     };
 
     constructor() {
@@ -56,6 +58,8 @@ export class AIService {
             this._routes.chat = TYPO3.settings.ajaxUrls.tx_cowriter_chat || null;
             this._routes.complete = TYPO3.settings.ajaxUrls.tx_cowriter_complete || null;
             this._routes.stream = TYPO3.settings.ajaxUrls.tx_cowriter_stream || null;
+            this._routes.tasks = TYPO3.settings.ajaxUrls.tx_cowriter_tasks || null;
+            this._routes.taskExecute = TYPO3.settings.ajaxUrls.tx_cowriter_task_execute || null;
         }
     }
 
@@ -231,5 +235,64 @@ export class AIService {
         }
 
         return lastData;
+    }
+
+    /**
+     * Fetch available cowriter tasks.
+     *
+     * @returns {Promise<{success: boolean, tasks: Array<{uid: number, identifier: string, name: string, description: string}>}>}
+     */
+    async getTasks() {
+        if (!this._routes.tasks) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
+
+        const response = await fetch(this._routes.tasks, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Execute a cowriter task with context.
+     *
+     * @param {number} taskUid - The task UID to execute
+     * @param {string} context - The text context to process
+     * @param {string} contextType - The context type ('selection' or 'content_element')
+     * @param {string} [adHocRules=''] - Optional additional instructions
+     * @returns {Promise<CompleteResponse>} The task execution result
+     */
+    async executeTask(taskUid, context, contextType, adHocRules = '') {
+        if (!this._routes.taskExecute) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
+
+        const response = await fetch(this._routes.taskExecute, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ taskUid, context, contextType, adHocRules }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
     }
 }

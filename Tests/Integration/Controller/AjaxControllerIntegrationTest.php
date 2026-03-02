@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Tests\Integration\Controller;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
@@ -41,6 +42,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
     private AjaxController $subject;
     private LlmServiceManagerInterface&MockObject $llmServiceMock;
     private LlmConfigurationRepository&MockObject $configRepoMock;
+    private TaskRepository&MockObject $taskRepoMock;
     private RateLimiterInterface&MockObject $rateLimiterMock;
     private Context&MockObject $contextMock;
 
@@ -51,6 +53,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
 
         $this->llmServiceMock  = $this->createMock(LlmServiceManagerInterface::class);
         $this->configRepoMock  = $this->createMock(LlmConfigurationRepository::class);
+        $this->taskRepoMock    = $this->createMock(TaskRepository::class);
         $this->rateLimiterMock = $this->createMock(RateLimiterInterface::class);
         $this->contextMock     = $this->createMock(Context::class);
 
@@ -65,6 +68,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->subject = new AjaxController(
             $this->llmServiceMock,
             $this->configRepoMock,
+            $this->taskRepoMock,
             $this->rateLimiterMock,
             $this->contextMock,
             new NullLogger(),

@@ -152,14 +152,22 @@ describe('Cowriter Plugin', () => {
         let mockEditor;
         let buttonCallback;
         let capturedButton;
+        let mockDialogShow;
 
         beforeEach(async () => {
             vi.resetModules();
 
-            // Mock AIService before importing cowriter
+            mockDialogShow = vi.fn().mockResolvedValue({ content: 'AI response' });
+
+            // Mock AIService and CowriterDialog before importing cowriter
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
-                AIService: class MockAIService {
-                    complete = vi.fn().mockResolvedValue({ content: 'AI response', success: true });
+                AIService: class MockAIService {},
+            }));
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
+                CowriterDialog: class MockCowriterDialog {
+                    constructor() {
+                        this.show = mockDialogShow;
+                    }
                 },
             }));
 
@@ -188,6 +196,7 @@ describe('Cowriter Plugin', () => {
                         }),
                     },
                 },
+                getData: vi.fn().mockReturnValue('<p>Full editor content</p>'),
             };
 
             plugin = new Cowriter();
@@ -198,6 +207,7 @@ describe('Cowriter Plugin', () => {
 
         afterEach(() => {
             vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
         });
 
         it('should do nothing when _isProcessing is true', async () => {
@@ -206,23 +216,16 @@ describe('Cowriter Plugin', () => {
             expect(mockEditor.model.document.selection.getRanges).not.toHaveBeenCalled();
         });
 
-        it('should do nothing when no text is selected', async () => {
+        it('should open dialog even without text selection', async () => {
             mockEditor.model.document.selection.getRanges.mockReturnValue([
                 { getItems: () => [{ data: '' }] },
             ]);
             await capturedButton.fire('execute');
-            expect(mockEditor.model.change).not.toHaveBeenCalled();
+
+            expect(mockDialogShow).toHaveBeenCalledWith('', '<p>Full editor content</p>');
         });
 
-        it('should do nothing when selection has no data items', async () => {
-            mockEditor.model.document.selection.getRanges.mockReturnValue([
-                { getItems: () => [{}] },
-            ]);
-            await capturedButton.fire('execute');
-            expect(mockEditor.model.change).not.toHaveBeenCalled();
-        });
-
-        it('should call AIService.complete with selected text', async () => {
+        it('should open dialog with selected text', async () => {
             const mockRange = {
                 getItems: () => [{ data: 'write about cats' }],
             };
@@ -230,10 +233,13 @@ describe('Cowriter Plugin', () => {
 
             await capturedButton.fire('execute');
 
-            expect(plugin._service.complete).toHaveBeenCalledWith('write about cats', {});
+            expect(mockDialogShow).toHaveBeenCalledWith(
+                'write about cats',
+                '<p>Full editor content</p>',
+            );
         });
 
-        it('should insert sanitized AI response into editor', async () => {
+        it('should insert sanitized dialog result into editor', async () => {
             const mockRange = {
                 getItems: () => [{ data: 'test prompt' }],
             };
@@ -245,10 +251,10 @@ describe('Cowriter Plugin', () => {
             expect(mockEditor._writer.insert).toHaveBeenCalledWith('AI response', {});
         });
 
-        it('should sanitize HTML from AI response', async () => {
-            plugin._service.complete = vi
-                .fn()
-                .mockResolvedValue({ content: '<script>alert(1)</script>safe text' });
+        it('should sanitize HTML from dialog result', async () => {
+            mockDialogShow.mockResolvedValue({
+                content: '<script>alert(1)</script>safe text',
+            });
             const mockRange = {
                 getItems: () => [{ data: 'prompt' }],
             };
@@ -258,47 +264,24 @@ describe('Cowriter Plugin', () => {
 
             expect(mockEditor._writer.insert).toHaveBeenCalledWith(
                 expect.stringContaining('safe text'),
-                expect.anything()
+                expect.anything(),
             );
             expect(mockEditor._writer.insert).toHaveBeenCalledWith(
                 expect.not.stringContaining('<script>'),
-                expect.anything()
+                expect.anything(),
             );
         });
 
-        it('should handle AI service errors gracefully', async () => {
-            plugin._service.complete = vi.fn().mockRejectedValue(new Error('API timeout'));
+        it('should not insert when dialog is cancelled', async () => {
+            mockDialogShow.mockRejectedValue(new Error('User cancelled'));
             const mockRange = {
                 getItems: () => [{ data: 'prompt' }],
             };
             mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
-            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
             await capturedButton.fire('execute');
 
-            expect(errorSpy).toHaveBeenCalledWith('Cowriter error:', expect.any(Error));
-            expect(mockEditor._writer.insert).toHaveBeenCalledWith(
-                expect.stringContaining('[Cowriter Error: API timeout]'),
-                expect.anything()
-            );
-            errorSpy.mockRestore();
-        });
-
-        it('should handle AI service errors without message', async () => {
-            plugin._service.complete = vi.fn().mockRejectedValue({});
-            const mockRange = {
-                getItems: () => [{ data: 'prompt' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
-            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-            await capturedButton.fire('execute');
-
-            expect(mockEditor._writer.insert).toHaveBeenCalledWith(
-                expect.stringContaining('Unknown error'),
-                expect.anything()
-            );
-            errorSpy.mockRestore();
+            expect(mockEditor.model.change).not.toHaveBeenCalled();
         });
 
         it('should reset _isProcessing after completion', async () => {
@@ -311,17 +294,15 @@ describe('Cowriter Plugin', () => {
             expect(plugin._isProcessing).toBe(false);
         });
 
-        it('should reset _isProcessing after error', async () => {
-            plugin._service.complete = vi.fn().mockRejectedValue(new Error('fail'));
+        it('should reset _isProcessing after cancel', async () => {
+            mockDialogShow.mockRejectedValue(new Error('User cancelled'));
             const mockRange = {
                 getItems: () => [{ data: 'prompt' }],
             };
             mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
-            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
             await capturedButton.fire('execute');
             expect(plugin._isProcessing).toBe(false);
-            errorSpy.mockRestore();
         });
 
         it('should handle null insertPosition gracefully', async () => {
@@ -338,8 +319,8 @@ describe('Cowriter Plugin', () => {
             expect(mockEditor._writer.insert).not.toHaveBeenCalled();
         });
 
-        it('should handle empty content from AI response', async () => {
-            plugin._service.complete = vi.fn().mockResolvedValue({ content: '' });
+        it('should handle empty content from dialog result', async () => {
+            mockDialogShow.mockResolvedValue({ content: '' });
             const mockRange = {
                 getItems: () => [{ data: 'prompt' }],
             };
@@ -347,7 +328,8 @@ describe('Cowriter Plugin', () => {
 
             await capturedButton.fire('execute');
 
-            expect(mockEditor._writer.insert).toHaveBeenCalledWith('', expect.anything());
+            // Empty content means no insert
+            expect(mockEditor.model.change).not.toHaveBeenCalled();
         });
 
         it('should use first range item with data from multiple ranges', async () => {
@@ -357,20 +339,21 @@ describe('Cowriter Plugin', () => {
 
             await capturedButton.fire('execute');
 
-            expect(plugin._service.complete).toHaveBeenCalledWith('found in range 2', {});
+            expect(mockDialogShow).toHaveBeenCalledWith(
+                'found in range 2',
+                '<p>Full editor content</p>',
+            );
         });
 
-        it('should handle null content from AI response', async () => {
-            plugin._service.complete = vi.fn().mockResolvedValue({ content: null });
-            const mockRange = {
-                getItems: () => [{ data: 'prompt' }],
-            };
-            mockEditor.model.document.selection.getRanges.mockReturnValue([mockRange]);
+        it('should not remove range when no selection exists', async () => {
+            mockEditor.model.document.selection.getRanges.mockReturnValue([
+                { getItems: () => [{}] },
+            ]);
 
             await capturedButton.fire('execute');
 
-            // content is null, rawContent becomes '', sanitized to ''
-            expect(mockEditor._writer.insert).toHaveBeenCalledWith('', expect.anything());
+            expect(mockEditor._writer.remove).not.toHaveBeenCalled();
+            expect(mockEditor._writer.insert).toHaveBeenCalledWith('AI response', {});
         });
     });
 

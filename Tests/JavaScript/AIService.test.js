@@ -35,6 +35,8 @@ describe('AIService', () => {
             const service = new AIService();
             expect(service._routes.chat).toBe('/typo3/ajax/tx_cowriter_chat');
             expect(service._routes.complete).toBe('/typo3/ajax/tx_cowriter_complete');
+            expect(service._routes.tasks).toBeNull();
+            expect(service._routes.taskExecute).toBeNull();
         });
 
         it('should handle missing TYPO3 global', async () => {
@@ -581,6 +583,130 @@ describe('AIService', () => {
 
             const fetchCall = globalThis.fetch.mock.calls[0];
             expect(fetchCall[1].headers['Content-Type']).toBe('application/json');
+        });
+    });
+
+    describe('getTasks', () => {
+        it('should throw when tasks route is not configured', async () => {
+            const service = new AIService();
+            // tasks route not set in default TYPO3Mock
+            expect(service._routes.tasks).toBeNull();
+            await expect(service.getTasks()).rejects.toThrow('TYPO3 AJAX routes not configured');
+        });
+
+        it('should fetch tasks from backend', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_tasks = '/typo3/ajax/tx_cowriter_tasks';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const mockResponse = {
+                success: true,
+                tasks: [{ uid: 1, identifier: 'improve', name: 'Improve Text', description: 'Enhance' }],
+            };
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            });
+
+            const service = new ServiceClass();
+            const result = await service.getTasks();
+
+            expect(globalThis.fetch).toHaveBeenCalledWith('/typo3/ajax/tx_cowriter_tasks', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            expect(result).toEqual(mockResponse);
+        });
+
+        it('should throw on non-ok response', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_tasks = '/typo3/ajax/tx_cowriter_tasks';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                json: () => Promise.resolve({ error: 'Server error' }),
+            });
+
+            const service = new ServiceClass();
+            await expect(service.getTasks()).rejects.toThrow('Server error');
+        });
+    });
+
+    describe('executeTask', () => {
+        it('should throw when taskExecute route is not configured', async () => {
+            const service = new AIService();
+            expect(service._routes.taskExecute).toBeNull();
+            await expect(service.executeTask(1, 'text', 'selection')).rejects.toThrow(
+                'TYPO3 AJAX routes not configured'
+            );
+        });
+
+        it('should send POST request with task parameters', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const mockResponse = { success: true, content: 'Improved text', model: 'gpt-4' };
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            });
+
+            const service = new ServiceClass();
+            const result = await service.executeTask(1, 'Hello world', 'selection', 'Be formal');
+
+            expect(globalThis.fetch).toHaveBeenCalledWith('/typo3/ajax/tx_cowriter_task_execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    taskUid: 1,
+                    context: 'Hello world',
+                    contextType: 'selection',
+                    adHocRules: 'Be formal',
+                }),
+            });
+            expect(result).toEqual(mockResponse);
+        });
+
+        it('should default adHocRules to empty string', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ success: true }),
+            });
+
+            const service = new ServiceClass();
+            await service.executeTask(1, 'text', 'selection');
+
+            const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+            expect(body.adHocRules).toBe('');
+        });
+
+        it('should throw on non-ok response', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 404,
+                json: () => Promise.resolve({ error: 'Task not found' }),
+            });
+
+            const service = new ServiceClass();
+            await expect(service.executeTask(999, 'text', 'selection')).rejects.toThrow('Task not found');
         });
     });
 

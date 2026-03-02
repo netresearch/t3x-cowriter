@@ -174,6 +174,8 @@ describe('UrlLoader', () => {
                 tx_cowriter_complete: '/complete',
                 tx_cowriter_stream: '/stream',
                 tx_cowriter_configurations: '/configs',
+                tx_cowriter_tasks: '/tasks',
+                tx_cowriter_task_execute: '/task-execute',
                 __proto__: { polluted: true },
                 malicious_route: '/evil',
                 constructor: '/hack',
@@ -193,6 +195,8 @@ describe('UrlLoader', () => {
             expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_complete).toBe('/complete');
             expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream).toBe('/stream');
             expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_configurations).toBe('/configs');
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_tasks).toBe('/tasks');
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_task_execute).toBe('/task-execute');
 
             // Non-allowed keys should be filtered out
             expect(TYPO3Mock.settings.ajaxUrls.malicious_route).toBeUndefined();
