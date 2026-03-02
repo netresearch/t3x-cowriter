@@ -335,7 +335,7 @@ describe('CowriterDialog', () => {
             await showPromise;
         });
 
-        it('should show "Generating..." while loading', async () => {
+        it('should show spinner and "Generating..." while loading', async () => {
             // Make executeTask hang for a bit
             let resolveTask;
             mockService.executeTask.mockReturnValue(
@@ -354,7 +354,13 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
                 expect(preview.textContent).toContain('Generating');
+                // Should have a spinner element
+                expect(preview.querySelector('.spinner-border')).not.toBeNull();
             });
+
+            // Cancel button should remain enabled during loading
+            const cancelBtn = document.querySelector('[data-name="cancel"]');
+            expect(cancelBtn.disabled).toBe(false);
 
             // Resolve the task
             resolveTask({ success: true, content: 'Done', model: 'gpt-4o' });
@@ -724,6 +730,38 @@ describe('CowriterDialog', () => {
             await showPromise;
         });
 
+        it('should set min=1 on page ID input', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull();
+            });
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const pidInput = document.querySelector('[data-role="ref-pid"]');
+            expect(pidInput.min).toBe('1');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should have aria-label on remove button', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull();
+            });
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const removeBtn = document.querySelector('[data-role="remove-reference"]');
+            expect(removeBtn.getAttribute('aria-label')).toBe('Remove reference page');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
         it('should skip reference pages with empty or zero page ID', async () => {
             const dialog = new CowriterDialog(mockService);
             const rc = { table: 'tt_content', uid: 1, field: 'bodytext' };
@@ -749,6 +787,141 @@ describe('CowriterDialog', () => {
                     'selection', rc,
                     [{ pid: 5, relation: 'ref' }],
                 );
+            });
+
+            document.querySelector('[data-name="execute"]').click();
+            await showPromise;
+        });
+    });
+
+    describe('accessibility', () => {
+        it('should set aria-label and aria-valuetext on slider', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full', '', null);
+
+            await vi.waitFor(() => {
+                const slider = document.querySelector('[data-role="context-slider"]');
+                expect(slider).not.toBeNull();
+                expect(slider.getAttribute('aria-label')).toBe('Context scope');
+                expect(slider.getAttribute('aria-valuetext')).toBe('Selection');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should update aria-valuetext when slider changes', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full', '', null);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="context-slider"]')).not.toBeNull();
+            });
+
+            const slider = document.querySelector('[data-role="context-slider"]');
+            slider.value = '3';
+            slider.dispatchEvent(new Event('input'));
+
+            expect(slider.getAttribute('aria-valuetext')).toBe('Page');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should associate labels with form controls via for attribute', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full', '', null);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="task-select"]')).not.toBeNull();
+            });
+
+            const taskSelect = document.querySelector('[data-role="task-select"]');
+            const slider = document.querySelector('[data-role="context-slider"]');
+
+            // Each control should have an id, and a label with matching for attribute
+            expect(taskSelect.id).toBeTruthy();
+            expect(slider.id).toBeTruthy();
+
+            const taskLabel = document.querySelector(`label[for="${taskSelect.id}"]`);
+            const sliderLabel = document.querySelector(`label[for="${slider.id}"]`);
+            expect(taskLabel).not.toBeNull();
+            expect(sliderLabel).not.toBeNull();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should hide Selection tick label when no text selected', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('', 'full', '', null);
+
+            await vi.waitFor(() => {
+                const ticks = document.querySelectorAll('.d-flex.justify-content-between span');
+                expect(ticks.length).toBe(6);
+                // First tick (Selection) should be hidden
+                expect(ticks[0].style.visibility).toBe('hidden');
+                // Others should be visible
+                expect(ticks[1].style.visibility).not.toBe('hidden');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('sanitizer', () => {
+        it('should strip dangerous elements from HTML preview', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<p>Safe</p><script>alert(1)</script><base href="evil"><meta http-equiv="refresh"><link rel="stylesheet">',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+            });
+
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                const preview = document.querySelector('[data-role="result-preview"]');
+                expect(preview.textContent).toContain('Safe');
+                expect(preview.querySelector('script')).toBeNull();
+                expect(preview.querySelector('base')).toBeNull();
+                expect(preview.querySelector('meta')).toBeNull();
+                expect(preview.querySelector('link')).toBeNull();
+            });
+
+            document.querySelector('[data-name="execute"]').click();
+            await showPromise;
+        });
+
+        it('should strip data: URI and vbscript: from attributes', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<p>Text</p><a href="data:text/html,evil">Link</a><a href="vbscript:evil">Link2</a>',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+            });
+
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                const preview = document.querySelector('[data-role="result-preview"]');
+                const links = preview.querySelectorAll('a');
+                for (const link of links) {
+                    expect(link.hasAttribute('href')).toBe(false);
+                }
             });
 
             document.querySelector('[data-name="execute"]').click();

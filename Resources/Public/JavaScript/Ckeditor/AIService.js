@@ -41,7 +41,7 @@
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null}}
      * @private
      */
     _routes = {
@@ -253,9 +253,6 @@ export class AIService {
 
         const response = await fetch(this._routes.tasks, {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
         });
 
         if (!response.ok) {
@@ -287,7 +284,6 @@ export class AIService {
 
         const response = await fetch(url, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
         });
 
         if (!response.ok) {

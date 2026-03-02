@@ -118,6 +118,50 @@ final class ContextAssemblyServiceTest extends TestCase
     }
 
     #[Test]
+    public function fetchSingleRecordRejectsDisallowedTable(): void
+    {
+        $connectionPool = $this->createConnectionPoolMock([]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->assembleContext('pages', 1, 'title', 'element');
+
+        self::assertSame('', $result);
+    }
+
+    #[Test]
+    public function missingBackendUserReturnsEmptyForElement(): void
+    {
+        // Remove BE_USER to simulate missing authentication
+        unset($GLOBALS['BE_USER']);
+
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 123, 'pid' => 5, 'header' => 'Secret', 'bodytext' => 'Confidential', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->assembleContext('tt_content', 123, 'bodytext', 'element');
+
+        // Page access check should deny access when no BE_USER is set
+        self::assertSame('', $result);
+    }
+
+    #[Test]
+    public function missingBackendUserReturnsEmptyForPage(): void
+    {
+        // Remove BE_USER to simulate missing authentication
+        unset($GLOBALS['BE_USER']);
+
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 123, 'pid' => 5, 'header' => 'Secret', 'bodytext' => 'Confidential', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'page');
+
+        self::assertSame(0, $result['wordCount']);
+    }
+
+    #[Test]
     public function countWordsStripsHtmlTags(): void
     {
         $service = new ContextAssemblyService($this->createConnectionPoolMock([]));

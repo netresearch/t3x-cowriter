@@ -624,7 +624,6 @@ describe('AIService', () => {
 
             expect(globalThis.fetch).toHaveBeenCalledWith('/typo3/ajax/tx_cowriter_tasks', {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
             });
             expect(result).toEqual(mockResponse);
         });

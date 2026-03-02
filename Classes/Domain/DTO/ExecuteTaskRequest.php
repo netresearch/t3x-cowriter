@@ -171,6 +171,13 @@ final readonly class ExecuteTaskRequest
             if (!in_array($this->recordContext['table'] ?? '', self::ALLOWED_RECORD_TABLES, true)) {
                 return false;
             }
+            if (($this->recordContext['uid'] ?? 0) <= 0) {
+                return false;
+            }
+            $rcField = $this->recordContext['field'] ?? '';
+            if ($rcField === '' || preg_match('/^[a-z][a-z0-9_]*$/i', $rcField) !== 1) {
+                return false;
+            }
         }
 
         if (count($this->referencePages) > self::MAX_REFERENCE_PAGES) {

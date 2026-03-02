@@ -26,6 +26,26 @@ import Modal from '@typo3/backend/modal.js';
  * @property {string} description
  */
 
+/**
+ * Context scope identifiers used for backend API calls.
+ * @type {readonly string[]}
+ */
+const SCOPE_IDS = ['selection', 'text', 'element', 'page', 'ancestors_1', 'ancestors_2'];
+
+/**
+ * Human-readable scope labels for the slider UI.
+ * @type {readonly string[]}
+ */
+const SCOPE_LABELS = ['Selection', 'Text', 'Element', 'Page', '+1 ancestor level', '+2 ancestor levels'];
+
+/**
+ * Short scope labels for slider tick marks.
+ * @type {readonly string[]}
+ */
+const SCOPE_TICK_LABELS = ['Selection', 'Text', 'Element', 'Page', '+1 level', '+2 levels'];
+
+let formIdCounter = 0;
+
 export class CowriterDialog {
     /** @type {import('./AIService.js').AIService} */
     _service;
@@ -155,12 +175,14 @@ export class CowriterDialog {
         /** @type {'idle'|'loading'|'result'} */
         let state = 'idle';
         let resultContent = '';
+        let previewTimer = container._previewTimer;
 
         return new Promise((resolve, reject) => {
             let modal;
             let resolved = false;
 
             const cancelTrigger = () => {
+                if (previewTimer) clearTimeout(previewTimer);
                 modal.hideModal();
                 if (!resolved) {
                     reject(new Error('User cancelled'));
@@ -173,6 +195,7 @@ export class CowriterDialog {
                 // Insert mode — result is ready
                 if (state === 'result' && resultContent) {
                     resolved = true;
+                    if (previewTimer) clearTimeout(previewTimer);
                     modal.hideModal();
                     resolve({ content: resultContent });
                     return;
@@ -185,7 +208,13 @@ export class CowriterDialog {
                 const preview = container.querySelector('[data-role="result-preview"]');
                 const modelInfo = container.querySelector('[data-role="model-info"]');
                 preview.style.display = 'block';
-                preview.textContent = 'Generating\u2026';
+                preview.replaceChildren();
+                const spinner = document.createElement('span');
+                spinner.className = 'spinner-border spinner-border-sm me-2';
+                spinner.setAttribute('role', 'status');
+                spinner.setAttribute('aria-hidden', 'true');
+                preview.appendChild(spinner);
+                preview.appendChild(document.createTextNode('Generating\u2026'));
                 modelInfo.style.display = 'none';
 
                 try {
@@ -194,10 +223,7 @@ export class CowriterDialog {
                     );
                     const slider = container.querySelector('[data-role="context-slider"]');
                     const scopeIndex = parseInt(slider.value, 10);
-                    const scopes = [
-                        'selection', 'text', 'element', 'page', 'ancestors_1', 'ancestors_2',
-                    ];
-                    const contextScope = scopes[scopeIndex] || 'selection';
+                    const contextScope = SCOPE_IDS[scopeIndex] || 'selection';
                     const contextType = scopeIndex === 0 ? 'selection' : 'content_element';
                     const context = contextType === 'selection'
                         ? selectedText
@@ -287,11 +313,14 @@ export class CowriterDialog {
     _buildDialogContent(tasks, selectedText, fullContent, recordContext) {
         const container = document.createElement('div');
         container.className = 'cowriter-dialog';
+        const idPrefix = `cowriter-${++formIdCounter}`;
 
         // Task selector
-        const taskGroup = this._createFormGroup('Task');
+        const taskSelectId = `${idPrefix}-task`;
+        const taskGroup = this._createFormGroup('Task', taskSelectId);
         const taskSelect = document.createElement('select');
         taskSelect.className = 'form-select';
+        taskSelect.id = taskSelectId;
         taskSelect.dataset.role = 'task-select';
         for (const task of tasks) {
             const option = document.createElement('option');
@@ -315,29 +344,36 @@ export class CowriterDialog {
         container.appendChild(taskGroup);
 
         // Context zoom slider (replaces radio buttons)
-        const contextGroup = this._createFormGroup('Context scope');
+        const sliderId = `${idPrefix}-slider`;
+        const contextGroup = this._createFormGroup('Context scope', sliderId);
         const hasSelection = Boolean(selectedText && selectedText.trim().length > 0);
+        const initialIndex = hasSelection ? 0 : 1;
 
         const slider = document.createElement('input');
         slider.type = 'range';
         slider.className = 'form-range';
+        slider.id = sliderId;
         slider.dataset.role = 'context-slider';
         slider.min = hasSelection ? '0' : '1';
         slider.max = '5';
-        slider.value = hasSelection ? '0' : '1';
+        slider.value = String(initialIndex);
         slider.step = '1';
+        slider.setAttribute('aria-label', 'Context scope');
+        slider.setAttribute('aria-valuetext', SCOPE_LABELS[initialIndex]);
         contextGroup.appendChild(slider);
 
         // Tick labels
         const tickLabels = document.createElement('div');
         tickLabels.className = 'd-flex justify-content-between';
         tickLabels.style.fontSize = '0.75rem';
-        const labels = ['Selection', 'Text', 'Element', 'Page', '+1 level', '+2 levels'];
-        for (const label of labels) {
+        for (let i = 0; i < SCOPE_TICK_LABELS.length; i++) {
             const span = document.createElement('span');
-            span.textContent = label;
+            span.textContent = SCOPE_TICK_LABELS[i];
             span.style.flex = '1';
             span.style.textAlign = 'center';
+            if (i === 0 && !hasSelection) {
+                span.style.visibility = 'hidden';
+            }
             tickLabels.appendChild(span);
         }
         contextGroup.appendChild(tickLabels);
@@ -346,31 +382,27 @@ export class CowriterDialog {
         const scopeLabel = document.createElement('div');
         scopeLabel.className = 'form-text text-body-secondary mt-1';
         scopeLabel.dataset.role = 'scope-label';
-        scopeLabel.textContent = hasSelection ? 'Selection' : 'Text';
+        scopeLabel.textContent = SCOPE_LABELS[initialIndex];
         contextGroup.appendChild(scopeLabel);
 
         // Slider change handler with debounce for DB preview requests
         let previewTimer = null;
         slider.addEventListener('input', () => {
             const index = parseInt(slider.value, 10);
-            const scopeNames = [
-                'Selection', 'Text', 'Element', 'Page',
-                '+1 ancestor level', '+2 ancestor levels',
-            ];
-            scopeLabel.textContent = scopeNames[index] || '';
+            scopeLabel.textContent = SCOPE_LABELS[index] || '';
+            slider.setAttribute('aria-valuetext', SCOPE_LABELS[index] || '');
 
             // Debounce preview fetch for scopes that need DB lookup
             if (previewTimer) clearTimeout(previewTimer);
-            const scopes = [
-                'selection', 'text', 'element', 'page', 'ancestors_1', 'ancestors_2',
-            ];
             if (index >= 2 && recordContext && this._service.getContext) {
                 previewTimer = setTimeout(() => {
+                    const requestedIndex = index;
                     this._service.getContext(
-                        recordContext.table, recordContext.uid, recordContext.field, scopes[index],
+                        recordContext.table, recordContext.uid, recordContext.field, SCOPE_IDS[index],
                     ).then((result) => {
-                        if (result.success) {
-                            scopeLabel.textContent = `${scopeNames[index]} (${result.summary})`;
+                        // Only apply if slider is still on the same position (avoid stale response)
+                        if (parseInt(slider.value, 10) === requestedIndex && result.success) {
+                            scopeLabel.textContent = `${SCOPE_LABELS[requestedIndex]} (${result.summary})`;
                         }
                     }).catch(() => {
                         // Silently ignore preview errors — the scope label still shows
@@ -378,6 +410,9 @@ export class CowriterDialog {
                 }, 300);
             }
         });
+
+        // Expose timer reference for cleanup on dialog close
+        container._previewTimer = previewTimer;
 
         container.appendChild(contextGroup);
 
@@ -413,9 +448,11 @@ export class CowriterDialog {
         }
 
         // Ad-hoc rules
-        const rulesGroup = this._createFormGroup('Additional instructions (optional)');
+        const rulesId = `${idPrefix}-rules`;
+        const rulesGroup = this._createFormGroup('Additional instructions (optional)', rulesId);
         const rulesInput = document.createElement('textarea');
         rulesInput.className = 'form-control';
+        rulesInput.id = rulesId;
         rulesInput.dataset.role = 'ad-hoc-rules';
         rulesInput.rows = 2;
         rulesInput.placeholder = 'e.g., Write in formal tone, keep it under 100 words\u2026';
@@ -443,15 +480,19 @@ export class CowriterDialog {
 
     /**
      * @param {string} label
+     * @param {string|null} [inputId=null]
      * @returns {HTMLElement}
      * @private
      */
-    _createFormGroup(label) {
+    _createFormGroup(label, inputId = null) {
         const group = document.createElement('div');
         group.className = 'mb-3';
         const labelEl = document.createElement('label');
         labelEl.className = 'form-label fw-bold';
         labelEl.textContent = label;
+        if (inputId) {
+            labelEl.setAttribute('for', inputId);
+        }
         group.appendChild(labelEl);
         return group;
     }
@@ -468,6 +509,7 @@ export class CowriterDialog {
 
         const pidInput = document.createElement('input');
         pidInput.type = 'number';
+        pidInput.min = '1';
         pidInput.className = 'form-control form-control-sm';
         pidInput.dataset.role = 'ref-pid';
         pidInput.placeholder = 'Page ID';
@@ -487,6 +529,7 @@ export class CowriterDialog {
         removeBtn.className = 'btn btn-sm btn-outline-danger';
         removeBtn.dataset.role = 'remove-reference';
         removeBtn.textContent = '\u2715';
+        removeBtn.setAttribute('aria-label', 'Remove reference page');
         removeBtn.addEventListener('click', () => row.remove());
         row.appendChild(removeBtn);
 
@@ -497,8 +540,8 @@ export class CowriterDialog {
      * Parse HTML string safely via DOMParser and remove dangerous elements/attributes.
      *
      * DOMParser does NOT execute scripts — parsed content is inert.
-     * We additionally strip script/style/iframe/object/embed/form elements
-     * and all on* event handler attributes.
+     * We additionally strip dangerous elements and all on* event handler attributes,
+     * javascript:/data:/vbscript: URI schemes.
      *
      * @param {string} html
      * @returns {HTMLElement} The sanitized body element
@@ -506,12 +549,16 @@ export class CowriterDialog {
      */
     _sanitizeHtml(html) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
-        doc.querySelectorAll('script, style, iframe, object, embed, form')
-            .forEach((el) => el.remove());
+        doc.querySelectorAll(
+            'script, style, iframe, object, embed, form, base, meta, link, noscript, template',
+        ).forEach((el) => el.remove());
         doc.querySelectorAll('*').forEach((el) => {
             for (const attr of [...el.attributes]) {
+                const normalized = attr.value.replace(/[\s\x00-\x1F]/g, '').toLowerCase();
                 if (attr.name.startsWith('on')
-                    || attr.value.toLowerCase().includes('javascript:')) {
+                    || normalized.includes('javascript:')
+                    || normalized.includes('vbscript:')
+                    || normalized.includes('data:text/html')) {
                     el.removeAttribute(attr.name);
                 }
             }
@@ -534,7 +581,8 @@ export class CowriterDialog {
     }
 
     /**
-     * Enable or disable all modal buttons during loading.
+     * Enable or disable modal buttons during loading.
+     * The Cancel button always remains enabled so the user can abort.
      *
      * @param {object} modal
      * @param {boolean} disabled
@@ -542,6 +590,7 @@ export class CowriterDialog {
      */
     _setButtonsDisabled(modal, disabled) {
         modal?.querySelectorAll?.('.btn')?.forEach((btn) => {
+            if (btn.dataset.name === 'cancel') return;
             btn.disabled = disabled;
         });
     }

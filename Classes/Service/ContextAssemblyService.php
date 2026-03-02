@@ -23,6 +23,11 @@ use TYPO3\CMS\Core\Database\ConnectionPool;
 final readonly class ContextAssemblyService implements ContextAssemblyServiceInterface
 {
     /**
+     * Tables allowed for context assembly queries.
+     */
+    private const ALLOWED_TABLES = ['tt_content'];
+
+    /**
      * Text fields to extract from tt_content records.
      */
     private const TEXT_FIELDS = ['header', 'subheader', 'bodytext'];
@@ -135,6 +140,10 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
      */
     private function fetchSingleRecord(string $table, int $uid): array
     {
+        if (!in_array($table, self::ALLOWED_TABLES, true)) {
+            return [];
+        }
+
         $qb     = $this->connectionPool->getQueryBuilderForTable($table);
         $result = $qb
             ->select('uid', 'pid', 'header', 'subheader', 'bodytext')
@@ -144,7 +153,18 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
 
         $row = $result->fetchAssociative();
 
-        return $row !== false ? [$row] : [];
+        if ($row === false) {
+            return [];
+        }
+
+        // Enforce page access check for every record
+        $rawPid = $row['pid'] ?? 0;
+        $pid    = is_numeric($rawPid) ? (int) $rawPid : 0;
+        if ($pid > 0 && !$this->userHasPageAccess($pid)) {
+            return [];
+        }
+
+        return [$row];
     }
 
     /**
