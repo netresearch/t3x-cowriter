@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Service;
 
+use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 
 /**
@@ -16,6 +18,7 @@ use TYPO3\CMS\Core\Database\ConnectionPool;
  *
  * Fetches and formats content from tt_content records based on the requested
  * scope (element, page, ancestor pages) for use as LLM context.
+ * All page access is checked against the current backend user's permissions.
  */
 final readonly class ContextAssemblyService implements ContextAssemblyServiceInterface
 {
@@ -32,6 +35,26 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
     public function __construct(
         private ConnectionPool $connectionPool,
     ) {}
+
+    /**
+     * Check if the current backend user has read access to the given page.
+     */
+    private function userHasPageAccess(int $pid): bool
+    {
+        $backendUser = $GLOBALS['BE_USER'] ?? null;
+        if (!$backendUser instanceof BackendUserAuthentication) {
+            return false;
+        }
+
+        // Admin users have unrestricted access
+        if ($backendUser->isAdmin()) {
+            return true;
+        }
+
+        $page = BackendUtility::getRecord('pages', $pid, 'uid');
+
+        return $page !== null && $backendUser->doesUserHaveAccess($page, 1);
+    }
 
     /**
      * Get a lightweight context summary (word count, element count).
@@ -150,6 +173,10 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
      */
     private function fetchContentForPage(int $pid): array
     {
+        if (!$this->userHasPageAccess($pid)) {
+            return [];
+        }
+
         $qb     = $this->connectionPool->getQueryBuilderForTable('tt_content');
         $result = $qb
             ->select('uid', 'pid', 'header', 'subheader', 'bodytext')

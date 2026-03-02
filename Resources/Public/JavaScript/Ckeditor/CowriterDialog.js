@@ -349,7 +349,8 @@ export class CowriterDialog {
         scopeLabel.textContent = hasSelection ? 'Selection' : 'Text';
         contextGroup.appendChild(scopeLabel);
 
-        // Slider change handler
+        // Slider change handler with debounce for DB preview requests
+        let previewTimer = null;
         slider.addEventListener('input', () => {
             const index = parseInt(slider.value, 10);
             const scopeNames = [
@@ -358,20 +359,23 @@ export class CowriterDialog {
             ];
             scopeLabel.textContent = scopeNames[index] || '';
 
-            // Fetch preview for scopes that need DB lookup
+            // Debounce preview fetch for scopes that need DB lookup
+            if (previewTimer) clearTimeout(previewTimer);
             const scopes = [
                 'selection', 'text', 'element', 'page', 'ancestors_1', 'ancestors_2',
             ];
             if (index >= 2 && recordContext && this._service.getContext) {
-                this._service.getContext(
-                    recordContext.table, recordContext.uid, recordContext.field, scopes[index],
-                ).then((result) => {
-                    if (result.success) {
-                        scopeLabel.textContent = `${scopeNames[index]} (${result.summary})`;
-                    }
-                }).catch(() => {
-                    // Silently ignore preview errors — the scope label still shows
-                });
+                previewTimer = setTimeout(() => {
+                    this._service.getContext(
+                        recordContext.table, recordContext.uid, recordContext.field, scopes[index],
+                    ).then((result) => {
+                        if (result.success) {
+                            scopeLabel.textContent = `${scopeNames[index]} (${result.summary})`;
+                        }
+                    }).catch(() => {
+                        // Silently ignore preview errors — the scope label still shows
+                    });
+                }, 300);
             }
         });
 

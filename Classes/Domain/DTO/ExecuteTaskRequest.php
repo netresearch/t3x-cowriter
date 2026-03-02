@@ -237,7 +237,7 @@ final readonly class ExecuteTaskRequest
         $uid   = is_numeric($rc['uid'] ?? null) ? (int) $rc['uid'] : 0;
         $field = is_string($rc['field'] ?? null) ? $rc['field'] : '';
 
-        if ($table === '' || $uid <= 0 || $field === '') {
+        if ($table === '' || $uid <= 0 || $field === '' || preg_match('/^[a-z][a-z0-9_]*$/i', $field) !== 1) {
             return null;
         }
 
@@ -265,6 +265,7 @@ final readonly class ExecuteTaskRequest
             }
             $pid      = is_numeric($page['pid'] ?? null) ? (int) $page['pid'] : 0;
             $relation = is_string($page['relation'] ?? null) ? $page['relation'] : '';
+            $relation = mb_substr($relation, 0, 100);
             if ($pid > 0) {
                 $result[] = ['pid' => $pid, 'relation' => $relation];
             }

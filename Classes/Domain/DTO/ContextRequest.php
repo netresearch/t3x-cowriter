@@ -58,7 +58,7 @@ final readonly class ContextRequest
             return false;
         }
 
-        if ($this->field === '') {
+        if ($this->field === '' || preg_match('/^[a-z][a-z0-9_]*$/i', $this->field) !== 1) {
             return false;
         }
 

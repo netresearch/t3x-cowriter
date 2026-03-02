@@ -1877,7 +1877,7 @@ final class AjaxControllerTest extends TestCase
         ]);
 
         $response = $this->subject->executeTaskAction($request);
-        $body = json_decode((string) $response->getBody(), true);
+        $body     = json_decode((string) $response->getBody(), true);
 
         self::assertSame(200, $response->getStatusCode());
         self::assertTrue($body['success']);
@@ -1909,7 +1909,7 @@ final class AjaxControllerTest extends TestCase
         ]);
 
         $response = $this->subject->executeTaskAction($request);
-        $body = json_decode((string) $response->getBody(), true);
+        $body     = json_decode((string) $response->getBody(), true);
 
         self::assertSame(200, $response->getStatusCode());
         self::assertTrue($body['success']);
@@ -1938,7 +1938,7 @@ final class AjaxControllerTest extends TestCase
         ]);
 
         $response = $this->subject->executeTaskAction($request);
-        $body = json_decode((string) $response->getBody(), true);
+        $body     = json_decode((string) $response->getBody(), true);
 
         self::assertSame(500, $response->getStatusCode());
         self::assertFalse($body['success']);
@@ -1966,7 +1966,7 @@ final class AjaxControllerTest extends TestCase
         ]);
 
         $response = $this->subject->getContextAction($request);
-        $body = json_decode((string) $response->getBody(), true);
+        $body     = json_decode((string) $response->getBody(), true);
 
         self::assertSame(200, $response->getStatusCode());
         self::assertTrue($body['success']);
@@ -1986,7 +1986,7 @@ final class AjaxControllerTest extends TestCase
         ]);
 
         $response = $this->subject->getContextAction($request);
-        $body = json_decode((string) $response->getBody(), true);
+        $body     = json_decode((string) $response->getBody(), true);
 
         self::assertSame(400, $response->getStatusCode());
         self::assertFalse($body['success']);
@@ -1997,7 +1997,7 @@ final class AjaxControllerTest extends TestCase
     {
         $this->contextAssemblyMock
             ->method('getContextSummary')
-            ->willThrowException(new \RuntimeException('DB error'));
+            ->willThrowException(new RuntimeException('DB error'));
 
         $request = $this->createStub(ServerRequestInterface::class);
         $request->method('getQueryParams')->willReturn([
