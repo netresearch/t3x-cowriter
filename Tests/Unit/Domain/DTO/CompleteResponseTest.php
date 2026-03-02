@@ -37,18 +37,18 @@ final class CompleteResponseTest extends TestCase
     }
 
     #[Test]
-    public function successReturnsRawContentWithoutEscaping(): void
+    public function successEscapesHtmlInContent(): void
     {
         $completionResponse = $this->createCompletionResponse('<p>Hello <strong>world</strong></p>');
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertSame('<p>Hello <strong>world</strong></p>', $response->content);
+        $this->assertSame('&lt;p&gt;Hello &lt;strong&gt;world&lt;/strong&gt;&lt;/p&gt;', $response->content);
     }
 
     #[Test]
-    #[DataProvider('rawContentProvider')]
-    public function successPreservesRawContent(string $input, string $expectedContent): void
+    #[DataProvider('escapedContentProvider')]
+    public function successEscapesSpecialCharactersInContent(string $input, string $expectedContent): void
     {
         $completionResponse = $this->createCompletionResponse($input);
 
@@ -60,23 +60,23 @@ final class CompleteResponseTest extends TestCase
     /**
      * @return iterable<string, array{string, string}>
      */
-    public static function rawContentProvider(): iterable
+    public static function escapedContentProvider(): iterable
     {
-        yield 'HTML tags preserved' => [
+        yield 'HTML tags escaped' => [
             '<p>Hello <strong>world</strong></p>',
-            '<p>Hello <strong>world</strong></p>',
+            '&lt;p&gt;Hello &lt;strong&gt;world&lt;/strong&gt;&lt;/p&gt;',
         ];
-        yield 'single quotes preserved' => [
+        yield 'single quotes escaped' => [
             "Hello 'world'",
-            "Hello 'world'",
+            'Hello &#039;world&#039;',
         ];
-        yield 'double quotes preserved' => [
+        yield 'double quotes escaped' => [
             'Hello "world"',
-            'Hello "world"',
+            'Hello &quot;world&quot;',
         ];
-        yield 'ampersand preserved' => [
+        yield 'ampersand escaped' => [
             'A & B',
-            'A & B',
+            'A &amp; B',
         ];
         yield 'plain text unchanged' => [
             'Just plain text',
@@ -211,7 +211,7 @@ final class CompleteResponseTest extends TestCase
     }
 
     #[Test]
-    public function successPreservesSpecialCharactersInFinishReason(): void
+    public function successEscapesSpecialCharactersInFinishReason(): void
     {
         $usage = new UsageStatistics(10, 20, 30);
 
@@ -225,11 +225,11 @@ final class CompleteResponseTest extends TestCase
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertSame('stop<script>', $response->finishReason);
+        $this->assertSame('stop&lt;script&gt;', $response->finishReason);
     }
 
     #[Test]
-    public function successPreservesSpecialCharactersInModelAndFinishReason(): void
+    public function successEscapesSpecialCharactersInModelAndFinishReason(): void
     {
         $usage = new UsageStatistics(10, 20, 30);
 
@@ -243,8 +243,8 @@ final class CompleteResponseTest extends TestCase
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertSame("model's-name", $response->model);
-        $this->assertSame("it's done", $response->finishReason);
+        $this->assertSame('model&#039;s-name', $response->model);
+        $this->assertSame('it&#039;s done', $response->finishReason);
     }
 
     private function createCompletionResponse(

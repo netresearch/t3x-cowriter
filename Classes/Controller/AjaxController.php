@@ -140,9 +140,9 @@ final readonly class AjaxController
 
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'      => true,
-                'content'      => $response->content,
-                'model'        => $response->model ?? '',
-                'finishReason' => $response->finishReason ?? '',
+                'content'      => htmlspecialchars($response->content ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                'model'        => htmlspecialchars($response->model ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                'finishReason' => htmlspecialchars($response->finishReason ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
             ], $rateLimitResult);
         } catch (ProviderException $e) {
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
@@ -313,13 +313,13 @@ final readonly class AjaxController
             $generator = $this->llmServiceManager->streamChatWithConfiguration($messages, $configuration);
 
             foreach ($generator as $chunk) {
-                $chunks[] = 'data: ' . json_encode(['content' => $chunk], JSON_THROW_ON_ERROR) . "\n\n";
+                $chunks[] = 'data: ' . json_encode(['content' => htmlspecialchars($chunk, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')], JSON_THROW_ON_ERROR) . "\n\n";
             }
 
             // Add final "done" event
             $chunks[] = 'data: ' . json_encode([
                 'done'  => true,
-                'model' => $configuration->getModelId(),
+                'model' => htmlspecialchars($configuration->getModelId(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
             ], JSON_THROW_ON_ERROR) . "\n\n";
 
             $body = implode('', $chunks);
@@ -408,9 +408,9 @@ final readonly class AjaxController
 
             $list[] = [
                 'uid'         => $task->getUid(),
-                'identifier'  => $task->getIdentifier(),
-                'name'        => $task->getName(),
-                'description' => $task->getDescription(),
+                'identifier'  => htmlspecialchars($task->getIdentifier(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                'name'        => htmlspecialchars($task->getName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                'description' => htmlspecialchars($task->getDescription(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
             ];
         }
 

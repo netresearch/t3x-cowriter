@@ -302,7 +302,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function chatActionReturnsRawContentWithoutEscaping(): void
+    public function chatActionEscapesHtmlInResponse(): void
     {
         $messages = [['role' => 'user', 'content' => 'Hello']];
         $config   = $this->createConfigurationMock();
@@ -325,9 +325,9 @@ final class AjaxControllerTest extends TestCase
 
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
-        $this->assertSame('<p>Hello <strong>world</strong></p>', $data['content']);
-        $this->assertSame("model's-name", $data['model']);
-        $this->assertSame("it's done", $data['finishReason']);
+        $this->assertSame('&lt;p&gt;Hello &lt;strong&gt;world&lt;/strong&gt;&lt;/p&gt;', $data['content']);
+        $this->assertSame('model&#039;s-name', $data['model']);
+        $this->assertSame('it&#039;s done', $data['finishReason']);
     }
 
     // ===========================================
@@ -416,7 +416,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function completeActionReturnsRawHtmlContent(): void
+    public function completeActionEscapesHtmlInContent(): void
     {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock
@@ -432,7 +432,7 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->completeAction($request);
 
         $data = $this->decodeJsonResponse($response);
-        $this->assertSame('<p>Improved <strong>text</strong></p>', $data['content']);
+        $this->assertSame('&lt;p&gt;Improved &lt;strong&gt;text&lt;/strong&gt;&lt;/p&gt;', $data['content']);
     }
 
     #[Test]
@@ -796,7 +796,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function streamActionReturnsRawContentInSseChunks(): void
+    public function streamActionEscapesHtmlInSseChunks(): void
     {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
@@ -813,14 +813,14 @@ final class AjaxControllerTest extends TestCase
         $response->getBody()->rewind();
         $body = $response->getBody()->getContents();
 
-        // Raw HTML is preserved in SSE data (json_encode escapes / as \/)
+        // HTML is escaped in SSE data
         $events     = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
         $firstEvent = json_decode(substr(reset($events), 6), true);
-        $this->assertSame('<p>Hello</p>', $firstEvent['content']);
+        $this->assertSame('&lt;p&gt;Hello&lt;/p&gt;', $firstEvent['content']);
     }
 
     #[Test]
-    public function streamActionPreservesSpecialCharactersInSseChunks(): void
+    public function streamActionEscapesSpecialCharactersInSseChunks(): void
     {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
@@ -837,8 +837,8 @@ final class AjaxControllerTest extends TestCase
         $response->getBody()->rewind();
         $body = $response->getBody()->getContents();
 
-        // Single quotes preserved as-is (no HTML encoding)
-        $this->assertStringContainsString("It's a test", $body);
+        // Single quotes are HTML-escaped
+        $this->assertStringContainsString('It&#039;s a test', $body);
     }
 
     #[Test]
@@ -918,8 +918,8 @@ final class AjaxControllerTest extends TestCase
         $events    = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
         $lastEvent = json_decode(substr(end($events), 6), true);
         $this->assertTrue($lastEvent['done']);
-        // Model preserved as-is (no HTML encoding)
-        $this->assertSame("test-model's", $lastEvent['model']);
+        // Model is HTML-escaped
+        $this->assertSame('test-model&#039;s', $lastEvent['model']);
     }
 
     #[Test]
@@ -1488,7 +1488,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function getTasksActionReturnsRawTaskFields(): void
+    public function getTasksActionEscapesTaskFields(): void
     {
         $task = $this->createTaskMock(1, 'fix<test>', 'Fix Grammar & Spelling', 'Desc with "quotes"', true);
 
@@ -1499,10 +1499,10 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
 
         $data = $this->decodeJsonResponse($response);
-        // Raw values preserved — no HTML encoding in JSON responses
-        self::assertSame('fix<test>', $data['tasks'][0]['identifier']);
-        self::assertSame('Fix Grammar & Spelling', $data['tasks'][0]['name']);
-        self::assertSame('Desc with "quotes"', $data['tasks'][0]['description']);
+        // HTML-escaped to prevent XSS
+        self::assertSame('fix&lt;test&gt;', $data['tasks'][0]['identifier']);
+        self::assertSame('Fix Grammar &amp; Spelling', $data['tasks'][0]['name']);
+        self::assertSame('Desc with &quot;quotes&quot;', $data['tasks'][0]['description']);
     }
 
     // ===========================================
