@@ -166,39 +166,31 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
         });
 
-        it('should pre-select "Selected text" when text is selected', async () => {
+        it('should start slider at stop 0 (selection) when text is selected', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('some selected text', 'full content');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('input[value="selection"]')).not.toBeNull();
+                const slider = document.querySelector('[data-role="context-slider"]');
+                expect(slider).not.toBeNull();
+                expect(slider.min).toBe('0');
+                expect(slider.value).toBe('0');
             });
-
-            const selectionRadio = document.querySelector('input[value="selection"]');
-            const contentRadio = document.querySelector('input[value="content_element"]');
-
-            expect(selectionRadio.checked).toBe(true);
-            expect(selectionRadio.disabled).toBe(false);
-            expect(contentRadio.checked).toBe(false);
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
-        it('should pre-select "Whole content" when no text is selected', async () => {
+        it('should start slider at stop 1 (text) when no text is selected', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('', 'full content');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('input[value="content_element"]')).not.toBeNull();
+                const slider = document.querySelector('[data-role="context-slider"]');
+                expect(slider).not.toBeNull();
+                expect(slider.min).toBe('1');
+                expect(slider.value).toBe('1');
             });
-
-            const selectionRadio = document.querySelector('input[value="selection"]');
-            const contentRadio = document.querySelector('input[value="content_element"]');
-
-            expect(selectionRadio.checked).toBe(false);
-            expect(selectionRadio.disabled).toBe(true);
-            expect(contentRadio.checked).toBe(true);
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});
@@ -251,6 +243,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'my selected text', 'selection', '', '',
+                    'selection', null, [],
                 );
             });
 
@@ -274,6 +267,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'full editor content here', 'content_element', '', '',
+                    'text', null, [],
                 );
             });
 
@@ -299,6 +293,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Write in formal tone', '',
+                    'selection', null, [],
                 );
             });
 
@@ -450,6 +445,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledTimes(2);
                 expect(mockService.executeTask).toHaveBeenLastCalledWith(
                     2, 'text', 'selection', '', '',
+                    'selection', null, [],
                 );
             });
 
@@ -486,6 +482,163 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
 
             expect(document.querySelector('.modal')).toBeNull();
+        });
+    });
+
+    describe('context zoom slider', () => {
+        it('should render range slider instead of radio buttons', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full', '', null);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="context-slider"]')).not.toBeNull();
+            });
+
+            const slider = document.querySelector('[data-role="context-slider"]');
+            expect(slider.tagName).toBe('INPUT');
+            expect(slider.type).toBe('range');
+            expect(slider.min).toBe('0');
+            expect(slider.max).toBe('5');
+
+            // Radio buttons should NOT exist
+            expect(document.querySelector('input[name="cowriter-context"]')).toBeNull();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should disable stop 0 (selection) when no text selected', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('', 'full', '', null);
+
+            await vi.waitFor(() => {
+                const slider = document.querySelector('[data-role="context-slider"]');
+                expect(slider).not.toBeNull();
+                expect(slider.min).toBe('1');
+                expect(slider.value).toBe('1');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should start at stop 0 (selection) when text is selected', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected text', 'full', '', null);
+
+            await vi.waitFor(() => {
+                const slider = document.querySelector('[data-role="context-slider"]');
+                expect(slider).not.toBeNull();
+                expect(slider.min).toBe('0');
+                expect(slider.value).toBe('0');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should show scope label below slider', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full', '', null);
+
+            await vi.waitFor(() => {
+                const label = document.querySelector('[data-role="scope-label"]');
+                expect(label).not.toBeNull();
+                expect(label.textContent).toContain('Selection');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should update scope label when slider changes', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full', '',
+                { table: 'tt_content', uid: 42, field: 'bodytext' });
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="context-slider"]')).not.toBeNull();
+            });
+
+            mockService.getContext = vi.fn().mockResolvedValue({
+                success: true,
+                summary: '3 elements, ~42 words',
+                wordCount: 42,
+            });
+
+            const slider = document.querySelector('[data-role="context-slider"]');
+            slider.value = '3'; // page
+            slider.dispatchEvent(new Event('input'));
+
+            await vi.waitFor(() => {
+                const label = document.querySelector('[data-role="scope-label"]');
+                expect(label.textContent).toContain('Page');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should pass contextScope and recordContext to executeTask', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const recordContext = { table: 'tt_content', uid: 42, field: 'bodytext' };
+            const showPromise = dialog.show('text', 'full', '', recordContext);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+            });
+
+            const slider = document.querySelector('[data-role="context-slider"]');
+            slider.value = '3';
+            slider.dispatchEvent(new Event('input'));
+
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                // Slider at 3 (page) means contextType='content_element', context='full'
+                expect(mockService.executeTask).toHaveBeenCalledWith(
+                    1, 'full', 'content_element', '', '',
+                    'page', recordContext, [],
+                );
+            });
+
+            document.querySelector('[data-name="execute"]').click();
+            await showPromise;
+        });
+
+        it('should map slider stops to correct scope values', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const rc = { table: 'tt_content', uid: 1, field: 'bodytext' };
+            const showPromise = dialog.show('text', 'full', '', rc);
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="context-slider"]')).not.toBeNull();
+            });
+
+            const slider = document.querySelector('[data-role="context-slider"]');
+
+            for (let i = 0; i <= 5; i++) {
+                slider.value = String(i);
+                slider.dispatchEvent(new Event('input'));
+
+                const label = document.querySelector('[data-role="scope-label"]');
+                expect(label).not.toBeNull();
+            }
+
+            // Execute at stop 4 (ancestors_1) — scope > 0 means content_element
+            slider.value = '4';
+            slider.dispatchEvent(new Event('input'));
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                expect(mockService.executeTask).toHaveBeenCalledWith(
+                    1, 'full', 'content_element', '', '',
+                    'ancestors_1', rc, [],
+                );
+            });
+
+            document.querySelector('[data-name="execute"]').click();
+            await showPromise;
         });
     });
 });

@@ -43,9 +43,10 @@ export class CowriterDialog {
      * @param {string} selectedText - Currently selected text in the editor
      * @param {string} fullContent - Full content of the editor
      * @param {string} [editorCapabilities=''] - Available editor formatting features
+     * @param {{table: string, uid: number, field: string}|null} [recordContext=null] - Record context for DB lookups
      * @returns {Promise<DialogResult>} Resolves with content to insert, rejects on cancel
      */
-    async show(selectedText, fullContent, editorCapabilities = '') {
+    async show(selectedText, fullContent, editorCapabilities = '', recordContext = null) {
         let tasks;
         try {
             const response = await this._service.getTasks();
@@ -58,7 +59,7 @@ export class CowriterDialog {
             return this._showNoTasksModal();
         }
 
-        return this._showModal(tasks, selectedText, fullContent, editorCapabilities);
+        return this._showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext);
     }
 
     /**
@@ -145,11 +146,12 @@ export class CowriterDialog {
      * @param {string} selectedText
      * @param {string} fullContent
      * @param {string} editorCapabilities
+     * @param {{table: string, uid: number, field: string}|null} recordContext
      * @returns {Promise<DialogResult>}
      * @private
      */
-    _showModal(tasks, selectedText, fullContent, editorCapabilities) {
-        const container = this._buildDialogContent(tasks, selectedText, fullContent);
+    _showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext) {
+        const container = this._buildDialogContent(tasks, selectedText, fullContent, recordContext);
         /** @type {'idle'|'loading'|'result'} */
         let state = 'idle';
         let resultContent = '';
@@ -190,9 +192,13 @@ export class CowriterDialog {
                     const taskUid = parseInt(
                         container.querySelector('[data-role="task-select"]').value, 10,
                     );
-                    const contextType = container.querySelector(
-                        'input[name="cowriter-context"]:checked',
-                    )?.value || 'content_element';
+                    const slider = container.querySelector('[data-role="context-slider"]');
+                    const scopeIndex = parseInt(slider.value, 10);
+                    const scopes = [
+                        'selection', 'text', 'element', 'page', 'ancestors_1', 'ancestors_2',
+                    ];
+                    const contextScope = scopes[scopeIndex] || 'selection';
+                    const contextType = scopeIndex === 0 ? 'selection' : 'content_element';
                     const context = contextType === 'selection'
                         ? selectedText
                         : fullContent;
@@ -202,6 +208,7 @@ export class CowriterDialog {
 
                     const result = await this._service.executeTask(
                         taskUid, context, contextType, adHocRules, editorCapabilities,
+                        contextScope, recordContext, [],
                     );
 
                     if (result.success && result.content) {
@@ -252,9 +259,7 @@ export class CowriterDialog {
                 }
             };
             container.querySelector('[data-role="task-select"]')?.addEventListener('change', resetResult);
-            container.querySelectorAll('input[name="cowriter-context"]').forEach(
-                (el) => el.addEventListener('change', resetResult),
-            );
+            container.querySelector('[data-role="context-slider"]')?.addEventListener('input', resetResult);
         });
     }
 
@@ -264,10 +269,11 @@ export class CowriterDialog {
      * @param {TaskItem[]} tasks
      * @param {string} selectedText
      * @param {string} fullContent
+     * @param {{table: string, uid: number, field: string}|null} recordContext
      * @returns {HTMLElement}
      * @private
      */
-    _buildDialogContent(tasks, selectedText, fullContent) {
+    _buildDialogContent(tasks, selectedText, fullContent, recordContext) {
         const container = document.createElement('div');
         container.className = 'cowriter-dialog';
 
@@ -297,16 +303,67 @@ export class CowriterDialog {
         });
         container.appendChild(taskGroup);
 
-        // Context radio buttons
-        const contextGroup = this._createFormGroup('Context');
+        // Context zoom slider (replaces radio buttons)
+        const contextGroup = this._createFormGroup('Context scope');
         const hasSelection = Boolean(selectedText && selectedText.trim().length > 0);
 
-        contextGroup.appendChild(
-            this._createRadioOption('cowriter-context', 'selection', 'Selected text', hasSelection, !hasSelection),
-        );
-        contextGroup.appendChild(
-            this._createRadioOption('cowriter-context', 'content_element', 'Whole content element', !hasSelection, false),
-        );
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.className = 'form-range';
+        slider.dataset.role = 'context-slider';
+        slider.min = hasSelection ? '0' : '1';
+        slider.max = '5';
+        slider.value = hasSelection ? '0' : '1';
+        slider.step = '1';
+        contextGroup.appendChild(slider);
+
+        // Tick labels
+        const tickLabels = document.createElement('div');
+        tickLabels.className = 'd-flex justify-content-between';
+        tickLabels.style.fontSize = '0.75rem';
+        const labels = ['Selection', 'Text', 'Element', 'Page', '+1 level', '+2 levels'];
+        for (const label of labels) {
+            const span = document.createElement('span');
+            span.textContent = label;
+            span.style.flex = '1';
+            span.style.textAlign = 'center';
+            tickLabels.appendChild(span);
+        }
+        contextGroup.appendChild(tickLabels);
+
+        // Scope summary label
+        const scopeLabel = document.createElement('div');
+        scopeLabel.className = 'form-text text-body-secondary mt-1';
+        scopeLabel.dataset.role = 'scope-label';
+        scopeLabel.textContent = hasSelection ? 'Selection' : 'Text';
+        contextGroup.appendChild(scopeLabel);
+
+        // Slider change handler
+        slider.addEventListener('input', () => {
+            const index = parseInt(slider.value, 10);
+            const scopeNames = [
+                'Selection', 'Text', 'Element', 'Page',
+                '+1 ancestor level', '+2 ancestor levels',
+            ];
+            scopeLabel.textContent = scopeNames[index] || '';
+
+            // Fetch preview for scopes that need DB lookup
+            const scopes = [
+                'selection', 'text', 'element', 'page', 'ancestors_1', 'ancestors_2',
+            ];
+            if (index >= 2 && recordContext && this._service.getContext) {
+                this._service.getContext(
+                    recordContext.table, recordContext.uid, recordContext.field, scopes[index],
+                ).then((result) => {
+                    if (result.success) {
+                        scopeLabel.textContent = `${scopeNames[index]} (${result.summary})`;
+                    }
+                }).catch(() => {
+                    // Silently ignore preview errors — the scope label still shows
+                });
+            }
+        });
+
         container.appendChild(contextGroup);
 
         // Ad-hoc rules
@@ -351,35 +408,6 @@ export class CowriterDialog {
         labelEl.textContent = label;
         group.appendChild(labelEl);
         return group;
-    }
-
-    /**
-     * @param {string} name
-     * @param {string} value
-     * @param {string} label
-     * @param {boolean} checked
-     * @param {boolean} disabled
-     * @returns {HTMLElement}
-     * @private
-     */
-    _createRadioOption(name, value, label, checked, disabled) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'form-check';
-        const input = document.createElement('input');
-        input.type = 'radio';
-        input.className = 'form-check-input';
-        input.name = name;
-        input.value = value;
-        input.checked = checked;
-        input.disabled = disabled;
-        input.id = `${name}-${value}`;
-        const labelEl = document.createElement('label');
-        labelEl.className = 'form-check-label';
-        labelEl.htmlFor = input.id;
-        labelEl.textContent = label;
-        wrapper.appendChild(input);
-        wrapper.appendChild(labelEl);
-        return wrapper;
     }
 
     /**
