@@ -77,6 +77,10 @@ mariadb ${DB_NAME} < /mnt/ddev_config/sql/seed-pages.sql
 echo "Importing LLM seed data..."
 mariadb ${DB_NAME} < /mnt/ddev_config/sql/seed-ollama.sql
 
+# Import cowriter AI tasks
+echo "Importing cowriter tasks..."
+mariadb ${DB_NAME} < /mnt/ddev_config/sql/seed-cowriter-tasks.sql
+
 # Flush cache after seeding
 vendor/bin/typo3 cache:flush
 
