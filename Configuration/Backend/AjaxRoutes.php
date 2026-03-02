@@ -43,4 +43,8 @@ return [
         'path'   => '/cowriter/task-execute',
         'target' => AjaxController::class . '::executeTaskAction',
     ],
+    'tx_cowriter_context' => [
+        'path'   => '/cowriter/context',
+        'target' => AjaxController::class . '::getContextAction',
+    ],
 ];
