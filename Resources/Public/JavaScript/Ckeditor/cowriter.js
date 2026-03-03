@@ -1,8 +1,10 @@
 // vim: ts=4 sw=4 expandtab colorcolumn=120
 // @ts-check
 
-import { Core, UI } from "@typo3/ckeditor5-bundle.js";
-import { AIService } from "./AIService.js";
+import { Plugin } from "@ckeditor/ckeditor5-core";
+import { ButtonView } from "@ckeditor/ckeditor5-ui";
+import { AIService } from "@netresearch/t3_cowriter/AIService";
+import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
 
 /**
  * Cowriter CKEditor plugin.
@@ -10,7 +12,7 @@ import { AIService } from "./AIService.js";
  * Provides AI-powered text completion within the TYPO3 backend RTE.
  * Uses the nr-llm extension for LLM provider abstraction.
  */
-export class Cowriter extends Core.Plugin {
+export class Cowriter extends Plugin {
     static pluginName = 'cowriter';
 
     /**
@@ -27,35 +29,74 @@ export class Cowriter extends Core.Plugin {
     _isProcessing = false;
 
     /**
-     * Sanitize AI-generated content by removing HTML/XML tags
-     * @param {string} content - The content to sanitize
-     * @returns {string} - The sanitized content
+     * Detect available CKEditor formatting capabilities at runtime.
+     *
+     * @returns {string} Comma-separated list of available formatting features
      * @private
      */
-    _sanitizeContent(content) {
-        // Handle null, undefined, or non-string inputs
-        if (!content || typeof content !== 'string') {
-            return '';
+    _getEditorCapabilities() {
+        const editor = this.editor;
+        const caps = [];
+
+        const pluginMap = [
+            ['HeadingEditing', 'headings (h2, h3, h4)'],
+            ['BoldEditing', 'bold'],
+            ['ItalicEditing', 'italic'],
+            ['UnderlineEditing', 'underline'],
+            ['StrikethroughEditing', 'strikethrough'],
+            ['ListEditing', 'bulleted and numbered lists'],
+            ['TableEditing', 'tables with headers and merged cells'],
+            ['BlockQuoteEditing', 'blockquotes'],
+            ['AlignmentEditing', 'text alignment (left, center, right, justify)'],
+            ['LinkEditing', 'hyperlinks'],
+            ['HorizontalLineEditing', 'horizontal rules (<hr>)'],
+            ['HighlightEditing', 'text highlighting'],
+            ['FontColorEditing', 'font colors'],
+            ['FontBackgroundColorEditing', 'background colors'],
+            ['SubscriptEditing', 'subscript'],
+            ['SuperscriptEditing', 'superscript'],
+        ];
+
+        for (const [plugin, label] of pluginMap) {
+            if (editor.plugins.has(plugin)) {
+                caps.push(label);
+            }
         }
 
-        // Remove HTML/XML tags from the content
-        // Matches opening tags, closing tags, and self-closing tags
-        // Note: This sanitizes AI-generated output (not user input) to remove
-        // accidental HTML/XML tags. The content will also be processed by CKEditor's
-        // own sanitization before being inserted into the DOM.
-        let sanitized = content;
-        let previousLength;
-        let iterations = 0;
-        const maxIterations = 100; // Defensive limit to prevent infinite loops
+        const styleConfig = editor.config.get('style');
+        if (styleConfig?.definitions?.length) {
+            const styleNames = styleConfig.definitions.map((d) => d.name);
+            caps.push(`styles: ${styleNames.join(', ')}`);
+        }
 
-        // Run the replacement multiple times to handle any nested or overlapping tags
-        do {
-            previousLength = sanitized.length;
-            sanitized = sanitized.replace(/<\/?[a-zA-Z][^>]*>/g, '');
-            iterations++;
-        } while (sanitized.length !== previousLength && iterations < maxIterations);
+        return caps.join(', ');
+    }
 
-        return sanitized;
+    /**
+     * Extract record context (table, uid, field) from the CKEditor source element's DOM.
+     *
+     * TYPO3 FormEngine names textareas as: data[table][uid][field]
+     * e.g. data[tt_content][123][bodytext]
+     *
+     * @returns {{table: string, uid: number, field: string}|null}
+     * @private
+     */
+    _getRecordContext() {
+        const el = this.editor.sourceElement;
+        if (!el) return null;
+
+        // The source element may be the textarea itself or a wrapper containing it
+        const textarea = el.tagName === 'TEXTAREA' ? el : el.querySelector('textarea');
+        if (!textarea?.name) return null;
+
+        const match = textarea.name.match(/^data\[(\w+)]\[(\d+)]\[(\w+)]$/);
+        if (!match) return null;
+
+        return {
+            table: match[1],
+            uid: parseInt(match[2], 10),
+            field: match[3],
+        };
     }
 
     async init() {
@@ -67,7 +108,7 @@ export class Cowriter extends Core.Plugin {
 
         // Button to add text at current text cursor position:
         editor.ui.componentFactory.add(Cowriter.pluginName, () => {
-            const button = new UI.ButtonView();
+            const button = new ButtonView();
 
             button.set({
                 label: 'Cowriter - AI text completion',
@@ -81,43 +122,42 @@ export class Cowriter extends Core.Plugin {
 
                 try {
                     const selection = editor.model.document.selection;
+                    const selectedRange = selection.getFirstRange();
 
-                    const ranges = Array.from(selection.getRanges());
-                    let promptRange, prompt;
-                    for (const range of ranges) {
-                        for (const item of range.getItems()) {
-                            if (item.data !== undefined && item.data !== '') {
-                                prompt = item.data;
-                                promptRange = range;
-                                break;
+                    // Get the selected content as HTML via CKEditor's data pipeline
+                    let selectedText = '';
+                    if (selectedRange && !selectedRange.isCollapsed) {
+                        const content = model.getSelectedContent(selection);
+                        selectedText = editor.data.stringify(content);
+                    }
+
+                    const fullContent = editor.getData();
+                    const caps = this._getEditorCapabilities();
+                    const recordContext = this._getRecordContext();
+
+                    // Show the task dialog
+                    const dialog = new CowriterDialog(this._service);
+                    const result = await dialog.show(selectedText || '', fullContent, caps, recordContext);
+
+                    if (result?.content) {
+                        // Use CKEditor's HTML processing pipeline (handles schema/sanitization)
+                        const viewFragment = editor.data.processor.toView(result.content);
+                        const modelFragment = editor.data.toModel(viewFragment);
+
+                        model.change((writer) => {
+                            if (selectedRange && !selectedRange.isCollapsed) {
+                                // Replace the selected range with the LLM output
+                                writer.setSelection(selectedRange);
                             }
-                        }
-                        if (prompt !== undefined) break;
+                            editor.model.insertContent(modelFragment);
+                        });
                     }
-
-                    if (prompt === undefined || promptRange === undefined) return;
-
-                    let content = "";
-                    let errorMessage = "";
-
-                    try {
-                        // Use the complete endpoint via TYPO3 AJAX
-                        const result = await this._service.complete(prompt, {});
-                        const rawContent = result.content || '';
-                        content = this._sanitizeContent(rawContent);
-                    } catch (error) {
-                        console.error('Cowriter error:', error);
-                        // Error messages are inserted as text nodes by writer.insert(),
-                        // so no HTML escaping is needed (CKEditor treats them as plain text)
-                        errorMessage = `[Cowriter Error: ${error.message || 'Unknown error'}] `;
+                } catch (error) {
+                    // User cancelled the dialog — no action needed.
+                    // Log unexpected errors for debugging (cancellations have message 'User cancelled').
+                    if (error?.message && error.message !== 'User cancelled') {
+                        console.error('[Cowriter]', error);
                     }
-
-                    model.change((writer) => {
-                        writer.remove(promptRange);
-                        const insertPosition = selection.getFirstPosition();
-                        if (!insertPosition) return;
-                        writer.insert(errorMessage + content, insertPosition);
-                    });
                 } finally {
                     this._isProcessing = false;
                 }

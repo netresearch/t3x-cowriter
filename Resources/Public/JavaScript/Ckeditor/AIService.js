@@ -41,13 +41,16 @@
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null}}
      * @private
      */
     _routes = {
         chat: null,
         complete: null,
         stream: null,
+        tasks: null,
+        taskExecute: null,
+        context: null,
     };
 
     constructor() {
@@ -56,6 +59,9 @@ export class AIService {
             this._routes.chat = TYPO3.settings.ajaxUrls.tx_cowriter_chat || null;
             this._routes.complete = TYPO3.settings.ajaxUrls.tx_cowriter_complete || null;
             this._routes.stream = TYPO3.settings.ajaxUrls.tx_cowriter_stream || null;
+            this._routes.tasks = TYPO3.settings.ajaxUrls.tx_cowriter_tasks || null;
+            this._routes.taskExecute = TYPO3.settings.ajaxUrls.tx_cowriter_task_execute || null;
+            this._routes.context = TYPO3.settings.ajaxUrls.tx_cowriter_context || null;
         }
     }
 
@@ -231,5 +237,104 @@ export class AIService {
         }
 
         return lastData;
+    }
+
+    /**
+     * Fetch available cowriter tasks.
+     *
+     * @returns {Promise<{success: boolean, tasks: Array<{uid: number, identifier: string, name: string, description: string}>}>}
+     */
+    async getTasks() {
+        if (!this._routes.tasks) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
+
+        const response = await fetch(this._routes.tasks, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Fetch a lightweight context preview (summary + word count).
+     *
+     * @param {string} table - Record table name
+     * @param {number} uid - Record UID
+     * @param {string} field - Record field name
+     * @param {string} scope - Context scope
+     * @returns {Promise<{success: boolean, summary: string, wordCount: number}>}
+     */
+    async getContext(table, uid, field, scope) {
+        if (!this._routes.context) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
+
+        const params = new URLSearchParams({ table, uid: String(uid), field, scope });
+        const separator = this._routes.context.includes('?') ? '&' : '?';
+        const url = `${this._routes.context}${separator}${params.toString()}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Execute a cowriter task with context.
+     *
+     * @param {number} taskUid
+     * @param {string} context
+     * @param {string} contextType
+     * @param {string} [adHocRules='']
+     * @param {string} [editorCapabilities='']
+     * @param {string} [contextScope='']
+     * @param {{table: string, uid: number, field: string}|null} [recordContext=null]
+     * @param {Array<{pid: number, relation: string}>} [referencePages=[]]
+     * @returns {Promise<CompleteResponse>}
+     */
+    async executeTask(
+        taskUid, context, contextType,
+        adHocRules = '', editorCapabilities = '',
+        contextScope = '', recordContext = null, referencePages = [],
+    ) {
+        if (!this._routes.taskExecute) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
+
+        const response = await fetch(this._routes.taskExecute, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                taskUid, context, contextType, adHocRules, editorCapabilities,
+                contextScope, recordContext, referencePages,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
     }
 }

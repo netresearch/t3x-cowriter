@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>t3_cowriter - TYPO3 Extension Development | Netresearch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Netresearch Brand Colors */
+            --nr-turquoise: #2F99A4;
+            --nr-orange: #FF4D00;
+            --nr-text: #585961;
+            --nr-text-light: #ffffff;
+            --nr-bg: #f5f5f5;
+            --nr-card-bg: #ffffff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--nr-bg);
+            color: var(--nr-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: var(--nr-turquoise);
+            color: var(--nr-text-light);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .nr-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--nr-text-light);
+        }
+        .nr-logo-icon { width: 40px; height: 40px; flex-shrink: 0; }
+        .nr-logo-icon svg { width: 100%; height: 100%; }
+        .nr-logo-text {
+            font-family: 'Raleway', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .hero { text-align: center; margin-bottom: 2.5rem; }
+        h1 {
+            font-family: 'Raleway', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--nr-turquoise);
+            margin-bottom: 0.5rem;
+        }
+        .subtitle { color: var(--nr-text); font-size: 1.1rem; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+        .card {
+            background: var(--nr-card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-decoration: none;
+            color: var(--nr-text);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(47,153,164,0.15);
+            border-color: var(--nr-turquoise);
+        }
+        .card-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+        .card-title {
+            font-family: 'Raleway', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--nr-turquoise);
+        }
+        .card-desc { font-size: 0.9rem; line-height: 1.5; margin-bottom: 0.75rem; }
+        .card-url {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--nr-orange);
+            font-family: monospace;
+        }
+        .git-info {
+            margin-top: 2rem;
+            text-align: center;
+            color: var(--nr-text);
+            font-size: 0.85rem;
+            font-family: monospace;
+            background: var(--nr-card-bg);
+            padding: 0.75rem;
+            border-radius: 4px;
+        }
+        footer {
+            background: var(--nr-text);
+            color: var(--nr-text-light);
+            padding: 1.5rem 2rem;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        footer a { color: var(--nr-text-light); }
+        .credentials {
+            background: var(--nr-turquoise);
+            color: var(--nr-text-light);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-family: monospace;
+            display: inline-block;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="https://www.netresearch.de" class="nr-logo" target="_blank">
+            <span class="nr-logo-icon">
+                <svg viewBox="-75 -75 440 440" xmlns="http://www.w3.org/2000/svg">
+                    <title>Netresearch DTT GmbH</title>
+                    <g fill="#ffffff">
+                        <path d="M209.6,0V31.62h32.77a26.38,26.38,0,0,1,26.44,26.43V242a26.38,26.38,0,0,1-26.44,26.44H209.6V300h47.93a42.77,42.77,0,0,0,42.86-42.86V42.89A42.76,42.76,0,0,0,257.53,0ZM43.25,0A42.76,42.76,0,0,0,.39,42.89V257.18A42.76,42.76,0,0,0,43.25,300H91.18V268.46H58.4A26.38,26.38,0,0,1,32,242v-184A26.37,26.37,0,0,1,58.4,31.62H91.18V0Z" transform="translate(-0.39 -0.04)"/>
+                        <path d="M221.44,120.41c0-34.48-13.94-57.82-48.93-57.82-26.62,0-48.54,7.74-64.17,26.56l-.7-22.06-28.31.06V232.94h31.59V124.69c7.14-18.38,32.14-34.8,53-34.5,27.38.4,25.2,26.24,26,45.81v96.94h31.58" transform="translate(-0.39 -0.04)"/>
+                    </g>
+                </svg>
+            </span>
+            <span class="nr-logo-text">Netresearch</span>
+        </a>
+    </header>
+
+    <main>
+        <div class="hero">
+            <h1>t3_cowriter</h1>
+            <p class="subtitle">AI-Powered Content Writing Assistant for TYPO3 CKEditor - Development Environment</p>
+        </div>
+
+        <div class="cards">
+            <a href="https://v14.t3-cowriter.ddev.site/typo3/" class="card">
+                <div class="card-icon">&#x1F527;</div>
+                <div class="card-title">TYPO3 v14 Backend</div>
+                <div class="card-desc">Latest TYPO3 with PHP 8.5. Primary development target.</div>
+                <span class="card-url">v14.t3-cowriter.ddev.site/typo3/</span>
+            </a>
+
+            <a href="https://v13.t3-cowriter.ddev.site/typo3/" class="card">
+                <div class="card-icon">&#x1F527;</div>
+                <div class="card-title">TYPO3 v13 Backend</div>
+                <div class="card-desc">LTS version for compatibility testing.</div>
+                <span class="card-url">v13.t3-cowriter.ddev.site/typo3/</span>
+            </a>
+
+            <a href="https://docs.t3-cowriter.ddev.site/" class="card">
+                <div class="card-icon">&#x1F4DA;</div>
+                <div class="card-title">Documentation</div>
+                <div class="card-desc">Rendered RST documentation. Run <code>ddev docs</code> first.</div>
+                <span class="card-url">docs.t3-cowriter.ddev.site/</span>
+            </a>
+
+            <a href="https://t3-cowriter.ddev.site:8026/" class="card">
+                <div class="card-icon">&#x1F4E7;</div>
+                <div class="card-title">Mailpit</div>
+                <div class="card-desc">View captured emails sent from the TYPO3 installations.</div>
+                <span class="card-url">t3-cowriter.ddev.site:8026/</span>
+            </a>
+        </div>
+
+        <div class="git-info" id="git-info"></div>
+    </main>
+
+    <footer>
+        <p>Credentials: <span class="credentials">admin / Joh316!!</span></p>
+        <p style="margin-top: 0.75rem;">Powered by DDEV | <a href="https://www.netresearch.de">Netresearch DTT GmbH</a></p>
+    </footer>
+
+    <script>
+        fetch('/.git-info.json')
+            .then(function(r) { return r.json(); })
+            .then(function(info) {
+                var el = document.getElementById('git-info');
+                var branch = document.createElement('span');
+                branch.textContent = 'Branch: ' + info.branch;
+                el.appendChild(branch);
+
+                var sep = document.createTextNode(' | Commit: ');
+                el.appendChild(sep);
+
+                var commit = document.createElement('strong');
+                commit.textContent = info.commit;
+                el.appendChild(commit);
+
+                if (info.pr !== 'unknown') {
+                    var prSep = document.createTextNode(' | PR: ');
+                    el.appendChild(prSep);
+                    var pr = document.createElement('strong');
+                    pr.textContent = '#' + info.pr;
+                    el.appendChild(pr);
+                }
+            })
+            .catch(function() {});
+    </script>
+</body>
+</html>

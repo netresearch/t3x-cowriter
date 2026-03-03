@@ -13,25 +13,81 @@ Once the extension is installed and configured:
 
 1.  Open any content element with a rich text field in the TYPO3 backend
 2.  You will see a new AI Cowriter button in the CKEditor toolbar
-3.  Select the text you want to improve or use as a prompt
-4.  Click the Cowriter button — the selected text is sent to the AI
-5.  The AI-generated response replaces the selected text in the editor
 
-Tips for effective prompts
-==========================
+..  figure:: /Images/CowriterToolbarButton.png
+    :alt: CKEditor toolbar with Cowriter button
+    :class: with-border with-shadow
 
-*   Be specific about the type of content you need
-*   Mention the target audience if relevant
-*   Specify the desired tone (formal, casual, technical, etc.)
-*   Include any keywords that should be used
+    The Cowriter button appears at the right end of the CKEditor toolbar.
 
-Example prompts
+3.  Optionally select the text you want to process (or leave empty to use
+    the full content element)
+4.  Click the Cowriter button — a dialog opens
+
+Task-based dialog
+=================
+
+..  figure:: /Images/CowriterDialogCropped.png
+    :alt: Cowriter task dialog
+    :class: with-border with-shadow
+
+    The Cowriter dialog with task selection, context scope, and
+    additional instructions.
+
+The Cowriter dialog lets you choose what to do with your content:
+
+**Task selection**
+    Choose from predefined tasks like "Improve Text", "Summarize",
+    "Extend / Elaborate", "Fix Grammar & Spelling", or translations.
+    Each task has a description shown below the dropdown.
+
+**Context scope**
+    Select whether the AI should work with your selected text or the
+    whole content element. If you have text selected, "Selected text" is
+    pre-selected.
+
+**Additional instructions** (optional)
+    Add ad-hoc rules for the current request, e.g., "Write in formal
+    tone" or "Keep sentences short".
+
+**Execute and preview**
+    Click :guilabel:`Execute` to send the request to the LLM. The result
+    appears in a preview area. You can then:
+
+    *   Click :guilabel:`Insert` to replace the content in the editor
+    *   Click :guilabel:`Retry` to re-execute the task
+    *   Click :guilabel:`Cancel` to discard
+
+Available tasks
 ===============
 
-*   "Write an introduction paragraph about our company's 25 years of experience
-    in web development"
-*   "Create a bullet-point list of benefits for using our e-commerce solution"
-*   "Write a call-to-action paragraph encouraging visitors to contact us"
+Tasks are configured in the nr-llm extension (``tx_nrllm_task`` table)
+with ``category = 'content'``. The following default tasks are provided:
+
+.. list-table::
+   :header-rows: 1
+
+   *  -  Task
+      -  Description
+   *  -  Improve Text
+      -  Enhance readability and quality while preserving meaning
+   *  -  Summarize
+      -  Create a concise summary of the content
+   *  -  Extend / Elaborate
+      -  Add depth, detail, and examples
+   *  -  Fix Grammar & Spelling
+      -  Correct grammar and spelling with minimal changes
+   *  -  Translate to English
+      -  Translate content to English
+   *  -  Translate to German
+      -  Translate content to German
+
+..  tip::
+
+    You can add custom tasks by creating new records in
+    :guilabel:`Admin Tools` > :guilabel:`LLM Management` with
+    ``category = 'content'``. Use ``{{input}}`` in the prompt template
+    as placeholder for the user's content.
 
 Model override
 ==============

@@ -69,6 +69,44 @@ If you have your own RTE configuration file
           items:
             - cowriter
 
+Task configuration
+==================
+
+The Cowriter dialog shows tasks from the nr-llm extension with
+``category = 'content'``. Default tasks (Improve, Summarize, Extend,
+Fix Grammar, Translate EN/DE) are seeded during installation.
+
+Adding custom tasks
+-------------------
+
+1.  Navigate to :guilabel:`Admin Tools` > :guilabel:`LLM Management`
+2.  Create a new task record with ``category = 'content'``
+3.  Set a descriptive name and identifier
+4.  Write a prompt template using ``{{input}}`` as the placeholder for
+    user content
+
+..  code-block:: text
+    :caption: Example prompt template
+
+    Rewrite the following text in a more engaging tone, suitable for
+    a marketing audience. Output ONLY the rewritten text without
+    explanations.
+
+    {{input}}
+
+..  tip::
+
+    Tasks can have their own LLM configuration. If a task has no
+    configuration assigned, the request's configuration or the default
+    configuration is used as fallback.
+
+Rate limiting
+=============
+
+The Cowriter enforces a rate limit of 20 requests per minute per
+backend user. When the limit is exceeded, the API returns HTTP 429
+with a ``Retry-After`` header.
+
 Security considerations
 =======================
 

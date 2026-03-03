@@ -10,7 +10,7 @@ help: ## Show available targets
 # ===================================
 
 .PHONY: up
-up: start setup ## Complete startup (start DDEV + run setup)
+up: start setup docs ollama-pull ## Complete startup (start DDEV + install + render docs + pull Ollama model)
 
 .PHONY: start
 start: ## Start DDEV environment
@@ -21,16 +21,20 @@ stop: ## Stop DDEV environment
 	ddev stop
 
 .PHONY: setup
-setup: ## Complete setup (install TYPO3 v14)
+setup: ## Complete setup (install TYPO3 v13 + v14)
 	@ddev describe >/dev/null 2>&1 || ddev start
 	ddev install-all
+
+.PHONY: install-v13
+install-v13: ## Install TYPO3 v13 with extension
+	ddev install-v13
 
 .PHONY: install-v14
 install-v14: ## Install TYPO3 v14 with extension
 	ddev install-v14
 
 .PHONY: install-all
-install-all: ## Install all TYPO3 versions (v14)
+install-all: ## Install all TYPO3 versions (v13 + v14)
 	ddev install-all
 
 .PHONY: ddev-restart
@@ -110,6 +114,23 @@ test-coverage: ## Generate test coverage report (unit + integration)
 	ddev exec -d /var/www/t3_cowriter php -d pcov.enabled=1 .Build/bin/phpunit -c Build/phpunit/IntegrationTests.xml --coverage-html var/coverage/integration
 
 # ===================================
+# Ollama LLM Commands
+# ===================================
+
+.PHONY: ollama
+ollama: ## Check Ollama status and available models
+	@echo "Ollama Status:"
+	@ddev ollama list || echo "   Model not yet pulled. Run: ddev ollama pull"
+
+.PHONY: seed
+seed: ## Import Ollama seed data (provider, models, configs)
+	ddev seed-ollama
+
+.PHONY: ollama-pull
+ollama-pull: ## Pull default Ollama model (if not already present)
+	@ddev ollama pull || echo "Ollama not ready yet. Pull manually: ddev ollama pull"
+
+# ===================================
 # Cleanup
 # ===================================
 
@@ -142,6 +163,12 @@ urls: ## Show all access URLs
 	@echo "t3_cowriter - Access URLs"
 	@echo "========================="
 	@echo ""
+	@echo "Landing:    https://t3-cowriter.ddev.site/"
+	@echo ""
+	@echo "TYPO3 v13:"
+	@echo "  Frontend: https://v13.t3-cowriter.ddev.site/"
+	@echo "  Backend:  https://v13.t3-cowriter.ddev.site/typo3/"
+	@echo ""
 	@echo "TYPO3 v14:"
 	@echo "  Frontend: https://v14.t3-cowriter.ddev.site/"
 	@echo "  Backend:  https://v14.t3-cowriter.ddev.site/typo3/"
@@ -151,7 +178,7 @@ urls: ## Show all access URLs
 	@echo ""
 	@echo "Backend Credentials:"
 	@echo "  Username: admin"
-	@echo "  Password: Joh316!"
+	@echo "  Password: Joh316!!"
 	@echo ""
 
 .DEFAULT_GOAL := help

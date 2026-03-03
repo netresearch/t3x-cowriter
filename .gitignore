@@ -37,6 +37,9 @@ Documentation-GENERATED-temp/
 # Conformance reports (generated)
 .conformance-reports/
 
+# Playwright
+/blob-report/
+
 # direnv
 .envrc
 .direnv/

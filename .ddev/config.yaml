@@ -13,6 +13,7 @@ database:
   version: "11.4"
 additional_hostnames:
   - docs.t3-cowriter
+  - v13.t3-cowriter
   - v14.t3-cowriter
 additional_fqdns: []
 use_dns_when_possible: true

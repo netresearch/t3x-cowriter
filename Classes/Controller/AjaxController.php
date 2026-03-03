@@ -11,12 +11,16 @@ namespace Netresearch\T3Cowriter\Controller;
 
 use JsonException;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
-use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
+use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
+use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
+use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
@@ -35,7 +39,7 @@ use TYPO3\CMS\Core\Http\Stream;
  * Provides backend API endpoints for chat and completion requests,
  * routing them through the centralized LlmServiceManager.
  *
- * SECURITY: All LLM output is HTML-escaped to prevent XSS attacks.
+ * JSON responses carry raw data; HTML escaping is the frontend's responsibility.
  */
 #[AsController]
 final readonly class AjaxController
@@ -56,16 +60,6 @@ final readonly class AjaxController
     private const ALLOWED_ROLES = ['user', 'assistant'];
 
     /**
-     * Maximum tokens upper bound to prevent denial-of-wallet attacks.
-     */
-    private const MAX_TOKENS_UPPER_BOUND = 16384;
-
-    /**
-     * Maximum number of stop sequences allowed.
-     */
-    private const MAX_STOP_SEQUENCES = 10;
-
-    /**
      * System prompt for the cowriter assistant.
      */
     private const SYSTEM_PROMPT = <<<'PROMPT'
@@ -78,9 +72,11 @@ final readonly class AjaxController
     public function __construct(
         private LlmServiceManagerInterface $llmServiceManager,
         private LlmConfigurationRepository $configurationRepository,
+        private TaskRepository $taskRepository,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
+        private ContextAssemblyServiceInterface $contextAssemblyService,
     ) {}
 
     /**
@@ -88,7 +84,7 @@ final readonly class AjaxController
      *
      * Expects JSON body with:
      * - messages: array of {role: string, content: string}
-     * - options: optional array with temperature, maxTokens, etc.
+     * - configuration: optional configuration identifier
      */
     public function chatAction(ServerRequestInterface $request): ResponseInterface
     {
@@ -114,9 +110,6 @@ final readonly class AjaxController
         }
 
         $rawMessages = isset($body['messages']) && is_array($body['messages']) ? $body['messages'] : [];
-        /** @var array<string, mixed> $optionsData */
-        $optionsData = isset($body['options']) && is_array($body['options']) ? $body['options'] : [];
-        $options     = $this->createChatOptions($optionsData);
 
         if ($rawMessages === []) {
             return new JsonResponse(['success' => false, 'error' => 'Messages array is required'], 400);
@@ -131,15 +124,25 @@ final readonly class AjaxController
             );
         }
 
-        try {
-            $response = $this->llmServiceManager->chat($messages, $options);
+        // Resolve configuration from request or fall back to default
+        $configIdentifier = isset($body['configuration']) && is_string($body['configuration']) ? $body['configuration'] : null;
+        $configuration    = $this->resolveConfiguration($configIdentifier);
+        if (!$configuration instanceof LlmConfiguration) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                ['success' => false, 'error' => 'No LLM configuration available. Please configure the nr_llm extension.'],
+                $rateLimitResult,
+                404,
+            );
+        }
 
-            // Escape HTML to prevent XSS attacks (defense in depth for all string values)
+        try {
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
+
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'      => true,
-                'content'      => htmlspecialchars($response->content, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'model'        => htmlspecialchars($response->model ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'finishReason' => htmlspecialchars($response->finishReason ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'content'      => htmlspecialchars($response->content ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                'model'        => htmlspecialchars($response->model ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                'finishReason' => htmlspecialchars($response->finishReason ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
             ], $rateLimitResult);
         } catch (ProviderException $e) {
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
@@ -171,7 +174,7 @@ final readonly class AjaxController
      * - configuration: optional configuration identifier
      * - options: optional array with temperature, maxTokens, etc.
      *
-     * Response includes usage statistics and properly escaped content.
+     * Response includes usage statistics.
      */
     public function completeAction(ServerRequestInterface $request): ResponseInterface
     {
@@ -227,16 +230,8 @@ final readonly class AjaxController
                 ['role' => 'user', 'content' => $dto->prompt],
             ];
 
-            $options = $configuration->toChatOptions();
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
 
-            // Apply model override if specified via #cw:model-name prefix
-            if ($dto->modelOverride !== null) {
-                $options = $options->withModel($dto->modelOverride);
-            }
-
-            $response = $this->llmServiceManager->chat($messages, $options);
-
-            // CompleteResponse.success() handles HTML escaping
             return $this->jsonResponseWithRateLimitHeaders(
                 CompleteResponse::success($response)->jsonSerialize(),
                 $rateLimitResult,
@@ -304,41 +299,27 @@ final readonly class AjaxController
             );
         }
 
-        // Check if streaming is supported
-        if (!$this->llmServiceManager->supportsFeature('streaming')) {
-            // Fall back to non-streaming completion (reuse already-parsed DTO and rate limit)
-            return $this->executeCompletion($dto, $configuration, $rateLimitResult);
-        }
-
         // Build the streaming response using a generator
         $messages = [
             ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
             ['role' => 'user', 'content' => $dto->prompt],
         ];
 
-        $options = $configuration->toChatOptions();
-
-        // Apply model override if specified via #cw:model-name prefix
-        if ($dto->modelOverride !== null) {
-            $options = $options->withModel($dto->modelOverride);
-        }
-
         // Collect all chunks and return as SSE-formatted response
         // Note: True streaming requires output buffering disabled which isn't always possible in TYPO3
         // This implementation collects chunks and returns them in SSE format for compatibility
         try {
             $chunks    = [];
-            $generator = $this->llmServiceManager->streamChat($messages, $options);
+            $generator = $this->llmServiceManager->streamChatWithConfiguration($messages, $configuration);
 
             foreach ($generator as $chunk) {
-                $sanitizedChunk = htmlspecialchars($chunk, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                $chunks[]       = 'data: ' . json_encode(['content' => $sanitizedChunk], JSON_THROW_ON_ERROR) . "\n\n";
+                $chunks[] = 'data: ' . json_encode(['content' => htmlspecialchars($chunk, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')], JSON_THROW_ON_ERROR) . "\n\n";
             }
 
             // Add final "done" event
             $chunks[] = 'data: ' . json_encode([
                 'done'  => true,
-                'model' => htmlspecialchars($options->getModel() ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'model' => htmlspecialchars($configuration->getModelId(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
             ], JSON_THROW_ON_ERROR) . "\n\n";
 
             $body = implode('', $chunks);
@@ -392,8 +373,8 @@ final readonly class AjaxController
             }
 
             $list[] = [
-                'identifier' => htmlspecialchars($config->getIdentifier(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'name'       => htmlspecialchars($config->getName(), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'identifier' => $config->getIdentifier(),
+                'name'       => $config->getName(),
                 'isDefault'  => $config->isDefault(),
             ];
         }
@@ -402,6 +383,247 @@ final readonly class AjaxController
             'success'        => true,
             'configurations' => $list,
         ]);
+    }
+
+    /**
+     * Get available cowriter tasks for the frontend dialog.
+     *
+     * Returns active tasks in the 'content' category for the cowriter dialog.
+     *
+     * @param ServerRequestInterface $request Required by TYPO3 AJAX action signature
+     */
+    public function getTasksAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $tasks = $this->taskRepository->findByCategory('content');
+
+        $list = [];
+        foreach ($tasks as $task) {
+            if (!$task instanceof Task) {
+                continue;
+            }
+
+            if (!$task->isActive()) {
+                continue;
+            }
+
+            $list[] = [
+                'uid'         => $task->getUid(),
+                'identifier'  => htmlspecialchars($task->getIdentifier(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                'name'        => htmlspecialchars($task->getName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                'description' => htmlspecialchars($task->getDescription(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+            ];
+        }
+
+        return new JsonResponse([
+            'success' => true,
+            'tasks'   => $list,
+        ]);
+    }
+
+    /**
+     * Get a lightweight context preview (word count, summary).
+     *
+     * Returns summary information about the content that would be assembled
+     * for the given scope, without building the full context text.
+     */
+    public function getContextAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $dto = ContextRequest::fromQueryParams($request);
+
+        if (!$dto->isValid()) {
+            return new JsonResponse(
+                ['success' => false, 'error' => 'Invalid context request.'],
+                400,
+            );
+        }
+
+        try {
+            $result = $this->contextAssemblyService->getContextSummary(
+                $dto->table,
+                $dto->uid,
+                $dto->field,
+                $dto->scope,
+            );
+
+            return new JsonResponse([
+                'success'   => true,
+                'summary'   => $result['summary'],
+                'wordCount' => $result['wordCount'],
+            ]);
+        } catch (Throwable $e) {
+            $this->logger->error('Context preview error', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            return new JsonResponse(
+                ['success' => false, 'error' => 'Failed to fetch context preview.'],
+                500,
+            );
+        }
+    }
+
+    /**
+     * Execute a cowriter task with context.
+     *
+     * Loads the task, builds the prompt from its template + context,
+     * optionally appends ad-hoc rules, and executes via LLM.
+     */
+    public function executeTaskAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $rateLimitResult = $this->checkRateLimit();
+        if (!$rateLimitResult->allowed) {
+            return $this->rateLimitedResponse($rateLimitResult);
+        }
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+
+        if (!$dto->isValid()) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error('Invalid task execution request.')->jsonSerialize(),
+                $rateLimitResult,
+                400,
+            );
+        }
+
+        // Load and validate the task
+        $task = $this->taskRepository->findByUid($dto->taskUid);
+        if (!$task instanceof Task || !$task->isActive()) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error('Task not found or inactive.')->jsonSerialize(),
+                $rateLimitResult,
+                404,
+            );
+        }
+
+        // Input is ALWAYS the editor content (the text to transform)
+        $input              = $dto->context;
+        $surroundingContext = '';
+
+        // For extended scopes, assemble surrounding context as reference (NOT as input)
+        if (!in_array($dto->contextScope, ['', 'selection', 'text'], true)
+            && $dto->recordContext !== null
+        ) {
+            try {
+                $surroundingContext = $this->contextAssemblyService->assembleContext(
+                    $dto->recordContext['table'],
+                    $dto->recordContext['uid'],
+                    $dto->recordContext['field'],
+                    $dto->contextScope,
+                    $dto->referencePages,
+                );
+            } catch (Throwable $e) {
+                $this->logger->error('Context assembly error', [
+                    'exception' => $e->getMessage(),
+                ]);
+
+                return $this->jsonResponseWithRateLimitHeaders(
+                    CompleteResponse::error('Failed to assemble context.')->jsonSerialize(),
+                    $rateLimitResult,
+                    500,
+                );
+            }
+        }
+
+        // Build prompt — inject ad-hoc rules BEFORE the input content so the LLM
+        // processes them as part of the instructions, not as an afterthought.
+        $promptInput = $input;
+        if (trim($dto->adHocRules) !== '') {
+            $promptInput = "ADDITIONAL RULES (follow these exactly — they override default behavior):\n"
+                . $dto->adHocRules . "\n\n"
+                . "Content to transform:\n" . $input;
+        }
+
+        $prompt = $task->buildPrompt(['input' => $promptInput]);
+
+        // Build messages
+        $messages = [];
+
+        // Tell the LLM exactly what scope it is working with
+        $isSelection      = $dto->contextType === 'selection';
+        $scopeInstruction = $isSelection
+            ? 'The user selected a portion of text. '
+                . 'Return ONLY the transformed selection — '
+                . 'do not add surrounding content or change the scope of the text.'
+            : 'Return the complete transformed content.';
+        $messages[] = ['role' => 'system', 'content' => $scopeInstruction];
+
+        // Inject surrounding context as read-only reference (BEFORE the prompt)
+        if ($surroundingContext !== '') {
+            $messages[] = [
+                'role'    => 'system',
+                'content' => "<reference_context>\n"
+                    . 'Surrounding content from the same page for reference. '
+                    . 'Use this to understand the broader context, avoid duplicating information, '
+                    . 'and match the existing tone, style, and formatting patterns '
+                    . '(heading levels, list styles). '
+                    . "Do NOT include this content in your output.\n"
+                    . $surroundingContext . "\n"
+                    . '</reference_context>',
+            ];
+        }
+
+        // Inject editor capabilities with concrete HTML examples
+        if (trim($dto->editorCapabilities) !== '') {
+            $messages[] = [
+                'role'    => 'system',
+                'content' => 'The rich text editor supports these formatting features: '
+                    . $dto->editorCapabilities
+                    . ". You may use any of these in the output.\n"
+                    . 'For inline styles, use: <span style="color: #hex"> for font colors, '
+                    . '<span style="background-color: #hex"> for background colors, '
+                    . '<mark> for text highlighting.',
+            ];
+        }
+
+        $messages[] = ['role' => 'user', 'content' => $prompt];
+
+        // Resolve configuration: task's config → request's config → default
+        $taskConfig    = $task->getConfiguration();
+        $configuration = $taskConfig instanceof LlmConfiguration
+            ? $taskConfig
+            : $this->resolveConfiguration($dto->configuration);
+
+        if (!$configuration instanceof LlmConfiguration) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error(
+                    'No LLM configuration available. Please configure the nr_llm extension.',
+                )->jsonSerialize(),
+                $rateLimitResult,
+                404,
+            );
+        }
+
+        try {
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
+
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::success($response)->jsonSerialize(),
+                $rateLimitResult,
+            );
+        } catch (ProviderException $e) {
+            $this->logger->error('Task execution provider error', [
+                'taskUid'   => $dto->taskUid,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error('LLM provider error occurred. Please try again later.')->jsonSerialize(),
+                $rateLimitResult,
+                500,
+            );
+        } catch (Throwable $e) {
+            $this->logger->error('Task execution unexpected error', [
+                'taskUid'   => $dto->taskUid,
+                'exception' => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error('An unexpected error occurred.')->jsonSerialize(),
+                $rateLimitResult,
+                500,
+            );
+        }
     }
 
     /**
@@ -414,74 +636,6 @@ final readonly class AjaxController
         }
 
         return $this->configurationRepository->findDefault();
-    }
-
-    /**
-     * Create ChatOptions from array of options with range validation.
-     *
-     * Validates and clamps numeric parameters to their valid ranges:
-     * - temperature: 0.0 to 2.0
-     * - topP: 0.0 to 1.0
-     * - frequencyPenalty: -2.0 to 2.0
-     * - presencePenalty: -2.0 to 2.0
-     * - maxTokens: 1 to 16384
-     *
-     * Security: provider, model, and systemPrompt overrides from the client
-     * are intentionally ignored. These are controlled server-side via
-     * LlmConfiguration records in the nr-llm extension.
-     *
-     * @param array<string, mixed> $options
-     */
-    private function createChatOptions(array $options): ?ChatOptions
-    {
-        if ($options === []) {
-            return null;
-        }
-
-        $temperature = isset($options['temperature']) && is_numeric($options['temperature'])
-            ? $this->clampFloat((float) $options['temperature'], 0.0, 2.0)
-            : null;
-        $maxTokens = isset($options['maxTokens']) && is_numeric($options['maxTokens'])
-            ? $this->clampInt((int) $options['maxTokens'], 1, self::MAX_TOKENS_UPPER_BOUND)
-            : null;
-        $topP = isset($options['topP']) && is_numeric($options['topP'])
-            ? $this->clampFloat((float) $options['topP'], 0.0, 1.0)
-            : null;
-        $frequencyPenalty = isset($options['frequencyPenalty']) && is_numeric($options['frequencyPenalty'])
-            ? $this->clampFloat((float) $options['frequencyPenalty'], -2.0, 2.0)
-            : null;
-        $presencePenalty = isset($options['presencePenalty']) && is_numeric($options['presencePenalty'])
-            ? $this->clampFloat((float) $options['presencePenalty'], -2.0, 2.0)
-            : null;
-        $responseFormat = isset($options['responseFormat']) && is_string($options['responseFormat'])
-            && in_array($options['responseFormat'], ['text', 'json', 'markdown'], true)
-            ? $options['responseFormat']
-            : null;
-        $stopSequences = null;
-        if (isset($options['stopSequences']) && is_array($options['stopSequences'])) {
-            $filtered = array_values(array_filter(
-                array_slice($options['stopSequences'], 0, self::MAX_STOP_SEQUENCES),
-                is_string(...),
-            ));
-            $stopSequences = $filtered !== [] ? $filtered : null;
-        }
-
-        // If none of the recognized options had values, treat as "no options"
-        if ($temperature === null && $maxTokens === null && $topP === null
-            && $frequencyPenalty === null && $presencePenalty === null
-            && $responseFormat === null && $stopSequences === null) {
-            return null;
-        }
-
-        return new ChatOptions(
-            temperature: $temperature,
-            maxTokens: $maxTokens,
-            topP: $topP,
-            frequencyPenalty: $frequencyPenalty,
-            presencePenalty: $presencePenalty,
-            responseFormat: $responseFormat,
-            stopSequences: $stopSequences,
-        );
     }
 
     /**
@@ -524,22 +678,6 @@ final readonly class AjaxController
         }
 
         return $validated;
-    }
-
-    /**
-     * Clamp a float value to a range.
-     */
-    private function clampFloat(float $value, float $min, float $max): float
-    {
-        return max($min, min($max, $value));
-    }
-
-    /**
-     * Clamp an integer value to a range.
-     */
-    private function clampInt(int $value, int $min, int $max): int
-    {
-        return max($min, min($max, $value));
     }
 
     /**

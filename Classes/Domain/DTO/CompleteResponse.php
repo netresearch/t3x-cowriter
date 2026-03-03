@@ -15,7 +15,8 @@ use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 /**
  * Response DTO for completion AJAX endpoint.
  *
- * Handles proper HTML escaping of LLM output to prevent XSS attacks.
+ * All LLM output fields are HTML-escaped server-side to prevent XSS.
+ * The frontend decodes entities where raw HTML is needed (e.g. CKEditor insertion).
  *
  * @internal
  */
@@ -34,15 +35,15 @@ final readonly class CompleteResponse implements JsonSerializable
     /**
      * Create a successful response from nr-llm CompletionResponse.
      *
-     * SECURITY: All string content is HTML-escaped to prevent XSS attacks.
+     * All string fields are HTML-escaped to prevent XSS when rendered in the browser.
      */
     public static function success(CompletionResponse $response): self
     {
         return new self(
             success: true,
-            content: htmlspecialchars($response->content, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-            model: htmlspecialchars($response->model ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-            finishReason: htmlspecialchars($response->finishReason ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            content: htmlspecialchars($response->content ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+            model: htmlspecialchars($response->model ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+            finishReason: htmlspecialchars($response->finishReason ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
             usage: UsageData::fromUsageStatistics($response->usage),
             error: null,
             retryAfter: null,

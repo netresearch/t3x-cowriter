@@ -39,17 +39,16 @@ final class CompleteResponseTest extends TestCase
     #[Test]
     public function successEscapesHtmlInContent(): void
     {
-        $completionResponse = $this->createCompletionResponse('<script>alert("xss")</script>');
+        $completionResponse = $this->createCompletionResponse('<p>Hello <strong>world</strong></p>');
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertStringNotContainsString('<script>', $response->content);
-        $this->assertStringContainsString('&lt;script&gt;', $response->content);
+        $this->assertSame('&lt;p&gt;Hello &lt;strong&gt;world&lt;/strong&gt;&lt;/p&gt;', $response->content);
     }
 
     #[Test]
-    #[DataProvider('htmlEscapingProvider')]
-    public function successProperlyEscapesVariousHtmlPatterns(string $input, string $expectedContent): void
+    #[DataProvider('escapedContentProvider')]
+    public function successEscapesSpecialCharactersInContent(string $input, string $expectedContent): void
     {
         $completionResponse = $this->createCompletionResponse($input);
 
@@ -61,25 +60,21 @@ final class CompleteResponseTest extends TestCase
     /**
      * @return iterable<string, array{string, string}>
      */
-    public static function htmlEscapingProvider(): iterable
+    public static function escapedContentProvider(): iterable
     {
-        yield 'script tag' => [
-            '<script>alert(1)</script>',
-            '&lt;script&gt;alert(1)&lt;/script&gt;',
+        yield 'HTML tags escaped' => [
+            '<p>Hello <strong>world</strong></p>',
+            '&lt;p&gt;Hello &lt;strong&gt;world&lt;/strong&gt;&lt;/p&gt;',
         ];
-        yield 'img onerror' => [
-            '<img src=x onerror=alert(1)>',
-            '&lt;img src=x onerror=alert(1)&gt;',
-        ];
-        yield 'single quotes' => [
+        yield 'single quotes escaped' => [
             "Hello 'world'",
-            'Hello &apos;world&apos;',
+            'Hello &#039;world&#039;',
         ];
-        yield 'double quotes' => [
+        yield 'double quotes escaped' => [
             'Hello "world"',
             'Hello &quot;world&quot;',
         ];
-        yield 'ampersand' => [
+        yield 'ampersand escaped' => [
             'A & B',
             'A &amp; B',
         ];
@@ -216,7 +211,7 @@ final class CompleteResponseTest extends TestCase
     }
 
     #[Test]
-    public function successEscapesFinishReasonWithSpecialCharacters(): void
+    public function successEscapesSpecialCharactersInFinishReason(): void
     {
         $usage = new UsageStatistics(10, 20, 30);
 
@@ -230,8 +225,26 @@ final class CompleteResponseTest extends TestCase
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertStringNotContainsString('<script>', $response->finishReason);
-        $this->assertStringContainsString('&lt;script&gt;', $response->finishReason);
+        $this->assertSame('stop&lt;script&gt;', $response->finishReason);
+    }
+
+    #[Test]
+    public function successEscapesSpecialCharactersInModelAndFinishReason(): void
+    {
+        $usage = new UsageStatistics(10, 20, 30);
+
+        $completionResponse = new CompletionResponse(
+            content: "It's content",
+            model: "model's-name",
+            usage: $usage,
+            finishReason: "it's done",
+            provider: 'test',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        $this->assertSame('model&#039;s-name', $response->model);
+        $this->assertSame('it&#039;s done', $response->finishReason);
     }
 
     private function createCompletionResponse(

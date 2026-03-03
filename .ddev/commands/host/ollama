@@ -1,0 +1,79 @@
+#!/bin/bash
+
+## Description: Manage Ollama LLM models
+## Usage: ollama [pull|list|run|chat|rm] [model]
+## Example: ddev ollama pull qwen3:0.6b
+## Example: ddev ollama list
+## Example: ddev ollama chat qwen3:0.6b
+
+OLLAMA_CONTAINER="ddev-${DDEV_SITENAME}-ollama"
+DEFAULT_MODEL="${OLLAMA_MODEL:-qwen3:0.6b}"
+
+case "$1" in
+    pull)
+        MODEL="${2:-$DEFAULT_MODEL}"
+        echo "Pulling model: $MODEL..."
+        if [ -t 0 ]; then
+            docker exec -it "$OLLAMA_CONTAINER" ollama pull "$MODEL"
+        else
+            docker exec "$OLLAMA_CONTAINER" ollama pull "$MODEL"
+        fi
+        ;;
+    list)
+        echo "Available models:"
+        docker exec "$OLLAMA_CONTAINER" ollama list
+        ;;
+    run|chat)
+        MODEL="${2:-$DEFAULT_MODEL}"
+        echo "Starting chat with: $MODEL (Ctrl+D to exit)"
+        if [ -t 0 ]; then
+            docker exec -it "$OLLAMA_CONTAINER" ollama run "$MODEL"
+        else
+            docker exec -i "$OLLAMA_CONTAINER" ollama run "$MODEL"
+        fi
+        ;;
+    rm|remove)
+        if [ -z "$2" ]; then
+            echo "Usage: ddev ollama rm <model>"
+            exit 1
+        fi
+        echo "Removing model: $2..."
+        if [ -t 0 ]; then
+            docker exec -it "$OLLAMA_CONTAINER" ollama rm "$2"
+        else
+            docker exec "$OLLAMA_CONTAINER" ollama rm "$2"
+        fi
+        ;;
+    status)
+        echo "Ollama container status:"
+        docker exec "$OLLAMA_CONTAINER" ollama list
+        ;;
+    api)
+        echo "Ollama API endpoint: http://ollama:11434"
+        echo "From host: http://localhost:$(docker port "$OLLAMA_CONTAINER" 11434 | cut -d: -f2)"
+        ;;
+    *)
+        echo "Ollama LLM Manager"
+        echo ""
+        echo "Usage: ddev ollama <command> [model]"
+        echo ""
+        echo "Commands:"
+        echo "  pull [model]   Pull a model (default: $DEFAULT_MODEL)"
+        echo "  list           List installed models"
+        echo "  chat [model]   Start interactive chat"
+        echo "  rm <model>     Remove a model"
+        echo "  status         Show Ollama status"
+        echo "  api            Show API endpoints"
+        echo ""
+        echo "Available small models:"
+        echo "  smollm2:135m   - 135M params, ~400MB (absolute minimum)"
+        echo "  smollm2:360m   - 360M params, ~700MB (tiny)"
+        echo "  qwen3:0.6b     - 600M params, ~800MB (recommended, newest)"
+        echo "  gemma3:1b      - 1B params, ~1.2GB (Google's latest)"
+        echo "  qwen2.5:0.5b   - 0.5B params, ~1GB"
+        echo "  qwen2.5:1.5b   - 1.5B params, ~2GB"
+        echo "  phi3:mini      - 3.8B params, ~3GB"
+        echo ""
+        echo "Configure default: OLLAMA_MODEL=gemma3:1b ddev restart"
+        ;;
+esac

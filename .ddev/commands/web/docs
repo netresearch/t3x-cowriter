@@ -46,4 +46,4 @@ fi
 
 echo ""
 echo "=== Documentation rendered ==="
-echo "View at: https://docs.${DDEV_HOSTNAME}/"
+echo "View at: https://docs.${DDEV_SITENAME}.ddev.site/"

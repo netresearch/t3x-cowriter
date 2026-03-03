@@ -1,0 +1,42 @@
+#!/bin/bash
+
+## Description: Import demo pages and RTE content for cowriter testing
+## Usage: seed-pages [database]
+## Example: ddev seed-pages
+## Example: ddev seed-pages v13
+
+# Get the DDEV project root
+DDEV_APPROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SQL_FILE="${DDEV_APPROOT}/sql/seed-pages.sql"
+
+# Default to v14 if no database specified
+DATABASE="${1:-v14}"
+
+if [ ! -f "$SQL_FILE" ]; then
+    echo "Error: SQL file not found: $SQL_FILE"
+    exit 1
+fi
+
+echo "Importing demo pages into database: $DATABASE"
+echo ""
+
+# Import the SQL file via ddev mysql
+cat "$SQL_FILE" | ddev mysql -d "$DATABASE"
+
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "Demo pages imported successfully!"
+    echo ""
+    echo "Page tree:"
+    echo "  Cowriter Demo (root)"
+    echo "    ├── Welcome (intro + getting started)"
+    echo "    ├── Blog Article (long-form article with headings)"
+    echo "    └── Product Description (structured product content)"
+    echo ""
+    echo "Navigate to the TYPO3 backend page tree to edit content with the cowriter plugin."
+else
+    echo ""
+    echo "Error importing demo pages. Check database exists and tables are created."
+    echo "Run: ddev exec -d /var/www/html/$DATABASE vendor/bin/typo3 database:updateschema"
+    exit 1
+fi

@@ -1,0 +1,50 @@
+# Codecov configuration
+# https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  precision: 2
+  round: down
+  range: "60...100"
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 2%
+    patch:
+      default:
+        target: 80%
+
+flags:
+  php-unit:
+    paths:
+      - Classes/
+    carryforward: true
+  php-integration:
+    paths:
+      - Classes/
+    carryforward: true
+  php-e2e:
+    paths:
+      - Classes/
+    carryforward: true
+  php-functional:
+    paths:
+      - Classes/
+    carryforward: true
+  javascript:
+    paths:
+      - Resources/Public/JavaScript/
+    carryforward: true
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: true
+  require_base: false
+  require_head: true
+
+ignore:
+  - "Tests/**/*"
+  - ".Build/**/*"
+  - "Documentation/**/*"
+  - "Build/**/*"

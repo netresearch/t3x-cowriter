@@ -12,11 +12,14 @@ namespace Netresearch\T3Cowriter\Tests\E2E;
 use GuzzleHttp\Psr7\Response;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
@@ -68,7 +71,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
 
         if ($responseQueue !== []) {
-            $serviceManager->method('chat')
+            $serviceManager->method('chatWithConfiguration')
                 ->willReturnOnConsecutiveCalls(...$responseQueue);
         }
 
@@ -85,19 +88,28 @@ abstract class AbstractE2ETestCase extends TestCase
         $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
 
+        // Create task repository mock
+        $taskRepo = $this->createMock(TaskRepository::class);
+
+        // Create context assembly service mock
+        $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
+
         // Create controller with mocked dependencies
         $controller = new AjaxController(
             $serviceManager,
             $configRepo,
+            $taskRepo,
             $rateLimiter,
             $context,
             $this->logger,
+            $contextAssembly,
         );
 
         return [
             'controller'     => $controller,
             'serviceManager' => $serviceManager,
             'configRepo'     => $configRepo,
+            'taskRepo'       => $taskRepo,
             'rateLimiter'    => $rateLimiter,
             'context'        => $context,
         ];
@@ -185,6 +197,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $config->method('getIdentifier')->willReturn($identifier);
         $config->method('getName')->willReturn($name);
         $config->method('isDefault')->willReturn($isDefault);
+        $config->method('getModelId')->willReturn($model);
         $config->method('toChatOptions')->willReturn($chatOptions);
 
         return $config;
@@ -198,5 +211,51 @@ abstract class AbstractE2ETestCase extends TestCase
     protected function createQueryResultMock(array $items): QueryResultInterface
     {
         return new TestQueryResult($items);
+    }
+
+    /**
+     * Create a mock Task for testing.
+     */
+    protected function createTaskMock(
+        int $uid,
+        string $identifier,
+        string $name,
+        string $description,
+        string $promptTemplate,
+        bool $isActive = true,
+        ?LlmConfiguration $configuration = null,
+    ): Task&MockObject {
+        $mock = $this->createMock(Task::class);
+        $mock->method('getUid')->willReturn($uid);
+        $mock->method('getIdentifier')->willReturn($identifier);
+        $mock->method('getName')->willReturn($name);
+        $mock->method('getDescription')->willReturn($description);
+        $mock->method('isActive')->willReturn($isActive);
+        $mock->method('getConfiguration')->willReturn($configuration);
+        $mock->method('buildPrompt')->willReturnCallback(
+            static fn (array $vars) => str_replace('{{input}}', $vars['input'] ?? '', $promptTemplate),
+        );
+
+        return $mock;
+    }
+
+    /**
+     * Parse SSE response body into decoded JSON events.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function parseSseEvents(string $body): array
+    {
+        $events = [];
+        foreach (explode("\n\n", trim($body)) as $raw) {
+            $raw = trim($raw);
+            if ($raw === '' || !str_starts_with($raw, 'data: ')) {
+                continue;
+            }
+            $json     = substr($raw, 6); // strip "data: "
+            $events[] = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        }
+
+        return $events;
     }
 }

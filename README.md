@@ -32,10 +32,14 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 
 ## Features
 
+- **Task-based dialog**: Select from predefined tasks (Improve, Summarize, Extend, Fix Grammar, Translate) with result preview before inserting
 - **CKEditor Integration**: Seamless toolbar button in TYPO3's rich text editor
 - **Multi-Provider Support**: Works with all LLM providers supported by nr-llm (OpenAI, Claude, Gemini, etc.)
 - **Secure Backend Proxy**: API keys never exposed to frontend - all requests proxied through TYPO3 backend
-- **Model Override**: Use `#cw:model-name` prefix to request specific models
+- **Context control**: Choose between selected text or full content element as context
+- **Ad-hoc instructions**: Add custom instructions per request (e.g., "Write in formal tone")
+- **Rate limiting**: 20 requests/minute per backend user
+- **Streaming**: Server-Sent Events for real-time completions
 - **XSS Protection**: All LLM output is HTML-escaped for defense in depth
 
 ## Requirements
@@ -89,32 +93,42 @@ editor:
 
 ## Usage
 
-1. Select text in the CKEditor
-2. Click the **Cowriter** button in the toolbar
-3. The selected text is sent to the LLM with a system prompt to improve it
-4. The improved text replaces your selection
+1. Open a content element with a rich text field in the TYPO3 backend
+2. Optionally select text in CKEditor (or leave empty to use full content)
+3. Click the **Cowriter** button in the toolbar
+4. A dialog opens where you can:
+   - **Select a task** (Improve Text, Summarize, Extend, Fix Grammar, Translate to EN/DE)
+   - **Choose context scope** — selected text or whole content element
+   - **Add instructions** — optional ad-hoc rules like "Write in formal tone"
+5. Click **Execute** — the task is sent to the LLM
+6. Review the result in the preview area
+7. Click **Insert** to replace content, or **Retry** to re-execute
 
-### Model Override
+### Available tasks
 
-Prefix your prompt with `#cw:model-name` to use a specific model:
+Tasks are managed in the nr-llm extension (`tx_nrllm_task` table) with `category = 'content'`. Default tasks:
 
-```
-#cw:gpt-5.2-thinking Improve this text
-#cw:claude-opus-4-5 Make this more professional
-```
+| Task | Description |
+|------|-------------|
+| Improve Text | Enhance readability and quality |
+| Summarize | Create a concise summary |
+| Extend / Elaborate | Add depth and detail |
+| Fix Grammar & Spelling | Correct grammar and spelling |
+| Translate to English | Translate to English |
+| Translate to German | Translate to German |
 
 ## Architecture
 
 ```
-[CKEditor Button] → [AIService.js] → [TYPO3 AJAX]
-                                         ↓
-                                    [AjaxController]
-                                         ↓
-                              [LlmServiceManagerInterface]
-                                         ↓
-                                   [nr-llm Provider]
-                                         ↓
-                                   [External LLM API]
+[CKEditor Button] → [CowriterDialog] → [AIService.js] → [TYPO3 AJAX]
+                          ↓                                    ↓
+                    [TYPO3 Modal]                        [AjaxController]
+                                                              ↓
+                                                   [LlmServiceManagerInterface]
+                                                              ↓
+                                                        [nr-llm Provider]
+                                                              ↓
+                                                        [External LLM API]
 ```
 
 All LLM requests are proxied through the TYPO3 backend. API keys are stored encrypted and never exposed to the browser.

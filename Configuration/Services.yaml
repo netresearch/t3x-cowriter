@@ -13,11 +13,13 @@ services:
 
   Netresearch\T3Cowriter\Service\RateLimiterService:
     arguments:
-      $cache: '@cache.cowriter_ratelimit'
       $requestsPerMinute: 20
 
   Netresearch\T3Cowriter\Service\RateLimiterInterface:
     alias: Netresearch\T3Cowriter\Service\RateLimiterService
+
+  Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface:
+    alias: Netresearch\T3Cowriter\Service\ContextAssemblyService
 
   Netresearch\T3Cowriter\Controller\AjaxController:
     public: true
