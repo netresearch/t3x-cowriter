@@ -1651,7 +1651,6 @@ final class AjaxControllerTest extends TestCase
     public function executeTaskActionAppendsAdHocRulesToPrompt(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        // Use callback so the ad-hoc rules injected into {{input}} are visible
         $task->method('buildPrompt')->willReturnCallback(
             static fn (array $vars) => 'Improve: ' . ($vars['input'] ?? 'text'),
         );
@@ -1669,16 +1668,17 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    // [0] = scope system message, [1] = user prompt with ad-hoc rules before input
+                    // Ad-hoc rules should be in a dedicated system message before the user message
                     $userMsg = $messages[count($messages) - 1];
+                    $adHocMsg = $messages[count($messages) - 2];
 
                     return $messages[0]['role'] === 'system'
                         && str_contains($messages[0]['content'], 'selected a portion of text')
+                        && $adHocMsg['role'] === 'system'
+                        && str_contains($adHocMsg['content'], 'additional instructions')
+                        && str_contains($adHocMsg['content'], 'Be formal')
                         && $userMsg['role'] === 'user'
-                        && str_contains($userMsg['content'], 'ADDITIONAL RULES (follow these exactly')
-                        && str_contains($userMsg['content'], 'Be formal')
-                        && str_contains($userMsg['content'], 'Content to transform:')
-                        && str_contains($userMsg['content'], 'text');
+                        && str_contains($userMsg['content'], 'Improve:');
                 }),
                 $config,
             )
@@ -2274,10 +2274,9 @@ final class AjaxControllerTest extends TestCase
     #[Test]
     public function executeTaskActionAdHocRulesContainsAllFragmentsInOrder(): void
     {
-        // Kills Concat/ConcatOperandRemoval mutants #19-23 on ad-hoc rules in promptInput
+        // Kills Concat/ConcatOperandRemoval mutants on ad-hoc rules system message
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('getConfiguration')->willReturn(null);
-        // buildPrompt passes through the input so we can inspect the full prompt
         $task->method('buildPrompt')->willReturnCallback(
             static fn (array $vars) => $vars['input'],
         );
@@ -2293,19 +2292,21 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
+                    // Ad-hoc rules in dedicated system message, user prompt is clean input
                     $userContent = $messages[count($messages) - 1]['content'];
+                    $adHocMsg = $messages[count($messages) - 2];
+                    $adHocContent = $adHocMsg['content'];
 
-                    // Verify all fragments are present and in order
-                    return str_contains($userContent, 'ADDITIONAL RULES (follow these exactly')
-                        && str_contains($userContent, 'Use formal tone')
-                        && str_contains($userContent, 'Content to transform:')
-                        && str_contains($userContent, 'my input text')
-                        // Verify order: ADDITIONAL RULES before adHocRules before blank line before Content to transform before input
-                        && strpos($userContent, 'ADDITIONAL RULES') < strpos($userContent, 'Use formal tone')
-                        && strpos($userContent, 'Use formal tone') < strpos($userContent, 'Content to transform:')
-                        && strpos($userContent, 'Content to transform:') < strpos($userContent, 'my input text')
-                        // Verify the double newline separator (kills ConcatOperandRemoval removing "\n\n")
-                        && str_contains($userContent, "Use formal tone\n\nContent to transform:");
+                    // User message contains only the input (no embedded rules)
+                    // Ad-hoc system message contains rule text with preamble
+                    return $adHocMsg['role'] === 'system'
+                        && str_contains($adHocContent, 'additional instructions')
+                        && str_contains($adHocContent, 'take priority over the task template')
+                        && str_contains($adHocContent, 'Use formal tone')
+                        // Verify order within the system message: preamble then newline then rules
+                        && strpos($adHocContent, 'additional instructions') < strpos($adHocContent, 'Use formal tone')
+                        // User message is clean input only
+                        && $userContent === 'my input text';
                 }),
                 $config,
             )

@@ -524,16 +524,7 @@ final readonly class AjaxController
             }
         }
 
-        // Build prompt — inject ad-hoc rules BEFORE the input content so the LLM
-        // processes them as part of the instructions, not as an afterthought.
-        $promptInput = $input;
-        if (trim($dto->adHocRules) !== '') {
-            $promptInput = "ADDITIONAL RULES (follow these exactly — they override default behavior):\n"
-                . $dto->adHocRules . "\n\n"
-                . "Content to transform:\n" . $input;
-        }
-
-        $prompt = $task->buildPrompt(['input' => $promptInput]);
+        $prompt = $task->buildPrompt(['input' => $input]);
 
         // Build messages
         $messages = [];
@@ -572,6 +563,16 @@ final readonly class AjaxController
                     . 'For inline styles, use: <span style="color: #hex"> for font colors, '
                     . '<span style="background-color: #hex"> for background colors, '
                     . '<mark> for text highlighting.',
+            ];
+        }
+
+        // Ad-hoc rules as system message — high authority, close to user message
+        if (trim($dto->adHocRules) !== '') {
+            $messages[] = [
+                'role'    => 'system',
+                'content' => "The user provided these additional instructions. "
+                    . "Follow them exactly — they take priority over the task template:\n"
+                    . $dto->adHocRules,
             ];
         }
 
