@@ -468,6 +468,345 @@ final class ExecuteTaskRequestTest extends TestCase
     }
 
     // =========================================================================
+    // Multi-byte string length checks (kills MBString mutants #63-65)
+    // =========================================================================
+
+    #[Test]
+    public function isValidUsesMultiByteForContextLength(): void
+    {
+        // Kills MBString mutant #63: mb_strlen → strlen for context
+        // 32768 emojis = 32768 chars (within limit) but 131072 bytes (over limit with strlen)
+        $emoji = "\xF0\x9F\x92\xA1"; // U+1F4A1 (lightbulb), 4 bytes
+        $dto   = new ExecuteTaskRequest(1, str_repeat($emoji, 32768), 'selection', '', null);
+        self::assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidUsesMultiByteForAdHocRulesLength(): void
+    {
+        // Kills MBString mutant #64: mb_strlen → strlen for adHocRules
+        $emoji = "\xF0\x9F\x92\xA1";
+        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', str_repeat($emoji, 4096), null);
+        self::assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidUsesMultiByteForEditorCapabilitiesLength(): void
+    {
+        // Kills MBString mutant #65: mb_strlen → strlen for editorCapabilities
+        $emoji = "\xF0\x9F\x92\xA1";
+        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', '', null, str_repeat($emoji, 2048));
+        self::assertTrue($dto->isValid());
+    }
+
+    // =========================================================================
+    // recordContext uid boundary (kills LessThanOrEqualTo #68, Increment/Decrement #66-67)
+    // =========================================================================
+
+    #[Test]
+    public function isValidRejectsRecordContextWithUidZero(): void
+    {
+        // Kills LessThanOrEqualTo #68: ($uid ?? 0) <= 0 → ($uid ?? 0) < 0
+        // uid=0 is invalid (should return false). With < 0, it would incorrectly pass.
+        $dto = new ExecuteTaskRequest(
+            1,
+            'text',
+            'selection',
+            '',
+            null,
+            '',
+            'page',
+            ['table' => 'tt_content', 'uid' => 0, 'field' => 'bodytext'],
+        );
+        self::assertFalse($dto->isValid());
+    }
+
+    // =========================================================================
+    // recordContext field regex (kills PregMatchRemoveCaret #69, PregMatchRemoveDollar #70, PregMatchRemoveFlags #71, LogicalOr #72)
+    // =========================================================================
+
+    #[Test]
+    public function isValidRejectsRecordContextFieldStartingWithDigit(): void
+    {
+        // Kills PregMatchRemoveCaret #69: /^[a-z].../ → /[a-z].../
+        // Without ^, '1bodytext' would match because 'b' matches [a-z]
+        $dto = new ExecuteTaskRequest(
+            1,
+            'text',
+            'selection',
+            '',
+            null,
+            '',
+            'page',
+            ['table' => 'tt_content', 'uid' => 1, 'field' => '1bodytext'],
+        );
+        self::assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidRejectsRecordContextFieldWithTrailingSpecialChars(): void
+    {
+        // Kills PregMatchRemoveDollar #70: /...[a-z0-9_]*$/ → /...[a-z0-9_]*/
+        // Without $, 'bodytext!@#' would match up to 't'
+        $dto = new ExecuteTaskRequest(
+            1,
+            'text',
+            'selection',
+            '',
+            null,
+            '',
+            'page',
+            ['table' => 'tt_content', 'uid' => 1, 'field' => 'bodytext!'],
+        );
+        self::assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidAcceptsRecordContextFieldWithUpperCase(): void
+    {
+        // Kills PregMatchRemoveFlags #71: /^[a-z]...$/i → /^[a-z]...$/
+        // Without /i flag, 'Bodytext' would fail because 'B' doesn't match [a-z]
+        $dto = new ExecuteTaskRequest(
+            1,
+            'text',
+            'selection',
+            '',
+            null,
+            '',
+            'page',
+            ['table' => 'tt_content', 'uid' => 1, 'field' => 'Bodytext'],
+        );
+        self::assertTrue($dto->isValid());
+    }
+
+    // =========================================================================
+    // extractRecordContext validation (kills LogicalOr #78-79-83, LessThanOrEqualTo #77, PregMatch #80-82)
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestRejectsRecordContextWithEmptyTableValidUidAndField(): void
+    {
+        // Kills LogicalOr #78: ($table === '' || $uid <= 0) → ($table === '' && $uid <= 0)
+        // With &&, empty table + valid uid would NOT trigger the guard
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'recordContext' => ['table' => '', 'uid' => 5, 'field' => 'bodytext'],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->recordContext);
+    }
+
+    #[Test]
+    public function fromRequestRejectsRecordContextWithValidTableUidZeroAndValidField(): void
+    {
+        // Kills LogicalOr #79: (($table === '' || $uid <= 0) && $field === '') → different grouping
+        // uid=0 should reject even when table and field are valid
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 0, 'field' => 'bodytext'],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->recordContext);
+    }
+
+    #[Test]
+    public function fromRequestRejectsRecordContextWithInvalidFieldRegex(): void
+    {
+        // Kills LogicalOr #83: (...|| preg_match !== 1) → (...) && preg_match !== 1
+        // With &&, valid table + valid uid + invalid field would pass
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 1, 'field' => '1invalid'],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->recordContext);
+    }
+
+    #[Test]
+    public function fromRequestRejectsRecordContextFieldStartingWithDigitInExtract(): void
+    {
+        // Kills PregMatchRemoveCaret #80: same regex check in extractRecordContext
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 1, 'field' => '9field'],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->recordContext);
+    }
+
+    #[Test]
+    public function fromRequestRejectsRecordContextFieldWithTrailingSpecialInExtract(): void
+    {
+        // Kills PregMatchRemoveDollar #81
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 1, 'field' => 'body$text'],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->recordContext);
+    }
+
+    #[Test]
+    public function fromRequestAcceptsRecordContextFieldWithUpperCaseInExtract(): void
+    {
+        // Kills PregMatchRemoveFlags #82
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 1, 'field' => 'BodyText'],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNotNull($dto->recordContext);
+        self::assertSame('BodyText', $dto->recordContext['field']);
+    }
+
+    // =========================================================================
+    // extractRecordContext CastInt and uid defaults (kills #74-77)
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestCastsRecordContextUidToInt(): void
+    {
+        // Kills CastInt #74: (int) $rc['uid'] → $rc['uid']
+        // Numeric string uid must be cast to int
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => '42', 'field' => 'bodytext'],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNotNull($dto->recordContext);
+        self::assertIsInt($dto->recordContext['uid']);
+        self::assertSame(42, $dto->recordContext['uid']);
+    }
+
+    // =========================================================================
+    // referencePages extraction (kills CastInt #84, GreaterThan #90, MBString #89, Inc/Dec #85-88)
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestCastsReferencePidToInt(): void
+    {
+        // Kills CastInt #84: (int) $page['pid'] → $page['pid']
+        $request = $this->createJsonRequest([
+            'taskUid'        => 1,
+            'context'        => 'text',
+            'contextType'    => 'selection',
+            'referencePages' => [
+                ['pid' => '7', 'relation' => 'ref'],
+            ],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertCount(1, $dto->referencePages);
+        self::assertIsInt($dto->referencePages[0]['pid']);
+        self::assertSame(7, $dto->referencePages[0]['pid']);
+    }
+
+    #[Test]
+    public function fromRequestFiltersReferencePagesWithZeroPid(): void
+    {
+        // Kills GreaterThan #90: $pid > 0 → $pid >= 0
+        // pid=0 should be filtered out
+        $request = $this->createJsonRequest([
+            'taskUid'        => 1,
+            'context'        => 'text',
+            'contextType'    => 'selection',
+            'referencePages' => [
+                ['pid' => 0, 'relation' => 'should be filtered'],
+                ['pid' => 5, 'relation' => 'valid'],
+            ],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertCount(1, $dto->referencePages);
+        self::assertSame(5, $dto->referencePages[0]['pid']);
+    }
+
+    #[Test]
+    public function fromRequestTruncatesReferenceRelationToExactly100MultiByteChars(): void
+    {
+        // Kills MBString #89: mb_substr → substr
+        // Kills IncrementInteger #88 / DecrementInteger #87: the 100 boundary
+        $emoji    = "\xF0\x9F\x92\xA1"; // 4 bytes per char
+        $relation = str_repeat($emoji, 101); // 101 chars, 404 bytes
+
+        $request = $this->createJsonRequest([
+            'taskUid'        => 1,
+            'context'        => 'text',
+            'contextType'    => 'selection',
+            'referencePages' => [
+                ['pid' => 1, 'relation' => $relation],
+            ],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertCount(1, $dto->referencePages);
+        // With mb_substr: 100 chars. With substr: 100 bytes = 25 chars
+        self::assertSame(100, mb_strlen($dto->referencePages[0]['relation'], 'UTF-8'));
+    }
+
+    #[Test]
+    public function fromRequestKeepsRelationExactlyAt100Chars(): void
+    {
+        // Kills DecrementInteger #87: mb_substr(relation, 0, 100) → mb_substr(relation, 0, 99)
+        $relation = str_repeat('a', 100);
+
+        $request = $this->createJsonRequest([
+            'taskUid'        => 1,
+            'context'        => 'text',
+            'contextType'    => 'selection',
+            'referencePages' => [
+                ['pid' => 1, 'relation' => $relation],
+            ],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        // Exactly 100 chars: should NOT be truncated
+        self::assertSame(100, mb_strlen($dto->referencePages[0]['relation'], 'UTF-8'));
+        self::assertSame($relation, $dto->referencePages[0]['relation']);
+    }
+
+    // =========================================================================
+    // CastString / extractNullableString (kills #73)
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestCastsNumericConfigurationToString(): void
+    {
+        // Kills CastString #73: (string) $value → $value
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'configuration' => 42,
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertIsString($dto->configuration);
+        self::assertSame('42', $dto->configuration);
+    }
+
+    // =========================================================================
     // XSS / injection payloads
     // =========================================================================
 

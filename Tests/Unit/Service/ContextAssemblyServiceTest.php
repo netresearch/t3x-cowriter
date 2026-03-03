@@ -185,6 +185,116 @@ final class ContextAssemblyServiceTest extends TestCase
         self::assertStringNotContainsString('Subheader:', $result);
     }
 
+    #[Test]
+    public function getContextSummaryReturnsTextScopeLabel(): void
+    {
+        // Kills ArrayItemRemoval #93: removing 'text' key from scopeLabels
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 123, 'pid' => 5, 'header' => 'Test', 'bodytext' => '<p>One two three</p>', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'text');
+
+        self::assertStringContainsString('current text field', $result['summary']);
+    }
+
+    #[Test]
+    public function getContextSummaryReturnsAncestors1ScopeLabelPlural(): void
+    {
+        // Kills Concat/ConcatOperandRemoval #94-103 on ancestors_1 label
+        // The mock returns same rows for all queries, so we get duplicates for ancestor page
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 1, 'pid' => 5, 'header' => 'A', 'bodytext' => '<p>Word1</p>', 'subheader' => ''],
+            ['uid' => 2, 'pid' => 5, 'header' => 'B', 'bodytext' => '<p>Word2</p>', 'subheader' => ''],
+            ['uid' => 3, 'pid' => 5, 'header' => 'C', 'bodytext' => '<p>Word3</p>', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'ancestors_1');
+
+        // Must contain " elements (+1 ancestor level)" — plural 's' and correct suffix
+        self::assertStringContainsString(' elements', $result['summary']);
+        self::assertStringContainsString('(+1 ancestor level)', $result['summary']);
+        // Full format check
+        self::assertMatchesRegularExpression('/\d+ elements \(\+1 ancestor level\), ~\d+ words/', $result['summary']);
+    }
+
+    #[Test]
+    public function getContextSummaryReturnsAncestors1ScopeLabelSingular(): void
+    {
+        // Kills NotIdentical #98, Ternary #99 on ancestors_1: checks singular 'element' (count=1)
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 1, 'pid' => 5, 'header' => 'Only', 'bodytext' => '<p>Single element</p>', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'ancestors_1');
+
+        // Must contain "1 element (+1 ancestor level)" — no 's' for singular
+        self::assertStringContainsString('1 element', $result['summary']);
+        self::assertStringNotContainsString('1 elements', $result['summary']);
+        self::assertStringContainsString('(+1 ancestor level)', $result['summary']);
+    }
+
+    #[Test]
+    public function getContextSummaryReturnsAncestors2ScopeLabelPlural(): void
+    {
+        // Kills Concat/ConcatOperandRemoval #104-113 on ancestors_2 label
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 1, 'pid' => 5, 'header' => 'A', 'bodytext' => '<p>Word1</p>', 'subheader' => ''],
+            ['uid' => 2, 'pid' => 5, 'header' => 'B', 'bodytext' => '<p>Word2</p>', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'ancestors_2');
+
+        // Must contain " elements (+2 ancestor levels)" — plural 's' and correct suffix
+        self::assertStringContainsString(' elements', $result['summary']);
+        self::assertStringContainsString('(+2 ancestor levels)', $result['summary']);
+        self::assertMatchesRegularExpression('/\d+ elements \(\+2 ancestor levels\), ~\d+ words/', $result['summary']);
+    }
+
+    #[Test]
+    public function getContextSummaryReturnsAncestors2ScopeLabelSingular(): void
+    {
+        // Kills NotIdentical #108, Ternary #109 on ancestors_2: checks singular with count=1
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 1, 'pid' => 5, 'header' => 'Only', 'bodytext' => '<p>Content</p>', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'ancestors_2');
+
+        // Must contain "1 element (+2 ancestor levels)" — no 's' for singular
+        self::assertStringContainsString('1 element', $result['summary']);
+        self::assertStringNotContainsString('1 elements', $result['summary']);
+        self::assertStringContainsString('(+2 ancestor levels)', $result['summary']);
+    }
+
+    #[Test]
+    public function assembleContextIncludesRelationPrefixForReferencePages(): void
+    {
+        // Kills Concat #114, ConcatOperandRemoval #115 on reference page relation
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 123, 'pid' => 5, 'header' => 'Main', 'bodytext' => '<p>Content</p>', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->assembleContext(
+            'tt_content',
+            123,
+            'bodytext',
+            'element',
+            [['pid' => 10, 'relation' => 'style guide']],
+        );
+
+        // The relation must appear as " — Relation: style guide" in the output
+        self::assertStringContainsString(' — Relation: style guide', $result);
+        // The reference page header should also appear
+        self::assertStringContainsString('Reference page', $result);
+    }
+
     /**
      * @param list<array<string, mixed>> $rows
      */

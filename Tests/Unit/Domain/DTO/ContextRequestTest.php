@@ -121,4 +121,45 @@ final class ContextRequestTest extends TestCase
     {
         self::assertFalse($dto->isValid());
     }
+
+    // =========================================================================
+    // Regex-specific tests (kills PregMatchRemoveCaret #59, PregMatchRemoveDollar #60, PregMatchRemoveFlags #61, LogicalOr #62)
+    // =========================================================================
+
+    #[Test]
+    public function isValidRejectsFieldStartingWithDigit(): void
+    {
+        // Kills PregMatchRemoveCaret #59: /^[a-z].../ → /[a-z].../
+        // Without ^, '1bodytext' would match because 'b' appears later
+        $dto = new ContextRequest('tt_content', 1, '1bodytext', 'page');
+        self::assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidRejectsFieldWithTrailingSpecialChars(): void
+    {
+        // Kills PregMatchRemoveDollar #60: /...[a-z0-9_]*$/ → /...[a-z0-9_]*/
+        // Without $, 'body!' would still match up to 'y'
+        $dto = new ContextRequest('tt_content', 1, 'bodytext!', 'page');
+        self::assertFalse($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidAcceptsFieldWithUpperCaseLetters(): void
+    {
+        // Kills PregMatchRemoveFlags #61: /^[a-z]...$/i → /^[a-z]...$/
+        // Without /i flag, 'Bodytext' would fail because 'B' is not in [a-z]
+        $dto = new ContextRequest('tt_content', 1, 'Bodytext', 'page');
+        self::assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidRejectsEmptyFieldRegardlessOfRegex(): void
+    {
+        // Kills LogicalOr #62: ($field === '' || preg_match...) → ($field === '' && preg_match...)
+        // With &&, empty field would still call preg_match on '' which returns 0, but the && would require BOTH
+        // Already covered by invalidRequestProvider but explicit for clarity
+        $dto = new ContextRequest('tt_content', 1, '', 'page');
+        self::assertFalse($dto->isValid());
+    }
 }

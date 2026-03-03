@@ -251,12 +251,15 @@ export class CowriterDialog {
                     );
 
                     if (result.success && result.content) {
+                        // Server returns HTML-escaped content for XSS safety;
+                        // decode entities to recover the original HTML for CKEditor.
+                        const decoded = this._decodeEntities(result.content);
                         preview.replaceChildren();
-                        const safeBody = this._sanitizeHtml(result.content);
+                        const safeBody = this._sanitizeHtml(decoded);
                         while (safeBody.firstChild) {
                             preview.appendChild(safeBody.firstChild);
                         }
-                        resultContent = result.content;
+                        resultContent = decoded;
                         state = 'result';
 
                         if (result.model) {
@@ -536,6 +539,23 @@ export class CowriterDialog {
         row.appendChild(removeBtn);
 
         return row;
+    }
+
+    /**
+     * Decode HTML entities back to their original characters.
+     *
+     * The server HTML-escapes all LLM output for XSS safety.
+     * This reverses the escaping so the content can be used as HTML in CKEditor.
+     * Uses a textarea element which safely decodes entities without executing scripts.
+     *
+     * @param {string} escaped
+     * @returns {string} The decoded HTML string
+     * @private
+     */
+    _decodeEntities(escaped) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = escaped;
+        return textarea.value;
     }
 
     /**

@@ -1505,6 +1505,61 @@ final class AjaxControllerTest extends TestCase
         self::assertSame('Desc with &quot;quotes&quot;', $data['tasks'][0]['description']);
     }
 
+    #[Test]
+    public function getTasksActionEscapesSingleQuotesInTaskFields(): void
+    {
+        // Kills BitwiseOr mutants #6 and #7:
+        // ENT_QUOTES | ENT_SUBSTITUTE → ENT_QUOTES & ENT_SUBSTITUTE
+        // With ENT_QUOTES & ENT_SUBSTITUTE (= 0), single quotes are NOT escaped
+        $task = $this->createTaskMock(1, "it's", "Task's Name", "It's a description", true);
+
+        $this->taskRepositoryMock
+            ->method('findByCategory')
+            ->willReturn(new TestQueryResult([$task]));
+
+        $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
+
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertCount(1, $data['tasks']);
+        // Single quotes MUST be escaped to &#039; — proves ENT_QUOTES is in effect
+        self::assertSame('it&#039;s', $data['tasks'][0]['identifier']);
+        self::assertSame('Task&#039;s Name', $data['tasks'][0]['name']);
+        self::assertSame('It&#039;s a description', $data['tasks'][0]['description']);
+    }
+
+    #[Test]
+    public function getTasksActionSkipsNonTaskObjectsAndContinuesProcessing(): void
+    {
+        // Kills InstanceOf_ mutant #4: !$task instanceof Task → !true (always skips)
+        // Kills Continue_ mutant #5: continue → break (stops after inactive)
+        // Place a non-Task in the MIDDLE and an inactive task BEFORE the last active task
+        $activeTask1  = $this->createTaskMock(1, 'first', 'First', 'desc', true);
+        $inactiveTask = $this->createTaskMock(2, 'inactive', 'Inactive', 'desc', false);
+        $activeTask2  = $this->createTaskMock(3, 'third', 'Third', 'desc', true);
+
+        // Create a query result that includes a non-Task object between task1 and inactiveTask
+        $queryResult = $this->createQueryResultMockWithMixedTypes([
+            $activeTask1,
+            new stdClass(),   // not a Task → continue (kills InstanceOf_ mutant)
+            $inactiveTask,    // inactive → continue (kills Continue_ mutant: break would stop here)
+            $activeTask2,     // active → should be included AFTER the inactive
+        ]);
+
+        $this->taskRepositoryMock
+            ->method('findByCategory')
+            ->willReturn($queryResult);
+
+        $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
+
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        // stdClass and inactiveTask are filtered; both active tasks survive
+        self::assertCount(2, $data['tasks']);
+        self::assertSame('first', $data['tasks'][0]['identifier']);
+        self::assertSame('third', $data['tasks'][1]['identifier']);
+    }
+
     // ===========================================
     // executeTaskAction Tests
     // ===========================================
@@ -1761,6 +1816,16 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->willThrowException(new ProviderException('API error'));
 
+        // Kills logger MethodCallRemoval #48, ArrayItemRemoval #47, ArrayItem #49/#50
+        $this->loggerMock
+            ->expects($this->once())
+            ->method('error')
+            ->with(
+                'Task execution provider error',
+                $this->callback(static fn (array $context): bool => isset($context['taskUid']) && $context['taskUid'] === 1
+                    && isset($context['exception']) && $context['exception'] === 'API error'),
+            );
+
         $request = $this->createRequestWithJsonBody([
             'taskUid'     => 1,
             'context'     => 'text',
@@ -1789,6 +1854,17 @@ final class AjaxControllerTest extends TestCase
         $this->llmServiceManagerMock
             ->method('chatWithConfiguration')
             ->willThrowException(new RuntimeException('Unexpected'));
+
+        // Kills logger MethodCallRemoval #52, ArrayItemRemoval #51, ArrayItem #53/#54/#55
+        $this->loggerMock
+            ->expects($this->once())
+            ->method('error')
+            ->with(
+                'Task execution unexpected error',
+                $this->callback(static fn (array $context): bool => isset($context['taskUid']) && $context['taskUid'] === 1
+                    && isset($context['exception']) && $context['exception'] === 'Unexpected'
+                    && isset($context['trace']) && is_string($context['trace'])),
+            );
 
         $request = $this->createRequestWithJsonBody([
             'taskUid'     => 1,
@@ -1965,6 +2041,15 @@ final class AjaxControllerTest extends TestCase
             ->method('assembleContext')
             ->willThrowException(new RuntimeException('DB connection lost'));
 
+        // Kills logger MethodCallRemoval #16, ArrayItemRemoval #15, ArrayItem #17
+        $this->loggerMock
+            ->expects($this->once())
+            ->method('error')
+            ->with(
+                'Context assembly error',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'DB connection lost'),
+            );
+
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('getConfiguration')->willReturn(null);
         $task->method('buildPrompt')->willReturn('Improve: text');
@@ -2040,6 +2125,14 @@ final class AjaxControllerTest extends TestCase
             ->method('getContextSummary')
             ->willThrowException(new RuntimeException('DB error'));
 
+        $this->loggerMock
+            ->expects($this->once())
+            ->method('error')
+            ->with(
+                'Context preview error',
+                $this->callback(static fn (array $context): bool => isset($context['exception']) && $context['exception'] === 'DB error'),
+            );
+
         $request = $this->createStub(ServerRequestInterface::class);
         $request->method('getQueryParams')->willReturn([
             'table' => 'tt_content',
@@ -2051,6 +2144,181 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->getContextAction($request);
 
         self::assertSame(500, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertFalse($body['success']);
+        self::assertArrayHasKey('error', $body);
+        self::assertStringContainsString('Failed to fetch context preview', $body['error']);
+    }
+
+    #[Test]
+    public function executeTaskActionReferenceContextContainsAllFragmentsInOrder(): void
+    {
+        // Kills Concat/ConcatOperandRemoval mutants #24-37 on reference_context message
+        $assembledContext = "=== Content element ===\nHeader: Test\nBody: Some content\n";
+
+        $this->contextAssemblyMock
+            ->method('assembleContext')
+            ->willReturn($assembledContext);
+
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $task->method('buildPrompt')->willReturnCallback(
+            fn (array $vars) => 'Improve: ' . $vars['input'],
+        );
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Improved');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages) use ($assembledContext): bool {
+                    // Messages: [0]=scope, [1]=reference_context, [2]=user prompt
+                    if (count($messages) < 3) {
+                        return false;
+                    }
+                    $refContent = $messages[1]['content'];
+
+                    // Each fragment from the concatenation must appear, in order
+                    return str_contains($refContent, '<reference_context>')
+                        && str_contains($refContent, 'Surrounding content from the same page for reference.')
+                        && str_contains($refContent, 'Use this to understand the broader context, avoid duplicating information,')
+                        && str_contains($refContent, 'and match the existing tone, style, and formatting patterns')
+                        && str_contains($refContent, '(heading levels, list styles).')
+                        && str_contains($refContent, 'Do NOT include this content in your output.')
+                        && str_contains($refContent, $assembledContext)
+                        && str_contains($refContent, '</reference_context>')
+                        // Verify ordering: <reference_context> before Surrounding, before Do NOT, before actual context, before </reference_context>
+                        && strpos($refContent, '<reference_context>') < strpos($refContent, 'Surrounding content')
+                        && strpos($refContent, 'Surrounding content') < strpos($refContent, 'Do NOT include')
+                        && strpos($refContent, 'Do NOT include') < strpos($refContent, $assembledContext)
+                        && strpos($refContent, $assembledContext) < strpos($refContent, '</reference_context>')
+                        // Verify newline before assembled context (kills ConcatOperandRemoval removing "\n")
+                        && str_contains($refContent, "Do NOT include this content in your output.\n" . $assembledContext)
+                        && str_contains($refContent, $assembledContext . "\n" . '</reference_context>');
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'       => 1,
+            'context'       => 'text to improve',
+            'contextType'   => 'selection',
+            'contextScope'  => 'page',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionEditorCapabilitiesContainsAllFragmentsInOrder(): void
+    {
+        // Kills Concat/ConcatOperandRemoval mutants #39-46 on editor capabilities message
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturn('Improve: text');
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    // Messages: [0]=scope, [1]=capabilities, [2]=user prompt
+                    if (count($messages) < 3) {
+                        return false;
+                    }
+                    $capContent = $messages[1]['content'];
+
+                    // Each fragment from the concatenation must appear in order
+                    return str_contains($capContent, 'The rich text editor supports these formatting features:')
+                        && str_contains($capContent, 'bold, italic, links')
+                        && str_contains($capContent, 'You may use any of these in the output.')
+                        && str_contains($capContent, 'For inline styles, use: <span style="color: #hex"> for font colors,')
+                        && str_contains($capContent, '<span style="background-color: #hex"> for background colors,')
+                        && str_contains($capContent, '<mark> for text highlighting.')
+                        // Verify ordering
+                        && strpos($capContent, 'rich text editor') < strpos($capContent, 'bold, italic')
+                        && strpos($capContent, 'bold, italic') < strpos($capContent, 'You may use')
+                        && strpos($capContent, 'You may use') < strpos($capContent, 'For inline styles')
+                        && strpos($capContent, 'For inline styles') < strpos($capContent, 'background-color')
+                        && strpos($capContent, 'background-color') < strpos($capContent, '<mark>');
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'            => 1,
+            'context'            => 'text',
+            'contextType'        => 'selection',
+            'editorCapabilities' => 'bold, italic, links',
+        ]);
+
+        $this->subject->executeTaskAction($request);
+    }
+
+    #[Test]
+    public function executeTaskActionAdHocRulesContainsAllFragmentsInOrder(): void
+    {
+        // Kills Concat/ConcatOperandRemoval mutants #19-23 on ad-hoc rules in promptInput
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        // buildPrompt passes through the input so we can inspect the full prompt
+        $task->method('buildPrompt')->willReturnCallback(
+            static fn (array $vars) => $vars['input'],
+        );
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    $userContent = $messages[count($messages) - 1]['content'];
+
+                    // Verify all fragments are present and in order
+                    return str_contains($userContent, 'ADDITIONAL RULES (follow these exactly')
+                        && str_contains($userContent, 'Use formal tone')
+                        && str_contains($userContent, 'Content to transform:')
+                        && str_contains($userContent, 'my input text')
+                        // Verify order: ADDITIONAL RULES before adHocRules before blank line before Content to transform before input
+                        && strpos($userContent, 'ADDITIONAL RULES') < strpos($userContent, 'Use formal tone')
+                        && strpos($userContent, 'Use formal tone') < strpos($userContent, 'Content to transform:')
+                        && strpos($userContent, 'Content to transform:') < strpos($userContent, 'my input text')
+                        // Verify the double newline separator (kills ConcatOperandRemoval removing "\n\n")
+                        && str_contains($userContent, "Use formal tone\n\nContent to transform:");
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'my input text',
+            'contextType' => 'selection',
+            'adHocRules'  => 'Use formal tone',
+        ]);
+
+        $this->subject->executeTaskAction($request);
     }
 
     // ===========================================
