@@ -21,7 +21,6 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
-use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\NullLogger;
 use TYPO3\CMS\Core\Context\Context;
 
@@ -66,19 +65,6 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
     }
 
     /**
-     * Create a mock ServerRequest with parsed body data.
-     *
-     * @param array<string, mixed> $body
-     */
-    private function createParsedBodyRequest(array $body): ServerRequestInterface
-    {
-        $request = self::createStub(ServerRequestInterface::class);
-        $request->method('getParsedBody')->willReturn($body);
-
-        return $request;
-    }
-
-    /**
      * Create a TranslationResult with realistic data.
      */
     private function createTranslationResult(
@@ -115,7 +101,7 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
         $this->translationServiceMock->method('translate')->willReturn($result);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text'           => 'Welcome to our website.',
             'targetLanguage' => 'de',
         ]);
@@ -147,7 +133,7 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
             ->willReturn($result);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text'           => 'Dear Ladies and Gentlemen, welcome.',
             'targetLanguage' => 'de',
             'formality'      => 'formal',
@@ -172,7 +158,7 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
         $this->translationServiceMock->method('translate')->willReturn($result);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text'           => 'An image shows bold text and special characters',
             'targetLanguage' => 'de',
         ]);
@@ -199,7 +185,7 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
         $this->translationServiceMock->method('translate')->willReturn($result);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text'           => 'Test',
             'targetLanguage' => 'de',
         ]);

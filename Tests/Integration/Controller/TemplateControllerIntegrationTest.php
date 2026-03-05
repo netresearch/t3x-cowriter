@@ -12,6 +12,8 @@ namespace Netresearch\T3Cowriter\Tests\Integration\Controller;
 use Netresearch\NrLlm\Domain\Model\PromptTemplate;
 use Netresearch\NrLlm\Domain\Repository\PromptTemplateRepository;
 use Netresearch\T3Cowriter\Controller\TemplateController;
+use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use Override;
@@ -22,6 +24,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\NullLogger;
 use stdClass;
+use TYPO3\CMS\Core\Context\Context;
 
 /**
  * Integration tests for TemplateController.
@@ -43,23 +46,28 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
 
         $this->templateRepoMock = $this->createMock(PromptTemplateRepository::class);
 
+        $rateLimiter = $this->createStub(RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        $context = $this->createStub(Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
         $this->subject = new TemplateController(
             $this->templateRepoMock,
+            $rateLimiter,
+            $context,
             new NullLogger(),
         );
     }
 
     /**
-     * Create a mock ServerRequest with parsed body data.
-     *
-     * @param array<string, mixed> $body
+     * Create a stub ServerRequest (TemplateController doesn't read body).
      */
-    private function createParsedBodyRequest(array $body = []): ServerRequestInterface
+    private function createStubRequest(): ServerRequestInterface
     {
-        $request = self::createStub(ServerRequestInterface::class);
-        $request->method('getParsedBody')->willReturn($body);
-
-        return $request;
+        return self::createStub(ServerRequestInterface::class);
     }
 
     /**
@@ -101,7 +109,7 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
         $this->templateRepoMock->method('findActive')->willReturn($queryResult);
 
         // Act
-        $request  = $this->createParsedBodyRequest();
+        $request  = $this->createStubRequest();
         $response = $this->subject->listAction($request);
 
         // Assert
@@ -131,7 +139,7 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
         $this->templateRepoMock->method('findActive')->willReturn($queryResult);
 
         // Act
-        $request  = $this->createParsedBodyRequest();
+        $request  = $this->createStubRequest();
         $response = $this->subject->listAction($request);
 
         // Assert
@@ -159,7 +167,7 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
         $this->templateRepoMock->method('findActive')->willReturn($queryResult);
 
         // Act
-        $request  = $this->createParsedBodyRequest();
+        $request  = $this->createStubRequest();
         $response = $this->subject->listAction($request);
 
         // Assert: only the PromptTemplate instance is in the result

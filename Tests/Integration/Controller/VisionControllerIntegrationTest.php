@@ -21,7 +21,6 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
-use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\NullLogger;
 use TYPO3\CMS\Core\Context\Context;
 
@@ -66,19 +65,6 @@ final class VisionControllerIntegrationTest extends AbstractIntegrationTestCase
     }
 
     /**
-     * Create a mock ServerRequest with parsed body data.
-     *
-     * @param array<string, mixed> $body
-     */
-    private function createParsedBodyRequest(array $body): ServerRequestInterface
-    {
-        $request = self::createStub(ServerRequestInterface::class);
-        $request->method('getParsedBody')->willReturn($body);
-
-        return $request;
-    }
-
-    /**
      * Create a VisionResponse with realistic data.
      */
     private function createVisionResponse(
@@ -110,7 +96,7 @@ final class VisionControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->visionServiceMock->method('analyzeImageFull')->willReturn($response);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'imageUrl' => 'https://example.com/cat-desk.jpg',
         ]);
         $result = $this->subject->analyzeAction($request);
@@ -135,7 +121,7 @@ final class VisionControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->visionServiceMock->method('analyzeImageFull')->willReturn($response);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'imageUrl' => 'https://example.com/image.jpg',
         ]);
         $result = $this->subject->analyzeAction($request);
@@ -159,7 +145,7 @@ final class VisionControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->visionServiceMock->method('analyzeImageFull')->willReturn($response);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'imageUrl' => 'https://example.com/image.jpg',
         ]);
         $result = $this->subject->analyzeAction($request);

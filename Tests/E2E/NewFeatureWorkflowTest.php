@@ -126,40 +126,47 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
     /**
      * Create a TemplateController with mocked dependencies.
      *
-     * @return array{controller: TemplateController, templateRepo: PromptTemplateRepository&MockObject}
+     * @return array{controller: TemplateController, templateRepo: PromptTemplateRepository&MockObject, rateLimiter: RateLimiterInterface&MockObject, context: Context&MockObject}
      */
     private function createTemplateStack(): array
     {
         $templateRepo = $this->createMock(PromptTemplateRepository::class);
+        $rateLimiter  = $this->createMock(RateLimiterInterface::class);
+        $context      = $this->createMock(Context::class);
+
+        // Default: allow all requests
+        $rateLimiter->method('checkLimit')->willReturn(
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        // Default: return user ID 1
+        $context->method('getPropertyFromAspect')->willReturn(1);
 
         $controller = new TemplateController(
             $templateRepo,
+            $rateLimiter,
+            $context,
             $this->logger,
         );
 
         return [
             'controller'   => $controller,
             'templateRepo' => $templateRepo,
+            'rateLimiter'  => $rateLimiter,
+            'context'      => $context,
         ];
     }
 
     // =========================================================================
-    // Helper: Create a parsed-body request
+    // Helper: Create a stub request (for controllers that don't read body)
     // =========================================================================
 
     /**
-     * Create a mock ServerRequest with parsed body data.
-     *
-     * The new controllers use $request->getParsedBody() directly.
-     *
-     * @param array<string, mixed> $body
+     * Create a stub ServerRequest (for TemplateController which doesn't read body).
      */
-    private function createParsedBodyRequest(array $body): ServerRequestInterface
+    private function createStubRequest(): ServerRequestInterface
     {
-        $request = self::createStub(ServerRequestInterface::class);
-        $request->method('getParsedBody')->willReturn($body);
-
-        return $request;
+        return self::createStub(ServerRequestInterface::class);
     }
 
     // =========================================================================
@@ -204,7 +211,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $stack['visionService']->method('analyzeImageFull')->willReturn($response);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'imageUrl' => 'https://example.com/dog.jpg',
             'prompt'   => 'Generate alt text for this image.',
         ]);
@@ -242,7 +249,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         );
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'imageUrl' => 'https://example.com/image.jpg',
         ]);
         $result = $controller->analyzeAction($request);
@@ -262,7 +269,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $stack = $this->createVisionStack();
 
         // Act: empty body, no imageUrl
-        $request = $this->createParsedBodyRequest([]);
+        $request = $this->createJsonRequest([]);
         $result  = $stack['controller']->analyzeAction($request);
 
         // Assert
@@ -282,7 +289,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
             ->willThrowException(new RuntimeException('API connection timeout'));
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'imageUrl' => 'https://example.com/image.jpg',
         ]);
         $result = $stack['controller']->analyzeAction($request);
@@ -318,7 +325,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $stack['translationService']->method('translate')->willReturn($result);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text'           => 'Hello World',
             'targetLanguage' => 'de',
         ]);
@@ -351,7 +358,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $stack['translationService']->method('translate')->willReturn($result);
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text'           => 'How are you?',
             'targetLanguage' => 'de',
             'formality'      => 'formal',
@@ -384,7 +391,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         );
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text'           => 'Hello World',
             'targetLanguage' => 'de',
         ]);
@@ -405,7 +412,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $stack = $this->createTranslationStack();
 
         // Act: empty text
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text'           => '',
             'targetLanguage' => 'de',
         ]);
@@ -426,7 +433,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $stack = $this->createTranslationStack();
 
         // Act: missing targetLanguage
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text' => 'Hello World',
         ]);
         $response = $stack['controller']->translateAction($request);
@@ -448,7 +455,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
             ->willThrowException(new RuntimeException('Provider unavailable'));
 
         // Act
-        $request = $this->createParsedBodyRequest([
+        $request = $this->createJsonRequest([
             'text'           => 'Hello World',
             'targetLanguage' => 'de',
         ]);
@@ -479,7 +486,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $stack['templateRepo']->method('findActive')->willReturn($queryResult);
 
         // Act
-        $request  = $this->createParsedBodyRequest([]);
+        $request  = $this->createStubRequest();
         $response = $stack['controller']->listAction($request);
 
         // Assert
@@ -507,7 +514,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $stack['templateRepo']->method('findActive')->willReturn($queryResult);
 
         // Act
-        $request  = $this->createParsedBodyRequest([]);
+        $request  = $this->createStubRequest();
         $response = $stack['controller']->listAction($request);
 
         // Assert
@@ -527,7 +534,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
             ->willThrowException(new RuntimeException('Database connection lost'));
 
         // Act
-        $request  = $this->createParsedBodyRequest([]);
+        $request  = $this->createStubRequest();
         $response = $stack['controller']->listAction($request);
 
         // Assert
@@ -551,7 +558,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $stack['templateRepo']->method('findActive')->willReturn($queryResult);
 
         // Act
-        $request  = $this->createParsedBodyRequest([]);
+        $request  = $this->createStubRequest();
         $response = $stack['controller']->listAction($request);
 
         // Assert: only the 2 valid PromptTemplate instances appear
