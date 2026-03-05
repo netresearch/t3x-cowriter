@@ -37,51 +37,36 @@ final class CompleteResponseTest extends TestCase
     }
 
     #[Test]
-    public function successEscapesHtmlInContent(): void
+    public function successPreservesRawHtmlContent(): void
     {
         $completionResponse = $this->createCompletionResponse('<p>Hello <strong>world</strong></p>');
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertSame('&lt;p&gt;Hello &lt;strong&gt;world&lt;/strong&gt;&lt;/p&gt;', $response->content);
+        $this->assertSame('<p>Hello <strong>world</strong></p>', $response->content);
     }
 
     #[Test]
-    #[DataProvider('escapedContentProvider')]
-    public function successEscapesSpecialCharactersInContent(string $input, string $expectedContent): void
+    #[DataProvider('rawContentProvider')]
+    public function successPreservesRawContent(string $input): void
     {
         $completionResponse = $this->createCompletionResponse($input);
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertSame($expectedContent, $response->content);
+        $this->assertSame($input, $response->content);
     }
 
     /**
-     * @return iterable<string, array{string, string}>
+     * @return iterable<string, array{string}>
      */
-    public static function escapedContentProvider(): iterable
+    public static function rawContentProvider(): iterable
     {
-        yield 'HTML tags escaped' => [
-            '<p>Hello <strong>world</strong></p>',
-            '&lt;p&gt;Hello &lt;strong&gt;world&lt;/strong&gt;&lt;/p&gt;',
-        ];
-        yield 'single quotes escaped' => [
-            "Hello 'world'",
-            'Hello &#039;world&#039;',
-        ];
-        yield 'double quotes escaped' => [
-            'Hello "world"',
-            'Hello &quot;world&quot;',
-        ];
-        yield 'ampersand escaped' => [
-            'A & B',
-            'A &amp; B',
-        ];
-        yield 'plain text unchanged' => [
-            'Just plain text',
-            'Just plain text',
-        ];
+        yield 'HTML tags preserved' => ['<p>Hello <strong>world</strong></p>'];
+        yield 'single quotes preserved' => ["Hello 'world'"];
+        yield 'double quotes preserved' => ['Hello "world"'];
+        yield 'ampersand preserved' => ['A & B'];
+        yield 'plain text unchanged' => ['Just plain text'];
     }
 
     #[Test]
@@ -211,7 +196,7 @@ final class CompleteResponseTest extends TestCase
     }
 
     #[Test]
-    public function successEscapesSpecialCharactersInFinishReason(): void
+    public function successPreservesRawFinishReason(): void
     {
         $usage = new UsageStatistics(10, 20, 30);
 
@@ -225,11 +210,11 @@ final class CompleteResponseTest extends TestCase
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertSame('stop&lt;script&gt;', $response->finishReason);
+        $this->assertSame('stop<script>', $response->finishReason);
     }
 
     #[Test]
-    public function successEscapesSpecialCharactersInModelAndFinishReason(): void
+    public function successPreservesRawModelAndFinishReason(): void
     {
         $usage = new UsageStatistics(10, 20, 30);
 
@@ -243,8 +228,8 @@ final class CompleteResponseTest extends TestCase
 
         $response = CompleteResponse::success($completionResponse);
 
-        $this->assertSame('model&#039;s-name', $response->model);
-        $this->assertSame('it&#039;s done', $response->finishReason);
+        $this->assertSame("model's-name", $response->model);
+        $this->assertSame("it's done", $response->finishReason);
     }
 
     private function createCompletionResponse(

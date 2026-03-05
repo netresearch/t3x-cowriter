@@ -168,9 +168,9 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
 
     #[Test]
     #[DataProvider('xssPayloadProvider')]
-    public function completeActionEscapesXssPayloadsInContent(string $payload, string $description): void
+    public function completeActionReturnsRawContentForFrontendSanitization(string $payload, string $description): void
     {
-        // Arrange: LLM returns malicious content
+        // Arrange: LLM returns potentially dangerous content
         $config = $this->createLlmConfiguration();
         $this->configRepoMock->method('findDefault')->willReturn($config);
 
@@ -181,14 +181,10 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         $request = $this->createJsonRequest(['prompt' => 'Test prompt']);
         $result  = $this->subject->completeAction($request);
 
-        // Assert: XSS payload is HTML-escaped (angle brackets become entities)
+        // Assert: Raw content returned — JSON encoding is the transport safety,
+        // frontend sanitizes via DOMParser before DOM insertion
         $data = $this->assertSuccessfulJsonResponse($result);
-        // Check that < and > are escaped to &lt; and &gt;
-        self::assertStringNotContainsString('<', $data['content'], "Unescaped < in: {$description}");
-        self::assertStringNotContainsString('>', $data['content'], "Unescaped > in: {$description}");
-        // Verify the escaped versions are present
-        self::assertStringContainsString('&lt;', $data['content'], "Missing escaped < in: {$description}");
-        self::assertStringContainsString('&gt;', $data['content'], "Missing escaped > in: {$description}");
+        self::assertSame($payload, $data['content'], "Content should be raw for: {$description}");
     }
 
     /**
@@ -291,13 +287,13 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
     }
 
     #[Test]
-    public function chatActionEscapesXssInAllFields(): void
+    public function chatActionReturnsRawContentInAllFields(): void
     {
         // Arrange: Setup configuration
         $config = $this->createLlmConfiguration();
         $this->configRepoMock->method('findDefault')->willReturn($config);
 
-        // Arrange: Response with XSS in all fields
+        // Arrange: Response with HTML in all fields
         $response = new CompletionResponse(
             content: '<script>alert(1)</script>',
             model: '<img onerror=alert(2)>',
@@ -313,12 +309,12 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         ]);
         $result = $this->subject->chatAction($request);
 
-        // Assert: All fields are escaped (< and > become &lt; and &gt;)
+        // Assert: Raw content returned — frontend sanitizes before DOM insertion
         $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($data);
-        self::assertStringNotContainsString('<', $data['content']);
-        self::assertStringNotContainsString('<', $data['model']);
-        self::assertStringNotContainsString('<', $data['finishReason']);
+        self::assertSame('<script>alert(1)</script>', $data['content']);
+        self::assertSame('<img onerror=alert(2)>', $data['model']);
+        self::assertSame('<svg onload=alert(3)>', $data['finishReason']);
     }
 
     // =========================================================================

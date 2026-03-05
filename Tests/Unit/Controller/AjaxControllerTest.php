@@ -302,7 +302,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function chatActionEscapesHtmlInResponse(): void
+    public function chatActionReturnsRawContentInResponse(): void
     {
         $messages = [['role' => 'user', 'content' => 'Hello']];
         $config   = $this->createConfigurationMock();
@@ -325,9 +325,9 @@ final class AjaxControllerTest extends TestCase
 
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
-        $this->assertSame('&lt;p&gt;Hello &lt;strong&gt;world&lt;/strong&gt;&lt;/p&gt;', $data['content']);
-        $this->assertSame('model&#039;s-name', $data['model']);
-        $this->assertSame('it&#039;s done', $data['finishReason']);
+        $this->assertSame('<p>Hello <strong>world</strong></p>', $data['content']);
+        $this->assertSame("model's-name", $data['model']);
+        $this->assertSame("it's done", $data['finishReason']);
     }
 
     // ===========================================
@@ -416,7 +416,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function completeActionEscapesHtmlInContent(): void
+    public function completeActionReturnsRawHtmlContent(): void
     {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock
@@ -432,7 +432,7 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->completeAction($request);
 
         $data = $this->decodeJsonResponse($response);
-        $this->assertSame('&lt;p&gt;Improved &lt;strong&gt;text&lt;/strong&gt;&lt;/p&gt;', $data['content']);
+        $this->assertSame('<p>Improved <strong>text</strong></p>', $data['content']);
     }
 
     #[Test]
@@ -796,7 +796,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function streamActionEscapesHtmlInSseChunks(): void
+    public function streamActionReturnsRawHtmlInSseChunks(): void
     {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
@@ -813,14 +813,14 @@ final class AjaxControllerTest extends TestCase
         $response->getBody()->rewind();
         $body = $response->getBody()->getContents();
 
-        // HTML is escaped in SSE data
+        // Raw content in SSE data (JSON encoding handles safety)
         $events     = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
         $firstEvent = json_decode(substr(reset($events), 6), true);
-        $this->assertSame('&lt;p&gt;Hello&lt;/p&gt;', $firstEvent['content']);
+        $this->assertSame('<p>Hello</p>', $firstEvent['content']);
     }
 
     #[Test]
-    public function streamActionEscapesSpecialCharactersInSseChunks(): void
+    public function streamActionPreservesSpecialCharactersInSseChunks(): void
     {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
@@ -837,8 +837,10 @@ final class AjaxControllerTest extends TestCase
         $response->getBody()->rewind();
         $body = $response->getBody()->getContents();
 
-        // Single quotes are HTML-escaped
-        $this->assertStringContainsString('It&#039;s a test', $body);
+        // Raw content preserved in JSON-encoded SSE data
+        $events     = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
+        $firstEvent = json_decode(substr(reset($events), 6), true);
+        $this->assertSame("It's a test", $firstEvent['content']);
     }
 
     #[Test]
@@ -918,8 +920,8 @@ final class AjaxControllerTest extends TestCase
         $events    = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
         $lastEvent = json_decode(substr(end($events), 6), true);
         $this->assertTrue($lastEvent['done']);
-        // Model is HTML-escaped
-        $this->assertSame('test-model&#039;s', $lastEvent['model']);
+        // Raw content — frontend sanitizes before DOM insertion
+        $this->assertSame("test-model's", $lastEvent['model']);
     }
 
     #[Test]
@@ -1488,7 +1490,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function getTasksActionEscapesTaskFields(): void
+    public function getTasksActionReturnsRawTaskFields(): void
     {
         $task = $this->createTaskMock(1, 'fix<test>', 'Fix Grammar & Spelling', 'Desc with "quotes"', true);
 
@@ -1499,18 +1501,15 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
 
         $data = $this->decodeJsonResponse($response);
-        // HTML-escaped to prevent XSS
-        self::assertSame('fix&lt;test&gt;', $data['tasks'][0]['identifier']);
-        self::assertSame('Fix Grammar &amp; Spelling', $data['tasks'][0]['name']);
-        self::assertSame('Desc with &quot;quotes&quot;', $data['tasks'][0]['description']);
+        // Raw content — frontend sanitizes before DOM insertion
+        self::assertSame('fix<test>', $data['tasks'][0]['identifier']);
+        self::assertSame('Fix Grammar & Spelling', $data['tasks'][0]['name']);
+        self::assertSame('Desc with "quotes"', $data['tasks'][0]['description']);
     }
 
     #[Test]
-    public function getTasksActionEscapesSingleQuotesInTaskFields(): void
+    public function getTasksActionPreservesSingleQuotesInTaskFields(): void
     {
-        // Kills BitwiseOr mutants #6 and #7:
-        // ENT_QUOTES | ENT_SUBSTITUTE → ENT_QUOTES & ENT_SUBSTITUTE
-        // With ENT_QUOTES & ENT_SUBSTITUTE (= 0), single quotes are NOT escaped
         $task = $this->createTaskMock(1, "it's", "Task's Name", "It's a description", true);
 
         $this->taskRepositoryMock
@@ -1522,10 +1521,10 @@ final class AjaxControllerTest extends TestCase
         $data = $this->decodeJsonResponse($response);
         self::assertTrue($data['success']);
         self::assertCount(1, $data['tasks']);
-        // Single quotes MUST be escaped to &#039; — proves ENT_QUOTES is in effect
-        self::assertSame('it&#039;s', $data['tasks'][0]['identifier']);
-        self::assertSame('Task&#039;s Name', $data['tasks'][0]['name']);
-        self::assertSame('It&#039;s a description', $data['tasks'][0]['description']);
+        // Raw content — frontend sanitizes before DOM insertion
+        self::assertSame("it's", $data['tasks'][0]['identifier']);
+        self::assertSame("Task's Name", $data['tasks'][0]['name']);
+        self::assertSame("It's a description", $data['tasks'][0]['description']);
     }
 
     #[Test]
