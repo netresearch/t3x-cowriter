@@ -60,6 +60,9 @@ final class ToolControllerTest extends TestCase
         $response = $this->subject->executeAction($request);
 
         self::assertSame(429, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('error', $data);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('0', $response->getHeaderLine('X-RateLimit-Remaining'));
         self::assertNotEmpty($response->getHeaderLine('Retry-After'));
@@ -77,6 +80,7 @@ final class ToolControllerTest extends TestCase
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+        self::assertStringContainsString('Missing', $data['error']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
@@ -92,6 +96,7 @@ final class ToolControllerTest extends TestCase
 
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
         self::assertStringContainsString('Invalid JSON', $data['error']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
@@ -119,10 +124,13 @@ final class ToolControllerTest extends TestCase
         $request  = $this->createJsonRequest(['prompt' => 'Find all text elements']);
         $response = $this->subject->executeAction($request);
 
+        self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertTrue($data['success']);
         self::assertSame('Here are the content elements on page 1.', $data['content']);
+        self::assertArrayHasKey('toolCalls', $data);
         self::assertSame('stop', $data['finishReason']);
+        self::assertArrayHasKey('usage', $data);
         self::assertSame(100, $data['usage']['promptTokens']);
         self::assertSame(50, $data['usage']['completionTokens']);
         self::assertSame(150, $data['usage']['totalTokens']);
@@ -189,6 +197,8 @@ final class ToolControllerTest extends TestCase
         self::assertSame(500, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+        self::assertArrayHasKey('error', $data);
+        self::assertStringContainsString('failed', $data['error']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }

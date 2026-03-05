@@ -104,6 +104,20 @@ final class TranslationRequestTest extends TestCase
     }
 
     #[Test]
+    public function isValidReturnsTrueAtExactMaxTextLength(): void
+    {
+        $request = new TranslationRequest(text: str_repeat('a', 32768), targetLanguage: 'de');
+        self::assertTrue($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseAtOneOverMaxTextLength(): void
+    {
+        $request = new TranslationRequest(text: str_repeat('a', 32769), targetLanguage: 'de');
+        self::assertFalse($request->isValid());
+    }
+
+    #[Test]
     public function isValidReturnsFalseForExcessiveTextLength(): void
     {
         $request = new TranslationRequest(text: str_repeat('a', 40000), targetLanguage: 'de');
@@ -111,10 +125,28 @@ final class TranslationRequestTest extends TestCase
     }
 
     #[Test]
+    public function isValidReturnsTrueAtExactMaxTargetLanguageLength(): void
+    {
+        $request = new TranslationRequest(text: 'Hello', targetLanguage: str_repeat('a', 10));
+        self::assertTrue($request->isValid());
+    }
+
+    #[Test]
     public function isValidReturnsFalseForExcessiveTargetLanguageLength(): void
     {
-        $request = new TranslationRequest(text: 'Hello', targetLanguage: 'a-very-long-language-code');
+        $request = new TranslationRequest(text: 'Hello', targetLanguage: str_repeat('a', 11));
         self::assertFalse($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsTrueAtExactMaxFormalityLength(): void
+    {
+        $request = new TranslationRequest(
+            text: 'Hello',
+            targetLanguage: 'de',
+            formality: str_repeat('a', 50),
+        );
+        self::assertTrue($request->isValid());
     }
 
     #[Test]
@@ -126,6 +158,17 @@ final class TranslationRequestTest extends TestCase
             formality: str_repeat('a', 51),
         );
         self::assertFalse($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsTrueAtExactMaxDomainLength(): void
+    {
+        $request = new TranslationRequest(
+            text: 'Hello',
+            targetLanguage: 'de',
+            domain: str_repeat('a', 100),
+        );
+        self::assertTrue($request->isValid());
     }
 
     #[Test]

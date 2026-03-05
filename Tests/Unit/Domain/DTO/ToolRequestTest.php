@@ -107,4 +107,18 @@ final class ToolRequestTest extends TestCase
         $request = new ToolRequest(prompt: str_repeat('a', 40000));
         self::assertFalse($request->isValid());
     }
+
+    #[Test]
+    public function isValidReturnsTrueAtExactMaxLength(): void
+    {
+        $request = new ToolRequest(prompt: str_repeat('a', 32768));
+        self::assertTrue($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseAtOneOverMaxLength(): void
+    {
+        $request = new ToolRequest(prompt: str_repeat('a', 32769));
+        self::assertFalse($request->isValid());
+    }
 }

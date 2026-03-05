@@ -68,11 +68,16 @@ final class VisionControllerTest extends TestCase
         $request  = $this->createJsonRequest(['imageUrl' => 'https://example.com/cat.jpg']);
         $response = $this->subject->analyzeAction($request);
 
+        self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertTrue($data['success']);
         self::assertSame('A cat sitting on a mat', $data['altText']);
         self::assertSame('gpt-4o', $data['model']);
         self::assertSame(0.95, $data['confidence']);
+        self::assertArrayHasKey('usage', $data);
+        self::assertSame(100, $data['usage']['promptTokens']);
+        self::assertSame(50, $data['usage']['completionTokens']);
+        self::assertSame(150, $data['usage']['totalTokens']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
@@ -89,6 +94,7 @@ final class VisionControllerTest extends TestCase
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+        self::assertStringContainsString('Missing', $data['error']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
@@ -104,6 +110,9 @@ final class VisionControllerTest extends TestCase
         $response = $this->subject->analyzeAction($request);
 
         self::assertSame(429, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('error', $data);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('0', $response->getHeaderLine('X-RateLimit-Remaining'));
         self::assertNotEmpty($response->getHeaderLine('Retry-After'));
@@ -120,6 +129,7 @@ final class VisionControllerTest extends TestCase
 
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
         self::assertStringContainsString('Invalid JSON', $data['error']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
@@ -137,6 +147,7 @@ final class VisionControllerTest extends TestCase
 
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
         self::assertStringContainsString('maximum length', $data['error']);
     }
 
@@ -155,6 +166,8 @@ final class VisionControllerTest extends TestCase
         self::assertSame(500, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+        self::assertArrayHasKey('error', $data);
+        self::assertStringContainsString('failed', $data['error']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }

@@ -94,9 +94,37 @@ final class VisionRequestTest extends TestCase
     }
 
     #[Test]
+    public function isValidReturnsTrueAtExactMaxImageUrlLength(): void
+    {
+        $request = new VisionRequest(imageUrl: str_repeat('a', 32768));
+        self::assertTrue($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseAtOneOverMaxImageUrlLength(): void
+    {
+        $request = new VisionRequest(imageUrl: str_repeat('a', 32769));
+        self::assertFalse($request->isValid());
+    }
+
+    #[Test]
     public function isValidReturnsFalseForExcessiveImageUrlLength(): void
     {
         $request = new VisionRequest(imageUrl: str_repeat('a', 40000));
+        self::assertFalse($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsTrueAtExactMaxPromptLength(): void
+    {
+        $request = new VisionRequest(imageUrl: 'https://example.com/img.jpg', prompt: str_repeat('a', 32768));
+        self::assertTrue($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseAtOneOverMaxPromptLength(): void
+    {
+        $request = new VisionRequest(imageUrl: 'https://example.com/img.jpg', prompt: str_repeat('a', 32769));
         self::assertFalse($request->isValid());
     }
 

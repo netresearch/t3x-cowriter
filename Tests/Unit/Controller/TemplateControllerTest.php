@@ -67,11 +67,14 @@ final class TemplateControllerTest extends TestCase
         $request  = $this->createStub(ServerRequestInterface::class);
         $response = $this->subject->listAction($request);
 
+        self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertTrue($data['success']);
         self::assertCount(1, $data['templates']);
         self::assertSame('improve', $data['templates'][0]['identifier']);
         self::assertSame('Improve Text', $data['templates'][0]['name']);
+        self::assertSame('Enhance readability', $data['templates'][0]['description']);
+        self::assertSame('content', $data['templates'][0]['category']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
@@ -87,6 +90,9 @@ final class TemplateControllerTest extends TestCase
         $response = $this->subject->listAction($request);
 
         self::assertSame(429, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('error', $data);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('0', $response->getHeaderLine('X-RateLimit-Remaining'));
         self::assertNotEmpty($response->getHeaderLine('Retry-After'));
@@ -107,6 +113,8 @@ final class TemplateControllerTest extends TestCase
         self::assertSame(500, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+        self::assertArrayHasKey('error', $data);
+        self::assertStringContainsString('Failed', $data['error']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
@@ -128,6 +136,29 @@ final class TemplateControllerTest extends TestCase
         self::assertSame([], $data['templates']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
+    }
+
+    #[Test]
+    public function listActionCoalescesNullDescriptionToEmptyString(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $template = $this->createStub(PromptTemplate::class);
+        $template->method('getIdentifier')->willReturn('no-desc');
+        $template->method('getTitle')->willReturn('No Description');
+        $template->method('getDescription')->willReturn(null);
+        $template->method('getFeature')->willReturn('misc');
+
+        $this->templateRepositoryStub->method('findActive')
+            ->willReturn($this->createQueryResult([$template]));
+
+        $request  = $this->createStub(ServerRequestInterface::class);
+        $response = $this->subject->listAction($request);
+
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertSame('', $data['templates'][0]['description']);
+        self::assertSame('misc', $data['templates'][0]['category']);
     }
 
     /**

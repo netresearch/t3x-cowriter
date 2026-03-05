@@ -273,6 +273,74 @@ final class ContextAssemblyServiceTest extends TestCase
     }
 
     #[Test]
+    public function formatSingleRecordUsesUcfirstLabels(): void
+    {
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 1, 'pid' => 5, 'header' => 'My Header', 'subheader' => 'My Sub', 'bodytext' => '<p>Content</p>'],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->assembleContext('tt_content', 1, 'bodytext', 'element');
+
+        self::assertStringContainsString('Header: My Header', $result);
+        self::assertStringContainsString('Subheader: My Sub', $result);
+        self::assertStringContainsString('Bodytext: <p>Content</p>', $result);
+    }
+
+    #[Test]
+    public function formatRecordsMarksCurrentElement(): void
+    {
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 10, 'pid' => 5, 'header' => 'First', 'subheader' => '', 'bodytext' => 'A'],
+            ['uid' => 20, 'pid' => 5, 'header' => 'Second', 'subheader' => '', 'bodytext' => 'B'],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->assembleContext('tt_content', 10, 'bodytext', 'page');
+
+        self::assertStringContainsString('=== Current content element (tt_content #10) ===', $result);
+        self::assertStringContainsString('--- Content element (tt_content #20) ---', $result);
+    }
+
+    #[Test]
+    public function countWordsHandlesHtmlEntities(): void
+    {
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $method  = new ReflectionMethod($service, 'countWords');
+
+        self::assertSame(5, $method->invoke($service, 'one &amp; two &lt; three'));
+    }
+
+    #[Test]
+    public function countWordsReturnsZeroForEmptyString(): void
+    {
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $method  = new ReflectionMethod($service, 'countWords');
+
+        self::assertSame(0, $method->invoke($service, ''));
+    }
+
+    #[Test]
+    public function assembleContextWithEmptyRelationOmitsRelationPrefix(): void
+    {
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 123, 'pid' => 5, 'header' => 'Main', 'bodytext' => '<p>Content</p>', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->assembleContext(
+            'tt_content',
+            123,
+            'bodytext',
+            'element',
+            [['pid' => 10, 'relation' => '']],
+        );
+
+        self::assertStringContainsString('Reference page (pid=10)', $result);
+        self::assertStringNotContainsString('Relation:', $result);
+    }
+
+    #[Test]
     public function assembleContextIncludesRelationPrefixForReferencePages(): void
     {
         // Kills Concat #114, ConcatOperandRemoval #115 on reference page relation
