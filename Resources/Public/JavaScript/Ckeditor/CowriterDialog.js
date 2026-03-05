@@ -191,7 +191,9 @@ export class CowriterDialog {
      * @private
      */
     _showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext) {
-        const container = this._buildDialogContent(tasks, selectedText, fullContent, recordContext);
+        /** @type {Set<AbortController>} Track reference row listeners for cleanup */
+        const referenceAbortControllers = new Set();
+        const container = this._buildDialogContent(tasks, selectedText, fullContent, recordContext, referenceAbortControllers);
         /** @type {'idle'|'loading'|'result'} */
         let state = 'idle';
         let resultContent = '';
@@ -207,6 +209,8 @@ export class CowriterDialog {
 
             const cancelTrigger = () => {
                 activeRequest?.abort();
+                for (const ac of referenceAbortControllers) ac.abort();
+                referenceAbortControllers.clear();
                 modal.hideModal();
                 if (!resolved) {
                     reject(new Error('User cancelled'));
@@ -340,6 +344,8 @@ export class CowriterDialog {
             modal?.addEventListener?.('typo3-modal-hidden', () => {
                 if (!resolved) {
                     activeRequest?.abort();
+                    for (const ac of referenceAbortControllers) ac.abort();
+                    referenceAbortControllers.clear();
                     reject(new Error('User cancelled'));
                 }
             });
@@ -358,7 +364,7 @@ export class CowriterDialog {
      * @returns {HTMLElement}
      * @private
      */
-    _buildDialogContent(tasks, selectedText, fullContent, recordContext) {
+    _buildDialogContent(tasks, selectedText, fullContent, recordContext, referenceAbortControllers) {
         injectStyles();
         const container = document.createElement('div');
         container.className = 'cowriter-dialog';
@@ -458,7 +464,7 @@ export class CowriterDialog {
         addRefBtn.dataset.role = 'add-reference';
         addRefBtn.textContent = '+ Add reference page';
         addRefBtn.addEventListener('click', () => {
-            refContainer.appendChild(this._createReferenceRow());
+            refContainer.appendChild(this._createReferenceRow(referenceAbortControllers));
         });
         refGroup.appendChild(addRefBtn);
 
@@ -564,7 +570,7 @@ export class CowriterDialog {
      * @returns {HTMLElement}
      * @private
      */
-    _createReferenceRow() {
+    _createReferenceRow(referenceAbortControllers) {
         const row = document.createElement('div');
         row.className = 'd-flex gap-2 mb-1 align-items-center';
         row.dataset.role = 'reference-row';
@@ -606,6 +612,7 @@ export class CowriterDialog {
 
         // AbortController for cleanup of event listeners and in-flight requests
         const controller = new AbortController();
+        referenceAbortControllers?.add(controller);
 
         // Debounced search with stale-response guard
         let debounceTimer;
@@ -700,6 +707,7 @@ export class CowriterDialog {
         removeBtn.addEventListener('click', () => {
             clearTimeout(debounceTimer);
             controller.abort();
+            referenceAbortControllers?.delete(controller);
             row.remove();
         });
         row.appendChild(removeBtn);
@@ -720,14 +728,14 @@ export class CowriterDialog {
         dropdown.replaceChildren();
         searchInput.removeAttribute('aria-activedescendant');
         if (!pages || pages.length === 0) {
-            dropdown.removeAttribute('role');
+            dropdown.setAttribute('role', 'listbox');
             const item = document.createElement('div');
             item.className = 'list-group-item list-group-item-light text-muted small';
             item.textContent = 'No pages found';
             item.setAttribute('role', 'status');
             dropdown.appendChild(item);
             dropdown.style.display = 'block';
-            searchInput.setAttribute('aria-expanded', 'false');
+            searchInput.setAttribute('aria-expanded', 'true');
             return;
         }
         dropdown.setAttribute('role', 'listbox');
@@ -808,13 +816,17 @@ export class CowriterDialog {
         const doc = new DOMParser().parseFromString(html, 'text/html');
 
         const walk = (node) => {
-            for (const child of [...node.children]) {
+            // Use index-based loop so newly inserted (unwrapped) children are visited
+            let i = 0;
+            while (i < node.children.length) {
+                const child = node.children[i];
                 if (!ALLOWED_TAGS.has(child.localName)) {
                     // Preserve text content, unwrap disallowed element
                     while (child.firstChild) {
                         child.parentNode.insertBefore(child.firstChild, child);
                     }
                     child.remove();
+                    // Don't increment — next child is now at index i
                     continue;
                 }
                 for (const attr of [...child.attributes]) {
@@ -838,6 +850,7 @@ export class CowriterDialog {
                     child.setAttribute('rel', 'noopener noreferrer');
                 }
                 walk(child);
+                i++;
             }
         };
         walk(doc.body);
