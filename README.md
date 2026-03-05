@@ -33,14 +33,18 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 ## Features
 
 - **Task-based dialog**: Select from predefined tasks (Improve, Summarize, Extend, Fix Grammar, Translate) with result preview before inserting
-- **CKEditor Integration**: Seamless toolbar button in TYPO3's rich text editor
+- **Vision / Alt Text**: Analyze images and generate descriptive alt text via the CKEditor toolbar
+- **Translation**: Translate selected text into 10+ languages directly from the toolbar dropdown
+- **Prompt Templates**: Load reusable prompt presets from the backend for consistent content generation
+- **Tool Calling**: Structured function calling that lets the LLM query TYPO3 content during conversations
+- **CKEditor Integration**: Four toolbar components — main dialog, vision, translation, and templates
 - **Multi-Provider Support**: Works with all LLM providers supported by nr-llm (OpenAI, Claude, Gemini, etc.)
-- **Secure Backend Proxy**: API keys never exposed to frontend - all requests proxied through TYPO3 backend
+- **Secure Backend Proxy**: API keys never exposed to frontend — all requests proxied through TYPO3 backend
 - **Context control**: Choose between selected text or full content element as context
 - **Ad-hoc instructions**: Add custom instructions per request (e.g., "Write in formal tone")
 - **Rate limiting**: 20 requests/minute per backend user
 - **Streaming**: Server-Sent Events for real-time completions
-- **XSS Protection**: All LLM output is HTML-escaped for defense in depth
+- **Content sanitization**: Frontend DOMParser-based sanitization with CKEditor's HTML processing pipeline
 
 ## Requirements
 
@@ -89,6 +93,9 @@ editor:
     toolbar:
       items:
         - cowriter
+        - cowriterVision
+        - cowriterTranslate
+        - cowriterTemplates
 ```
 
 ## Usage
@@ -120,9 +127,12 @@ Tasks are managed in the nr-llm extension (`tx_nrllm_task` table) with `category
 ## Architecture
 
 ```
-[CKEditor Button] → [CowriterDialog] → [AIService.js] → [TYPO3 AJAX]
-                          ↓                                    ↓
-                    [TYPO3 Modal]                        [AjaxController]
+CKEditor Toolbar
+  ├─ cowriter         → [CowriterDialog] → AIService.js → AjaxController
+  ├─ cowriterVision   → AIService.js     ──────────────→ VisionController
+  ├─ cowriterTranslate→ AIService.js     ──────────────→ TranslationController
+  ├─ cowriterTemplates→ AIService.js     ──────────────→ TemplateController
+  └─ (tool calling)   → AIService.js     ──────────────→ ToolController
                                                               ↓
                                                    [LlmServiceManagerInterface]
                                                               ↓
@@ -181,7 +191,7 @@ open var/coverage/unit/index.html
 
 - API keys stored in nr-llm with sodium encryption
 - All backend AJAX endpoints require TYPO3 authentication
-- LLM output HTML-escaped to prevent XSS
+- Frontend DOMParser-based content sanitization via CKEditor's HTML processing pipeline
 - TYPO3 backend route authentication with nonce-based URL tokens
 - Content Security Policy (CSP) compatible
 
