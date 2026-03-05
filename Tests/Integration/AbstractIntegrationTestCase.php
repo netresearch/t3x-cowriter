@@ -37,8 +37,10 @@ abstract class AbstractIntegrationTestCase extends TestCase
      */
     protected function createJsonRequest(array $body): ServerRequestInterface
     {
+        $json     = json_encode($body, JSON_THROW_ON_ERROR);
         $bodyStub = self::createStub(StreamInterface::class);
-        $bodyStub->method('getContents')->willReturn(json_encode($body, JSON_THROW_ON_ERROR));
+        $bodyStub->method('getContents')->willReturn($json);
+        $bodyStub->method('__toString')->willReturn($json);
 
         $request = self::createStub(ServerRequestInterface::class);
         $request->method('getBody')->willReturn($bodyStub);

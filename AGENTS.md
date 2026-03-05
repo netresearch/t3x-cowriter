@@ -58,34 +58,58 @@ ddev install-v14
 
 ```
 t3_cowriter/
-├── Classes/Controller/         # PHP AJAX endpoints (nr-llm integration)
-├── Configuration/              # TYPO3 configuration
-│   ├── Backend/AjaxRoutes.php  # AJAX route definitions
-│   ├── RTE/Cowriter.yaml       # CKEditor plugin registration
-│   └── Services.yaml           # DI container
-├── Resources/Public/JavaScript/ # CKEditor plugin
-│   └── Ckeditor/
-│       ├── AIService.js        # Frontend API client
-│       └── cowriter.js         # CKEditor integration
-└── Documentation/              # RST documentation
+├── Classes/
+│   ├── Controller/
+│   │   ├── AjaxController.php       # Main chat/complete/stream endpoints
+│   │   ├── VisionController.php     # Image analysis (alt text)
+│   │   ├── TranslationController.php # Content translation
+│   │   ├── TemplateController.php   # Prompt template listing
+│   │   └── ToolController.php       # LLM function calling
+│   ├── Domain/DTO/                  # Request/response DTOs
+│   ├── Tools/ContentQueryTool.php   # Tool definition for TYPO3 queries
+│   └── Service/                     # Rate limiting, context assembly
+├── Configuration/
+│   ├── Backend/AjaxRoutes.php       # 11 AJAX route definitions
+│   ├── RTE/Cowriter.yaml            # CKEditor toolbar configuration
+│   └── Services.yaml                # DI container
+├── Resources/Public/JavaScript/Ckeditor/
+│   ├── AIService.js                 # Frontend API client (all endpoints)
+│   ├── cowriter.js                  # CKEditor plugin (4 toolbar items)
+│   ├── CowriterDialog.js            # Task dialog UI
+│   └── UrlLoader.js                 # CSP-compliant URL injection
+└── Documentation/                   # RST documentation
 ```
 
 ### Data Flow
 
 ```
-CKEditor → AIService.js → TYPO3 AJAX → AjaxController → nr-llm → AI Provider
+CKEditor Toolbar
+  ├─ cowriter         → CowriterDialog → AIService.js → AjaxController
+  ├─ cowriterVision   → AIService.js ─────────────────→ VisionController
+  ├─ cowriterTranslate→ AIService.js ─────────────────→ TranslationController
+  ├─ cowriterTemplates→ AIService.js ─────────────────→ TemplateController
+  └─ (tool calling)   → AIService.js ─────────────────→ ToolController
                                                               ↓
-CKEditor ← Response ← TYPO3 AJAX ← AjaxController ← nr-llm ← Response
+                                                   LlmServiceManagerInterface
+                                                              ↓
+                                                        nr-llm Provider → AI API
 ```
 
 ### AJAX Routes
 
-| Route | Path | Method | Purpose |
-|-------|------|--------|---------|
-| `tx_cowriter_chat` | `/cowriter/chat` | `chatAction` | Chat completion with message array (stateless) |
-| `tx_cowriter_complete` | `/cowriter/complete` | `completeAction` | Single prompt completion |
-| `tx_cowriter_stream` | `/cowriter/stream` | `streamAction` | Streaming completion via SSE |
-| `tx_cowriter_configurations` | `/cowriter/configurations` | `getConfigurationsAction` | List available LLM configurations |
+| Route | Path | Controller | Purpose |
+|-------|------|------------|---------|
+| `tx_cowriter_chat` | `/cowriter/chat` | `AjaxController::chatAction` | Chat completion (stateless) |
+| `tx_cowriter_complete` | `/cowriter/complete` | `AjaxController::completeAction` | Single prompt completion |
+| `tx_cowriter_stream` | `/cowriter/stream` | `AjaxController::streamAction` | Streaming via SSE |
+| `tx_cowriter_configurations` | `/cowriter/configurations` | `AjaxController::getConfigurationsAction` | List LLM configurations |
+| `tx_cowriter_tasks` | `/cowriter/tasks` | `AjaxController::getTasksAction` | List available tasks |
+| `tx_cowriter_task_execute` | `/cowriter/task-execute` | `AjaxController::executeTaskAction` | Execute a task |
+| `tx_cowriter_context` | `/cowriter/context` | `AjaxController::getContextAction` | Context preview |
+| `tx_cowriter_vision` | `/cowriter/vision` | `VisionController::analyzeAction` | Image alt text generation |
+| `tx_cowriter_translate` | `/cowriter/translate` | `TranslationController::translateAction` | Content translation |
+| `tx_cowriter_templates` | `/cowriter/templates` | `TemplateController::listAction` | Prompt template listing |
+| `tx_cowriter_tools` | `/cowriter/tools` | `ToolController::executeAction` | LLM tool/function calling |
 
 ### Key Dependencies
 

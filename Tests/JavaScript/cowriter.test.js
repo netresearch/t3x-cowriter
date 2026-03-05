@@ -30,7 +30,7 @@ describe('Cowriter Plugin', () => {
     describe('button execute handler', () => {
         let plugin;
         let mockEditor;
-        let buttonCallback;
+        let componentCallbacks;
         let capturedButton;
         let mockDialogShow;
 
@@ -96,7 +96,8 @@ describe('Cowriter Plugin', () => {
                 ui: {
                     componentFactory: {
                         add: vi.fn((name, callback) => {
-                            buttonCallback = callback;
+                            if (!componentCallbacks) componentCallbacks = {};
+                            componentCallbacks[name] = callback;
                         }),
                     },
                 },
@@ -107,7 +108,7 @@ describe('Cowriter Plugin', () => {
             plugin = new Cowriter();
             plugin.editor = mockEditor;
             await plugin.init();
-            capturedButton = buttonCallback();
+            capturedButton = componentCallbacks['cowriter']();
         });
 
         afterEach(() => {
@@ -396,7 +397,7 @@ describe('Cowriter Plugin', () => {
         });
 
         it('should create button with correct properties', async () => {
-            let createdButton = null;
+            const createdButtons = {};
             const mockEditor = {
                 model: {
                     document: { selection: {} },
@@ -406,7 +407,7 @@ describe('Cowriter Plugin', () => {
                 ui: {
                     componentFactory: {
                         add: vi.fn((name, callback) => {
-                            createdButton = callback();
+                            createdButtons[name] = callback();
                         }),
                     },
                 },
@@ -416,10 +417,346 @@ describe('Cowriter Plugin', () => {
             plugin.editor = mockEditor;
             await plugin.init();
 
-            expect(createdButton.label).toBe('Cowriter - AI text completion');
-            expect(createdButton.tooltip).toBe(true);
-            expect(createdButton.icon).toContain('svg');
-            expect(createdButton.icon).toContain('aria-hidden="true"');
+            const cowriterButton = createdButtons['cowriter'];
+            expect(cowriterButton.label).toBe('Cowriter - AI text completion');
+            expect(cowriterButton.tooltip).toBe(true);
+            expect(cowriterButton.icon).toContain('svg');
+            expect(cowriterButton.icon).toContain('aria-hidden="true"');
+        });
+
+        it('should register all four toolbar components', async () => {
+            const addedComponents = {};
+            const mockEditor = {
+                model: {
+                    document: { selection: {} },
+                    change: vi.fn(),
+                },
+                view: {},
+                ui: {
+                    componentFactory: {
+                        add: vi.fn((name, callback) => {
+                            addedComponents[name] = callback;
+                        }),
+                    },
+                },
+            };
+
+            const plugin = new Cowriter();
+            plugin.editor = mockEditor;
+            await plugin.init();
+
+            expect(addedComponents).toHaveProperty('cowriter');
+            expect(addedComponents).toHaveProperty('cowriterVision');
+            expect(addedComponents).toHaveProperty('cowriterTranslate');
+            expect(addedComponents).toHaveProperty('cowriterTemplates');
+        });
+    });
+
+    describe('cowriterVision button', () => {
+        let plugin;
+        let mockEditor;
+        let componentCallbacks;
+        let mockAnalyzeImage;
+
+        beforeEach(async () => {
+            vi.resetModules();
+
+            mockAnalyzeImage = vi.fn().mockResolvedValue({ success: true, altText: 'A cat' });
+
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
+                AIService: class MockAIService {
+                    analyzeImage = mockAnalyzeImage;
+                },
+            }));
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
+                CowriterDialog: class MockCowriterDialog {},
+            }));
+
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
+            Cowriter = module.Cowriter;
+
+            componentCallbacks = {};
+            mockEditor = {
+                model: {
+                    document: { selection: { getFirstRange: vi.fn(), getFirstPosition: vi.fn() } },
+                    change: vi.fn((cb) => cb(mockEditor._writer)),
+                    insertContent: vi.fn(),
+                    getSelectedContent: vi.fn(),
+                },
+                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn() },
+                data: {
+                    processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
+                    toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
+                    stringify: vi.fn().mockReturnValue(''),
+                },
+                plugins: { has: vi.fn().mockReturnValue(false) },
+                config: { get: vi.fn().mockReturnValue(undefined) },
+                view: {},
+                ui: {
+                    componentFactory: {
+                        add: vi.fn((name, callback) => { componentCallbacks[name] = callback; }),
+                    },
+                },
+                getData: vi.fn().mockReturnValue(''),
+                sourceElement: null,
+            };
+
+            plugin = new Cowriter();
+            plugin.editor = mockEditor;
+            await plugin.init();
+        });
+
+        afterEach(() => {
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
+        });
+
+        it('should create vision button with correct label', () => {
+            const button = componentCallbacks['cowriterVision']();
+            expect(button.label).toBe('Cowriter - Generate alt text');
+        });
+
+        it('should call analyzeImage and insert result', async () => {
+            // Mock window.prompt
+            globalThis.prompt = vi.fn().mockReturnValue('https://example.com/img.jpg');
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg');
+            expect(mockEditor.model.change).toHaveBeenCalled();
+            expect(mockEditor._writer.insertText).toHaveBeenCalledWith('A cat', undefined);
+
+            delete globalThis.prompt;
+        });
+
+        it('should do nothing when prompt is cancelled', async () => {
+            globalThis.prompt = vi.fn().mockReturnValue(null);
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(mockAnalyzeImage).not.toHaveBeenCalled();
+
+            delete globalThis.prompt;
+        });
+
+        it('should not execute when _isProcessing is true', async () => {
+            plugin._isProcessing = true;
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+            expect(mockAnalyzeImage).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('cowriterTranslate dropdown', () => {
+        let plugin;
+        let mockEditor;
+        let componentCallbacks;
+        let mockTranslate;
+
+        beforeEach(async () => {
+            vi.resetModules();
+
+            mockTranslate = vi.fn().mockResolvedValue({ success: true, translation: 'Hallo Welt' });
+
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
+                AIService: class MockAIService {
+                    translate = mockTranslate;
+                },
+            }));
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
+                CowriterDialog: class MockCowriterDialog {},
+            }));
+
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
+            Cowriter = module.Cowriter;
+
+            componentCallbacks = {};
+            mockEditor = {
+                model: {
+                    document: {
+                        selection: {
+                            getFirstRange: vi.fn().mockReturnValue({ isCollapsed: false }),
+                            getFirstPosition: vi.fn().mockReturnValue({}),
+                        },
+                    },
+                    change: vi.fn((cb) => cb(mockEditor._writer)),
+                    insertContent: vi.fn(),
+                    getSelectedContent: vi.fn().mockReturnValue({ type: 'content' }),
+                },
+                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn() },
+                data: {
+                    processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
+                    toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
+                    stringify: vi.fn().mockReturnValue('<p>Hello World</p>'),
+                },
+                plugins: { has: vi.fn().mockReturnValue(false) },
+                config: { get: vi.fn().mockReturnValue(undefined) },
+                view: {},
+                ui: {
+                    componentFactory: {
+                        add: vi.fn((name, callback) => { componentCallbacks[name] = callback; }),
+                    },
+                },
+                getData: vi.fn().mockReturnValue(''),
+                sourceElement: null,
+            };
+
+            plugin = new Cowriter();
+            plugin.editor = mockEditor;
+            await plugin.init();
+        });
+
+        afterEach(() => {
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
+        });
+
+        it('should create translate dropdown with correct label', () => {
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            expect(dropdown.buttonView.label).toBe('Cowriter - Translate');
+        });
+
+        it('should translate selected text on execute', async () => {
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            // Simulate selecting German from dropdown
+            await dropdown.fire('execute', { source: { languageCode: 'de' } });
+
+            expect(mockTranslate).toHaveBeenCalledWith('<p>Hello World</p>', 'de');
+            expect(mockEditor.model.insertContent).toHaveBeenCalled();
+        });
+
+        it('should not translate when no text is selected', async () => {
+            mockEditor.model.document.selection.getFirstRange.mockReturnValue({ isCollapsed: true });
+            mockEditor.data.stringify.mockReturnValue('');
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'fr' } });
+
+            expect(mockTranslate).not.toHaveBeenCalled();
+        });
+
+        it('should not execute when _isProcessing is true', async () => {
+            plugin._isProcessing = true;
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de' } });
+            expect(mockTranslate).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('cowriterTemplates dropdown', () => {
+        let plugin;
+        let mockEditor;
+        let componentCallbacks;
+        let mockGetTemplates;
+        let mockDialogShow;
+
+        beforeEach(async () => {
+            vi.resetModules();
+
+            mockGetTemplates = vi.fn().mockResolvedValue({
+                success: true,
+                templates: [{ identifier: 'improve', name: 'Improve', description: '' }],
+            });
+            mockDialogShow = vi.fn().mockResolvedValue({ content: 'Improved text' });
+
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
+                AIService: class MockAIService {
+                    getTemplates = mockGetTemplates;
+                },
+            }));
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
+                CowriterDialog: class MockCowriterDialog {
+                    constructor() { this.show = mockDialogShow; }
+                },
+            }));
+
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
+            Cowriter = module.Cowriter;
+
+            componentCallbacks = {};
+            mockEditor = {
+                model: {
+                    document: { selection: { getFirstRange: vi.fn(), getFirstPosition: vi.fn() } },
+                    change: vi.fn((cb) => cb(mockEditor._writer)),
+                    insertContent: vi.fn(),
+                    getSelectedContent: vi.fn(),
+                },
+                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn() },
+                data: {
+                    processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
+                    toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
+                    stringify: vi.fn().mockReturnValue(''),
+                },
+                plugins: { has: vi.fn().mockReturnValue(false) },
+                config: { get: vi.fn().mockReturnValue(undefined) },
+                view: {},
+                ui: {
+                    componentFactory: {
+                        add: vi.fn((name, callback) => { componentCallbacks[name] = callback; }),
+                    },
+                },
+                getData: vi.fn().mockReturnValue('<p>Full content</p>'),
+                sourceElement: null,
+            };
+
+            plugin = new Cowriter();
+            plugin.editor = mockEditor;
+            await plugin.init();
+        });
+
+        afterEach(() => {
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
+        });
+
+        it('should create templates dropdown with correct label', () => {
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            expect(dropdown.buttonView.label).toBe('Cowriter - Templates');
+        });
+
+        it('should load templates on dropdown open', async () => {
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            dropdown.isOpen = true;
+            await dropdown.fire('change:isOpen');
+
+            expect(mockGetTemplates).toHaveBeenCalled();
+        });
+
+        it('should not load templates when dropdown closes', async () => {
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            dropdown.isOpen = false;
+            await dropdown.fire('change:isOpen');
+
+            expect(mockGetTemplates).not.toHaveBeenCalled();
+        });
+
+        it('should open dialog with template on execute', async () => {
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+
+            expect(mockDialogShow).toHaveBeenCalledWith(
+                '', '<p>Full content</p>', '', null,
+                { templateIdentifier: 'improve' },
+            );
+            expect(mockEditor.model.insertContent).toHaveBeenCalled();
+        });
+
+        it('should not insert content when dialog is cancelled', async () => {
+            mockDialogShow.mockRejectedValue(new Error('User cancelled'));
+
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+
+            expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
+        });
+
+        it('should not execute when _isProcessing is true', async () => {
+            plugin._isProcessing = true;
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+            expect(mockDialogShow).not.toHaveBeenCalled();
         });
     });
 });

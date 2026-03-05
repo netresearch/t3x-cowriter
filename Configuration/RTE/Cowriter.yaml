@@ -43,6 +43,9 @@ editor:
         - fontColor
         - '|'
         - cowriter
+        - cowriterVision
+        - cowriterTranslate
+        - cowriterTemplates
 
     heading:
       options:

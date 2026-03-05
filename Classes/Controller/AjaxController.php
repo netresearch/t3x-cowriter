@@ -27,7 +27,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
-use TYPO3\CMS\Backend\Attribute\AsController;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Http\JsonResponse;
 use TYPO3\CMS\Core\Http\Response;
@@ -42,7 +41,6 @@ use TYPO3\CMS\Core\Http\Stream;
  * Returns raw data in JSON responses — no server-side HTML escaping.
  * The frontend sanitizes content via DOMParser before DOM insertion.
  */
-#[AsController]
 final readonly class AjaxController
 {
     /**

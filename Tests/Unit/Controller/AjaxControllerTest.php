@@ -2341,6 +2341,85 @@ final class AjaxControllerTest extends TestCase
         return $mock;
     }
 
+    #[Test]
+    public function executeTaskActionSkipsCapabilitiesWhenWhitespaceOnly(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturn('Improve: text');
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    // Whitespace-only capabilities should be skipped: [0] = scope, [1] = user
+                    return count($messages) === 2
+                        && $messages[0]['role'] === 'system'
+                        && $messages[1]['role'] === 'user';
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'            => 1,
+            'context'            => 'text',
+            'contextType'        => 'selection',
+            'editorCapabilities' => '   ',
+        ]);
+
+        $this->subject->executeTaskAction($request);
+    }
+
+    #[Test]
+    public function executeTaskActionSkipsAdHocRulesWhenWhitespaceOnly(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('buildPrompt')->willReturnCallback(
+            static fn (array $vars) => 'Improve: ' . ($vars['input'] ?? 'text'),
+        );
+        $task->method('getConfiguration')->willReturn(null);
+
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    $userMsg = $messages[count($messages) - 1];
+
+                    // Whitespace-only ad-hoc rules should be skipped — no ADDITIONAL RULES prefix
+                    return $userMsg['role'] === 'user'
+                        && !str_contains($userMsg['content'], 'ADDITIONAL RULES');
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+            'adHocRules'  => '   ',
+        ]);
+
+        $this->subject->executeTaskAction($request);
+    }
+
     private function createConfigurationMock(
         string $identifier = 'default',
         string $name = 'Default Config',

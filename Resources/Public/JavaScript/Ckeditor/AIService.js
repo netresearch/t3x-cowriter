@@ -41,7 +41,7 @@
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null}}
      * @private
      */
     _routes = {
@@ -51,6 +51,10 @@ export class AIService {
         tasks: null,
         taskExecute: null,
         context: null,
+        vision: null,
+        translate: null,
+        templates: null,
+        tools: null,
     };
 
     constructor() {
@@ -62,6 +66,10 @@ export class AIService {
             this._routes.tasks = TYPO3.settings.ajaxUrls.tx_cowriter_tasks || null;
             this._routes.taskExecute = TYPO3.settings.ajaxUrls.tx_cowriter_task_execute || null;
             this._routes.context = TYPO3.settings.ajaxUrls.tx_cowriter_context || null;
+            this._routes.vision = TYPO3.settings.ajaxUrls.tx_cowriter_vision || null;
+            this._routes.translate = TYPO3.settings.ajaxUrls.tx_cowriter_translate || null;
+            this._routes.templates = TYPO3.settings.ajaxUrls.tx_cowriter_templates || null;
+            this._routes.tools = TYPO3.settings.ajaxUrls.tx_cowriter_tools || null;
         }
     }
 
@@ -329,6 +337,110 @@ export class AIService {
                 contextScope, recordContext, referencePages,
             }),
         });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Analyze an image and generate alt text or description.
+     *
+     * @param {string} imageUrl - URL of the image to analyze
+     * @param {string} [prompt] - Custom analysis prompt
+     * @returns {Promise<{success: boolean, altText: string, model: string, confidence: number}>}
+     */
+    async analyzeImage(imageUrl, prompt) {
+        if (!this._routes.vision) {
+            throw new Error('Vision route not configured.');
+        }
+
+        const body = { imageUrl };
+        if (prompt) {
+            body.prompt = prompt;
+        }
+
+        const response = await fetch(this._routes.vision, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Translate text to a target language.
+     *
+     * @param {string} text - Text to translate
+     * @param {string} targetLanguage - ISO 639-1 language code
+     * @param {{formality?: string, domain?: string}} [options={}] - Translation options
+     * @returns {Promise<{success: boolean, translation: string, sourceLanguage: string, confidence: number}>}
+     */
+    async translate(text, targetLanguage, options = {}) {
+        if (!this._routes.translate) {
+            throw new Error('Translation route not configured.');
+        }
+
+        const response = await fetch(this._routes.translate, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, targetLanguage, ...options }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Execute a tool-calling request.
+     *
+     * @param {string} prompt - The prompt for the LLM
+     * @param {string[]} [tools=[]] - Tool names to enable
+     * @returns {Promise<{success: boolean, content: string, toolCalls: Array|null, finishReason: string}>}
+     */
+    async executeTools(prompt, tools = []) {
+        if (!this._routes.tools) {
+            throw new Error('Tools route not configured.');
+        }
+
+        const response = await fetch(this._routes.tools, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, tools }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Get available prompt templates.
+     *
+     * @returns {Promise<{success: boolean, templates: Array<{identifier: string, name: string, description: string, category: string}>}>}
+     */
+    async getTemplates() {
+        if (!this._routes.templates) {
+            throw new Error('Templates route not configured.');
+        }
+
+        const response = await fetch(this._routes.templates);
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: 'Unknown error' }));

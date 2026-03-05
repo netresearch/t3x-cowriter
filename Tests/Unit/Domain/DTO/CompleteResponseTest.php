@@ -126,6 +126,8 @@ final class CompleteResponseTest extends TestCase
 
         $this->assertFalse($json['success']);
         $this->assertSame('Test error', $json['error']);
+        $this->assertFalse($json['wasTruncated']);
+        $this->assertFalse($json['wasFiltered']);
         $this->assertArrayNotHasKey('content', $json);
         $this->assertArrayNotHasKey('model', $json);
         $this->assertArrayNotHasKey('finishReason', $json);
@@ -230,6 +232,84 @@ final class CompleteResponseTest extends TestCase
 
         $this->assertSame("model's-name", $response->model);
         $this->assertSame("it's done", $response->finishReason);
+    }
+
+    #[Test]
+    public function successDetectsWasTruncated(): void
+    {
+        $usage = new UsageStatistics(10, 20, 30);
+
+        $completionResponse = new CompletionResponse(
+            content: 'Partial text...',
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'length',
+            provider: 'test',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        self::assertTrue($response->wasTruncated);
+        self::assertFalse($response->wasFiltered);
+    }
+
+    #[Test]
+    public function successDetectsWasFiltered(): void
+    {
+        $usage = new UsageStatistics(10, 20, 30);
+
+        $completionResponse = new CompletionResponse(
+            content: '',
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'content_filter',
+            provider: 'test',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        self::assertFalse($response->wasTruncated);
+        self::assertTrue($response->wasFiltered);
+    }
+
+    #[Test]
+    public function successNormalCompletionNotTruncatedOrFiltered(): void
+    {
+        $completionResponse = $this->createCompletionResponse('Complete text');
+
+        $response = CompleteResponse::success($completionResponse);
+
+        self::assertFalse($response->wasTruncated);
+        self::assertFalse($response->wasFiltered);
+    }
+
+    #[Test]
+    public function jsonSerializeIncludesTruncationAndFilterFlags(): void
+    {
+        $usage = new UsageStatistics(10, 20, 30);
+
+        $completionResponse = new CompletionResponse(
+            content: 'Partial...',
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'length',
+            provider: 'test',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+        $json     = $response->jsonSerialize();
+
+        self::assertTrue($json['wasTruncated']);
+        self::assertFalse($json['wasFiltered']);
+    }
+
+    #[Test]
+    public function errorResponseHasFalseTruncationFlags(): void
+    {
+        $response = CompleteResponse::error('Something went wrong');
+
+        self::assertFalse($response->wasTruncated);
+        self::assertFalse($response->wasFiltered);
     }
 
     private function createCompletionResponse(

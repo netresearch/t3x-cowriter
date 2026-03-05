@@ -89,6 +89,56 @@ with ``category = 'content'``. The following default tasks are provided:
     ``category = 'content'``. Use ``{{input}}`` in the prompt template
     as placeholder for the user's content.
 
+Inline translation
+==================
+
+The **Translate** dropdown in the CKEditor toolbar lets you translate
+selected text without opening the full dialog.
+
+1.  Select the text you want to translate
+2.  Click the Translate button (globe icon) in the toolbar
+3.  Choose the target language from the dropdown
+4.  The selected text is replaced with the translation
+
+Supported languages:
+
+*   German, English, French, Spanish, Italian
+*   Dutch, Portuguese, Polish, Japanese, Chinese
+
+..  note::
+
+    Inline translation requires text to be selected. If no text is
+    selected, nothing happens. For translating entire content elements,
+    use the task-based dialog instead.
+
+Alt text generation
+===================
+
+The **Vision** button (image icon) generates alt text for images using
+LLM vision analysis.
+
+1.  Place your cursor where you want the alt text inserted
+2.  Click the Vision button in the toolbar
+3.  Enter the image URL when prompted
+4.  The generated alt text is inserted at the cursor position
+
+..  tip::
+
+    This is useful for accessibility compliance — generate descriptive
+    alt text for images without leaving the editor.
+
+Prompt templates
+================
+
+The **Templates** dropdown lets you apply predefined prompt templates
+from the toolbar. Templates are loaded from the nr-llm extension's
+task configuration.
+
+1.  Click the Templates button (document icon) in the toolbar
+2.  Select a template from the dropdown
+3.  The Cowriter dialog opens with the template pre-selected
+4.  Review, optionally adjust instructions, and execute
+
 Model override
 ==============
 

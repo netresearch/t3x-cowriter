@@ -36,8 +36,31 @@ flags:
       - Resources/Public/JavaScript/
     carryforward: true
 
+component_management:
+  individual_components:
+    - component_id: controllers
+      name: Controllers
+      paths:
+        - Classes/Controller/**
+    - component_id: dtos
+      name: Domain DTOs
+      paths:
+        - Classes/Domain/DTO/**
+    - component_id: services
+      name: Services
+      paths:
+        - Classes/Service/**
+    - component_id: tools
+      name: Tools
+      paths:
+        - Classes/Tools/**
+    - component_id: ckeditor
+      name: CKEditor Frontend
+      paths:
+        - Resources/Public/JavaScript/Ckeditor/**
+
 comment:
-  layout: "reach,diff,flags,files"
+  layout: "reach,diff,flags,components,files"
   behavior: default
   require_changes: true
   require_base: false
