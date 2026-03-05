@@ -312,6 +312,141 @@ final class CompleteResponseTest extends TestCase
         self::assertFalse($response->wasFiltered);
     }
 
+    // ===========================================
+    // Thinking extraction and fallback tests
+    // ===========================================
+
+    #[Test]
+    public function successIncludesThinkingWhenPresent(): void
+    {
+        $usage              = new UsageStatistics(10, 20, 30);
+        $completionResponse = new CompletionResponse(
+            content: '<ul><li>Item 1</li></ul>',
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'stop',
+            provider: 'test-provider',
+            thinking: 'I will convert this to a list.',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        $this->assertSame('I will convert this to a list.', $response->thinking);
+        $this->assertSame(
+            '<ul><li>Item 1</li></ul>',
+            $response->content,
+        );
+    }
+
+    #[Test]
+    public function successFallsBackToThinkingWhenContentIsEmpty(): void
+    {
+        $usage              = new UsageStatistics(10, 20, 30);
+        $completionResponse = new CompletionResponse(
+            content: '',
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'stop',
+            provider: 'test-provider',
+            thinking: '<ul><li>Item 1</li><li>Item 2</li></ul>',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        // Thinking content becomes the response content
+        $this->assertSame(
+            '<ul><li>Item 1</li><li>Item 2</li></ul>',
+            $response->content,
+        );
+        // Thinking is cleared since it was promoted to content
+        $this->assertNull($response->thinking);
+    }
+
+    #[Test]
+    public function successFallsBackToThinkingWhenContentIsFragment(): void
+    {
+        $usage              = new UsageStatistics(10, 20, 30);
+        $completionResponse = new CompletionResponse(
+            content: '</',
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'stop',
+            provider: 'test-provider',
+            thinking: '<ul><li>Real answer</li></ul>',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        // Fragment is replaced by thinking content
+        $this->assertSame(
+            '<ul><li>Real answer</li></ul>',
+            $response->content,
+        );
+        $this->assertNull($response->thinking);
+    }
+
+    #[Test]
+    public function successKeepsShortContentWhenNoThinking(): void
+    {
+        $completionResponse = $this->createCompletionResponse('OK');
+
+        $response = CompleteResponse::success($completionResponse);
+
+        $this->assertSame('OK', $response->content);
+        $this->assertNull($response->thinking);
+    }
+
+    #[Test]
+    public function successOmitsThinkingFromJsonWhenNull(): void
+    {
+        $completionResponse = $this->createCompletionResponse('Result');
+
+        $json = CompleteResponse::success($completionResponse)->jsonSerialize();
+
+        $this->assertArrayNotHasKey('thinking', $json);
+    }
+
+    #[Test]
+    public function successIncludesThinkingInJsonWhenPresent(): void
+    {
+        $usage              = new UsageStatistics(10, 20, 30);
+        $completionResponse = new CompletionResponse(
+            content: 'Long enough content here',
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'stop',
+            provider: 'test-provider',
+            thinking: 'My reasoning process',
+        );
+
+        $json = CompleteResponse::success($completionResponse)->jsonSerialize();
+
+        $this->assertArrayHasKey('thinking', $json);
+        $this->assertSame('My reasoning process', $json['thinking']);
+    }
+
+    #[Test]
+    public function successPreservesRawHtmlInThinking(): void
+    {
+        $usage              = new UsageStatistics(10, 20, 30);
+        $completionResponse = new CompletionResponse(
+            content: 'Long enough content here',
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'stop',
+            provider: 'test-provider',
+            thinking: '<script>alert("xss")</script>',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        // Raw content — frontend sanitizes via DOMParser
+        $this->assertSame(
+            '<script>alert("xss")</script>',
+            $response->thinking,
+        );
+    }
+
     private function createCompletionResponse(
         string $content,
         int $promptTokens = 10,

@@ -77,6 +77,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
         );
 
         return [
@@ -527,6 +528,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -561,6 +563,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
         );
 
         $request = $this->createJsonRequest([
@@ -722,6 +725,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -873,6 +877,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -911,6 +916,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -1049,7 +1055,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 999,
             'context'     => 'Some text',
             'contextType' => 'selection',
-            'adHocRules'  => '',
+            'instruction' => 'Improve this text',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1078,7 +1084,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 1,
             'context'     => 'Test text',
             'contextType' => 'selection',
-            'adHocRules'  => '',
+            'instruction' => 'Improve this text',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1110,7 +1116,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 1,
             'context'     => 'Test text',
             'contextType' => 'selection',
-            'adHocRules'  => '',
+            'instruction' => 'Improve this text',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1136,7 +1142,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 1,
             'context'     => 'Test text',
             'contextType' => 'selection',
-            'adHocRules'  => '',
+            'instruction' => 'Improve this text',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1175,7 +1181,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 1,
             'context'     => 'The product is good.',
             'contextType' => 'selection',
-            'adHocRules'  => '',
+            'instruction' => 'Improve the following text, keeping the original meaning:',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1209,7 +1215,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 1,
             'context'     => 'Some text.',
             'contextType' => 'selection',
-            'adHocRules'  => 'Write in formal tone',
+            'instruction' => 'Write in formal tone',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1240,7 +1246,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 1,
             'context'     => 'Test',
             'contextType' => 'selection',
-            'adHocRules'  => '',
+            'instruction' => 'Improve this text',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1283,7 +1289,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 5,
             'context'     => 'Some text',
             'contextType' => 'selection',
-            'adHocRules'  => '',
+            'instruction' => 'Improve this text',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1312,7 +1318,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 1,
             'context'     => 'Test text',
             'contextType' => 'selection',
-            'adHocRules'  => '',
+            'instruction' => 'Improve this text',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1343,13 +1349,14 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
         );
 
         $request = $this->createJsonRequest([
             'taskUid'     => 1,
             'context'     => 'Test',
             'contextType' => 'selection',
-            'adHocRules'  => '',
+            'instruction' => 'Improve this text',
         ]);
         $result = $controller->executeTaskAction($request);
 
@@ -1381,7 +1388,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             'taskUid'     => 2,
             'context'     => 'Long content of the whole content element that needs summarizing.',
             'contextType' => 'content_element',
-            'adHocRules'  => '',
+            'instruction' => 'Summarize:',
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
@@ -1390,5 +1397,799 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         self::assertIsArray($data);
         self::assertTrue($data['success']);
         self::assertSame('Summary of the full content.', $data['content']);
+    }
+
+    // =========================================================================
+    // Context Preview E2E Tests (getContextAction)
+    // =========================================================================
+
+    #[Test]
+    public function getContextActionRejectsInvalidRequest(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        // Invalid table name
+        $request = $this->createQueryParamsRequest([
+            'table' => 'invalid_table',
+            'uid'   => '1',
+            'field' => 'bodytext',
+            'scope' => 'page',
+        ]);
+        $result = $stack['controller']->getContextAction($request);
+
+        self::assertSame(400, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('Invalid', $data['error']);
+    }
+
+    #[Test]
+    public function getContextActionReturnsContextSummary(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $stack['contextAssembly'] = $this->createMock(ContextAssemblyServiceInterface::class);
+        // Re-create the stack with a contextAssembly mock that returns data
+        $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
+        $contextAssembly->method('getContextSummary')
+            ->with('tt_content', 42, 'bodytext', 'page')
+            ->willReturn(['summary' => 'Page about products', 'wordCount' => 150]);
+
+        $controller = new AjaxController(
+            $stack['serviceManager'],
+            $stack['configRepo'],
+            $stack['taskRepo'],
+            $stack['rateLimiter'],
+            $stack['context'],
+            $this->logger,
+            $contextAssembly,
+            $stack['connectionPool'],
+        );
+
+        $request = $this->createQueryParamsRequest([
+            'table' => 'tt_content',
+            'uid'   => '42',
+            'field' => 'bodytext',
+            'scope' => 'page',
+        ]);
+        $result = $controller->getContextAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame('Page about products', $data['summary']);
+        self::assertSame(150, $data['wordCount']);
+    }
+
+    #[Test]
+    public function getContextActionHandlesServiceError(): void
+    {
+        $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
+        $contextAssembly->method('getContextSummary')
+            ->willThrowException(new RuntimeException('DB connection lost'));
+
+        $stack = $this->createCompleteStack([]);
+
+        $controller = new AjaxController(
+            $stack['serviceManager'],
+            $stack['configRepo'],
+            $stack['taskRepo'],
+            $stack['rateLimiter'],
+            $stack['context'],
+            $this->logger,
+            $contextAssembly,
+            $stack['connectionPool'],
+        );
+
+        $request = $this->createQueryParamsRequest([
+            'table' => 'tt_content',
+            'uid'   => '1',
+            'field' => 'bodytext',
+            'scope' => 'element',
+        ]);
+        $result = $controller->getContextAction($request);
+
+        self::assertSame(500, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('context preview', strtolower($data['error']));
+    }
+
+    // =========================================================================
+    // Page Search E2E Tests (searchPagesAction)
+    // =========================================================================
+
+    #[Test]
+    public function searchPagesActionReturnsEmptyForEmptyQuery(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $request = $this->createQueryParamsRequest(['query' => '']);
+        $result  = $stack['controller']->searchPagesAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['pages']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturnsEmptyForMissingQuery(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $request = $this->createQueryParamsRequest([]);
+        $result  = $stack['controller']->searchPagesAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['pages']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturnsEmptyForWhitespaceQuery(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        $request = $this->createQueryParamsRequest(['query' => '   ']);
+        $result  = $stack['controller']->searchPagesAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['pages']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturns403WithoutBackendUser(): void
+    {
+        $stack = $this->createCompleteStack([]);
+
+        // Ensure no backend user is set
+        unset($GLOBALS['BE_USER']);
+
+        $request = $this->createQueryParamsRequest(['query' => 'test']);
+        $result  = $stack['controller']->searchPagesAction($request);
+
+        self::assertSame(403, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('backend user', strtolower($data['error']));
+    }
+
+    // =========================================================================
+    // Execute Task: Message Structure E2E Tests
+    // =========================================================================
+
+    #[Test]
+    public function executeTaskActionInjectsEditorContentMessage(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Improved text.');
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
+        $stack['taskRepo']->method('findByUid')->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $capturedMessages = [];
+        $stack['serviceManager']->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'The product is excellent.',
+            'contextType' => 'selection',
+            'instruction' => 'Improve:',
+        ]);
+        $stack['controller']->executeTaskAction($request);
+
+        // Find the <editor_content> message
+        $editorContentMsg = null;
+        foreach ($capturedMessages as $msg) {
+            if ($msg['role'] === 'system' && str_contains($msg['content'], '<editor_content>')) {
+                $editorContentMsg = $msg;
+                break;
+            }
+        }
+        self::assertNotNull($editorContentMsg, 'Expected <editor_content> system message');
+        self::assertStringContainsString("<editor_content>\nThe product is excellent.\n</editor_content>", $editorContentMsg['content']);
+    }
+
+    #[Test]
+    public function executeTaskActionOmitsEditorContentWhenContextEmpty(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Generated text.');
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        // Custom mode with no context
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $capturedMessages = [];
+        $stack['serviceManager']->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => '',
+            'instruction' => 'Write a paragraph about cats.',
+        ]);
+        $stack['controller']->executeTaskAction($request);
+
+        // No <editor_content> message should be present
+        foreach ($capturedMessages as $msg) {
+            self::assertStringNotContainsString('<editor_content>', $msg['content']);
+        }
+    }
+
+    #[Test]
+    public function executeTaskActionInjectsSelectionScopeInstruction(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Improved.');
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
+        $stack['taskRepo']->method('findByUid')->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $capturedMessages = [];
+        $stack['serviceManager']->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'Selected text here.',
+            'contextType' => 'selection',
+            'instruction' => 'Improve:',
+        ]);
+        $stack['controller']->executeTaskAction($request);
+
+        // First system message is formatting instruction, second is scope
+        self::assertSame('system', $capturedMessages[0]['role']);
+        self::assertStringContainsString('Do NOT use markdown', $capturedMessages[0]['content']);
+        self::assertSame('system', $capturedMessages[1]['role']);
+        self::assertStringContainsString('transformed selection', $capturedMessages[1]['content']);
+        self::assertStringContainsString('do not add surrounding content', $capturedMessages[1]['content']);
+    }
+
+    #[Test]
+    public function executeTaskActionInjectsContentElementScopeInstruction(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Summarized.');
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $task = $this->createTaskMock(1, 'summarize', 'Summarize', 'desc', '{{input}}');
+        $stack['taskRepo']->method('findByUid')->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $capturedMessages = [];
+        $stack['serviceManager']->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'Full content element text.',
+            'contextType' => 'content_element',
+            'instruction' => 'Summarize:',
+        ]);
+        $stack['controller']->executeTaskAction($request);
+
+        // First system message should be the scope instruction for content_element
+        self::assertSame('system', $capturedMessages[0]['role']);
+        self::assertStringContainsString('Do NOT use markdown', $capturedMessages[0]['content']);
+        self::assertSame('system', $capturedMessages[1]['role']);
+        self::assertStringContainsString('complete transformed content', $capturedMessages[1]['content']);
+    }
+
+    #[Test]
+    public function executeTaskActionInjectsEditorCapabilities(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Result.');
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
+        $stack['taskRepo']->method('findByUid')->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $capturedMessages = [];
+        $stack['serviceManager']->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $request = $this->createJsonRequest([
+            'taskUid'            => 1,
+            'context'            => 'Some text.',
+            'contextType'        => 'selection',
+            'instruction'        => 'Improve:',
+            'editorCapabilities' => 'bold, italic, lists, links',
+        ]);
+        $stack['controller']->executeTaskAction($request);
+
+        // Find the capabilities message
+        $capabilitiesMsg = null;
+        foreach ($capturedMessages as $msg) {
+            if ($msg['role'] === 'system' && str_contains($msg['content'], 'formatting features')) {
+                $capabilitiesMsg = $msg;
+                break;
+            }
+        }
+        self::assertNotNull($capabilitiesMsg, 'Expected editor capabilities system message');
+        self::assertStringContainsString('bold, italic, lists, links', $capabilitiesMsg['content']);
+        self::assertStringContainsString('<mark>', $capabilitiesMsg['content']);
+    }
+
+    #[Test]
+    public function executeTaskActionOmitsCapabilitiesWhenEmpty(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Result.');
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
+        $stack['taskRepo']->method('findByUid')->willReturn($task);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $capturedMessages = [];
+        $stack['serviceManager']->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $request = $this->createJsonRequest([
+            'taskUid'            => 1,
+            'context'            => 'Some text.',
+            'contextType'        => 'selection',
+            'instruction'        => 'Improve:',
+            'editorCapabilities' => '',
+        ]);
+        $stack['controller']->executeTaskAction($request);
+
+        // No capabilities message should exist
+        foreach ($capturedMessages as $msg) {
+            self::assertStringNotContainsString('formatting features', $msg['content']);
+        }
+    }
+
+    #[Test]
+    public function executeTaskActionAssemblesContextForExtendedScope(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Improved in context.');
+
+        $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
+        $contextAssembly->expects(self::once())
+            ->method('assembleContext')
+            ->with('tt_content', 42, 'bodytext', 'page', [])
+            ->willReturn('Surrounding page content for reference.');
+
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+
+        $capturedMessages = [];
+        $serviceManager->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $config     = $this->createLlmConfiguration();
+        $configRepo->method('findDefault')->willReturn($config);
+
+        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $task     = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
+        $taskRepo->method('findByUid')->willReturn($task);
+
+        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $taskRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+            $contextAssembly,
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+        );
+
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'Selected text.',
+            'contextType'   => 'selection',
+            'instruction'   => 'Improve:',
+            'contextScope'  => 'page',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        ]);
+        $result = $controller->executeTaskAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+
+        // Should have a <reference_context> message
+        $refContextMsg = null;
+        foreach ($capturedMessages as $msg) {
+            if ($msg['role'] === 'system' && str_contains($msg['content'], '<reference_context>')) {
+                $refContextMsg = $msg;
+                break;
+            }
+        }
+        self::assertNotNull($refContextMsg, 'Expected <reference_context> system message');
+        self::assertStringContainsString('Surrounding page content for reference.', $refContextMsg['content']);
+        self::assertStringContainsString('Do NOT include this content in your output', $refContextMsg['content']);
+    }
+
+    #[Test]
+    public function executeTaskActionForwardsReferencePages(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Result.');
+
+        $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
+        $contextAssembly->expects(self::once())
+            ->method('assembleContext')
+            ->with(
+                'tt_content',
+                42,
+                'bodytext',
+                'page',
+                [['pid' => 10, 'relation' => 'style guide'], ['pid' => 20, 'relation' => 'glossary']],
+            )
+            ->willReturn('Context with reference pages.');
+
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager->method('chatWithConfiguration')->willReturn($llmResponse);
+
+        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $config     = $this->createLlmConfiguration();
+        $configRepo->method('findDefault')->willReturn($config);
+
+        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $task     = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
+        $taskRepo->method('findByUid')->willReturn($task);
+
+        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $taskRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+            $contextAssembly,
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+        );
+
+        $request = $this->createJsonRequest([
+            'taskUid'        => 1,
+            'context'        => 'Text to improve.',
+            'contextType'    => 'selection',
+            'instruction'    => 'Improve:',
+            'contextScope'   => 'page',
+            'recordContext'  => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+            'referencePages' => [
+                ['pid' => 10, 'relation' => 'style guide'],
+                ['pid' => 20, 'relation' => 'glossary'],
+            ],
+        ]);
+        $result = $controller->executeTaskAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionContextAssemblyErrorReturns500(): void
+    {
+        $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
+        $contextAssembly->method('assembleContext')
+            ->willThrowException(new RuntimeException('DB connection lost'));
+
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+
+        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+
+        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $task     = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
+        $taskRepo->method('findByUid')->willReturn($task);
+
+        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $taskRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+            $contextAssembly,
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+        );
+
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'Some text.',
+            'contextType'   => 'selection',
+            'instruction'   => 'Improve:',
+            'contextScope'  => 'element',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        ]);
+        $result = $controller->executeTaskAction($request);
+
+        self::assertSame(500, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('context', strtolower($data['error']));
+    }
+
+    #[Test]
+    public function executeTaskActionCustomModeWithTaskUidZero(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Custom generated text.');
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $capturedMessages = [];
+        $stack['serviceManager']->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 0,
+            'context'     => 'Existing content here.',
+            'contextType' => 'content_element',
+            'instruction' => 'Rewrite this in a professional tone.',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+        $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame('Custom generated text.', $data['content']);
+
+        // In custom mode, the instruction is the user message
+        $lastMessage = end($capturedMessages);
+        self::assertSame('user', $lastMessage['role']);
+        self::assertSame('Rewrite this in a professional tone.', $lastMessage['content']);
+
+        // Editor content should still be injected as structured message
+        $hasEditorContent = false;
+        foreach ($capturedMessages as $msg) {
+            if (str_contains($msg['content'], '<editor_content>')) {
+                $hasEditorContent = true;
+                self::assertStringContainsString('Existing content here.', $msg['content']);
+            }
+        }
+        self::assertTrue($hasEditorContent, 'Custom mode should inject <editor_content>');
+    }
+
+    #[Test]
+    public function executeTaskActionCustomModeWithoutContext(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'A paragraph about cats.');
+
+        $stack = $this->createCompleteStack([$llmResponse]);
+
+        $config = $this->createLlmConfiguration();
+        $stack['configRepo']->method('findDefault')->willReturn($config);
+
+        $capturedMessages = [];
+        $stack['serviceManager']->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $request = $this->createJsonRequest([
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => '',
+            'instruction' => 'Write a paragraph about cats.',
+        ]);
+        $result = $stack['controller']->executeTaskAction($request);
+
+        self::assertSame(200, $result->getStatusCode());
+
+        // Formatting instruction + user instruction (no scope, no editor_content)
+        self::assertCount(2, $capturedMessages);
+        self::assertSame('system', $capturedMessages[0]['role']);
+        self::assertStringContainsString('Do NOT use markdown', $capturedMessages[0]['content']);
+        self::assertSame('user', $capturedMessages[1]['role']);
+        self::assertSame('Write a paragraph about cats.', $capturedMessages[1]['content']);
+    }
+
+    #[Test]
+    public function executeTaskActionMessageOrdering(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Result.');
+
+        $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
+        $contextAssembly->method('assembleContext')->willReturn('Surrounding context.');
+
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+
+        $capturedMessages = [];
+        $serviceManager->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+                $capturedMessages = $messages;
+
+                return $llmResponse;
+            });
+
+        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo->method('findDefault')->willReturn($this->createLlmConfiguration());
+
+        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo->method('findByUid')->willReturn(
+            $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}'),
+        );
+
+        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $taskRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+            $contextAssembly,
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+        );
+
+        $request = $this->createJsonRequest([
+            'taskUid'            => 1,
+            'context'            => 'Text.',
+            'contextType'        => 'selection',
+            'instruction'        => 'Improve:',
+            'contextScope'       => 'page',
+            'recordContext'      => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+            'editorCapabilities' => 'bold, italic',
+        ]);
+        $controller->executeTaskAction($request);
+
+        // Verify message ordering:
+        // 1. Formatting instruction (system)
+        // 2. Scope instruction (system)
+        // 3. <editor_content> (system)
+        // 4. <reference_context> (system)
+        // 5. Editor capabilities (system)
+        // 6. User instruction (user)
+        self::assertCount(6, $capturedMessages);
+        self::assertStringContainsString('Do NOT use markdown', $capturedMessages[0]['content']);
+        self::assertStringContainsString('transformed selection', $capturedMessages[1]['content']);
+        self::assertStringContainsString('<editor_content>', $capturedMessages[2]['content']);
+        self::assertStringContainsString('<reference_context>', $capturedMessages[3]['content']);
+        self::assertStringContainsString('formatting features', $capturedMessages[4]['content']);
+        self::assertSame('user', $capturedMessages[5]['role']);
+        self::assertSame('Improve:', $capturedMessages[5]['content']);
+    }
+
+    #[Test]
+    public function executeTaskActionSkipsContextAssemblyForSelectionScope(): void
+    {
+        $llmResponse = $this->createOpenAiResponse(content: 'Result.');
+
+        $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
+        $contextAssembly->expects(self::never())->method('assembleContext');
+
+        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager->method('chatWithConfiguration')->willReturn($llmResponse);
+
+        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo->method('findDefault')->willReturn($this->createLlmConfiguration());
+
+        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo->method('findByUid')->willReturn(
+            $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}'),
+        );
+
+        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(
+            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+        );
+
+        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new AjaxController(
+            $serviceManager,
+            $configRepo,
+            $taskRepo,
+            $rateLimiter,
+            $context,
+            $this->logger,
+            $contextAssembly,
+            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+        );
+
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'Selected text.',
+            'contextType'   => 'selection',
+            'instruction'   => 'Improve:',
+            'contextScope'  => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        ]);
+        $result = $controller->executeTaskAction($request);
+
+        // assembleContext should NOT have been called (selection scope)
+        self::assertSame(200, $result->getStatusCode());
     }
 }

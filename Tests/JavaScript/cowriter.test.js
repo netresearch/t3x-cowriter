@@ -478,12 +478,13 @@ describe('Cowriter Plugin', () => {
             componentCallbacks = {};
             mockEditor = {
                 model: {
-                    document: { selection: { getFirstRange: vi.fn(), getFirstPosition: vi.fn() } },
+                    document: { selection: { getFirstRange: vi.fn(), getFirstPosition: vi.fn(), getSelectedElement: vi.fn().mockReturnValue(null) } },
                     change: vi.fn((cb) => cb(mockEditor._writer)),
                     insertContent: vi.fn(),
                     getSelectedContent: vi.fn(),
                 },
-                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn() },
+                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn(), setAttribute: vi.fn() },
+                editing: { view: { document: { selection: { getSelectedElement: vi.fn().mockReturnValue(null) } } } },
                 data: {
                     processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
                     toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
@@ -516,29 +517,29 @@ describe('Cowriter Plugin', () => {
             expect(button.label).toBe('Cowriter - Generate alt text');
         });
 
-        it('should call analyzeImage and insert result', async () => {
-            // Mock window.prompt
-            globalThis.prompt = vi.fn().mockReturnValue('https://example.com/img.jpg');
+        it('should call analyzeImage and set alt attribute on selected image', async () => {
+            const selectedImage = {
+                is: vi.fn((_, name) => name === 'imageBlock'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/img.jpg'),
+            };
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(selectedImage);
 
             const button = componentCallbacks['cowriterVision']();
             await button.fire('execute');
 
             expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg');
             expect(mockEditor.model.change).toHaveBeenCalled();
-            expect(mockEditor._writer.insertText).toHaveBeenCalledWith('A cat', undefined);
-
-            delete globalThis.prompt;
+            expect(mockEditor._writer.setAttribute).toHaveBeenCalledWith('alt', 'A cat', selectedImage);
         });
 
-        it('should do nothing when prompt is cancelled', async () => {
-            globalThis.prompt = vi.fn().mockReturnValue(null);
+        it('should do nothing when no image is selected', async () => {
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(null);
+            mockEditor.editing = { view: { document: { selection: { getSelectedElement: vi.fn().mockReturnValue(null) } } } };
 
             const button = componentCallbacks['cowriterVision']();
             await button.fire('execute');
 
             expect(mockAnalyzeImage).not.toHaveBeenCalled();
-
-            delete globalThis.prompt;
         });
 
         it('should not execute when _isProcessing is true', async () => {

@@ -26,23 +26,9 @@ export class ButtonView {
     }
 }
 
-export class Model {
+export class ViewModel {
     constructor(attributes = {}) {
         Object.assign(this, attributes);
-    }
-}
-
-export class Collection {
-    constructor() {
-        this._items = [];
-    }
-
-    add(item) {
-        this._items.push(item);
-    }
-
-    [Symbol.iterator]() {
-        return this._items[Symbol.iterator]();
     }
 }
 

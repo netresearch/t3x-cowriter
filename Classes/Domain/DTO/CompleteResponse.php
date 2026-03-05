@@ -32,19 +32,45 @@ final readonly class CompleteResponse implements JsonSerializable
         public bool $wasFiltered,
         public ?string $error,
         public ?int $retryAfter,
+        public ?string $thinking = null,
     ) {}
+
+    /**
+     * Minimum content length to consider a response substantive.
+     *
+     * If the content is shorter than this and thinking exists, the model
+     * likely put its actual answer inside <think> tags.
+     */
+    private const MIN_SUBSTANTIVE_CONTENT_LENGTH = 10;
 
     /**
      * Create a successful response from nr-llm CompletionResponse.
      *
      * Returns raw content without server-side HTML escaping.
      * The frontend sanitizes content via DOMParser before DOM insertion.
+     *
+     * If the response content is nearly empty but thinking content exists,
+     * the model likely placed its answer inside <think> tags. In that case,
+     * the thinking content is used as the response content to avoid returning
+     * fragments like "</".
      */
     public static function success(CompletionResponse $response): self
     {
+        $content  = $response->content ?? '';
+        $thinking = $response->thinking;
+
+        // Fallback: if content is empty/tiny but thinking has substance,
+        // the model put its answer in <think> tags — use thinking as content
+        if (mb_strlen(trim($content), 'UTF-8') < self::MIN_SUBSTANTIVE_CONTENT_LENGTH
+            && $response->hasThinking()
+        ) {
+            $content  = $thinking ?? '';
+            $thinking = null;
+        }
+
         return new self(
             success: true,
-            content: $response->content ?? '',
+            content: $content,
             model: $response->model ?? '',
             finishReason: $response->finishReason ?? '',
             usage: UsageData::fromUsageStatistics($response->usage),
@@ -52,6 +78,7 @@ final readonly class CompleteResponse implements JsonSerializable
             wasFiltered: $response->wasFiltered(),
             error: null,
             retryAfter: null,
+            thinking: $thinking,
         );
     }
 
@@ -115,6 +142,9 @@ final readonly class CompleteResponse implements JsonSerializable
             $data['model']        = $this->model;
             $data['finishReason'] = $this->finishReason;
             $data['usage']        = $this->usage?->jsonSerialize();
+            if ($this->thinking !== null) {
+                $data['thinking'] = $this->thinking;
+            }
         } else {
             $data['error'] = $this->error;
             if ($this->retryAfter !== null) {

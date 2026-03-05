@@ -167,13 +167,13 @@ In `AIService.js`, update the `executeTask` method signature and body:
  * @param {number} taskUid
  * @param {string} context
  * @param {string} contextType
- * @param {string} [adHocRules='']
+ * @param {string} [instruction='']
  * @param {string} [editorCapabilities='']
  * @returns {Promise<CompleteResponse>}
  */
-async executeTask(taskUid, context, contextType, adHocRules = '', editorCapabilities = '') {
+async executeTask(taskUid, context, contextType, instruction = '', editorCapabilities = '') {
     // ... existing validation ...
-    body: JSON.stringify({ taskUid, context, contextType, adHocRules, editorCapabilities }),
+    body: JSON.stringify({ taskUid, context, contextType, instruction, editorCapabilities }),
 ```
 
 **Step 2: Update CowriterDialog to accept and pass capabilities**
@@ -181,7 +181,7 @@ async executeTask(taskUid, context, contextType, adHocRules = '', editorCapabili
 In `CowriterDialog.js`:
 - `show(selectedText, fullContent, editorCapabilities)` — accept new param
 - `_showModal(tasks, selectedText, fullContent, editorCapabilities)` — pass through
-- In `executeTrigger`, pass to `this._service.executeTask(taskUid, context, contextType, adHocRules, editorCapabilities)`
+- In `executeTrigger`, pass to `this._service.executeTask(taskUid, context, contextType, instruction, editorCapabilities)`
 
 **Step 3: Update cowriter.js to pass capabilities to dialog**
 
@@ -247,7 +247,7 @@ public function fromRequestParsesEditorCapabilities(): void
         'taskUid'             => 1,
         'context'             => 'text',
         'contextType'         => 'selection',
-        'adHocRules'          => '',
+        'instruction'          => '',
         'editorCapabilities'  => 'bold, italic, tables, lists',
     ]);
 
@@ -280,7 +280,7 @@ public function __construct(
     public int $taskUid,
     public string $context,
     public string $contextType,
-    public string $adHocRules,
+    public string $instruction,
     public ?string $configuration,
     public string $editorCapabilities,
 ) {}
