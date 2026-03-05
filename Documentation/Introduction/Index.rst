@@ -31,8 +31,13 @@ Features
 
 *   **Task-based dialog**: Select from predefined tasks (Improve, Summarize,
     Extend, Fix Grammar, Translate) with result preview before inserting
-*   **CKEditor Integration**: Seamless toolbar button in TYPO3's rich text
-    editor
+*   **Inline translation**: Translate selected text directly from a toolbar
+    dropdown — supports 10 languages (German, English, French, Spanish,
+    Italian, Dutch, Portuguese, Polish, Japanese, Chinese)
+*   **Alt text generation**: Generate image alt text via LLM vision analysis
+*   **Prompt templates**: Apply prompt template presets from the toolbar
+*   **CKEditor Integration**: Four toolbar buttons for writing, translation,
+    vision, and templates
 *   **Multi-Provider Support**: Works with all LLM providers supported by
     nr-llm (OpenAI, Claude, Gemini, OpenRouter, Mistral, Groq)
 *   **Secure Backend Proxy**: API keys never exposed to frontend — all

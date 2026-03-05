@@ -68,6 +68,29 @@ If you have your own RTE configuration file
         toolbar:
           items:
             - cowriter
+            - cowriterVision
+            - cowriterTranslate
+            - cowriterTemplates
+
+The four toolbar items are:
+
+``cowriter``
+    Main dialog — task-based content generation with preview
+
+``cowriterVision``
+    Generate image alt text via LLM vision analysis
+
+``cowriterTranslate``
+    Inline translation dropdown (10 languages)
+
+``cowriterTemplates``
+    Apply prompt template presets from the toolbar
+
+..  tip::
+
+    You can include only the toolbar items you need. For example, if you
+    only want the main dialog and translation, omit ``cowriterVision``
+    and ``cowriterTemplates``.
 
 Task configuration
 ==================

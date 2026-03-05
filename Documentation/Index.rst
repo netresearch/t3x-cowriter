@@ -61,6 +61,10 @@ your content directly in the CKEditor rich text editor.
 
         How to use the AI Cowriter button in CKEditor.
 
+    ..  card:: :ref:`API Reference <api>`
+
+        AJAX endpoint documentation for developers.
+
 ----
 
 **Table of contents**
@@ -73,6 +77,7 @@ your content directly in the CKEditor rich text editor.
     Installation/Index
     Configuration/Index
     Usage/Index
+    Api/Index
 
 ..  toctree::
     :hidden:
