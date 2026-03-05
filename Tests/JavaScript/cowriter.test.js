@@ -478,12 +478,12 @@ describe('Cowriter Plugin', () => {
             componentCallbacks = {};
             mockEditor = {
                 model: {
-                    document: { selection: { getFirstRange: vi.fn() } },
+                    document: { selection: { getFirstRange: vi.fn(), getFirstPosition: vi.fn() } },
                     change: vi.fn((cb) => cb(mockEditor._writer)),
                     insertContent: vi.fn(),
                     getSelectedContent: vi.fn(),
                 },
-                _writer: { remove: vi.fn(), insert: vi.fn(), setSelection: vi.fn() },
+                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn() },
                 data: {
                     processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
                     toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
@@ -524,7 +524,8 @@ describe('Cowriter Plugin', () => {
             await button.fire('execute');
 
             expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg');
-            expect(mockEditor.model.insertContent).toHaveBeenCalled();
+            expect(mockEditor.model.change).toHaveBeenCalled();
+            expect(mockEditor._writer.insertText).toHaveBeenCalledWith('A cat', undefined);
 
             delete globalThis.prompt;
         });
@@ -584,7 +585,7 @@ describe('Cowriter Plugin', () => {
                     insertContent: vi.fn(),
                     getSelectedContent: vi.fn().mockReturnValue({ type: 'content' }),
                 },
-                _writer: { remove: vi.fn(), insert: vi.fn(), setSelection: vi.fn() },
+                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn() },
                 data: {
                     processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
                     toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
@@ -677,12 +678,12 @@ describe('Cowriter Plugin', () => {
             componentCallbacks = {};
             mockEditor = {
                 model: {
-                    document: { selection: { getFirstRange: vi.fn() } },
+                    document: { selection: { getFirstRange: vi.fn(), getFirstPosition: vi.fn() } },
                     change: vi.fn((cb) => cb(mockEditor._writer)),
                     insertContent: vi.fn(),
                     getSelectedContent: vi.fn(),
                 },
-                _writer: { remove: vi.fn(), insert: vi.fn(), setSelection: vi.fn() },
+                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn() },
                 data: {
                     processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
                     toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),

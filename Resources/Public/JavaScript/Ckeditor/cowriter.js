@@ -203,9 +203,9 @@ export class Cowriter extends Plugin {
 
                     const result = await this._service.analyzeImage(imageUrl);
                     if (result?.success && result.altText) {
-                        const viewFragment = editor.data.processor.toView(result.altText);
-                        const modelFragment = editor.data.toModel(viewFragment);
-                        editor.model.insertContent(modelFragment);
+                        editor.model.change(writer => {
+                            writer.insertText(result.altText, editor.model.document.selection.getFirstPosition());
+                        });
                     }
                 } catch (error) {
                     console.error('[Cowriter Vision]', error);

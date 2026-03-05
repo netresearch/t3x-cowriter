@@ -116,4 +116,26 @@ final class TranslationRequestTest extends TestCase
         $request = new TranslationRequest(text: 'Hello', targetLanguage: 'a-very-long-language-code');
         self::assertFalse($request->isValid());
     }
+
+    #[Test]
+    public function isValidReturnsFalseForExcessiveFormalityLength(): void
+    {
+        $request = new TranslationRequest(
+            text: 'Hello',
+            targetLanguage: 'de',
+            formality: str_repeat('a', 51),
+        );
+        self::assertFalse($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseForExcessiveDomainLength(): void
+    {
+        $request = new TranslationRequest(
+            text: 'Hello',
+            targetLanguage: 'de',
+            domain: str_repeat('a', 101),
+        );
+        self::assertFalse($request->isValid());
+    }
 }

@@ -48,8 +48,9 @@ final readonly class VisionController
 
         $body = $this->parseJsonBody($request);
         if ($body === null) {
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Invalid JSON in request body.'],
+                $rateLimitResult,
                 400,
             );
         }
@@ -57,15 +58,17 @@ final readonly class VisionController
         $visionRequest = VisionRequest::fromRequestBody($body);
 
         if (!$visionRequest->isValid()) {
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Invalid request: fields exceed maximum length.'],
+                $rateLimitResult,
                 400,
             );
         }
 
         if ($visionRequest->imageUrl === '') {
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Missing or empty imageUrl parameter.'],
+                $rateLimitResult,
                 400,
             );
         }
@@ -78,7 +81,7 @@ final readonly class VisionController
                 $options,
             );
 
-            return new JsonResponse([
+            return $this->jsonResponseWithRateLimitHeaders([
                 'success'    => true,
                 'altText'    => $response->description,
                 'model'      => $response->model,
@@ -88,15 +91,16 @@ final readonly class VisionController
                     'completionTokens' => $response->usage->completionTokens,
                     'totalTokens'      => $response->usage->totalTokens,
                 ],
-            ]);
+            ], $rateLimitResult);
         } catch (Throwable $e) {
             $this->logger->error('Vision analysis failed', [
                 'exception' => $e->getMessage(),
                 'imageUrl'  => substr($visionRequest->imageUrl, 0, 100),
             ]);
 
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Image analysis failed. Please try again.'],
+                $rateLimitResult,
                 500,
             );
         }
@@ -127,6 +131,25 @@ final readonly class VisionController
 
         /** @var array<string, mixed> $decoded */
         return $decoded;
+    }
+
+    /**
+     * Create JSON response with rate limit headers.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function jsonResponseWithRateLimitHeaders(
+        array $data,
+        RateLimitResult $rateLimitResult,
+        int $statusCode = 200,
+    ): JsonResponse {
+        $response = new JsonResponse($data, $statusCode);
+
+        foreach ($rateLimitResult->getHeaders() as $name => $value) {
+            $response = $response->withAddedHeader($name, $value);
+        }
+
+        return $response;
     }
 
     private function rateLimitedResponse(RateLimitResult $result): JsonResponse

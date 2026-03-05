@@ -62,10 +62,10 @@ export function createDropdown() {
         },
         fire(event, ...args) {
             if (this._handlers[event]) {
-                for (const handler of this._handlers[event]) {
-                    handler(...args);
-                }
+                const results = this._handlers[event].map(handler => handler(...args));
+                return Promise.all(results);
             }
+            return Promise.resolve();
         },
     };
     return dropdown;

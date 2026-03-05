@@ -72,6 +72,8 @@ final class TemplateControllerTest extends TestCase
         self::assertCount(1, $data['templates']);
         self::assertSame('improve', $data['templates'][0]['identifier']);
         self::assertSame('Improve Text', $data['templates'][0]['name']);
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
@@ -105,6 +107,8 @@ final class TemplateControllerTest extends TestCase
         self::assertSame(500, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
@@ -122,6 +126,8 @@ final class TemplateControllerTest extends TestCase
         $data = json_decode((string) $response->getBody(), true);
         self::assertTrue($data['success']);
         self::assertSame([], $data['templates']);
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     /**

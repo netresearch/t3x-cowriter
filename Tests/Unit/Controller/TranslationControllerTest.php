@@ -74,6 +74,8 @@ final class TranslationControllerTest extends TestCase
         self::assertSame('Hallo Welt', $data['translation']);
         self::assertSame('en', $data['sourceLanguage']);
         self::assertSame(0.9, $data['confidence']);
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
@@ -86,6 +88,8 @@ final class TranslationControllerTest extends TestCase
         $response = $this->subject->translateAction($request);
 
         self::assertSame(400, $response->getStatusCode());
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
@@ -128,6 +132,8 @@ final class TranslationControllerTest extends TestCase
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertStringContainsString('Invalid JSON', $data['error']);
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
@@ -158,6 +164,8 @@ final class TranslationControllerTest extends TestCase
         $response = $this->subject->translateAction($request);
 
         self::assertSame(500, $response->getStatusCode());
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     /**

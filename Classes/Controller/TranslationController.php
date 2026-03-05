@@ -48,8 +48,9 @@ final readonly class TranslationController
 
         $body = $this->parseJsonBody($request);
         if ($body === null) {
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Invalid JSON in request body.'],
+                $rateLimitResult,
                 400,
             );
         }
@@ -57,15 +58,17 @@ final readonly class TranslationController
         $translationRequest = TranslationRequest::fromRequestBody($body);
 
         if (!$translationRequest->isValid()) {
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Invalid request: fields exceed maximum length.'],
+                $rateLimitResult,
                 400,
             );
         }
 
         if ($translationRequest->text === '' || $translationRequest->targetLanguage === '') {
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Missing text or targetLanguage parameter.'],
+                $rateLimitResult,
                 400,
             );
         }
@@ -83,7 +86,7 @@ final readonly class TranslationController
                 $options,
             );
 
-            return new JsonResponse([
+            return $this->jsonResponseWithRateLimitHeaders([
                 'success'        => true,
                 'translation'    => $result->translation,
                 'sourceLanguage' => $result->sourceLanguage,
@@ -93,15 +96,16 @@ final readonly class TranslationController
                     'completionTokens' => $result->usage->completionTokens,
                     'totalTokens'      => $result->usage->totalTokens,
                 ],
-            ]);
+            ], $rateLimitResult);
         } catch (Throwable $e) {
             $this->logger->error('Translation failed', [
                 'exception'      => $e->getMessage(),
                 'targetLanguage' => $translationRequest->targetLanguage,
             ]);
 
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Translation failed. Please try again.'],
+                $rateLimitResult,
                 500,
             );
         }
@@ -132,6 +136,25 @@ final readonly class TranslationController
 
         /** @var array<string, mixed> $decoded */
         return $decoded;
+    }
+
+    /**
+     * Create JSON response with rate limit headers.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function jsonResponseWithRateLimitHeaders(
+        array $data,
+        RateLimitResult $rateLimitResult,
+        int $statusCode = 200,
+    ): JsonResponse {
+        $response = new JsonResponse($data, $statusCode);
+
+        foreach ($rateLimitResult->getHeaders() as $name => $value) {
+            $response = $response->withAddedHeader($name, $value);
+        }
+
+        return $response;
     }
 
     private function rateLimitedResponse(RateLimitResult $result): JsonResponse

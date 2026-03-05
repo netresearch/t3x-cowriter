@@ -16,6 +16,8 @@ namespace Netresearch\T3Cowriter\Domain\DTO;
  */
 final readonly class ToolRequest
 {
+    private const MAX_FIELD_LENGTH = 32768;
+
     /**
      * @param list<string> $enabledTools
      */
@@ -24,6 +26,14 @@ final readonly class ToolRequest
         public array $enabledTools = [],
         public ?string $configuration = null,
     ) {}
+
+    /**
+     * Validate field lengths to prevent resource exhaustion.
+     */
+    public function isValid(): bool
+    {
+        return mb_strlen($this->prompt) <= self::MAX_FIELD_LENGTH;
+    }
 
     /**
      * @param array<string, mixed> $body

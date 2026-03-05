@@ -93,4 +93,18 @@ final class ToolRequestTest extends TestCase
 
         self::assertSame(['query_content', 'another_tool'], $request->enabledTools);
     }
+
+    #[Test]
+    public function isValidReturnsTrueForNormalInput(): void
+    {
+        $request = new ToolRequest(prompt: 'Find all text elements');
+        self::assertTrue($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseForExcessivePromptLength(): void
+    {
+        $request = new ToolRequest(prompt: str_repeat('a', 40000));
+        self::assertFalse($request->isValid());
+    }
 }

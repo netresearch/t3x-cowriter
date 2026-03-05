@@ -63,20 +63,40 @@ final readonly class TemplateController
                 ];
             }
 
-            return new JsonResponse([
+            return $this->jsonResponseWithRateLimitHeaders([
                 'success'   => true,
                 'templates' => $result,
-            ]);
+            ], $rateLimitResult);
         } catch (Throwable $e) {
             $this->logger->error('Failed to list prompt templates', [
                 'exception' => $e->getMessage(),
             ]);
 
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Failed to load templates.'],
+                $rateLimitResult,
                 500,
             );
         }
+    }
+
+    /**
+     * Create JSON response with rate limit headers.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function jsonResponseWithRateLimitHeaders(
+        array $data,
+        RateLimitResult $rateLimitResult,
+        int $statusCode = 200,
+    ): JsonResponse {
+        $response = new JsonResponse($data, $statusCode);
+
+        foreach ($rateLimitResult->getHeaders() as $name => $value) {
+            $response = $response->withAddedHeader($name, $value);
+        }
+
+        return $response;
     }
 
     private function rateLimitedResponse(RateLimitResult $result): JsonResponse

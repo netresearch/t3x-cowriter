@@ -32,7 +32,9 @@ final readonly class TranslationRequest
     public function isValid(): bool
     {
         return mb_strlen($this->text) <= self::MAX_FIELD_LENGTH
-            && mb_strlen($this->targetLanguage) <= 10;
+            && mb_strlen($this->targetLanguage) <= 10
+            && mb_strlen($this->formality) <= 50
+            && mb_strlen($this->domain) <= 100;
     }
 
     /**

@@ -77,6 +77,8 @@ final class ToolControllerTest extends TestCase
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
@@ -91,6 +93,8 @@ final class ToolControllerTest extends TestCase
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertStringContainsString('Invalid JSON', $data['error']);
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
@@ -122,6 +126,8 @@ final class ToolControllerTest extends TestCase
         self::assertSame(100, $data['usage']['promptTokens']);
         self::assertSame(50, $data['usage']['completionTokens']);
         self::assertSame(150, $data['usage']['totalTokens']);
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
@@ -145,12 +151,27 @@ final class ToolControllerTest extends TestCase
 
         $request = $this->createJsonRequest([
             'prompt' => 'Query content',
-            'tools'  => ['contentQuery'],
+            'tools'  => ['query_content'],
         ]);
         $response = $this->subject->executeAction($request);
 
         $data = json_decode((string) $response->getBody(), true);
         self::assertTrue($data['success']);
+    }
+
+    #[Test]
+    public function executeActionReturnsBadRequestForExcessivePromptLength(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $request  = $this->createJsonRequest(['prompt' => str_repeat('a', 40000)]);
+        $response = $this->subject->executeAction($request);
+
+        self::assertSame(400, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('fields exceed maximum length', $data['error']);
     }
 
     #[Test]
@@ -168,6 +189,8 @@ final class ToolControllerTest extends TestCase
         self::assertSame(500, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     /**

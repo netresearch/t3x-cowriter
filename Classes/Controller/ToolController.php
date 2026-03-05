@@ -52,17 +52,27 @@ final readonly class ToolController
 
         $body = $this->parseJsonBody($request);
         if ($body === null) {
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Invalid JSON in request body.'],
+                $rateLimitResult,
                 400,
             );
         }
 
         $toolRequest = ToolRequest::fromRequestBody($body);
 
+        if (!$toolRequest->isValid()) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                ['success' => false, 'error' => 'Invalid request: fields exceed maximum length.'],
+                $rateLimitResult,
+                400,
+            );
+        }
+
         if ($toolRequest->prompt === '') {
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Missing prompt parameter.'],
+                $rateLimitResult,
                 400,
             );
         }
@@ -77,7 +87,7 @@ final readonly class ToolController
             $options  = ToolOptions::auto();
             $response = $this->llmServiceManager->chatWithTools($messages, $tools, $options);
 
-            return new JsonResponse([
+            return $this->jsonResponseWithRateLimitHeaders([
                 'success'      => true,
                 'content'      => $response->content,
                 'toolCalls'    => $response->toolCalls,
@@ -87,14 +97,15 @@ final readonly class ToolController
                     'completionTokens' => $response->usage->completionTokens,
                     'totalTokens'      => $response->usage->totalTokens,
                 ],
-            ]);
+            ], $rateLimitResult);
         } catch (Throwable $e) {
             $this->logger->error('Tool execution failed', [
                 'exception' => $e->getMessage(),
             ]);
 
-            return new JsonResponse(
+            return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => 'Tool execution failed. Please try again.'],
+                $rateLimitResult,
                 500,
             );
         }
@@ -113,7 +124,7 @@ final readonly class ToolController
     {
         /** @var array<string, array{type: string, function: array{name: string, description: string, parameters: array<string, mixed>}}> $allTools */
         $allTools = [
-            'contentQuery' => ContentQueryTool::definition(),
+            'query_content' => ContentQueryTool::definition(),
         ];
 
         if ($enabledTools === []) {
@@ -155,6 +166,25 @@ final readonly class ToolController
 
         /** @var array<string, mixed> $decoded */
         return $decoded;
+    }
+
+    /**
+     * Create JSON response with rate limit headers.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function jsonResponseWithRateLimitHeaders(
+        array $data,
+        RateLimitResult $rateLimitResult,
+        int $statusCode = 200,
+    ): JsonResponse {
+        $response = new JsonResponse($data, $statusCode);
+
+        foreach ($rateLimitResult->getHeaders() as $name => $value) {
+            $response = $response->withAddedHeader($name, $value);
+        }
+
+        return $response;
     }
 
     private function rateLimitedResponse(RateLimitResult $result): JsonResponse
