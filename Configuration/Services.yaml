@@ -23,3 +23,12 @@ services:
 
   Netresearch\T3Cowriter\Controller\AjaxController:
     public: true
+
+  Netresearch\T3Cowriter\Controller\VisionController:
+    public: true
+
+  Netresearch\T3Cowriter\Controller\TranslationController:
+    public: true
+
+  Netresearch\T3Cowriter\Controller\TemplateController:
+    public: true

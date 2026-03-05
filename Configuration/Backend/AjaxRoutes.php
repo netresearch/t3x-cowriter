@@ -8,6 +8,9 @@
 declare(strict_types=1);
 
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Controller\TemplateController;
+use Netresearch\T3Cowriter\Controller\TranslationController;
+use Netresearch\T3Cowriter\Controller\VisionController;
 
 /**
  * AJAX route definitions for backend LLM interactions.
@@ -46,5 +49,17 @@ return [
     'tx_cowriter_context' => [
         'path'   => '/cowriter/context',
         'target' => AjaxController::class . '::getContextAction',
+    ],
+    'tx_cowriter_vision' => [
+        'path'   => '/cowriter/vision',
+        'target' => VisionController::class . '::analyzeAction',
+    ],
+    'tx_cowriter_translate' => [
+        'path'   => '/cowriter/translate',
+        'target' => TranslationController::class . '::translateAction',
+    ],
+    'tx_cowriter_templates' => [
+        'path'   => '/cowriter/templates',
+        'target' => TemplateController::class . '::listAction',
     ],
 ];
