@@ -30,7 +30,7 @@ describe('Cowriter Plugin', () => {
     describe('button execute handler', () => {
         let plugin;
         let mockEditor;
-        let buttonCallback;
+        let componentCallbacks;
         let capturedButton;
         let mockDialogShow;
 
@@ -96,7 +96,8 @@ describe('Cowriter Plugin', () => {
                 ui: {
                     componentFactory: {
                         add: vi.fn((name, callback) => {
-                            buttonCallback = callback;
+                            if (!componentCallbacks) componentCallbacks = {};
+                            componentCallbacks[name] = callback;
                         }),
                     },
                 },
@@ -107,7 +108,7 @@ describe('Cowriter Plugin', () => {
             plugin = new Cowriter();
             plugin.editor = mockEditor;
             await plugin.init();
-            capturedButton = buttonCallback();
+            capturedButton = componentCallbacks['cowriter']();
         });
 
         afterEach(() => {
@@ -396,7 +397,7 @@ describe('Cowriter Plugin', () => {
         });
 
         it('should create button with correct properties', async () => {
-            let createdButton = null;
+            const createdButtons = {};
             const mockEditor = {
                 model: {
                     document: { selection: {} },
@@ -406,7 +407,7 @@ describe('Cowriter Plugin', () => {
                 ui: {
                     componentFactory: {
                         add: vi.fn((name, callback) => {
-                            createdButton = callback();
+                            createdButtons[name] = callback();
                         }),
                     },
                 },
@@ -416,10 +417,38 @@ describe('Cowriter Plugin', () => {
             plugin.editor = mockEditor;
             await plugin.init();
 
-            expect(createdButton.label).toBe('Cowriter - AI text completion');
-            expect(createdButton.tooltip).toBe(true);
-            expect(createdButton.icon).toContain('svg');
-            expect(createdButton.icon).toContain('aria-hidden="true"');
+            const cowriterButton = createdButtons['cowriter'];
+            expect(cowriterButton.label).toBe('Cowriter - AI text completion');
+            expect(cowriterButton.tooltip).toBe(true);
+            expect(cowriterButton.icon).toContain('svg');
+            expect(cowriterButton.icon).toContain('aria-hidden="true"');
+        });
+
+        it('should register all four toolbar components', async () => {
+            const addedComponents = {};
+            const mockEditor = {
+                model: {
+                    document: { selection: {} },
+                    change: vi.fn(),
+                },
+                view: {},
+                ui: {
+                    componentFactory: {
+                        add: vi.fn((name, callback) => {
+                            addedComponents[name] = callback;
+                        }),
+                    },
+                },
+            };
+
+            const plugin = new Cowriter();
+            plugin.editor = mockEditor;
+            await plugin.init();
+
+            expect(addedComponents).toHaveProperty('cowriter');
+            expect(addedComponents).toHaveProperty('cowriterVision');
+            expect(addedComponents).toHaveProperty('cowriterTranslate');
+            expect(addedComponents).toHaveProperty('cowriterTemplates');
         });
     });
 });

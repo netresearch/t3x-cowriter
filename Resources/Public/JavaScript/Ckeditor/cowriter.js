@@ -2,9 +2,26 @@
 // @ts-check
 
 import { Plugin } from "@ckeditor/ckeditor5-core";
-import { ButtonView } from "@ckeditor/ckeditor5-ui";
+import { ButtonView, createDropdown, addListToDropdown, Model, Collection } from "@ckeditor/ckeditor5-ui";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
+
+/**
+ * Target languages for translation dropdown.
+ * @type {ReadonlyArray<{code: string, label: string}>}
+ */
+const TRANSLATION_LANGUAGES = [
+    { code: 'de', label: 'German' },
+    { code: 'en', label: 'English' },
+    { code: 'fr', label: 'French' },
+    { code: 'es', label: 'Spanish' },
+    { code: 'it', label: 'Italian' },
+    { code: 'nl', label: 'Dutch' },
+    { code: 'pt', label: 'Portuguese' },
+    { code: 'pl', label: 'Polish' },
+    { code: 'ja', label: 'Japanese' },
+    { code: 'zh', label: 'Chinese' },
+];
 
 /**
  * Cowriter CKEditor plugin.
@@ -164,6 +181,172 @@ export class Cowriter extends Plugin {
             });
 
             return button;
+        });
+
+        // Vision button — analyze image and generate alt text
+        editor.ui.componentFactory.add('cowriterVision', () => {
+            const button = new ButtonView();
+
+            button.set({
+                label: 'Cowriter - Generate alt text',
+                tooltip: true,
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5-7l-3 3.72L9 13l-3 4h12l-4-5z"/></svg>',
+            });
+
+            button.on('execute', async () => {
+                if (this._isProcessing) return;
+                this._isProcessing = true;
+
+                try {
+                    const imageUrl = prompt('Enter image URL for alt text generation:');
+                    if (!imageUrl) return;
+
+                    const result = await this._service.analyzeImage(imageUrl);
+                    if (result?.success && result.altText) {
+                        const viewFragment = editor.data.processor.toView(result.altText);
+                        const modelFragment = editor.data.toModel(viewFragment);
+                        editor.model.insertContent(modelFragment);
+                    }
+                } catch (error) {
+                    console.error('[Cowriter Vision]', error);
+                } finally {
+                    this._isProcessing = false;
+                }
+            });
+
+            return button;
+        });
+
+        // Translation dropdown — translate selected text
+        editor.ui.componentFactory.add('cowriterTranslate', (locale) => {
+            const dropdown = createDropdown(locale);
+            const items = new Collection();
+
+            for (const lang of TRANSLATION_LANGUAGES) {
+                const itemModel = new Model({
+                    label: lang.label,
+                    languageCode: lang.code,
+                    withText: true,
+                });
+                items.add({ type: 'button', model: itemModel });
+            }
+
+            addListToDropdown(dropdown, items);
+
+            dropdown.buttonView.set({
+                label: 'Cowriter - Translate',
+                tooltip: true,
+                withText: false,
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>',
+            });
+
+            dropdown.on('execute', async (event) => {
+                if (this._isProcessing) return;
+                this._isProcessing = true;
+
+                try {
+                    const langCode = event.source.languageCode;
+                    const selection = editor.model.document.selection;
+                    const selectedRange = selection.getFirstRange();
+
+                    let selectedText = '';
+                    if (selectedRange && !selectedRange.isCollapsed) {
+                        const content = model.getSelectedContent(selection);
+                        selectedText = editor.data.stringify(content);
+                    }
+
+                    if (!selectedText) {
+                        console.warn('[Cowriter Translate] No text selected for translation');
+                        return;
+                    }
+
+                    const result = await this._service.translate(selectedText, langCode);
+                    if (result?.success && result.translation) {
+                        const viewFragment = editor.data.processor.toView(result.translation);
+                        const modelFragment = editor.data.toModel(viewFragment);
+
+                        model.change((writer) => {
+                            writer.setSelection(selectedRange);
+                            editor.model.insertContent(modelFragment);
+                        });
+                    }
+                } catch (error) {
+                    console.error('[Cowriter Translate]', error);
+                } finally {
+                    this._isProcessing = false;
+                }
+            });
+
+            return dropdown;
+        });
+
+        // Templates dropdown — apply prompt template presets
+        editor.ui.componentFactory.add('cowriterTemplates', (locale) => {
+            const dropdown = createDropdown(locale);
+
+            dropdown.buttonView.set({
+                label: 'Cowriter - Templates',
+                tooltip: true,
+                withText: false,
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM6 20V4h5v5h5v11H6z"/></svg>',
+            });
+
+            // Load templates when dropdown opens
+            dropdown.on('change:isOpen', async () => {
+                if (!dropdown.isOpen) return;
+
+                try {
+                    const result = await this._service.getTemplates();
+                    if (!result?.success || !result.templates?.length) return;
+
+                    const items = new Collection();
+                    for (const tmpl of result.templates) {
+                        const itemModel = new Model({
+                            label: tmpl.name,
+                            templateIdentifier: tmpl.identifier,
+                            templateDescription: tmpl.description || '',
+                            withText: true,
+                        });
+                        items.add({ type: 'button', model: itemModel });
+                    }
+
+                    addListToDropdown(dropdown, items);
+                } catch (error) {
+                    console.error('[Cowriter Templates]', error);
+                }
+            });
+
+            dropdown.on('execute', async (event) => {
+                if (this._isProcessing) return;
+                this._isProcessing = true;
+
+                try {
+                    const selectedText = editor.getData();
+                    const caps = this._getEditorCapabilities();
+                    const recordContext = this._getRecordContext();
+
+                    // Open the cowriter dialog with the template pre-selected
+                    const dialog = new CowriterDialog(this._service);
+                    const dialogResult = await dialog.show(
+                        '', selectedText, caps, recordContext,
+                        { templateIdentifier: event.source.templateIdentifier },
+                    );
+
+                    if (dialogResult?.content) {
+                        const viewFragment = editor.data.processor.toView(dialogResult.content);
+                        const modelFragment = editor.data.toModel(viewFragment);
+                        editor.model.insertContent(modelFragment);
+                    }
+                } catch (error) {
+                    if (error?.message && error.message !== 'User cancelled') {
+                        console.error('[Cowriter Templates]', error);
+                    }
+                } finally {
+                    this._isProcessing = false;
+                }
+            });
+
+            return dropdown;
         });
     }
 }
