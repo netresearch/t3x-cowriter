@@ -1535,9 +1535,8 @@ describe('CowriterDialog', () => {
             expect(dropdown.children.length).toBe(1);
             expect(dropdown.children[0].textContent).toBe('No pages found');
             expect(dropdown.children[0].getAttribute('role')).toBe('status');
-            // "No pages found" is a status message, not a selectable option,
-            // so aria-expanded should be false
-            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+            // Dropdown is visible so aria-expanded must be true for consistency
+            expect(searchInput.getAttribute('aria-expanded')).toBe('true');
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});

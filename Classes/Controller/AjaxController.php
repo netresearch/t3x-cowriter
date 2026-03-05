@@ -639,7 +639,9 @@ final readonly class AjaxController
             $responseData = CompleteResponse::success($response)->jsonSerialize();
 
             // Only expose raw LLM messages in TYPO3 development mode
-            if ($GLOBALS['TYPO3_CONF_VARS']['BE']['debug'] ?? false) {
+            /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
+            $typo3ConfVars = $GLOBALS['TYPO3_CONF_VARS'] ?? [];
+            if (($typo3ConfVars['BE']['debug'] ?? false) === true) {
                 $responseData['debugMessages'] = $messages;
             }
 
@@ -678,7 +680,9 @@ final readonly class AjaxController
      */
     public function searchPagesAction(ServerRequestInterface $request): ResponseInterface
     {
-        $query = mb_substr(trim((string) ($request->getQueryParams()['query'] ?? '')), 0, self::MAX_SEARCH_QUERY_LENGTH);
+        /** @var string $rawQuery */
+        $rawQuery = $request->getQueryParams()['query'] ?? '';
+        $query    = mb_substr(trim((string) $rawQuery), 0, self::MAX_SEARCH_QUERY_LENGTH);
         if ($query === '') {
             return new JsonResponse(['success' => true, 'pages' => []]);
         }
@@ -716,13 +720,12 @@ final readonly class AjaxController
 
             $rows = $qb->executeQuery()->fetchAllAssociative();
 
-            $pages = array_map(static function (array $row): array {
-                return [
-                    'uid'   => (int) $row['uid'],
-                    'title' => (string) $row['title'],
-                    'slug'  => (string) ($row['slug'] ?? ''),
-                ];
-            }, $rows);
+            /** @var list<array{uid: int|string, title: string, slug: string}> $rows */
+            $pages = array_map(static fn (array $row): array => [
+                'uid'   => (int) $row['uid'],
+                'title' => $row['title'],
+                'slug'  => $row['slug'],
+            ], $rows);
 
             return new JsonResponse(['success' => true, 'pages' => $pages]);
         } catch (Throwable $e) {
@@ -875,9 +878,13 @@ final readonly class AjaxController
             return $content;
         }
 
-        $hasHtmlBlocks     = (bool) preg_match('/<(p|div|h[1-6]|ul|ol|li|table|blockquote)\b/i', $content);
-        $hasInlineMarkdown = (bool) preg_match('/\*\*.+?\*\*/', $content);
-        $hasBlockMarkdown  = (bool) preg_match('/(^#{1,6}\s|^[-*]\s|^\d+\.\s)/m', $content);
+        $hasHtmlBlocks     = preg_match('/<(p|div|h[1-6]|ul|ol|li|table|blockquote)\b/i', $content) === 1;
+        $hasInlineMarkdown = preg_match('/\*\*.+?\*\*/', $content) === 1
+            || preg_match('/(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)/', $content) === 1
+            || preg_match('/`[^`]+`/', $content) === 1
+            || preg_match('/~~.+?~~/', $content) === 1
+            || preg_match('/\[.+?\]\(.+?\)/', $content) === 1;
+        $hasBlockMarkdown = preg_match('/(^#{1,6}\s|^[-*]\s|^\d+\.\s)/m', $content) === 1;
 
         if (!$hasInlineMarkdown && !$hasBlockMarkdown) {
             return $content;
@@ -917,7 +924,7 @@ final readonly class AjaxController
             }
 
             // Headings: # → h2, ## → h3 (h1 is reserved for page title)
-            if (preg_match('/^(#{1,6})\s+(.+)$/', $trimmed, $m)) {
+            if (preg_match('/^(#{1,6})\s+(.+)$/', $trimmed, $m) === 1) {
                 if ($inList !== null) {
                     $html[] = '</' . $inList . '>';
                     $inList = null;
@@ -930,7 +937,7 @@ final readonly class AjaxController
             }
 
             // Unordered list: - item or * item
-            if (preg_match('/^[-*]\s+(.+)$/', $trimmed, $m)) {
+            if (preg_match('/^[-*]\s+(.+)$/', $trimmed, $m) === 1) {
                 if ($inList !== 'ul') {
                     if ($inList !== null) {
                         $html[] = '</' . $inList . '>';
@@ -946,7 +953,7 @@ final readonly class AjaxController
             }
 
             // Ordered list: 1. item
-            if (preg_match('/^\d+\.\s+(.+)$/', $trimmed, $m)) {
+            if (preg_match('/^\d+\.\s+(.+)$/', $trimmed, $m) === 1) {
                 if ($inList !== 'ol') {
                     if ($inList !== null) {
                         $html[] = '</' . $inList . '>';
@@ -982,6 +989,10 @@ final readonly class AjaxController
     private function wrapBareTextBlocks(string $content): string
     {
         $blocks = preg_split('/\n{2,}/', $content);
+        if ($blocks === false) {
+            return $content;
+        }
+
         $result = [];
 
         foreach ($blocks as $block) {
@@ -992,7 +1003,7 @@ final readonly class AjaxController
             }
 
             // Already an HTML block element — keep as-is
-            if (preg_match('/^<(p|div|h[1-6]|ul|ol|li|table|blockquote|hr)\b/i', $trimmed)) {
+            if (preg_match('/^<(p|div|h[1-6]|ul|ol|li|table|blockquote|hr)\b/i', $trimmed) === 1) {
                 $result[] = $trimmed;
             } else {
                 // Bare text — wrap in <p>, preserve internal line breaks
@@ -1017,7 +1028,7 @@ final readonly class AjaxController
             '/\[(.+?)\]\((.+?)\)/',
             static function (array $m): string {
                 $url = trim($m[2]);
-                if (preg_match('#^(https?://|/|#)#i', $url)) {
+                if (preg_match('#^(https?://|/|\#)#i', $url) === 1) {
                     return '<a href="' . htmlspecialchars($url, ENT_QUOTES) . '">' . $m[1] . '</a>';
                 }
 

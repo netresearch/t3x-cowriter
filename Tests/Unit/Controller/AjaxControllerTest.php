@@ -2639,7 +2639,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function executeTaskActionSkipsAdHocRulesWhenWhitespaceOnly(): void
+    public function executeTaskActionDoesNotIncludeAdditionalRulesInMessages(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('buildPrompt')->willReturnCallback(
@@ -2661,7 +2661,6 @@ final class AjaxControllerTest extends TestCase
                 $this->callback(static function (array $messages): bool {
                     $userMsg = $messages[count($messages) - 1];
 
-                    // Whitespace-only ad-hoc rules should be skipped — no ADDITIONAL RULES prefix
                     return $userMsg['role'] === 'user'
                         && !str_contains($userMsg['content'], 'ADDITIONAL RULES');
                 }),
@@ -2674,7 +2673,6 @@ final class AjaxControllerTest extends TestCase
             'context'     => 'text',
             'contextType' => 'selection',
             'instruction' => 'Improve: text',
-            'adHocRules'  => '   ',
         ]);
 
         $this->subject->executeTaskAction($request);

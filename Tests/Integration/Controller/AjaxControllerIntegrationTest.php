@@ -28,6 +28,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 /**
@@ -74,6 +75,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
             $this->contextMock,
             new NullLogger(),
             $this->createMock(ContextAssemblyServiceInterface::class),
+            $this->createMock(ConnectionPool::class),
         );
     }
 
