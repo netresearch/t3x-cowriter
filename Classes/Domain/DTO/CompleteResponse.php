@@ -28,6 +28,8 @@ final readonly class CompleteResponse implements JsonSerializable
         public ?string $model,
         public ?string $finishReason,
         public ?UsageData $usage,
+        public bool $wasTruncated,
+        public bool $wasFiltered,
         public ?string $error,
         public ?int $retryAfter,
     ) {}
@@ -46,6 +48,8 @@ final readonly class CompleteResponse implements JsonSerializable
             model: $response->model ?? '',
             finishReason: $response->finishReason ?? '',
             usage: UsageData::fromUsageStatistics($response->usage),
+            wasTruncated: $response->wasTruncated(),
+            wasFiltered: $response->wasFiltered(),
             error: null,
             retryAfter: null,
         );
@@ -62,6 +66,8 @@ final readonly class CompleteResponse implements JsonSerializable
             model: null,
             finishReason: null,
             usage: null,
+            wasTruncated: false,
+            wasFiltered: false,
             error: $message,
             retryAfter: null,
         );
@@ -84,6 +90,8 @@ final readonly class CompleteResponse implements JsonSerializable
             model: null,
             finishReason: null,
             usage: null,
+            wasTruncated: false,
+            wasFiltered: false,
             error: 'Rate limit exceeded. Please try again later.',
             retryAfter: $retryAfter,
         );
@@ -103,6 +111,8 @@ final readonly class CompleteResponse implements JsonSerializable
             $data['model']        = $this->model;
             $data['finishReason'] = $this->finishReason;
             $data['usage']        = $this->usage?->jsonSerialize();
+            $data['wasTruncated'] = $this->wasTruncated;
+            $data['wasFiltered']  = $this->wasFiltered;
         } else {
             $data['error'] = $this->error;
             if ($this->retryAfter !== null) {

@@ -54,6 +54,7 @@ export class AIService {
         vision: null,
         translate: null,
         templates: null,
+        tools: null,
     };
 
     constructor() {
@@ -68,6 +69,7 @@ export class AIService {
             this._routes.vision = TYPO3.settings.ajaxUrls.tx_cowriter_vision || null;
             this._routes.translate = TYPO3.settings.ajaxUrls.tx_cowriter_translate || null;
             this._routes.templates = TYPO3.settings.ajaxUrls.tx_cowriter_templates || null;
+            this._routes.tools = TYPO3.settings.ajaxUrls.tx_cowriter_tools || null;
         }
     }
 
@@ -392,6 +394,32 @@ export class AIService {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text, targetLanguage, ...options }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Execute a tool-calling request.
+     *
+     * @param {string} prompt - The prompt for the LLM
+     * @param {string[]} [tools=[]] - Tool names to enable
+     * @returns {Promise<{success: boolean, content: string, toolCalls: Array|null, finishReason: string}>}
+     */
+    async executeTools(prompt, tools = []) {
+        if (!this._routes.tools) {
+            throw new Error('Tools route not configured.');
+        }
+
+        const response = await fetch(this._routes.tools, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, tools }),
         });
 
         if (!response.ok) {

@@ -32,3 +32,6 @@ services:
 
   Netresearch\T3Cowriter\Controller\TemplateController:
     public: true
+
+  Netresearch\T3Cowriter\Controller\ToolController:
+    public: true
