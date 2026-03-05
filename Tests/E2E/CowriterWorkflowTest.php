@@ -166,7 +166,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
 
     #[Test]
     #[DataProvider('xssPayloadProvider')]
-    public function completeWorkflowEscapesXssFromLlm(string $maliciousContent, string $description): void
+    public function completeWorkflowReturnsRawLlmContent(string $maliciousContent, string $description): void
     {
         // Arrange: LLM returns malicious content (simulating prompt injection attack)
         $llmResponse = $this->createOpenAiResponse(
@@ -183,15 +183,12 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $request = $this->createJsonRequest(['prompt' => 'Improve this text']);
         $result  = $stack['controller']->completeAction($request);
 
-        // Assert: XSS content is escaped through the entire stack
+        // Assert: Raw content returned in JSON (JSON encoding is inherently XSS-safe;
+        // frontend sanitizes via DOMParser before DOM insertion)
         $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($data);
         self::assertTrue($data['success']);
-
-        // Verify HTML entities are used, not raw tags
-        self::assertStringNotContainsString('<', $data['content'], "Raw < found in: {$description}");
-        self::assertStringNotContainsString('>', $data['content'], "Raw > found in: {$description}");
-        self::assertStringContainsString('&lt;', $data['content'], "Missing escaped < in: {$description}");
+        self::assertSame($maliciousContent, $data['content'], "Content mismatch for: {$description}");
     }
 
     /**
@@ -226,9 +223,9 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     }
 
     #[Test]
-    public function completeWorkflowEscapesXssInModelName(): void
+    public function completeWorkflowReturnsRawModelName(): void
     {
-        // Arrange: LLM returns XSS in model field (edge case)
+        // Arrange: LLM returns special chars in model field
         $llmResponse = new CompletionResponse(
             content: 'Normal response',
             model: '<script>alert("xss")</script>',
@@ -246,11 +243,10 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $request = $this->createJsonRequest(['prompt' => 'Test']);
         $result  = $stack['controller']->completeAction($request);
 
-        // Assert: Model field is also escaped
+        // Assert: Raw content in JSON (JSON encoding is inherently safe)
         $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($data);
-        self::assertStringNotContainsString('<script>', $data['model']);
-        self::assertStringContainsString('&lt;script&gt;', $data['model']);
+        self::assertSame('<script>alert("xss")</script>', $data['model']);
     }
 
     // =========================================================================
@@ -813,7 +809,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     }
 
     #[Test]
-    public function streamWorkflowEscapesXssInChunks(): void
+    public function streamWorkflowReturnsRawContentInChunks(): void
     {
         $stack  = $this->createStreamingStack(['<script>alert(1)</script>']);
         $config = $this->createLlmConfiguration();
@@ -825,17 +821,16 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $events = $this->parseSseEvents((string) $result->getBody());
         self::assertCount(2, $events); // 1 content + 1 done
 
-        // XSS content must be escaped
-        self::assertStringNotContainsString('<script>', $events[0]['content']);
-        self::assertStringContainsString('&lt;script&gt;', $events[0]['content']);
+        // Raw content in JSON-encoded SSE data (JSON encoding is inherently safe)
+        self::assertSame('<script>alert(1)</script>', $events[0]['content']);
     }
 
     #[Test]
-    public function streamWorkflowEscapesXssInModelName(): void
+    public function streamWorkflowReturnsRawModelName(): void
     {
         $stack = $this->createStreamingStack(['Hello']);
 
-        // Create config with XSS in model name
+        // Create config with special chars in model name
         $config = self::createStub(\Netresearch\NrLlm\Domain\Model\LlmConfiguration::class);
         $config->method('getIdentifier')->willReturn('test');
         $config->method('getName')->willReturn('Test');
@@ -849,8 +844,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $events    = $this->parseSseEvents((string) $result->getBody());
         $doneEvent = end($events);
         self::assertTrue($doneEvent['done']);
-        self::assertStringNotContainsString('<img', $doneEvent['model']);
-        self::assertStringContainsString('&lt;img', $doneEvent['model']);
+        self::assertSame('<img onerror=alert(1)>', $doneEvent['model']);
     }
 
     #[Test]
@@ -1226,7 +1220,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     }
 
     #[Test]
-    public function executeTaskWorkflowEscapesXssFromLlm(): void
+    public function executeTaskWorkflowReturnsRawLlmContent(): void
     {
         $llmResponse = $this->createOpenAiResponse(
             content: '<script>document.cookie</script>Malicious response',
@@ -1249,11 +1243,12 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         ]);
         $result = $stack['controller']->executeTaskAction($request);
 
+        // Raw content in JSON (JSON encoding is inherently safe;
+        // frontend sanitizes via DOMParser before DOM insertion)
         $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($data);
         self::assertTrue($data['success']);
-        self::assertStringNotContainsString('<script>', $data['content']);
-        self::assertStringContainsString('&lt;script&gt;', $data['content']);
+        self::assertSame('<script>document.cookie</script>Malicious response', $data['content']);
     }
 
     #[Test]
