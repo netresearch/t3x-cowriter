@@ -1,0 +1,12 @@
+.cowriter-result {
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--typo3-component-border-color);
+    border-radius: var(--typo3-component-border-radius);
+    padding: var(--typo3-modal-padding, 1rem);
+}
+.cowriter-result--empty {
+    color: var(--typo3-text-color-secondary);
+    font-style: italic;
+}

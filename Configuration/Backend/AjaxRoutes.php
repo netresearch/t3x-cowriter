@@ -67,4 +67,8 @@ return [
         'path'   => '/cowriter/tools',
         'target' => ToolController::class . '::executeAction',
     ],
+    'tx_cowriter_page_search' => [
+        'path'   => '/cowriter/page-search',
+        'target' => AjaxController::class . '::searchPagesAction',
+    ],
 ];

@@ -77,7 +77,7 @@ On slider change: GET /cowriter/context?table=tt_content&uid=123&scope=page
 On execute: POST /cowriter/task-execute
     { taskUid, context, contextScope, recordContext: {table, uid, field},
       referencePages: [{pid: 5, relation: "reference material"}],
-      adHocRules, editorCapabilities }
+      instruction, editorCapabilities }
     ↓
 Backend assembles full context from DB → builds LLM prompt → returns result
 ```

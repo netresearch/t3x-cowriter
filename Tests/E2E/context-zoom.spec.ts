@@ -172,14 +172,14 @@ test.describe('Cowriter Context Zoom', () => {
     await clickCowriterButton(page);
     const dialog = await waitForModal(page);
 
-    // Ad-hoc rules textarea
-    const adHocRules = dialog.locator('[data-role="ad-hoc-rules"]');
-    await expect(adHocRules).toBeVisible();
-    await expect(adHocRules).toHaveAttribute('placeholder', /formal tone/);
+    // Instruction textarea
+    const instruction = dialog.locator('[data-role="instruction"]');
+    await expect(instruction).toBeVisible();
+    await expect(instruction).toHaveAttribute('placeholder', /what the AI should do/);
 
     // Should be editable
-    await adHocRules.fill('Keep it under 50 words');
-    await expect(adHocRules).toHaveValue('Keep it under 50 words');
+    await instruction.fill('Keep it under 50 words');
+    await expect(instruction).toHaveValue('Keep it under 50 words');
   });
 
   test('should execute task and show result preview', async ({

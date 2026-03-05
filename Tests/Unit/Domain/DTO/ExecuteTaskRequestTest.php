@@ -31,21 +31,21 @@ final class ExecuteTaskRequestTest extends TestCase
             taskUid: 42,
             context: 'Some text',
             contextType: 'selection',
-            adHocRules: 'Be formal',
+            instruction: 'Improve this text',
             configuration: 'openai-gpt4',
         );
 
         self::assertSame(42, $dto->taskUid);
         self::assertSame('Some text', $dto->context);
         self::assertSame('selection', $dto->contextType);
-        self::assertSame('Be formal', $dto->adHocRules);
+        self::assertSame('Improve this text', $dto->instruction);
         self::assertSame('openai-gpt4', $dto->configuration);
     }
 
     #[Test]
     public function constructWithNullConfiguration(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do something', null);
         self::assertNull($dto->configuration);
     }
 
@@ -60,7 +60,7 @@ final class ExecuteTaskRequestTest extends TestCase
             'taskUid'       => 5,
             'context'       => 'Hello world',
             'contextType'   => 'content_element',
-            'adHocRules'    => 'Keep it short',
+            'instruction'   => 'Improve the text',
             'configuration' => 'claude-config',
         ]);
 
@@ -69,7 +69,7 @@ final class ExecuteTaskRequestTest extends TestCase
         self::assertSame(5, $dto->taskUid);
         self::assertSame('Hello world', $dto->context);
         self::assertSame('content_element', $dto->contextType);
-        self::assertSame('Keep it short', $dto->adHocRules);
+        self::assertSame('Improve the text', $dto->instruction);
         self::assertSame('claude-config', $dto->configuration);
     }
 
@@ -83,7 +83,7 @@ final class ExecuteTaskRequestTest extends TestCase
         self::assertSame(0, $dto->taskUid);
         self::assertSame('', $dto->context);
         self::assertSame('', $dto->contextType);
-        self::assertSame('', $dto->adHocRules);
+        self::assertSame('', $dto->instruction);
         self::assertNull($dto->configuration);
     }
 
@@ -126,7 +126,7 @@ final class ExecuteTaskRequestTest extends TestCase
             'taskUid'     => 'not-a-number',
             'context'     => ['array'],
             'contextType' => 123,
-            'adHocRules'  => true,
+            'instruction' => true,
         ]);
 
         $dto = ExecuteTaskRequest::fromRequest($request);
@@ -134,13 +134,13 @@ final class ExecuteTaskRequestTest extends TestCase
         self::assertSame(0, $dto->taskUid);
         self::assertSame('', $dto->context);
         self::assertSame('123', $dto->contextType);
-        self::assertSame('1', $dto->adHocRules);
+        self::assertSame('1', $dto->instruction);
     }
 
     #[Test]
     public function fromRequestHandlesNumericStringTaskUid(): void
     {
-        $request = $this->createJsonRequest(['taskUid' => '42', 'context' => 'text', 'contextType' => 'selection']);
+        $request = $this->createJsonRequest(['taskUid' => '42', 'context' => 'text', 'contextType' => 'selection', 'instruction' => 'Do it']);
 
         $dto = ExecuteTaskRequest::fromRequest($request);
 
@@ -154,21 +154,45 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function isValidReturnsTrueForValidRequest(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'Some context', 'selection', '', null);
+        $dto = new ExecuteTaskRequest(1, 'Some context', 'selection', 'Improve this', null);
         self::assertTrue($dto->isValid());
     }
 
     #[Test]
     public function isValidReturnsTrueWithContentElementType(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'Some context', 'content_element', '', null);
+        $dto = new ExecuteTaskRequest(1, 'Some context', 'content_element', 'Improve this', null);
         self::assertTrue($dto->isValid());
     }
 
     #[Test]
-    public function isValidReturnsTrueWithAdHocRules(): void
+    public function isValidReturnsTrueWithInstruction(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'Some context', 'selection', 'Be formal', 'config');
+        $dto = new ExecuteTaskRequest(1, 'Some context', 'selection', 'Be formal and concise', 'config');
+        self::assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidAcceptsZeroTaskUid(): void
+    {
+        // taskUid=0 is custom mode (no task)
+        $dto = new ExecuteTaskRequest(0, '', '', 'Custom instruction', null);
+        self::assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidAcceptsEmptyContextWithInstruction(): void
+    {
+        // Empty context is valid (custom mode, no editor content)
+        $dto = new ExecuteTaskRequest(1, '', '', 'Write a blog post about AI', null);
+        self::assertTrue($dto->isValid());
+    }
+
+    #[Test]
+    public function isValidAcceptsEmptyContextTypeWhenContextEmpty(): void
+    {
+        // Empty contextType is valid when context is empty
+        $dto = new ExecuteTaskRequest(0, '', '', 'Custom instruction', null);
         self::assertTrue($dto->isValid());
     }
 
@@ -178,29 +202,26 @@ final class ExecuteTaskRequestTest extends TestCase
     public static function invalidRequestProvider(): array
     {
         return [
-            'zero task UID' => [
-                new ExecuteTaskRequest(0, 'text', 'selection', '', null),
-            ],
             'negative task UID' => [
-                new ExecuteTaskRequest(-1, 'text', 'selection', '', null),
+                new ExecuteTaskRequest(-1, 'text', 'selection', 'Do it', null),
             ],
-            'empty context' => [
-                new ExecuteTaskRequest(1, '', 'selection', '', null),
+            'invalid context type with non-empty context' => [
+                new ExecuteTaskRequest(1, 'text', 'invalid', 'Do it', null),
             ],
-            'whitespace-only context' => [
-                new ExecuteTaskRequest(1, '   ', 'selection', '', null),
-            ],
-            'invalid context type' => [
-                new ExecuteTaskRequest(1, 'text', 'invalid', '', null),
-            ],
-            'empty context type' => [
-                new ExecuteTaskRequest(1, 'text', '', '', null),
+            'empty context type with non-empty context' => [
+                new ExecuteTaskRequest(1, 'text', '', 'Do it', null),
             ],
             'context exceeds max length' => [
-                new ExecuteTaskRequest(1, str_repeat('a', 32769), 'selection', '', null),
+                new ExecuteTaskRequest(1, str_repeat('a', 32769), 'selection', 'Do it', null),
             ],
-            'ad-hoc rules exceed max length' => [
-                new ExecuteTaskRequest(1, 'text', 'selection', str_repeat('a', 4097), null),
+            'empty instruction' => [
+                new ExecuteTaskRequest(1, 'text', 'selection', '', null),
+            ],
+            'whitespace-only instruction' => [
+                new ExecuteTaskRequest(1, 'text', 'selection', '   ', null),
+            ],
+            'instruction exceeds max length' => [
+                new ExecuteTaskRequest(1, 'text', 'selection', str_repeat('a', 32769), null),
             ],
         ];
     }
@@ -215,14 +236,14 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function isValidAcceptsMaxLengthContext(): void
     {
-        $dto = new ExecuteTaskRequest(1, str_repeat('a', 32768), 'selection', '', null);
+        $dto = new ExecuteTaskRequest(1, str_repeat('a', 32768), 'selection', 'Do it', null);
         self::assertTrue($dto->isValid());
     }
 
     #[Test]
-    public function isValidAcceptsMaxLengthAdHocRules(): void
+    public function isValidAcceptsMaxLengthInstruction(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', str_repeat('a', 4096), null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', str_repeat('a', 32768), null);
         self::assertTrue($dto->isValid());
     }
 
@@ -237,7 +258,7 @@ final class ExecuteTaskRequestTest extends TestCase
             'taskUid'            => 1,
             'context'            => 'text',
             'contextType'        => 'selection',
-            'adHocRules'         => '',
+            'instruction'        => 'Improve',
             'editorCapabilities' => 'bold, italic, tables, lists',
         ]);
 
@@ -263,14 +284,14 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function isValidRejectsTooLongEditorCapabilities(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, str_repeat('a', 2049));
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, str_repeat('a', 2049));
         self::assertFalse($dto->isValid());
     }
 
     #[Test]
     public function isValidAcceptsMaxLengthEditorCapabilities(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, str_repeat('a', 2048));
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, str_repeat('a', 2048));
         self::assertTrue($dto->isValid());
     }
 
@@ -312,7 +333,7 @@ final class ExecuteTaskRequestTest extends TestCase
             $rc = in_array($scope, ['element', 'page', 'ancestors_1', 'ancestors_2'], true)
                 ? ['table' => 'tt_content', 'uid' => 1, 'field' => 'bodytext']
                 : null;
-            $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', $scope, $rc);
+            $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', $scope, $rc);
             self::assertTrue($dto->isValid(), "contextScope '$scope' should be valid");
         }
     }
@@ -320,7 +341,7 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function isValidRejectsInvalidContextScope(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', 'invalid_scope');
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'invalid_scope');
         self::assertFalse($dto->isValid());
     }
 
@@ -362,7 +383,7 @@ final class ExecuteTaskRequestTest extends TestCase
             1,
             'text',
             'selection',
-            '',
+            'Do it',
             null,
             '',
             'page',
@@ -374,7 +395,7 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function isValidAcceptsNullRecordContext(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', '', null);
         self::assertTrue($dto->isValid());
     }
 
@@ -385,7 +406,7 @@ final class ExecuteTaskRequestTest extends TestCase
             1,
             'text',
             'selection',
-            '',
+            'Do it',
             null,
             '',
             'page',
@@ -397,21 +418,21 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function isValidRequiresRecordContextWhenScopeIsElement(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', 'element', null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'element', null);
         self::assertFalse($dto->isValid());
     }
 
     #[Test]
     public function isValidRequiresRecordContextWhenScopeIsPage(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', 'page', null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'page', null);
         self::assertFalse($dto->isValid());
     }
 
     #[Test]
     public function isValidRequiresRecordContextWhenScopeIsAncestors(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', 'ancestors_1', null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'ancestors_1', null);
         self::assertFalse($dto->isValid());
     }
 
@@ -455,7 +476,7 @@ final class ExecuteTaskRequestTest extends TestCase
     public function isValidRejectsTooManyReferencePages(): void
     {
         $pages = array_fill(0, 11, ['pid' => 1, 'relation' => 'test']);
-        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null, $pages);
+        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', '', null, $pages);
         self::assertFalse($dto->isValid());
     }
 
@@ -463,7 +484,7 @@ final class ExecuteTaskRequestTest extends TestCase
     public function isValidAcceptsTenReferencePages(): void
     {
         $pages = array_fill(0, 10, ['pid' => 1, 'relation' => 'test']);
-        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', '', null, '', '', null, $pages);
+        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', '', null, $pages);
         self::assertTrue($dto->isValid());
     }
 
@@ -477,16 +498,16 @@ final class ExecuteTaskRequestTest extends TestCase
         // Kills MBString mutant #63: mb_strlen → strlen for context
         // 32768 emojis = 32768 chars (within limit) but 131072 bytes (over limit with strlen)
         $emoji = "\xF0\x9F\x92\xA1"; // U+1F4A1 (lightbulb), 4 bytes
-        $dto   = new ExecuteTaskRequest(1, str_repeat($emoji, 32768), 'selection', '', null);
+        $dto   = new ExecuteTaskRequest(1, str_repeat($emoji, 32768), 'selection', 'Do it', null);
         self::assertTrue($dto->isValid());
     }
 
     #[Test]
-    public function isValidUsesMultiByteForAdHocRulesLength(): void
+    public function isValidUsesMultiByteForInstructionLength(): void
     {
-        // Kills MBString mutant #64: mb_strlen → strlen for adHocRules
+        // Kills MBString mutant: mb_strlen → strlen for instruction
         $emoji = "\xF0\x9F\x92\xA1";
-        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', str_repeat($emoji, 4096), null);
+        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', str_repeat($emoji, 32768), null);
         self::assertTrue($dto->isValid());
     }
 
@@ -495,7 +516,7 @@ final class ExecuteTaskRequestTest extends TestCase
     {
         // Kills MBString mutant #65: mb_strlen → strlen for editorCapabilities
         $emoji = "\xF0\x9F\x92\xA1";
-        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', '', null, str_repeat($emoji, 2048));
+        $dto   = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, str_repeat($emoji, 2048));
         self::assertTrue($dto->isValid());
     }
 
@@ -512,7 +533,7 @@ final class ExecuteTaskRequestTest extends TestCase
             1,
             'text',
             'selection',
-            '',
+            'Do it',
             null,
             '',
             'page',
@@ -534,7 +555,7 @@ final class ExecuteTaskRequestTest extends TestCase
             1,
             'text',
             'selection',
-            '',
+            'Do it',
             null,
             '',
             'page',
@@ -552,7 +573,7 @@ final class ExecuteTaskRequestTest extends TestCase
             1,
             'text',
             'selection',
-            '',
+            'Do it',
             null,
             '',
             'page',
@@ -570,7 +591,7 @@ final class ExecuteTaskRequestTest extends TestCase
             1,
             'text',
             'selection',
-            '',
+            'Do it',
             null,
             '',
             'page',
@@ -586,8 +607,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestRejectsRecordContextWithEmptyTableValidUidAndField(): void
     {
-        // Kills LogicalOr #78: ($table === '' || $uid <= 0) → ($table === '' && $uid <= 0)
-        // With &&, empty table + valid uid would NOT trigger the guard
         $request = $this->createJsonRequest([
             'taskUid'       => 1,
             'context'       => 'text',
@@ -602,8 +621,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestRejectsRecordContextWithValidTableUidZeroAndValidField(): void
     {
-        // Kills LogicalOr #79: (($table === '' || $uid <= 0) && $field === '') → different grouping
-        // uid=0 should reject even when table and field are valid
         $request = $this->createJsonRequest([
             'taskUid'       => 1,
             'context'       => 'text',
@@ -618,8 +635,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestRejectsRecordContextWithInvalidFieldRegex(): void
     {
-        // Kills LogicalOr #83: (...|| preg_match !== 1) → (...) && preg_match !== 1
-        // With &&, valid table + valid uid + invalid field would pass
         $request = $this->createJsonRequest([
             'taskUid'       => 1,
             'context'       => 'text',
@@ -634,7 +649,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestRejectsRecordContextFieldStartingWithDigitInExtract(): void
     {
-        // Kills PregMatchRemoveCaret #80: same regex check in extractRecordContext
         $request = $this->createJsonRequest([
             'taskUid'       => 1,
             'context'       => 'text',
@@ -649,7 +663,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestRejectsRecordContextFieldWithTrailingSpecialInExtract(): void
     {
-        // Kills PregMatchRemoveDollar #81
         $request = $this->createJsonRequest([
             'taskUid'       => 1,
             'context'       => 'text',
@@ -664,7 +677,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestAcceptsRecordContextFieldWithUpperCaseInExtract(): void
     {
-        // Kills PregMatchRemoveFlags #82
         $request = $this->createJsonRequest([
             'taskUid'       => 1,
             'context'       => 'text',
@@ -684,8 +696,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestCastsRecordContextUidToInt(): void
     {
-        // Kills CastInt #74: (int) $rc['uid'] → $rc['uid']
-        // Numeric string uid must be cast to int
         $request = $this->createJsonRequest([
             'taskUid'       => 1,
             'context'       => 'text',
@@ -706,7 +716,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestCastsReferencePidToInt(): void
     {
-        // Kills CastInt #84: (int) $page['pid'] → $page['pid']
         $request = $this->createJsonRequest([
             'taskUid'        => 1,
             'context'        => 'text',
@@ -725,8 +734,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestFiltersReferencePagesWithZeroPid(): void
     {
-        // Kills GreaterThan #90: $pid > 0 → $pid >= 0
-        // pid=0 should be filtered out
         $request = $this->createJsonRequest([
             'taskUid'        => 1,
             'context'        => 'text',
@@ -745,8 +752,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestTruncatesReferenceRelationToExactly100MultiByteChars(): void
     {
-        // Kills MBString #89: mb_substr → substr
-        // Kills IncrementInteger #88 / DecrementInteger #87: the 100 boundary
         $emoji    = "\xF0\x9F\x92\xA1"; // 4 bytes per char
         $relation = str_repeat($emoji, 101); // 101 chars, 404 bytes
 
@@ -761,14 +766,12 @@ final class ExecuteTaskRequestTest extends TestCase
 
         $dto = ExecuteTaskRequest::fromRequest($request);
         self::assertCount(1, $dto->referencePages);
-        // With mb_substr: 100 chars. With substr: 100 bytes = 25 chars
         self::assertSame(100, mb_strlen($dto->referencePages[0]['relation'], 'UTF-8'));
     }
 
     #[Test]
     public function fromRequestKeepsRelationExactlyAt100Chars(): void
     {
-        // Kills DecrementInteger #87: mb_substr(relation, 0, 100) → mb_substr(relation, 0, 99)
         $relation = str_repeat('a', 100);
 
         $request = $this->createJsonRequest([
@@ -781,7 +784,6 @@ final class ExecuteTaskRequestTest extends TestCase
         ]);
 
         $dto = ExecuteTaskRequest::fromRequest($request);
-        // Exactly 100 chars: should NOT be truncated
         self::assertSame(100, mb_strlen($dto->referencePages[0]['relation'], 'UTF-8'));
         self::assertSame($relation, $dto->referencePages[0]['relation']);
     }
@@ -793,7 +795,6 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestCastsNumericConfigurationToString(): void
     {
-        // Kills CastString #73: (string) $value → $value
         $request = $this->createJsonRequest([
             'taskUid'       => 1,
             'context'       => 'text',
@@ -813,21 +814,21 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function fromRequestPreservesXssPayloadsVerbatim(): void
     {
-        $xssContext = '<script>alert("xss")</script>';
-        $xssRules   = '"><img src=x onerror=alert(1)>';
+        $xssContext     = '<script>alert("xss")</script>';
+        $xssInstruction = '"><img src=x onerror=alert(1)>';
 
         $request = $this->createJsonRequest([
             'taskUid'     => 1,
             'context'     => $xssContext,
             'contextType' => 'selection',
-            'adHocRules'  => $xssRules,
+            'instruction' => $xssInstruction,
         ]);
 
         $dto = ExecuteTaskRequest::fromRequest($request);
 
         // DTO preserves raw input; escaping is the controller's responsibility
         self::assertSame($xssContext, $dto->context);
-        self::assertSame($xssRules, $dto->adHocRules);
+        self::assertSame($xssInstruction, $dto->instruction);
     }
 
     // =========================================================================

@@ -2,7 +2,8 @@
 // @ts-check
 
 import { Plugin } from "@ckeditor/ckeditor5-core";
-import { ButtonView, createDropdown, addListToDropdown, Model, Collection } from "@ckeditor/ckeditor5-ui";
+import { ButtonView, createDropdown, addListToDropdown, ViewModel } from "@ckeditor/ckeditor5-ui";
+import { Collection } from "@ckeditor/ckeditor5-utils";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
 
@@ -99,21 +100,61 @@ export class Cowriter extends Plugin {
      * @private
      */
     _getRecordContext() {
+        const pattern = /^data\[(\w+)]\[(\d+)]\[(\w+)]$/;
+        const urlPattern = /^edit\[(\w+)]\[(\d+)]$/;
+
+        // Strategy 1: CKEditor 5 sourceElement (textarea itself or a wrapper containing one)
         const el = this.editor.sourceElement;
-        if (!el) return null;
+        if (el) {
+            const textarea = el.tagName === 'TEXTAREA' ? el : el.querySelector('textarea[name^="data["]');
+            if (textarea?.name) {
+                const match = textarea.name.match(pattern);
+                if (match) return { table: match[1], uid: parseInt(match[2], 10), field: match[3] };
+            }
+        }
 
-        // The source element may be the textarea itself or a wrapper containing it
-        const textarea = el.tagName === 'TEXTAREA' ? el : el.querySelector('textarea');
-        if (!textarea?.name) return null;
+        // Strategy 2: Walk up from CKEditor's editable DOM root to find FormEngine textarea
+        // In TYPO3 v13/v14, the textarea may be a sibling/ancestor of the editable area,
+        // not a child of sourceElement (especially with web component wrappers)
+        const editableRoot = this.editor.editing?.view?.getDomRoot();
+        if (editableRoot) {
+            let parent = editableRoot.parentElement;
+            while (parent && parent !== document.body) {
+                const ta = parent.querySelector('textarea[name^="data["]');
+                if (ta?.name) {
+                    const match = ta.name.match(pattern);
+                    if (match) return { table: match[1], uid: parseInt(match[2], 10), field: match[3] };
+                }
+                parent = parent.parentElement;
+            }
+        }
 
-        const match = textarea.name.match(/^data\[(\w+)]\[(\d+)]\[(\w+)]$/);
-        if (!match) return null;
+        // Strategy 3: Search all textareas in the document (fallback for unusual DOM layouts)
+        for (const ta of document.querySelectorAll('textarea[name^="data["]')) {
+            const match = ta.name.match(pattern);
+            if (match) return { table: match[1], uid: parseInt(match[2], 10), field: match[3] };
+        }
 
-        return {
-            table: match[1],
-            uid: parseInt(match[2], 10),
-            field: match[3],
-        };
+        // Strategy 4: Parse TYPO3 edit URL (e.g. ?edit[tt_content][123]=edit)
+        try {
+            const searchStr = window.location.search
+                || window.parent?.location?.search || '';
+            const params = new URLSearchParams(searchStr);
+            for (const [key] of params) {
+                const urlMatch = key.match(urlPattern);
+                if (urlMatch) {
+                    return {
+                        table: urlMatch[1],
+                        uid: parseInt(urlMatch[2], 10),
+                        field: 'bodytext',
+                    };
+                }
+            }
+        } catch {
+            // URL parsing or cross-origin access failed
+        }
+
+        return null;
     }
 
     async init() {
@@ -198,13 +239,42 @@ export class Cowriter extends Plugin {
                 this._isProcessing = true;
 
                 try {
-                    const imageUrl = prompt('Enter image URL for alt text generation:');
-                    if (!imageUrl) return;
+                    // Detect selected image in the editor
+                    const selectedElement = editor.model.document.selection.getSelectedElement();
+                    let imageUrl = '';
+
+                    if (selectedElement && (selectedElement.is('element', 'imageBlock') || selectedElement.is('element', 'imageInline'))) {
+                        imageUrl = selectedElement.getAttribute('src') || '';
+                    }
+
+                    if (!imageUrl) {
+                        // Fallback: check editing view for selected image
+                        const viewSelection = editor.editing.view.document.selection;
+                        const viewElement = viewSelection.getSelectedElement();
+                        if (viewElement) {
+                            const img = viewElement.is('element', 'img')
+                                ? viewElement
+                                : viewElement.getChild?.(0)?.is?.('element', 'img') ? viewElement.getChild(0) : null;
+                            if (img) {
+                                imageUrl = img.getAttribute('src') || '';
+                            }
+                        }
+                    }
+
+                    if (!imageUrl) {
+                        console.warn('[Cowriter Vision] No image selected. Click on an image in the editor first.');
+                        return;
+                    }
 
                     const result = await this._service.analyzeImage(imageUrl);
                     if (result?.success && result.altText) {
                         editor.model.change(writer => {
-                            writer.insertText(result.altText, editor.model.document.selection.getFirstPosition());
+                            // If the selected element is an image, set its alt attribute
+                            if (selectedElement && (selectedElement.is('element', 'imageBlock') || selectedElement.is('element', 'imageInline'))) {
+                                writer.setAttribute('alt', result.altText, selectedElement);
+                            } else {
+                                writer.insertText(result.altText, editor.model.document.selection.getFirstPosition());
+                            }
                         });
                     }
                 } catch (error) {
@@ -223,7 +293,7 @@ export class Cowriter extends Plugin {
             const items = new Collection();
 
             for (const lang of TRANSLATION_LANGUAGES) {
-                const itemModel = new Model({
+                const itemModel = new ViewModel({
                     label: lang.label,
                     languageCode: lang.code,
                     withText: true,
@@ -301,7 +371,7 @@ export class Cowriter extends Plugin {
 
                     const items = new Collection();
                     for (const tmpl of result.templates) {
-                        const itemModel = new Model({
+                        const itemModel = new ViewModel({
                             label: tmpl.name,
                             templateIdentifier: tmpl.identifier,
                             templateDescription: tmpl.description || '',
