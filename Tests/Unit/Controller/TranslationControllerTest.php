@@ -20,6 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
 use TYPO3\CMS\Core\Context\Context;
@@ -100,15 +101,48 @@ final class TranslationControllerTest extends TestCase
     }
 
     #[Test]
-    public function translateActionReturns429WhenRateLimited(): void
+    public function translateActionReturns429WithHeadersWhenRateLimited(): void
     {
+        $resetTime = time() + 60;
         $this->rateLimiterStub->method('checkLimit')
-            ->willReturn(new RateLimitResult(false, 20, 0, time() + 60));
+            ->willReturn(new RateLimitResult(false, 20, 0, $resetTime));
 
         $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
         $response = $this->subject->translateAction($request);
 
         self::assertSame(429, $response->getStatusCode());
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('0', $response->getHeaderLine('X-RateLimit-Remaining'));
+        self::assertNotEmpty($response->getHeaderLine('Retry-After'));
+    }
+
+    #[Test]
+    public function translateActionReturns400ForInvalidJson(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $request  = $this->createRawRequest('{bad json');
+        $response = $this->subject->translateAction($request);
+
+        self::assertSame(400, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertStringContainsString('Invalid JSON', $data['error']);
+    }
+
+    #[Test]
+    public function translateActionReturns400ForExcessiveFieldLength(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $longText = str_repeat('a', 40000);
+        $request  = $this->createJsonRequest(['text' => $longText, 'targetLanguage' => 'de']);
+        $response = $this->subject->translateAction($request);
+
+        self::assertSame(400, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertStringContainsString('maximum length', $data['error']);
     }
 
     #[Test]
@@ -126,10 +160,21 @@ final class TranslationControllerTest extends TestCase
         self::assertSame(500, $response->getStatusCode());
     }
 
+    /**
+     * @param array<string, mixed> $body
+     */
     private function createJsonRequest(array $body): ServerRequestInterface&Stub
     {
+        return $this->createRawRequest(json_encode($body, JSON_THROW_ON_ERROR));
+    }
+
+    private function createRawRequest(string $rawBody): ServerRequestInterface&Stub
+    {
+        $stream = $this->createStub(StreamInterface::class);
+        $stream->method('__toString')->willReturn($rawBody);
+
         $request = $this->createStub(ServerRequestInterface::class);
-        $request->method('getParsedBody')->willReturn($body);
+        $request->method('getBody')->willReturn($stream);
 
         return $request;
     }

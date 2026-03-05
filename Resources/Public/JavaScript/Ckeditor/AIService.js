@@ -41,7 +41,7 @@
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null}}
      * @private
      */
     _routes = {

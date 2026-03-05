@@ -85,4 +85,25 @@ final class VisionRequestTest extends TestCase
         self::assertSame('https://example.com/image.jpg', $request->imageUrl);
         self::assertSame('Generate a concise, descriptive alt text for this image.', $request->prompt);
     }
+
+    #[Test]
+    public function isValidReturnsTrueForNormalInput(): void
+    {
+        $request = new VisionRequest(imageUrl: 'https://example.com/img.jpg', prompt: 'Describe this image');
+        self::assertTrue($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseForExcessiveImageUrlLength(): void
+    {
+        $request = new VisionRequest(imageUrl: str_repeat('a', 40000));
+        self::assertFalse($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseForExcessivePromptLength(): void
+    {
+        $request = new VisionRequest(imageUrl: 'https://example.com/img.jpg', prompt: str_repeat('a', 40000));
+        self::assertFalse($request->isValid());
+    }
 }

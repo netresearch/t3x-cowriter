@@ -11,10 +11,13 @@ namespace Netresearch\T3Cowriter\Controller;
 
 use Netresearch\NrLlm\Domain\Model\PromptTemplate;
 use Netresearch\NrLlm\Domain\Repository\PromptTemplateRepository;
+use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Http\JsonResponse;
 
 /**
@@ -28,11 +31,21 @@ final readonly class TemplateController
 {
     public function __construct(
         private PromptTemplateRepository $templateRepository,
+        private RateLimiterInterface $rateLimiter,
+        private Context $context,
         private LoggerInterface $logger,
     ) {}
 
     public function listAction(ServerRequestInterface $request): ResponseInterface
     {
+        /** @var int|string $userId */
+        $userId          = $this->context->getPropertyFromAspect('backend.user', 'id', 0);
+        $rateLimitResult = $this->rateLimiter->checkLimit((string) $userId);
+
+        if (!$rateLimitResult->allowed) {
+            return $this->rateLimitedResponse($rateLimitResult);
+        }
+
         try {
             $templates = $this->templateRepository->findActive();
             $result    = [];
@@ -64,5 +77,19 @@ final readonly class TemplateController
                 500,
             );
         }
+    }
+
+    private function rateLimitedResponse(RateLimitResult $result): JsonResponse
+    {
+        $response = new JsonResponse(
+            ['success' => false, 'error' => 'Rate limit exceeded. Please try again later.'],
+            429,
+        );
+
+        foreach ($result->getHeaders() as $name => $value) {
+            $response = $response->withAddedHeader($name, $value);
+        }
+
+        return $response->withAddedHeader('Retry-After', (string) $result->getRetryAfter());
     }
 }

@@ -18,11 +18,22 @@ final readonly class VisionRequest
 {
     private const DEFAULT_PROMPT = 'Generate a concise, descriptive alt text for this image.';
 
+    private const MAX_FIELD_LENGTH = 32768;
+
     public function __construct(
         public string $imageUrl,
         public string $prompt = self::DEFAULT_PROMPT,
         public ?string $configuration = null,
     ) {}
+
+    /**
+     * Validate field lengths to prevent resource exhaustion.
+     */
+    public function isValid(): bool
+    {
+        return mb_strlen($this->imageUrl) <= self::MAX_FIELD_LENGTH
+            && mb_strlen($this->prompt) <= self::MAX_FIELD_LENGTH;
+    }
 
     /**
      * @param array<string, mixed> $body

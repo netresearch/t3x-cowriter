@@ -9,10 +9,12 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
+use JsonException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\T3Cowriter\Domain\DTO\ToolRequest;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tools\ContentQueryTool;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -45,14 +47,17 @@ final readonly class ToolController
         $rateLimitResult = $this->rateLimiter->checkLimit((string) $userId);
 
         if (!$rateLimitResult->allowed) {
+            return $this->rateLimitedResponse($rateLimitResult);
+        }
+
+        $body = $this->parseJsonBody($request);
+        if ($body === null) {
             return new JsonResponse(
-                ['success' => false, 'error' => 'Rate limit exceeded. Please try again later.'],
-                429,
+                ['success' => false, 'error' => 'Invalid JSON in request body.'],
+                400,
             );
         }
 
-        /** @var array<string, mixed> $body */
-        $body        = (array) $request->getParsedBody();
         $toolRequest = ToolRequest::fromRequestBody($body);
 
         if ($toolRequest->prompt === '') {
@@ -63,7 +68,7 @@ final readonly class ToolController
         }
 
         try {
-            $tools = [ContentQueryTool::definition()];
+            $tools = $this->resolveTools($toolRequest->enabledTools);
 
             $messages = [
                 ['role' => 'user', 'content' => $toolRequest->prompt],
@@ -93,5 +98,76 @@ final readonly class ToolController
                 500,
             );
         }
+    }
+
+    /**
+     * Resolve enabled tools from request against the allow-list.
+     *
+     * Falls back to all available tools when no valid tools are requested.
+     *
+     * @param list<string> $enabledTools
+     *
+     * @return array<int, array{type: string, function: array{name: string, description: string, parameters: array<string, mixed>}}>
+     */
+    private function resolveTools(array $enabledTools): array
+    {
+        /** @var array<string, array{type: string, function: array{name: string, description: string, parameters: array<string, mixed>}}> $allTools */
+        $allTools = [
+            'contentQuery' => ContentQueryTool::definition(),
+        ];
+
+        if ($enabledTools === []) {
+            return array_values($allTools);
+        }
+
+        $resolved = [];
+        foreach ($enabledTools as $toolName) {
+            if (isset($allTools[$toolName])) {
+                $resolved[] = $allTools[$toolName];
+            }
+        }
+
+        return $resolved !== [] ? $resolved : array_values($allTools);
+    }
+
+    /**
+     * Parse JSON body from request, returning null on failure.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function parseJsonBody(ServerRequestInterface $request): ?array
+    {
+        $rawBody = (string) $request->getBody();
+        if ($rawBody === '') {
+            return [];
+        }
+
+        try {
+            /** @var mixed $decoded */
+            $decoded = json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return null;
+        }
+
+        if (!is_array($decoded)) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $decoded */
+        return $decoded;
+    }
+
+    private function rateLimitedResponse(RateLimitResult $result): JsonResponse
+    {
+        $response = new JsonResponse(
+            ['success' => false, 'error' => 'Rate limit exceeded. Please try again later.'],
+            429,
+        );
+
+        foreach ($result->getHeaders() as $name => $value) {
+            $response = $response->withAddedHeader($name, $value);
+        }
+
+        return $response->withAddedHeader('Retry-After', (string) $result->getRetryAfter());
     }
 }

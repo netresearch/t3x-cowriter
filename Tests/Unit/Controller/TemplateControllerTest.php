@@ -13,6 +13,8 @@ use ArrayIterator;
 use Netresearch\NrLlm\Domain\Model\PromptTemplate;
 use Netresearch\NrLlm\Domain\Repository\PromptTemplateRepository;
 use Netresearch\T3Cowriter\Controller\TemplateController;
+use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\RateLimitResult;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
@@ -20,20 +22,29 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
-use stdClass;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 #[CoversClass(TemplateController::class)]
 final class TemplateControllerTest extends TestCase
 {
-    private PromptTemplateRepository&Stub $templateRepoStub;
+    private PromptTemplateRepository&Stub $templateRepositoryStub;
+    private RateLimiterInterface&Stub $rateLimiterStub;
     private TemplateController $subject;
 
     protected function setUp(): void
     {
-        $this->templateRepoStub = $this->createStub(PromptTemplateRepository::class);
-        $this->subject          = new TemplateController(
-            $this->templateRepoStub,
+        $this->templateRepositoryStub = $this->createStub(PromptTemplateRepository::class);
+        $this->rateLimiterStub        = $this->createStub(RateLimiterInterface::class);
+        $contextStub                  = $this->createStub(Context::class);
+
+        $contextStub->method('getPropertyFromAspect')
+            ->willReturn(1);
+
+        $this->subject = new TemplateController(
+            $this->templateRepositoryStub,
+            $this->rateLimiterStub,
+            $contextStub,
             new NullLogger(),
         );
     }
@@ -41,13 +52,16 @@ final class TemplateControllerTest extends TestCase
     #[Test]
     public function listActionReturnsTemplates(): void
     {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
         $template = $this->createStub(PromptTemplate::class);
-        $template->method('getIdentifier')->willReturn('blog_post');
-        $template->method('getTitle')->willReturn('Blog Post');
-        $template->method('getDescription')->willReturn('Generate a blog post');
+        $template->method('getIdentifier')->willReturn('improve');
+        $template->method('getTitle')->willReturn('Improve Text');
+        $template->method('getDescription')->willReturn('Enhance readability');
         $template->method('getFeature')->willReturn('content');
 
-        $this->templateRepoStub->method('findActive')
+        $this->templateRepositoryStub->method('findActive')
             ->willReturn($this->createQueryResult([$template]));
 
         $request  = $this->createStub(ServerRequestInterface::class);
@@ -56,28 +70,33 @@ final class TemplateControllerTest extends TestCase
         $data = json_decode((string) $response->getBody(), true);
         self::assertTrue($data['success']);
         self::assertCount(1, $data['templates']);
-        self::assertSame('blog_post', $data['templates'][0]['identifier']);
-        self::assertSame('Blog Post', $data['templates'][0]['name']);
+        self::assertSame('improve', $data['templates'][0]['identifier']);
+        self::assertSame('Improve Text', $data['templates'][0]['name']);
     }
 
     #[Test]
-    public function listActionReturnsEmptyArrayWhenNoTemplates(): void
+    public function listActionReturns429WithHeadersWhenRateLimited(): void
     {
-        $this->templateRepoStub->method('findActive')
-            ->willReturn($this->createQueryResult([]));
+        $resetTime = time() + 60;
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(false, 20, 0, $resetTime));
 
         $request  = $this->createStub(ServerRequestInterface::class);
         $response = $this->subject->listAction($request);
 
-        $data = json_decode((string) $response->getBody(), true);
-        self::assertTrue($data['success']);
-        self::assertCount(0, $data['templates']);
+        self::assertSame(429, $response->getStatusCode());
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('0', $response->getHeaderLine('X-RateLimit-Remaining'));
+        self::assertNotEmpty($response->getHeaderLine('Retry-After'));
     }
 
     #[Test]
-    public function listActionReturns500OnError(): void
+    public function listActionReturns500OnRepositoryError(): void
     {
-        $this->templateRepoStub->method('findActive')
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $this->templateRepositoryStub->method('findActive')
             ->willThrowException(new RuntimeException('DB error'));
 
         $request  = $this->createStub(ServerRequestInterface::class);
@@ -89,39 +108,46 @@ final class TemplateControllerTest extends TestCase
     }
 
     #[Test]
-    public function listActionSkipsNonTemplateObjects(): void
+    public function listActionReturnsEmptyArrayWhenNoTemplates(): void
     {
-        $template = $this->createStub(PromptTemplate::class);
-        $template->method('getIdentifier')->willReturn('valid');
-        $template->method('getTitle')->willReturn('Valid');
-        $template->method('getDescription')->willReturn('desc');
-        $template->method('getFeature')->willReturn('cat');
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
-        // Mix in a non-PromptTemplate object
-        $this->templateRepoStub->method('findActive')
-            ->willReturn($this->createQueryResult([new stdClass(), $template]));
+        $this->templateRepositoryStub->method('findActive')
+            ->willReturn($this->createQueryResult([]));
 
         $request  = $this->createStub(ServerRequestInterface::class);
         $response = $this->subject->listAction($request);
 
         $data = json_decode((string) $response->getBody(), true);
-        self::assertCount(1, $data['templates']);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['templates']);
     }
 
     /**
-     * @param list<object> $items
+     * @param list<PromptTemplate&Stub> $items
      */
     private function createQueryResult(array $items): QueryResultInterface&Stub
     {
-        $queryResult = $this->createStub(QueryResultInterface::class);
         $iterator    = new ArrayIterator($items);
+        $queryResult = $this->createStub(QueryResultInterface::class);
 
-        $queryResult->method('current')->willReturnCallback(static fn () => $iterator->current());
-        $queryResult->method('key')->willReturnCallback(static fn () => $iterator->key());
-        $queryResult->method('next')->willReturnCallback(static fn () => $iterator->next());
-        $queryResult->method('rewind')->willReturnCallback(static fn () => $iterator->rewind());
-        $queryResult->method('valid')->willReturnCallback(static fn () => $iterator->valid());
-        $queryResult->method('count')->willReturn(count($items));
+        $queryResult->method('current')
+            ->willReturnCallback(static fn () => $iterator->current());
+        $queryResult->method('next')
+            ->willReturnCallback(static function () use ($iterator): void {
+                $iterator->next();
+            });
+        $queryResult->method('key')
+            ->willReturnCallback(static fn () => $iterator->key());
+        $queryResult->method('valid')
+            ->willReturnCallback(static fn (): bool => $iterator->valid());
+        $queryResult->method('rewind')
+            ->willReturnCallback(static function () use ($iterator): void {
+                $iterator->rewind();
+            });
+        $queryResult->method('count')
+            ->willReturn(count($items));
 
         return $queryResult;
     }

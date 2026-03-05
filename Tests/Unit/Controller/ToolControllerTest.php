@@ -20,6 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
 use TYPO3\CMS\Core\Context\Context;
@@ -49,15 +50,19 @@ final class ToolControllerTest extends TestCase
     }
 
     #[Test]
-    public function executeActionReturnsRateLimitResponse(): void
+    public function executeActionReturns429WithHeadersWhenRateLimited(): void
     {
+        $resetTime = time() + 60;
         $this->rateLimiterStub->method('checkLimit')
-            ->willReturn(new RateLimitResult(false, 20, 0, time() + 60));
+            ->willReturn(new RateLimitResult(false, 20, 0, $resetTime));
 
         $request  = $this->createJsonRequest(['prompt' => 'Find all text elements']);
         $response = $this->subject->executeAction($request);
 
         self::assertSame(429, $response->getStatusCode());
+        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+        self::assertSame('0', $response->getHeaderLine('X-RateLimit-Remaining'));
+        self::assertNotEmpty($response->getHeaderLine('Retry-After'));
     }
 
     #[Test]
@@ -72,6 +77,20 @@ final class ToolControllerTest extends TestCase
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+    }
+
+    #[Test]
+    public function executeActionReturns400ForInvalidJson(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $request  = $this->createRawRequest('not json');
+        $response = $this->subject->executeAction($request);
+
+        self::assertSame(400, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertStringContainsString('Invalid JSON', $data['error']);
     }
 
     #[Test]
@@ -106,6 +125,35 @@ final class ToolControllerTest extends TestCase
     }
 
     #[Test]
+    public function executeActionUsesRequestedToolsFromAllowList(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $completionResponse = new CompletionResponse(
+            content: 'Result',
+            model: 'gpt-4',
+            usage: new UsageStatistics(10, 5, 15),
+            finishReason: 'stop',
+            provider: 'openai',
+            toolCalls: null,
+            metadata: null,
+        );
+
+        $this->llmServiceManagerStub->method('chatWithTools')
+            ->willReturn($completionResponse);
+
+        $request = $this->createJsonRequest([
+            'prompt' => 'Query content',
+            'tools'  => ['contentQuery'],
+        ]);
+        $response = $this->subject->executeAction($request);
+
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertTrue($data['success']);
+    }
+
+    #[Test]
     public function executeActionReturnsErrorOnException(): void
     {
         $this->rateLimiterStub->method('checkLimit')
@@ -122,10 +170,21 @@ final class ToolControllerTest extends TestCase
         self::assertFalse($data['success']);
     }
 
+    /**
+     * @param array<string, mixed> $body
+     */
     private function createJsonRequest(array $body): ServerRequestInterface&Stub
     {
+        return $this->createRawRequest(json_encode($body, JSON_THROW_ON_ERROR));
+    }
+
+    private function createRawRequest(string $rawBody): ServerRequestInterface&Stub
+    {
+        $stream = $this->createStub(StreamInterface::class);
+        $stream->method('__toString')->willReturn($rawBody);
+
         $request = $this->createStub(ServerRequestInterface::class);
-        $request->method('getParsedBody')->willReturn($body);
+        $request->method('getBody')->willReturn($stream);
 
         return $request;
     }

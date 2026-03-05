@@ -95,4 +95,25 @@ final class TranslationRequestTest extends TestCase
         self::assertSame('Hello', $request->text);
         self::assertSame('', $request->targetLanguage);
     }
+
+    #[Test]
+    public function isValidReturnsTrueForNormalInput(): void
+    {
+        $request = new TranslationRequest(text: 'Hello world', targetLanguage: 'de');
+        self::assertTrue($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseForExcessiveTextLength(): void
+    {
+        $request = new TranslationRequest(text: str_repeat('a', 40000), targetLanguage: 'de');
+        self::assertFalse($request->isValid());
+    }
+
+    #[Test]
+    public function isValidReturnsFalseForExcessiveTargetLanguageLength(): void
+    {
+        $request = new TranslationRequest(text: 'Hello', targetLanguage: 'a-very-long-language-code');
+        self::assertFalse($request->isValid());
+    }
 }

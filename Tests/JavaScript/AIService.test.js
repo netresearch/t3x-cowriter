@@ -1071,6 +1071,100 @@ describe('AIService', () => {
         });
     });
 
+    describe('executeTools', () => {
+        it('should throw when tools route is not configured', async () => {
+            const service = new AIService();
+            await expect(service.executeTools('Query content')).rejects.toThrow(
+                'Tools route not configured.'
+            );
+        });
+
+        it('should send POST request with prompt and tools', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_tools = '/typo3/ajax/tx_cowriter_tools';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const mockResponse = {
+                success: true,
+                content: 'Found 5 content elements',
+                toolCalls: [{ name: 'contentQuery', args: { page: 1 } }],
+                finishReason: 'stop',
+            };
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            });
+
+            const service = new ServiceClass();
+            const result = await service.executeTools('Find content', ['contentQuery']);
+
+            expect(fetch).toHaveBeenCalledWith('/typo3/ajax/tx_cowriter_tools', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: 'Find content', tools: ['contentQuery'] }),
+            });
+            expect(result.success).toBe(true);
+            expect(result.content).toBe('Found 5 content elements');
+        });
+
+        it('should throw on non-ok response', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_tools = '/typo3/ajax/tx_cowriter_tools';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                json: () => Promise.resolve({ error: 'Tool execution failed' }),
+            });
+
+            const service = new ServiceClass();
+            await expect(service.executeTools('Query')).rejects.toThrow(
+                'Tool execution failed'
+            );
+        });
+
+        it('should use default empty tools array', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_tools = '/typo3/ajax/tx_cowriter_tools';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ success: true, content: 'result' }),
+            });
+
+            const service = new ServiceClass();
+            await service.executeTools('Find content');
+
+            expect(fetch).toHaveBeenCalledWith('/typo3/ajax/tx_cowriter_tools', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: 'Find content', tools: [] }),
+            });
+        });
+
+        it('should handle json parse failure in error response', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_tools = '/typo3/ajax/tx_cowriter_tools';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 502,
+                json: () => Promise.reject(new Error('not json')),
+            });
+
+            const service = new ServiceClass();
+            await expect(service.executeTools('Query')).rejects.toThrow('Unknown error');
+        });
+    });
+
     describe('exports', () => {
         it('should not export legacy APIType or AIServiceOptions', async () => {
             const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
