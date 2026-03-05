@@ -920,7 +920,7 @@ final class AjaxControllerTest extends TestCase
         $events    = array_filter(explode("\n\n", $body), static fn (string $s): bool => $s !== '');
         $lastEvent = json_decode(substr(end($events), 6), true);
         $this->assertTrue($lastEvent['done']);
-        // Model is returned raw — JSON encoding prevents XSS
+        // Raw content — frontend sanitizes before DOM insertion
         $this->assertSame("test-model's", $lastEvent['model']);
     }
 
@@ -1501,7 +1501,7 @@ final class AjaxControllerTest extends TestCase
         $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
 
         $data = $this->decodeJsonResponse($response);
-        // Raw content — JSON encoding prevents XSS by design
+        // Raw content — frontend sanitizes before DOM insertion
         self::assertSame('fix<test>', $data['tasks'][0]['identifier']);
         self::assertSame('Fix Grammar & Spelling', $data['tasks'][0]['name']);
         self::assertSame('Desc with "quotes"', $data['tasks'][0]['description']);
@@ -1521,7 +1521,7 @@ final class AjaxControllerTest extends TestCase
         $data = $this->decodeJsonResponse($response);
         self::assertTrue($data['success']);
         self::assertCount(1, $data['tasks']);
-        // Raw content — JSON encoding prevents XSS by design
+        // Raw content — frontend sanitizes before DOM insertion
         self::assertSame("it's", $data['tasks'][0]['identifier']);
         self::assertSame("Task's Name", $data['tasks'][0]['name']);
         self::assertSame("It's a description", $data['tasks'][0]['description']);

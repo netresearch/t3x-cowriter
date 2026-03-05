@@ -15,8 +15,8 @@ use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 /**
  * Response DTO for completion AJAX endpoint.
  *
- * JSON responses carry raw data — JSON encoding prevents XSS by design.
- * Content sanitization for DOM insertion is the frontend's responsibility.
+ * Returns raw data in JSON responses — no server-side HTML escaping.
+ * The frontend sanitizes content via DOMParser before DOM insertion.
  *
  * @internal
  */
@@ -35,8 +35,8 @@ final readonly class CompleteResponse implements JsonSerializable
     /**
      * Create a successful response from nr-llm CompletionResponse.
      *
-     * Returns raw content — JSON encoding prevents XSS by design.
-     * Frontend sanitizes content before DOM insertion.
+     * Returns raw content without server-side HTML escaping.
+     * The frontend sanitizes content via DOMParser before DOM insertion.
      */
     public static function success(CompletionResponse $response): self
     {

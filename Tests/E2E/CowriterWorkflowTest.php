@@ -356,12 +356,12 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         ]);
         $result = $stack['controller']->chatAction($request);
 
-        // Assert: All fields escaped
+        // Assert: Raw content returned — frontend sanitizes before DOM insertion
         $data = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($data);
-        self::assertStringNotContainsString('<', $data['content']);
-        self::assertStringNotContainsString('<', $data['model']);
-        self::assertStringNotContainsString('<', $data['finishReason']);
+        self::assertSame('<script>steal()</script>', $data['content']);
+        self::assertSame('<img onerror=alert(1)>', $data['model']);
+        self::assertSame('<svg onload=hack()>', $data['finishReason']);
     }
 
     // =========================================================================
@@ -993,7 +993,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     }
 
     #[Test]
-    public function getTasksWorkflowEscapesXss(): void
+    public function getTasksWorkflowReturnsRawContent(): void
     {
         $stack = $this->createCompleteStack([]);
 
@@ -1014,9 +1014,10 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         self::assertIsArray($data);
         self::assertTrue($data['success']);
         self::assertCount(1, $data['tasks']);
-        self::assertStringNotContainsString('<script>', $data['tasks'][0]['identifier']);
-        self::assertStringNotContainsString('<img', $data['tasks'][0]['name']);
-        self::assertStringNotContainsString('<svg', $data['tasks'][0]['description']);
+        // Raw content — JSON encoding is the transport safety, frontend sanitizes
+        self::assertSame('<script>alert(1)</script>', $data['tasks'][0]['identifier']);
+        self::assertSame('<img onerror=hack>', $data['tasks'][0]['name']);
+        self::assertSame('<svg onload=steal()>', $data['tasks'][0]['description']);
     }
 
     #[Test]

@@ -39,8 +39,8 @@ use TYPO3\CMS\Core\Http\Stream;
  * Provides backend API endpoints for chat and completion requests,
  * routing them through the centralized LlmServiceManager.
  *
- * JSON responses carry raw data — JSON encoding prevents XSS by design.
- * Content sanitization for DOM insertion is the frontend's responsibility.
+ * Returns raw data in JSON responses — no server-side HTML escaping.
+ * The frontend sanitizes content via DOMParser before DOM insertion.
  */
 #[AsController]
 final readonly class AjaxController
