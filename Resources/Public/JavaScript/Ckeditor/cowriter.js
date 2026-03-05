@@ -335,7 +335,9 @@ export class Cowriter extends Plugin {
                     if (dialogResult?.content) {
                         const viewFragment = editor.data.processor.toView(dialogResult.content);
                         const modelFragment = editor.data.toModel(viewFragment);
-                        editor.model.insertContent(modelFragment);
+                        model.change(() => {
+                            editor.model.insertContent(modelFragment);
+                        });
                     }
                 } catch (error) {
                     if (error?.message && error.message !== 'User cancelled') {

@@ -37,15 +37,6 @@ final class VisionRequestTest extends TestCase
     }
 
     #[Test]
-    public function fromRequestBodyParsesConfiguration(): void
-    {
-        $body    = ['imageUrl' => 'https://example.com/image.jpg', 'configuration' => 'openai-gpt4'];
-        $request = VisionRequest::fromRequestBody($body);
-
-        self::assertSame('openai-gpt4', $request->configuration);
-    }
-
-    #[Test]
     public function fromRequestBodyTrimsWhitespace(): void
     {
         $body    = ['imageUrl' => '  https://example.com/image.jpg  ', 'prompt' => '  test  '];
@@ -61,7 +52,6 @@ final class VisionRequestTest extends TestCase
         $request = VisionRequest::fromRequestBody([]);
 
         self::assertSame('', $request->imageUrl);
-        self::assertNull($request->configuration);
     }
 
     #[Test]

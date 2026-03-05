@@ -23,7 +23,6 @@ final readonly class VisionRequest
     public function __construct(
         public string $imageUrl,
         public string $prompt = self::DEFAULT_PROMPT,
-        public ?string $configuration = null,
     ) {}
 
     /**
@@ -43,7 +42,6 @@ final readonly class VisionRequest
         return new self(
             imageUrl: trim(self::extractString($body, 'imageUrl')),
             prompt: trim(self::extractString($body, 'prompt', self::DEFAULT_PROMPT)),
-            configuration: self::extractNullableString($body, 'configuration'),
         );
     }
 
@@ -55,18 +53,5 @@ final readonly class VisionRequest
         $value = $data[$key] ?? $default;
 
         return is_scalar($value) ? (string) $value : $default;
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     */
-    private static function extractNullableString(array $data, string $key): ?string
-    {
-        $value = $data[$key] ?? null;
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        return is_scalar($value) ? trim((string) $value) : null;
     }
 }

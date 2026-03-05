@@ -24,7 +24,6 @@ final readonly class ToolRequest
     public function __construct(
         public string $prompt,
         public array $enabledTools = [],
-        public ?string $configuration = null,
     ) {}
 
     /**
@@ -43,7 +42,6 @@ final readonly class ToolRequest
         return new self(
             prompt: trim(self::extractString($body, 'prompt')),
             enabledTools: self::extractStringList($body, 'tools'),
-            configuration: self::extractNullableString($body, 'configuration'),
         );
     }
 
@@ -55,19 +53,6 @@ final readonly class ToolRequest
         $value = $data[$key] ?? $default;
 
         return is_scalar($value) ? (string) $value : $default;
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     */
-    private static function extractNullableString(array $data, string $key): ?string
-    {
-        $value = $data[$key] ?? null;
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        return is_scalar($value) ? trim((string) $value) : null;
     }
 
     /**

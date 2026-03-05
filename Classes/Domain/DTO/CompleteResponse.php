@@ -104,15 +104,17 @@ final readonly class CompleteResponse implements JsonSerializable
      */
     public function jsonSerialize(): array
     {
-        $data = ['success' => $this->success];
+        $data = [
+            'success'      => $this->success,
+            'wasTruncated' => $this->wasTruncated,
+            'wasFiltered'  => $this->wasFiltered,
+        ];
 
         if ($this->success) {
             $data['content']      = $this->content;
             $data['model']        = $this->model;
             $data['finishReason'] = $this->finishReason;
             $data['usage']        = $this->usage?->jsonSerialize();
-            $data['wasTruncated'] = $this->wasTruncated;
-            $data['wasFiltered']  = $this->wasFiltered;
         } else {
             $data['error'] = $this->error;
             if ($this->retryAfter !== null) {

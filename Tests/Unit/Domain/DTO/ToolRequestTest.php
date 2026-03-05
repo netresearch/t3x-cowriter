@@ -37,7 +37,6 @@ final class ToolRequestTest extends TestCase
         $request = ToolRequest::fromRequestBody($body);
 
         self::assertSame([], $request->enabledTools);
-        self::assertNull($request->configuration);
     }
 
     #[Test]
@@ -56,15 +55,6 @@ final class ToolRequestTest extends TestCase
         $request = ToolRequest::fromRequestBody($body);
 
         self::assertSame('Find elements', $request->prompt);
-    }
-
-    #[Test]
-    public function fromRequestBodyParsesConfiguration(): void
-    {
-        $body    = ['prompt' => 'Find', 'configuration' => 'claude-fast'];
-        $request = ToolRequest::fromRequestBody($body);
-
-        self::assertSame('claude-fast', $request->configuration);
     }
 
     #[Test]

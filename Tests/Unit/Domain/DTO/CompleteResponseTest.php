@@ -126,6 +126,8 @@ final class CompleteResponseTest extends TestCase
 
         $this->assertFalse($json['success']);
         $this->assertSame('Test error', $json['error']);
+        $this->assertFalse($json['wasTruncated']);
+        $this->assertFalse($json['wasFiltered']);
         $this->assertArrayNotHasKey('content', $json);
         $this->assertArrayNotHasKey('model', $json);
         $this->assertArrayNotHasKey('finishReason', $json);
