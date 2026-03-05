@@ -13,6 +13,7 @@ use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 #[CoversClass(TranslationRequest::class)]
 final class TranslationRequestTest extends TestCase
@@ -71,5 +72,27 @@ final class TranslationRequestTest extends TestCase
         $request = TranslationRequest::fromRequestBody($body);
 
         self::assertSame('claude-fast', $request->configuration);
+    }
+
+    #[Test]
+    public function fromRequestBodyHandlesNonScalarText(): void
+    {
+        $body    = ['text' => ['nested', 'array'], 'targetLanguage' => 'de'];
+        $request = TranslationRequest::fromRequestBody($body);
+
+        // Non-scalar text falls back to default empty string
+        self::assertSame('', $request->text);
+        self::assertSame('de', $request->targetLanguage);
+    }
+
+    #[Test]
+    public function fromRequestBodyHandlesNonScalarTargetLanguage(): void
+    {
+        $body    = ['text' => 'Hello', 'targetLanguage' => new stdClass()];
+        $request = TranslationRequest::fromRequestBody($body);
+
+        // Non-scalar targetLanguage falls back to default empty string
+        self::assertSame('Hello', $request->text);
+        self::assertSame('', $request->targetLanguage);
     }
 }

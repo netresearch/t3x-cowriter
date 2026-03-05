@@ -63,4 +63,26 @@ final class VisionRequestTest extends TestCase
         self::assertSame('', $request->imageUrl);
         self::assertNull($request->configuration);
     }
+
+    #[Test]
+    public function fromRequestBodyHandlesNonScalarImageUrl(): void
+    {
+        $body    = ['imageUrl' => ['nested', 'array'], 'prompt' => 'Generate alt text'];
+        $request = VisionRequest::fromRequestBody($body);
+
+        // Non-scalar values fall back to default empty string
+        self::assertSame('', $request->imageUrl);
+        self::assertSame('Generate alt text', $request->prompt);
+    }
+
+    #[Test]
+    public function fromRequestBodyHandlesNonScalarPrompt(): void
+    {
+        $body    = ['imageUrl' => 'https://example.com/image.jpg', 'prompt' => ['array', 'value']];
+        $request = VisionRequest::fromRequestBody($body);
+
+        // Non-scalar prompt falls back to default prompt
+        self::assertSame('https://example.com/image.jpg', $request->imageUrl);
+        self::assertSame('Generate a concise, descriptive alt text for this image.', $request->prompt);
+    }
 }
