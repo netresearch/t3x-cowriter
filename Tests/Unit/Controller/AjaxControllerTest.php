@@ -2401,6 +2401,7 @@ final class AjaxControllerTest extends TestCase
             ->with(
                 $this->callback(static function (array $messages): bool {
                     $userMsg = $messages[count($messages) - 1];
+
                     // Whitespace-only ad-hoc rules should be skipped — no ADDITIONAL RULES prefix
                     return $userMsg['role'] === 'user'
                         && !str_contains($userMsg['content'], 'ADDITIONAL RULES');
