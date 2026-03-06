@@ -386,6 +386,26 @@ final class CompleteResponseTest extends TestCase
     }
 
     #[Test]
+    public function successKeepsShortLegitimateContentWithThinking(): void
+    {
+        $usage              = new UsageStatistics(10, 20, 30);
+        $completionResponse = new CompletionResponse(
+            content: '<p>OK</p>',
+            model: 'test-model',
+            usage: $usage,
+            finishReason: 'stop',
+            provider: 'test-provider',
+            thinking: 'I thought about it and the answer is OK.',
+        );
+
+        $response = CompleteResponse::success($completionResponse);
+
+        // Short but legitimate content is NOT replaced by thinking
+        $this->assertSame('<p>OK</p>', $response->content);
+        $this->assertSame('I thought about it and the answer is OK.', $response->thinking);
+    }
+
+    #[Test]
     public function successKeepsShortContentWhenNoThinking(): void
     {
         $completionResponse = $this->createCompletionResponse('OK');

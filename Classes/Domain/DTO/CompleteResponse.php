@@ -35,13 +35,29 @@ final readonly class CompleteResponse implements JsonSerializable
         public ?string $thinking = null,
     ) {}
 
+    /** Known tiny malformed fragments that indicate the model's answer is in thinking. */
+    private const NON_SUBSTANTIVE_FRAGMENTS = ['</', '<', '/'];
+
     /**
-     * Minimum content length to consider a response substantive.
+     * Determine whether we should replace the model's content with thinking.
      *
-     * If the content is shorter than this and thinking exists, the model
-     * likely put its actual answer inside <think> tags.
+     * Only for effectively empty/whitespace content or known broken fragments
+     * like "</" — not for all short answers (e.g. "<p>OK</p>" is valid).
      */
-    private const MIN_SUBSTANTIVE_CONTENT_LENGTH = 10;
+    private static function shouldUseThinkingAsContent(string $content, bool $hasThinking): bool
+    {
+        if (!$hasThinking) {
+            return false;
+        }
+
+        $trimmed = trim($content);
+
+        if ($trimmed === '') {
+            return true;
+        }
+
+        return in_array($trimmed, self::NON_SUBSTANTIVE_FRAGMENTS, true);
+    }
 
     /**
      * Create a successful response from nr-llm CompletionResponse.
@@ -49,21 +65,19 @@ final readonly class CompleteResponse implements JsonSerializable
      * Returns raw content without server-side HTML escaping.
      * The frontend sanitizes content via DOMParser before DOM insertion.
      *
-     * If the response content is nearly empty but thinking content exists,
-     * the model likely placed its answer inside <think> tags. In that case,
-     * the thinking content is used as the response content to avoid returning
-     * fragments like "</".
+     * If the response content is effectively empty or a tiny malformed fragment
+     * but thinking content exists, the model likely placed its answer inside
+     * <think> tags. In that case, the thinking content is used as the response
+     * content to avoid returning fragments like "</".
      */
     public static function success(CompletionResponse $response): self
     {
         $content  = $response->content ?? '';
         $thinking = $response->thinking;
 
-        // Fallback: if content is empty/tiny but thinking has substance,
-        // the model put its answer in <think> tags — use thinking as content
-        if (mb_strlen(trim($content), 'UTF-8') < self::MIN_SUBSTANTIVE_CONTENT_LENGTH
-            && $response->hasThinking()
-        ) {
+        // Fallback: only for clearly non-substantive content (empty/whitespace
+        // or known broken fragments), not for all short answers.
+        if (self::shouldUseThinkingAsContent($content, $response->hasThinking())) {
             $content  = $thinking ?? '';
             $thinking = null;
         }
