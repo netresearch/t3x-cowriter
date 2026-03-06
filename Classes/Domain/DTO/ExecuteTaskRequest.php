@@ -28,7 +28,10 @@ final readonly class ExecuteTaskRequest
 
     /**
      * Maximum allowed instruction length in characters.
-     * Instruction may contain the resolved template + full editor text.
+     *
+     * The instruction contains the user's directive or the resolved template
+     * with placeholders removed. It must not include the full editor text,
+     * which is provided separately via the context field.
      */
     private const MAX_INSTRUCTION_LENGTH = 32768;
 
