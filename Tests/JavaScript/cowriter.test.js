@@ -189,6 +189,17 @@ describe('Cowriter Plugin', () => {
             expect(plugin._isProcessing).toBe(false);
         });
 
+        it('should log non-cancel errors to console', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockDialogShow.mockRejectedValue(new Error('Network failure'));
+            mockSelection(false, '<p>prompt</p>');
+
+            await capturedButton.fire('execute');
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter]', expect.any(Error));
+            consoleSpy.mockRestore();
+        });
+
         it('should set selection to range before inserting replacement', async () => {
             const range = { isCollapsed: false };
             mockEditor.model.document.selection.getFirstRange.mockReturnValue(range);
@@ -363,6 +374,88 @@ describe('Cowriter Plugin', () => {
 
             const context = plugin._getRecordContext();
             expect(context).toBeNull();
+        });
+
+        it('should find textarea via Strategy 2 (walk up from editable DOM root)', () => {
+            const plugin = new Cowriter();
+
+            // Create a DOM structure where textarea is an ancestor-sibling of editableRoot
+            const grandparent = document.createElement('div');
+            const textarea = document.createElement('textarea');
+            textarea.name = 'data[tx_news_domain_model_news][42][bodytext]';
+            grandparent.appendChild(textarea);
+
+            const editorWrapper = document.createElement('div');
+            grandparent.appendChild(editorWrapper);
+            const editableRoot = document.createElement('div');
+            editorWrapper.appendChild(editableRoot);
+
+            plugin.editor = {
+                sourceElement: document.createElement('div'), // no textarea child
+                editing: { view: { getDomRoot: () => editableRoot } },
+            };
+
+            const context = plugin._getRecordContext();
+            expect(context).toEqual({
+                table: 'tx_news_domain_model_news',
+                uid: 42,
+                field: 'bodytext',
+            });
+        });
+
+        it('should find textarea via Strategy 3 (search all textareas in document)', () => {
+            const plugin = new Cowriter();
+
+            // Put a textarea in the document body
+            const textarea = document.createElement('textarea');
+            textarea.name = 'data[pages][7][abstract]';
+            document.body.appendChild(textarea);
+
+            plugin.editor = {
+                sourceElement: document.createElement('div'),
+                editing: { view: { getDomRoot: () => null } },
+            };
+
+            const context = plugin._getRecordContext();
+            expect(context).toEqual({
+                table: 'pages',
+                uid: 7,
+                field: 'abstract',
+            });
+
+            // Cleanup
+            textarea.remove();
+        });
+
+        it('should find record context via Strategy 4 (URL parsing)', () => {
+            const plugin = new Cowriter();
+
+            // Mock window.location.search
+            const origSearch = window.location.search;
+            Object.defineProperty(window, 'location', {
+                value: { ...window.location, search: '?edit[tt_content][55]=edit' },
+                writable: true,
+                configurable: true,
+            });
+
+            plugin.editor = {
+                sourceElement: null,
+                editing: { view: { getDomRoot: () => null } },
+            };
+
+            const context = plugin._getRecordContext();
+            expect(context).toEqual({
+                table: 'tt_content',
+                uid: 55,
+                field: 'bodytext',
+            });
+
+            // Restore
+            Object.defineProperty(window, 'location', {
+                value: { ...window.location, search: origSearch },
+                writable: true,
+                configurable: true,
+            });
         });
     });
 
@@ -548,6 +641,115 @@ describe('Cowriter Plugin', () => {
             await button.fire('execute');
             expect(mockAnalyzeImage).not.toHaveBeenCalled();
         });
+
+        it('should log error when analyzeImage throws', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockAnalyzeImage.mockRejectedValue(new Error('Vision API failed'));
+
+            const selectedImage = {
+                is: vi.fn((_, name) => name === 'imageBlock'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/img.jpg'),
+            };
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(selectedImage);
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Vision]', expect.any(Error));
+            expect(plugin._isProcessing).toBe(false);
+            consoleSpy.mockRestore();
+        });
+
+        it('should detect image from editing view fallback (img element)', async () => {
+            // No image in model selection
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(null);
+
+            // But editing view has an img element
+            const viewImg = {
+                is: vi.fn((_, name) => name === 'img'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/fallback.jpg'),
+                getChild: vi.fn(),
+            };
+            mockEditor.editing = {
+                view: {
+                    document: {
+                        selection: {
+                            getSelectedElement: vi.fn().mockReturnValue(viewImg),
+                        },
+                    },
+                },
+            };
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/fallback.jpg');
+        });
+
+        it('should detect image from editing view fallback (child img element)', async () => {
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(null);
+
+            const childImg = {
+                is: vi.fn((_, name) => name === 'img'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/child.jpg'),
+            };
+            const viewWrapper = {
+                is: vi.fn(() => false),
+                getAttribute: vi.fn().mockReturnValue(''),
+                getChild: vi.fn((idx) => idx === 0 ? childImg : null),
+            };
+            mockEditor.editing = {
+                view: {
+                    document: {
+                        selection: {
+                            getSelectedElement: vi.fn().mockReturnValue(viewWrapper),
+                        },
+                    },
+                },
+            };
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/child.jpg');
+        });
+
+        it('should use insertText when selected element is not an image', async () => {
+            // Model selection returns a non-image element
+            const nonImageElement = {
+                is: vi.fn(() => false),
+                getAttribute: vi.fn().mockReturnValue(''),
+            };
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(nonImageElement);
+
+            // But editing view has an img (for URL detection)
+            const viewImg = {
+                is: vi.fn((_, name) => name === 'img'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/img.jpg'),
+                getChild: vi.fn(),
+            };
+            mockEditor.editing = {
+                view: {
+                    document: {
+                        selection: {
+                            getSelectedElement: vi.fn().mockReturnValue(viewImg),
+                        },
+                    },
+                },
+            };
+
+            // Mock insertText on writer
+            mockEditor._writer.insertText = vi.fn();
+            const mockPosition = { offset: 0 };
+            mockEditor.model.document.selection.getFirstPosition = vi.fn().mockReturnValue(mockPosition);
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg');
+            // Since selectedElement.is('element', 'imageBlock') returns false, insertText is used
+            expect(mockEditor._writer.insertText).toHaveBeenCalledWith('A cat', mockPosition);
+        });
     });
 
     describe('cowriterTranslate dropdown', () => {
@@ -643,6 +845,18 @@ describe('Cowriter Plugin', () => {
             const dropdown = componentCallbacks['cowriterTranslate']();
             await dropdown.fire('execute', { source: { languageCode: 'de' } });
             expect(mockTranslate).not.toHaveBeenCalled();
+        });
+
+        it('should log error when translate throws', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockTranslate.mockRejectedValue(new Error('Translation API failed'));
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de' } });
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Translate]', expect.any(Error));
+            expect(plugin._isProcessing).toBe(false);
+            consoleSpy.mockRestore();
         });
     });
 
@@ -758,6 +972,30 @@ describe('Cowriter Plugin', () => {
             const dropdown = componentCallbacks['cowriterTemplates']();
             await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
             expect(mockDialogShow).not.toHaveBeenCalled();
+        });
+
+        it('should log error when getTemplates throws', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockGetTemplates.mockRejectedValue(new Error('Templates API failed'));
+
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            dropdown.isOpen = true;
+            await dropdown.fire('change:isOpen');
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Templates]', expect.any(Error));
+            consoleSpy.mockRestore();
+        });
+
+        it('should log non-cancel errors from template execute', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockDialogShow.mockRejectedValue(new Error('Network error'));
+
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Templates]', expect.any(Error));
+            expect(plugin._isProcessing).toBe(false);
+            consoleSpy.mockRestore();
         });
     });
 });

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
+use Doctrine\DBAL\Result;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Task;
@@ -34,8 +35,12 @@ use Psr\Log\LoggerInterface;
 use ReflectionMethod;
 use RuntimeException;
 use stdClass;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Expression\CompositeExpression;
+use TYPO3\CMS\Core\Database\Query\Expression\ExpressionBuilder;
+use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Http\JsonResponse;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
@@ -2572,6 +2577,376 @@ final class AjaxControllerTest extends TestCase
         self::assertSame([], $data['pages']);
     }
 
+    #[Test]
+    public function searchPagesActionReturnsMatchingPagesByTitle(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('1=1');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $rows = [
+            ['uid' => 5, 'title' => 'Test Page', 'slug' => '/test-page'],
+            ['uid' => 12, 'title' => 'Another Test', 'slug' => '/another-test'],
+        ];
+
+        $this->mockQueryBuilderForSearchPages($rows);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Test']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertCount(2, $data['pages']);
+        self::assertSame(5, $data['pages'][0]['uid']);
+        self::assertSame('Test Page', $data['pages'][0]['title']);
+        self::assertSame('/test-page', $data['pages'][0]['slug']);
+        self::assertSame(12, $data['pages'][1]['uid']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionSearchesByNumericUid(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('1=1');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $rows = [
+            ['uid' => 42, 'title' => 'Page 42', 'slug' => '/page-42'],
+        ];
+
+        $this->mockQueryBuilderForSearchPages($rows);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => '42']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertCount(1, $data['pages']);
+        self::assertSame(42, $data['pages'][0]['uid']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionAppliesPermissionClause(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('pages.perms_everybody & 1');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $this->mockQueryBuilderForSearchPages([]);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Home']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['pages']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionSkipsEmptyPermissionClause(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $this->mockQueryBuilderForSearchPages([
+            ['uid' => 1, 'title' => 'Root', 'slug' => '/'],
+        ]);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Root']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertCount(1, $data['pages']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturns403WhenNoBackendUser(): void
+    {
+        unset($GLOBALS['BE_USER']);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Test']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(403, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame('No backend user session.', $data['error']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturns403WhenBackendUserIsNotAuthenticated(): void
+    {
+        $GLOBALS['BE_USER'] = new stdClass();
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Test']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(403, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturns500OnException(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('1=1');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $this->connectionPoolMock
+            ->method('getQueryBuilderForTable')
+            ->willThrowException(new RuntimeException('DB connection failed'));
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Test']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame('Failed to search pages.', $data['error']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    // ===========================================
+    // Markdown Conversion Tests (via Reflection)
+    // ===========================================
+
+    #[Test]
+    public function convertBlockMarkdownConvertsHeadings(): void
+    {
+        $input    = "# Heading 1\n## Heading 2\n### Heading 3";
+        $expected = "<h2>Heading 1</h2>\n<h3>Heading 2</h3>\n<h4>Heading 3</h4>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownConvertsUnorderedList(): void
+    {
+        $input    = "- Item 1\n- Item 2\n* Item 3";
+        $expected = "<ul>\n<li>Item 1</li>\n<li>Item 2</li>\n<li>Item 3</li>\n</ul>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownConvertsOrderedList(): void
+    {
+        $input    = "1. First\n2. Second\n3. Third";
+        $expected = "<ol>\n<li>First</li>\n<li>Second</li>\n<li>Third</li>\n</ol>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownHandlesListTransitionUlToOl(): void
+    {
+        $input    = "- Bullet\n1. Number";
+        $expected = "<ul>\n<li>Bullet</li>\n</ul>\n<ol>\n<li>Number</li>\n</ol>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownHandlesListTransitionOlToUl(): void
+    {
+        $input    = "1. Number\n- Bullet";
+        $expected = "<ol>\n<li>Number</li>\n</ol>\n<ul>\n<li>Bullet</li>\n</ul>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownClosesListBeforeHeading(): void
+    {
+        $input    = "- Item\n# Heading";
+        $expected = "<ul>\n<li>Item</li>\n</ul>\n<h2>Heading</h2>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownClosesListOnEmptyLine(): void
+    {
+        $input    = "- Item 1\n\nParagraph text";
+        $expected = "<ul>\n<li>Item 1</li>\n</ul>\n<p>Paragraph text</p>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownClosesListBeforeBareText(): void
+    {
+        $input    = "- Item 1\nBare text line";
+        $expected = "<ul>\n<li>Item 1</li>\n</ul>\n<p>Bare text line</p>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownWrapsBareTextInParagraph(): void
+    {
+        $input    = 'Just some text';
+        $expected = '<p>Just some text</p>';
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownHandlesMixedContent(): void
+    {
+        $input  = "# Title\n\n- Item A\n- Item B\n\n1. One\n2. Two\n\nSome paragraph.";
+        $result = $this->invokeConvertBlockMarkdown($input);
+
+        self::assertStringContainsString('<h2>Title</h2>', $result);
+        self::assertStringContainsString('<ul>', $result);
+        self::assertStringContainsString('<li>Item A</li>', $result);
+        self::assertStringContainsString('</ul>', $result);
+        self::assertStringContainsString('<ol>', $result);
+        self::assertStringContainsString('<li>One</li>', $result);
+        self::assertStringContainsString('</ol>', $result);
+        self::assertStringContainsString('<p>Some paragraph.</p>', $result);
+    }
+
+    #[Test]
+    public function wrapBareTextBlocksWrapsUnwrappedText(): void
+    {
+        $input  = "<h2>Title</h2>\n\nSome bare text\n\n<p>Already wrapped</p>";
+        $result = $this->invokeWrapBareTextBlocks($input);
+
+        self::assertStringContainsString('<h2>Title</h2>', $result);
+        self::assertStringContainsString('<p>Some bare text</p>', $result);
+        self::assertStringContainsString('<p>Already wrapped</p>', $result);
+    }
+
+    #[Test]
+    public function wrapBareTextBlocksPreservesInternalLineBreaks(): void
+    {
+        $input  = "Line one\nLine two";
+        $result = $this->invokeWrapBareTextBlocks($input);
+
+        self::assertSame('<p>Line one<br>Line two</p>', $result);
+    }
+
+    #[Test]
+    public function wrapBareTextBlocksSkipsEmptyBlocks(): void
+    {
+        // Leading/trailing double newlines produce empty strings from preg_split
+        $input  = "\n\n<h2>Title</h2>\n\n<p>Content</p>\n\n";
+        $result = $this->invokeWrapBareTextBlocks($input);
+
+        self::assertStringContainsString('<h2>Title</h2>', $result);
+        self::assertStringContainsString('<p>Content</p>', $result);
+        // Empty blocks should be skipped, not wrapped in <p></p>
+        self::assertStringNotContainsString('<p></p>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsLinksWithSafeScheme(): void
+    {
+        $input  = 'Visit [Example](https://example.com) now';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<a href="https://example.com">Example</a>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsLinksWithHashScheme(): void
+    {
+        $input  = 'Go to [section](#anchor)';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<a href="#anchor">section</a>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsLinksWithRelativePath(): void
+    {
+        $input  = 'See [page](/some/path)';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<a href="/some/path">page</a>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownStripsLinksWithDangerousScheme(): void
+    {
+        $input  = 'Click [here](javascript:alert(1))';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringNotContainsString('<a ', $result);
+        self::assertStringNotContainsString('javascript:', $result);
+        self::assertStringContainsString('here', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownStripsLinksWithDataScheme(): void
+    {
+        $input  = 'Click [here](data:text/html,<script>alert(1)</script>)';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringNotContainsString('<a ', $result);
+        self::assertStringContainsString('here', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsInlineCode(): void
+    {
+        $input  = 'Use `console.log()` for debugging';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<code>console.log()</code>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsStrikethrough(): void
+    {
+        $input  = 'This is ~~deleted~~ text';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<s>deleted</s>', $result);
+    }
+
+    #[Test]
+    public function convertMarkdownToHtmlSkipsLargeContent(): void
+    {
+        $largeContent = str_repeat('**bold** ', 8000);
+        $result       = $this->invokeConvertMarkdownToHtml($largeContent);
+
+        self::assertSame($largeContent, $result);
+    }
+
     // ===========================================
     // Helper Methods
     // ===========================================
@@ -2728,5 +3103,80 @@ final class AjaxControllerTest extends TestCase
         $objects = array_filter($items, static fn (mixed $item): bool => is_object($item));
 
         return new TestQueryResult(array_values($objects));
+    }
+
+    /**
+     * Mock the ConnectionPool → QueryBuilder chain for searchPagesAction.
+     *
+     * @param list<array{uid: int, title: string, slug: string}> $rows
+     */
+    private function mockQueryBuilderForSearchPages(array $rows): void
+    {
+        $compositeExpr = $this->createMock(CompositeExpression::class);
+
+        $expressionBuilder = $this->createMock(ExpressionBuilder::class);
+        $expressionBuilder->method('like')->willReturn('title LIKE ?');
+        $expressionBuilder->method('eq')->willReturn('uid = ?');
+        $expressionBuilder->method('or')->willReturn($compositeExpr);
+
+        $result = $this->createMock(Result::class);
+        $result->method('fetchAllAssociative')->willReturn($rows);
+
+        $queryBuilder = $this->createMock(QueryBuilder::class);
+        $queryBuilder->method('select')->willReturnSelf();
+        $queryBuilder->method('from')->willReturnSelf();
+        $queryBuilder->method('setMaxResults')->willReturnSelf();
+        $queryBuilder->method('where')->willReturnSelf();
+        $queryBuilder->method('andWhere')->willReturnSelf();
+        $queryBuilder->method('orderBy')->willReturnSelf();
+        $queryBuilder->method('expr')->willReturn($expressionBuilder);
+        $queryBuilder->method('createNamedParameter')->willReturn('?');
+        $queryBuilder->method('escapeLikeWildcards')->willReturnArgument(0);
+        $queryBuilder->method('executeQuery')->willReturn($result);
+
+        $this->connectionPoolMock
+            ->method('getQueryBuilderForTable')
+            ->with('pages')
+            ->willReturn($queryBuilder);
+    }
+
+    /**
+     * Invoke the private convertBlockMarkdown method via reflection.
+     */
+    private function invokeConvertBlockMarkdown(string $content): string
+    {
+        $method = new ReflectionMethod(AjaxController::class, 'convertBlockMarkdown');
+
+        return $method->invoke($this->subject, $content);
+    }
+
+    /**
+     * Invoke the private wrapBareTextBlocks method via reflection.
+     */
+    private function invokeWrapBareTextBlocks(string $content): string
+    {
+        $method = new ReflectionMethod(AjaxController::class, 'wrapBareTextBlocks');
+
+        return $method->invoke($this->subject, $content);
+    }
+
+    /**
+     * Invoke the private convertInlineMarkdown method via reflection.
+     */
+    private function invokeConvertInlineMarkdown(string $text): string
+    {
+        $method = new ReflectionMethod(AjaxController::class, 'convertInlineMarkdown');
+
+        return $method->invoke($this->subject, $text);
+    }
+
+    /**
+     * Invoke the private convertMarkdownToHtml method via reflection.
+     */
+    private function invokeConvertMarkdownToHtml(string $content): string
+    {
+        $method = new ReflectionMethod(AjaxController::class, 'convertMarkdownToHtml');
+
+        return $method->invoke($this->subject, $content);
     }
 }

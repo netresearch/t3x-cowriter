@@ -1835,4 +1835,515 @@ describe('CowriterDialog', () => {
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
+
+    describe('modal hidden event (Escape/X close)', () => {
+        it('should reject promise and abort requests when typo3-modal-hidden fires', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            const modal = document.querySelector('.modal');
+            expect(modal).not.toBeNull();
+
+            // Dispatch the typo3-modal-hidden event (simulates Escape or X button)
+            modal.dispatchEvent(new Event('typo3-modal-hidden'));
+
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should abort in-flight request when modal is dismissed via hidden event', async () => {
+            // Make executeTask hang
+            mockService.executeTask.mockReturnValue(new Promise(() => {}));
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            // Start an execution
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+
+            // Dismiss modal via hidden event
+            const modal = document.querySelector('.modal');
+            modal.dispatchEvent(new Event('typo3-modal-hidden'));
+
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should abort reference AbortControllers when modal is dismissed', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            // Add a reference row (creates an AbortController)
+            document.querySelector('[data-role="add-reference"]').click();
+            expect(document.querySelector('[data-role="reference-row"]')).not.toBeNull();
+
+            // Dismiss modal
+            const modal = document.querySelector('.modal');
+            modal.dispatchEvent(new Event('typo3-modal-hidden'));
+
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
+    describe('debounced search input', () => {
+        it('should call searchPages after debounce and render dropdown', async () => {
+            mockService.searchPages.mockResolvedValue({
+                success: true,
+                pages: [{ uid: 10, title: 'Test Page', slug: '/test' }],
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            // Type a query (>= 2 chars to trigger search)
+            searchInput.value = 'Test';
+            searchInput.dispatchEvent(new Event('input'));
+
+            // Wait for debounce (300ms) + async search
+            await vi.waitFor(() => {
+                expect(mockService.searchPages).toHaveBeenCalledWith('Test');
+            }, { timeout: 1000 });
+
+            // Dropdown should be populated
+            await vi.waitFor(() => {
+                const items = dropdown.querySelectorAll('[role="option"]');
+                expect(items.length).toBe(1);
+                expect(items[0].textContent).toContain('Test Page');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should clear hidden PID on new input', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            // Set a PID value first
+            hiddenPid.value = '42';
+
+            // Type something
+            searchInput.value = 'Te';
+            searchInput.dispatchEvent(new Event('input'));
+
+            // PID should be cleared immediately
+            expect(hiddenPid.value).toBe('');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should hide dropdown when query is too short', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            // Make dropdown visible first
+            dropdown.style.display = 'block';
+            searchInput.setAttribute('aria-expanded', 'true');
+
+            // Type only 1 char (< 2 minimum)
+            searchInput.value = 'T';
+            searchInput.dispatchEvent(new Event('input'));
+
+            expect(dropdown.style.display).toBe('none');
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should hide dropdown and set aria-expanded false when search fails', async () => {
+            mockService.searchPages.mockRejectedValue(new Error('Network error'));
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            // Type a query to trigger search
+            searchInput.value = 'Fail';
+            searchInput.dispatchEvent(new Event('input'));
+
+            // Wait for debounce + error handling
+            await vi.waitFor(() => {
+                expect(mockService.searchPages).toHaveBeenCalledWith('Fail');
+            }, { timeout: 1000 });
+
+            // Wait for the error handler to hide the dropdown
+            await vi.waitFor(() => {
+                expect(dropdown.style.display).toBe('none');
+            });
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('keyboard navigation edge cases', () => {
+        it('should handle Escape when dropdown is hidden and has no items', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            // Dropdown is empty and hidden — press Escape
+            dropdown.style.display = 'none';
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+            // Should still be hidden and aria-expanded false
+            expect(dropdown.style.display).toBe('none');
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should handle ArrowDown/ArrowUp when dropdown has no items', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+
+            // No items in dropdown, pressing arrows should not throw
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should wrap ArrowUp from first item to last item', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            dialog._renderPageDropdown(dropdown, [
+                { uid: 1, title: 'First', slug: '/first' },
+                { uid: 2, title: 'Second', slug: '/second' },
+                { uid: 3, title: 'Third', slug: '/third' },
+            ], searchInput, hiddenPid);
+
+            const items = dropdown.querySelectorAll('[role="option"]');
+
+            // Navigate to first item
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+            expect(items[0].classList.contains('active')).toBe(true);
+
+            // ArrowUp from first should wrap to last
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+            expect(items[2].classList.contains('active')).toBe(true);
+            expect(items[0].classList.contains('active')).toBe(false);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should remove aria-activedescendant on Escape with items visible', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            dialog._renderPageDropdown(dropdown, [
+                { uid: 1, title: 'Page', slug: '/' },
+            ], searchInput, hiddenPid);
+
+            // Navigate to item
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+            expect(searchInput.getAttribute('aria-activedescendant')).toBeTruthy();
+
+            // Press Escape — should remove aria-activedescendant
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            expect(searchInput.hasAttribute('aria-activedescendant')).toBe(false);
+            expect(dropdown.style.display).toBe('none');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('sanitizer target=_blank rel enforcement', () => {
+        it('should add rel="noopener noreferrer" to target=_blank links', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<a href="https://example.com" target="_blank">Link</a>',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="result-preview"] a');
+            });
+
+            const link = document.querySelector('[data-role="result-preview"] a');
+            expect(link.getAttribute('target')).toBe('_blank');
+            expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should not add rel to links without target=_blank', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<a href="https://example.com">Normal Link</a>',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="result-preview"] a');
+            });
+
+            const link = document.querySelector('[data-role="result-preview"] a');
+            expect(link.getAttribute('rel')).toBeNull();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('_showDebugDetails with debugMessages', () => {
+        it('should display debugMessages when present in result', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<p>Result</p>',
+                model: 'test-model',
+                finishReason: 'stop',
+                debugMessages: [
+                    { role: 'system', content: 'You are a helpful assistant.' },
+                    { role: 'user', content: 'Improve this text.' },
+                ],
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="debug-details"]');
+            });
+
+            const debugContent = document.querySelector('[data-role="debug-details"]').textContent;
+            expect(debugContent).toContain('--- [system] ---');
+            expect(debugContent).toContain('You are a helpful assistant.');
+            expect(debugContent).toContain('--- [user] ---');
+            expect(debugContent).toContain('Improve this text.');
+            // Should NOT have the fallback sections
+            expect(debugContent).not.toContain('--- Input text ---');
+            expect(debugContent).not.toContain('--- Instruction sent ---');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should show debug details without thinking section when thinking is absent', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: 'Plain result',
+                model: 'gpt-4o',
+                finishReason: 'stop',
+                // no thinking, no usage, no debugMessages
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="debug-details"]');
+            });
+
+            const debugContent = document.querySelector('[data-role="debug-details"]').textContent;
+            expect(debugContent).not.toContain('--- Thinking ---');
+            // Should have fallback sections since no debugMessages
+            expect(debugContent).toContain('--- Input text ---');
+            expect(debugContent).toContain('--- Instruction sent ---');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('_updateButtonVisibility edge cases', () => {
+        it('should handle null modal gracefully', () => {
+            const dialog = new CowriterDialog(mockService);
+            // Should not throw
+            expect(() => dialog._updateButtonVisibility(null, 'idle')).not.toThrow();
+            expect(() => dialog._updateButtonVisibility(null, 'result')).not.toThrow();
+        });
+
+        it('should handle modal without buttons gracefully', () => {
+            const dialog = new CowriterDialog(mockService);
+            const emptyDiv = document.createElement('div');
+            // Should not throw when buttons are not found
+            expect(() => dialog._updateButtonVisibility(emptyDiv, 'idle')).not.toThrow();
+            expect(() => dialog._updateButtonVisibility(emptyDiv, 'result')).not.toThrow();
+        });
+
+        it('should show Reset and Insert buttons in loading state as hidden', async () => {
+            // Make executeTask hang
+            mockService.executeTask.mockReturnValue(new Promise(() => {}));
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                const preview = document.querySelector('[data-role="result-preview"]');
+                expect(preview.textContent).toContain('Generating');
+            });
+
+            // In loading state, Reset and Insert should be hidden
+            expect(document.querySelector('[data-name="reset"]').style.display).toBe('none');
+            expect(document.querySelector('[data-name="insert"]').style.display).toBe('none');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
+    describe('debug copy button', () => {
+        it('should copy to clipboard when copy button is clicked', async () => {
+            // Mock clipboard API
+            const writeTextMock = vi.fn().mockResolvedValue(undefined);
+            Object.defineProperty(navigator, 'clipboard', {
+                value: { writeText: writeTextMock },
+                writable: true,
+                configurable: true,
+            });
+
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: 'Result',
+                model: 'test-model',
+                finishReason: 'stop',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="debug-copy"]');
+            });
+
+            const copyBtn = document.querySelector('[data-role="debug-copy"]');
+            copyBtn.click();
+
+            await vi.waitFor(() => {
+                expect(writeTextMock).toHaveBeenCalled();
+            });
+
+            // Button text should change to "Copied!"
+            await vi.waitFor(() => {
+                expect(copyBtn.textContent).toBe('Copied!');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should fall back to execCommand when clipboard API fails', async () => {
+            // Mock clipboard API to fail
+            Object.defineProperty(navigator, 'clipboard', {
+                value: { writeText: vi.fn().mockRejectedValue(new Error('Not allowed')) },
+                writable: true,
+                configurable: true,
+            });
+
+            // Define and mock execCommand (not available in jsdom by default)
+            document.execCommand = vi.fn().mockReturnValue(true);
+            const execCommandSpy = document.execCommand;
+
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: 'Result',
+                model: 'test-model',
+                finishReason: 'stop',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="debug-copy"]');
+            });
+
+            const copyBtn = document.querySelector('[data-role="debug-copy"]');
+            copyBtn.click();
+
+            // Wait for the fallback to be invoked
+            await vi.waitFor(() => {
+                expect(execCommandSpy).toHaveBeenCalledWith('copy');
+            });
+
+            // Button text should still show "Copied!"
+            await vi.waitFor(() => {
+                expect(copyBtn.textContent).toBe('Copied!');
+            });
+
+            delete document.execCommand;
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
 });
