@@ -169,6 +169,7 @@ export class CowriterDialog {
                         text: 'Close',
                         btnClass: 'btn-default',
                         name: 'close',
+                        icon: 'actions-close',
                         trigger: () => {
                             modal.hideModal();
                             reject(new Error('User cancelled'));
@@ -335,10 +336,10 @@ export class CowriterDialog {
                 content: container,
                 size: Modal.sizes.large,
                 buttons: [
-                    { text: 'Cancel', btnClass: 'btn-default', name: 'cancel', trigger: cancelTrigger },
-                    { text: 'Reset', btnClass: 'btn-default', name: 'reset', trigger: resetTrigger },
-                    { text: 'Execute', btnClass: 'btn-default', name: 'execute', trigger: executeTrigger },
-                    { text: 'Insert', btnClass: 'btn-primary', name: 'insert', trigger: insertTrigger },
+                    { text: 'Cancel', btnClass: 'btn-default', name: 'cancel', icon: 'actions-close', trigger: cancelTrigger },
+                    { text: 'Reset', btnClass: 'btn-default', name: 'reset', icon: 'actions-undo', trigger: resetTrigger },
+                    { text: 'Execute', btnClass: 'btn-default', name: 'execute', icon: 'actions-play', trigger: executeTrigger },
+                    { text: 'Insert', btnClass: 'btn-primary', name: 'insert', icon: 'actions-insert', trigger: insertTrigger },
                 ],
             });
 
@@ -464,7 +465,7 @@ export class CowriterDialog {
         addRefBtn.type = 'button';
         addRefBtn.className = 'btn btn-sm btn-outline-secondary mt-1';
         addRefBtn.dataset.role = 'add-reference';
-        addRefBtn.textContent = '+ Add reference page';
+        addRefBtn.innerHTML = '<typo3-backend-icon identifier="actions-plus" size="small"></typo3-backend-icon> Add reference page';
         addRefBtn.addEventListener('click', () => {
             refContainer.appendChild(this._createReferenceRow(referenceAbortControllers));
         });
@@ -704,7 +705,7 @@ export class CowriterDialog {
         removeBtn.type = 'button';
         removeBtn.className = 'btn btn-sm btn-outline-danger';
         removeBtn.dataset.role = 'remove-reference';
-        removeBtn.textContent = '\u2715';
+        removeBtn.innerHTML = '<typo3-backend-icon identifier="actions-delete" size="small"></typo3-backend-icon>';
         removeBtn.setAttribute('aria-label', 'Remove reference page');
         removeBtn.addEventListener('click', () => {
             clearTimeout(debounceTimer);
