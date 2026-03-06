@@ -163,7 +163,7 @@ final readonly class AjaxController
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'LLM provider error occurred. Please try again later.'],
+                $this->buildErrorResponse('LLM provider error occurred. Please try again later.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -174,7 +174,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'An unexpected error occurred.'],
+                $this->buildErrorResponse('An unexpected error occurred.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -256,9 +256,8 @@ final readonly class AjaxController
                 'exception' => $e->getMessage(),
             ]);
 
-            // Don't expose provider details to client - log them instead
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('LLM provider error occurred. Please try again later.')->jsonSerialize(),
+                $this->buildErrorResponse('LLM provider error occurred. Please try again later.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -269,7 +268,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('An unexpected error occurred.')->jsonSerialize(),
+                $this->buildErrorResponse('An unexpected error occurred.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -656,7 +655,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('LLM provider error occurred. Please try again later.')->jsonSerialize(),
+                $this->buildErrorResponse('LLM provider error occurred. Please try again later.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -668,7 +667,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('An unexpected error occurred.')->jsonSerialize(),
+                $this->buildErrorResponse('An unexpected error occurred.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -736,6 +735,24 @@ final readonly class AjaxController
                 500,
             );
         }
+    }
+
+    /**
+     * Build an error response array, including debug details when BE.debug is enabled.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildErrorResponse(string $message, Throwable $exception): array
+    {
+        $response = CompleteResponse::error($message)->jsonSerialize();
+
+        /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
+        $typo3ConfVars = $GLOBALS['TYPO3_CONF_VARS'] ?? [];
+        if (($typo3ConfVars['BE']['debug'] ?? false) === true) {
+            $response['debugError'] = $exception->getMessage();
+        }
+
+        return $response;
     }
 
     /**

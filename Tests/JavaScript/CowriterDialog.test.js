@@ -626,7 +626,7 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
         });
 
-        it('should not show debug details on error', async () => {
+        it('should show debug details on error', async () => {
             mockService.executeTask.mockResolvedValue({ success: false, error: 'Failed' });
 
             const dialog = new CowriterDialog(mockService);
@@ -643,7 +643,9 @@ describe('CowriterDialog', () => {
                 expect(preview.textContent).toBe('Failed');
             });
 
-            expect(document.querySelector('[data-role="debug-details"]')).toBeNull();
+            const debugDetails = document.querySelector('[data-role="debug-details"]');
+            expect(debugDetails).not.toBeNull();
+            expect(debugDetails.textContent).toContain('Error: Failed');
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});

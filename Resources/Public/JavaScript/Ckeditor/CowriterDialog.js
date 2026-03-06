@@ -304,6 +304,7 @@ export class CowriterDialog {
                     } else {
                         preview.textContent = result.error || 'No content returned';
                         preview.classList.add('cowriter-result--empty');
+                        this._showDebugDetails(container, result, inputText, instruction);
                         resultContent = '';
                         state = 'idle';
                         this._updateButtonVisibility(modal, 'idle');
@@ -313,6 +314,7 @@ export class CowriterDialog {
                     if (error?.name === 'AbortError') return; // Request was cancelled
                     preview.textContent = `Error: ${error.message}`;
                     preview.classList.add('cowriter-result--empty');
+                    this._showDebugDetails(container, {error: error.message}, currentContext, '');
                     resultContent = '';
                     state = 'idle';
                     this._updateButtonVisibility(modal, 'idle');
@@ -918,6 +920,12 @@ export class CowriterDialog {
         content.style.wordBreak = 'break-word';
 
         const lines = [];
+        if (result.error) {
+            lines.push(`Error: ${result.error}`);
+        }
+        if (result.debugError) {
+            lines.push(`Provider error: ${result.debugError}`);
+        }
         lines.push(`Model: ${result.model || 'unknown'}`);
         lines.push(`Finish reason: ${result.finishReason || 'unknown'}`);
         if (result.usage) {
