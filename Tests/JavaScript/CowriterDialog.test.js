@@ -163,6 +163,38 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
         });
 
+        it('should show "Edit tasks" link when tasksModule route is available', async () => {
+            mockService._routes = { tasksModule: '/typo3/module/nrllm/tasks' };
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full');
+
+            await vi.waitFor(() => {
+                const link = document.querySelector('a[target="_blank"]');
+                expect(link).not.toBeNull();
+                expect(link.textContent).toContain('Edit tasks');
+                expect(link.href).toContain('/typo3/module/nrllm/tasks');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should not show "Edit tasks" link when tasksModule route is absent', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full');
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="task-description"]')).not.toBeNull();
+            });
+
+            const links = document.querySelectorAll('a[target="_blank"]');
+            const editTasksLink = Array.from(links).find(l => l.textContent.includes('Edit tasks'));
+            expect(editTasksLink).toBeUndefined();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
         it('should update description when task changes', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('selected', 'full');

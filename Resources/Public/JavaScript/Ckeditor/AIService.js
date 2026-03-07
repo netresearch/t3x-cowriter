@@ -59,6 +59,7 @@ export class AIService {
         templates: null,
         tools: null,
         pageSearch: null,
+        tasksModule: null,
     };
 
     constructor() {
@@ -75,6 +76,7 @@ export class AIService {
             this._routes.templates = TYPO3.settings.ajaxUrls.tx_cowriter_templates || null;
             this._routes.tools = TYPO3.settings.ajaxUrls.tx_cowriter_tools || null;
             this._routes.pageSearch = TYPO3.settings.ajaxUrls.tx_cowriter_page_search || null;
+            this._routes.tasksModule = TYPO3.settings.ajaxUrls.nrllm_tasks_module || null;
         }
     }
 
