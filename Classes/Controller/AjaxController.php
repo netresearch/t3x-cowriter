@@ -744,7 +744,8 @@ final readonly class AjaxController
      */
     private function buildErrorResponse(string $message, Throwable $exception): array
     {
-        $response = CompleteResponse::error($message)->jsonSerialize();
+        $userMessage = $this->enrichErrorMessage($message, $exception);
+        $response    = CompleteResponse::error($userMessage)->jsonSerialize();
 
         /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
         $typo3ConfVars = $GLOBALS['TYPO3_CONF_VARS'] ?? [];
@@ -753,6 +754,24 @@ final readonly class AjaxController
         }
 
         return $response;
+    }
+
+    /**
+     * Enrich generic error messages with user-friendly guidance for known causes.
+     */
+    private function enrichErrorMessage(string $fallback, Throwable $exception): string
+    {
+        $exMessage = $exception->getMessage();
+
+        if (str_contains($exMessage, 'no default provider configured') || str_contains($exMessage, 'No default LLM configuration')) {
+            return 'No LLM provider is configured yet. An administrator needs to set up a provider and configuration in the LLM module (Admin Tools > LLM).';
+        }
+
+        if (str_contains($exMessage, '401') || str_contains($exMessage, 'Unauthorized')) {
+            return 'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.';
+        }
+
+        return $fallback;
     }
 
     /**

@@ -280,6 +280,29 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
+    public function chatActionReturnsGuidanceWhenNoProviderConfigured(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('No provider specified and no default provider configured'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('is configured yet', $data['error']);
+        self::assertStringContainsString('LLM module', $data['error']);
+    }
+
+    #[Test]
     public function chatActionHandlesUnexpectedException(): void
     {
         $messages = [['role' => 'user', 'content' => 'Hello']];
