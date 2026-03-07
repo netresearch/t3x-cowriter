@@ -404,12 +404,26 @@ export class CowriterDialog {
         }
         taskGroup.appendChild(taskSelect);
 
+        const taskDescRow = document.createElement('div');
+        taskDescRow.className = 'd-flex justify-content-between align-items-start';
         const taskDesc = document.createElement('div');
         taskDesc.className = 'form-text text-body-secondary';
         taskDesc.dataset.role = 'task-description';
         const selectedOption = taskSelect.options[taskSelect.selectedIndex];
         taskDesc.textContent = selectedOption?.dataset.description || '';
-        taskGroup.appendChild(taskDesc);
+        taskDescRow.appendChild(taskDesc);
+
+        const tasksModuleUrl = this._service._routes?.tasksModule;
+        if (tasksModuleUrl) {
+            const editLink = document.createElement('a');
+            editLink.href = tasksModuleUrl;
+            editLink.target = '_blank';
+            editLink.className = 'form-text text-body-secondary text-nowrap ms-2';
+            editLink.textContent = 'Edit tasks \u2197';
+            editLink.title = 'Manage tasks in LLM module';
+            taskDescRow.appendChild(editLink);
+        }
+        taskGroup.appendChild(taskDescRow);
 
         // Context scope dropdown
         const scopeId = `${idPrefix}-scope`;
