@@ -32,6 +32,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 /**
@@ -94,6 +95,9 @@ abstract class AbstractE2ETestCase extends TestCase
         // Create context assembly service mock
         $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
 
+        // Create connection pool mock
+        $connectionPool = $this->createMock(ConnectionPool::class);
+
         // Create controller with mocked dependencies
         $controller = new AjaxController(
             $serviceManager,
@@ -103,6 +107,7 @@ abstract class AbstractE2ETestCase extends TestCase
             $context,
             $this->logger,
             $contextAssembly,
+            $connectionPool,
         );
 
         return [
@@ -112,6 +117,7 @@ abstract class AbstractE2ETestCase extends TestCase
             'taskRepo'       => $taskRepo,
             'rateLimiter'    => $rateLimiter,
             'context'        => $context,
+            'connectionPool' => $connectionPool,
         ];
     }
 
@@ -166,6 +172,19 @@ abstract class AbstractE2ETestCase extends TestCase
         $request = self::createStub(ServerRequestInterface::class);
         $request->method('getBody')->willReturn($bodyStub);
         $request->method('getParsedBody')->willReturn(null);
+
+        return $request;
+    }
+
+    /**
+     * Create mock ServerRequest with query parameters (for GET endpoints).
+     *
+     * @param array<string, mixed> $queryParams
+     */
+    protected function createQueryParamsRequest(array $queryParams): ServerRequestInterface
+    {
+        $request = self::createStub(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn($queryParams);
 
         return $request;
     }

@@ -188,6 +188,25 @@ final class TranslationControllerTest extends TestCase
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
+    #[Test]
+    public function translateActionReturnsGuidanceWhenNoProviderConfigured(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $this->translationServiceStub->method('translate')
+            ->willThrowException(new RuntimeException('No provider specified and no default provider configured'));
+
+        $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
+        $response = $this->subject->translateAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('not configured yet', $data['error']);
+        self::assertStringContainsString('LLM module', $data['error']);
+    }
+
     /**
      * @param array<string, mixed> $body
      */
