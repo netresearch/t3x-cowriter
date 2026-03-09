@@ -3,7 +3,7 @@
  *
  * CKEditor bundle is mocked via vitest.config.js alias.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Cowriter Plugin', () => {
     let Cowriter;
@@ -757,6 +757,8 @@ describe('Cowriter Plugin', () => {
         let mockEditor;
         let componentCallbacks;
         let mockTranslate;
+        /** @type {typeof import('@typo3/backend/notification.js').default} */
+        let Notification;
 
         beforeEach(async () => {
             vi.resetModules();
@@ -774,6 +776,10 @@ describe('Cowriter Plugin', () => {
 
             const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
             Cowriter = module.Cowriter;
+
+            // Import the same Notification instance used by the re-imported cowriter.js
+            const notifModule = await import('@typo3/backend/notification.js');
+            Notification = notifModule.default;
 
             componentCallbacks = {};
             mockEditor = {
@@ -814,6 +820,7 @@ describe('Cowriter Plugin', () => {
         afterEach(() => {
             vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
             vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
+            vi.clearAllMocks();
         });
 
         it('should create translate dropdown with correct label', () => {
@@ -824,10 +831,12 @@ describe('Cowriter Plugin', () => {
         it('should translate selected text on execute', async () => {
             const dropdown = componentCallbacks['cowriterTranslate']();
             // Simulate selecting German from dropdown
-            await dropdown.fire('execute', { source: { languageCode: 'de' } });
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
 
             expect(mockTranslate).toHaveBeenCalledWith('<p>Hello World</p>', 'de');
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
+            expect(Notification.info).toHaveBeenCalledWith('Translating...', 'Translating to German', 15);
+            expect(Notification.success).toHaveBeenCalledWith('Translation complete', 'Translated to German', 3);
         });
 
         it('should not translate when no text is selected', async () => {
@@ -835,9 +844,12 @@ describe('Cowriter Plugin', () => {
             mockEditor.data.stringify.mockReturnValue('');
 
             const dropdown = componentCallbacks['cowriterTranslate']();
-            await dropdown.fire('execute', { source: { languageCode: 'fr' } });
+            await dropdown.fire('execute', { source: { languageCode: 'fr', label: 'French' } });
 
             expect(mockTranslate).not.toHaveBeenCalled();
+            expect(Notification.warning).toHaveBeenCalledWith(
+                'No text selected', 'Please select text in the editor before translating.', 5,
+            );
         });
 
         it('should not execute when _isProcessing is true', async () => {
@@ -852,11 +864,29 @@ describe('Cowriter Plugin', () => {
             mockTranslate.mockRejectedValue(new Error('Translation API failed'));
 
             const dropdown = componentCallbacks['cowriterTranslate']();
-            await dropdown.fire('execute', { source: { languageCode: 'de' } });
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
 
             expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Translate]', expect.any(Error));
+            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Translation API failed', 5);
             expect(plugin._isProcessing).toBe(false);
             consoleSpy.mockRestore();
+        });
+
+        it('should show error notification when translate returns success:false', async () => {
+            mockTranslate.mockResolvedValue({ success: false, error: 'Rate limit exceeded' });
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Rate limit exceeded', 5);
+            expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
+        });
+
+        it('should fall back to language code when label is missing', async () => {
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de' } });
+
+            expect(Notification.info).toHaveBeenCalledWith('Translating...', 'Translating to de', 15);
         });
     });
 
@@ -864,21 +894,23 @@ describe('Cowriter Plugin', () => {
         let plugin;
         let mockEditor;
         let componentCallbacks;
-        let mockGetTemplates;
+        let mockGetTasks;
         let mockDialogShow;
+        /** @type {typeof import('@typo3/backend/notification.js').default} */
+        let Notification;
 
         beforeEach(async () => {
             vi.resetModules();
 
-            mockGetTemplates = vi.fn().mockResolvedValue({
+            mockGetTasks = vi.fn().mockResolvedValue({
                 success: true,
-                templates: [{ identifier: 'improve', name: 'Improve', description: '' }],
+                tasks: [{ uid: 42, identifier: 'improve', name: 'Improve', description: '' }],
             });
             mockDialogShow = vi.fn().mockResolvedValue({ content: 'Improved text' });
 
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
                 AIService: class MockAIService {
-                    getTemplates = mockGetTemplates;
+                    getTasks = mockGetTasks;
                 },
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
@@ -889,6 +921,9 @@ describe('Cowriter Plugin', () => {
 
             const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
             Cowriter = module.Cowriter;
+
+            const notifModule = await import('@typo3/backend/notification.js');
+            Notification = notifModule.default;
 
             componentCallbacks = {};
             mockEditor = {
@@ -924,36 +959,40 @@ describe('Cowriter Plugin', () => {
         afterEach(() => {
             vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
             vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
+            vi.clearAllMocks();
         });
 
-        it('should create templates dropdown with correct label', () => {
+        it('should create tasks dropdown with correct label', () => {
             const dropdown = componentCallbacks['cowriterTemplates']();
-            expect(dropdown.buttonView.label).toBe('Cowriter - Templates');
+            expect(dropdown.buttonView.label).toBe('Cowriter - Tasks');
         });
 
-        it('should load templates on dropdown open', async () => {
+        it('should load tasks on dropdown open', async () => {
             const dropdown = componentCallbacks['cowriterTemplates']();
             dropdown.isOpen = true;
             await dropdown.fire('change:isOpen');
 
-            expect(mockGetTemplates).toHaveBeenCalled();
+            expect(mockGetTasks).toHaveBeenCalled();
         });
 
-        it('should not load templates when dropdown closes', async () => {
+        it('should not load tasks when dropdown closes', async () => {
             const dropdown = componentCallbacks['cowriterTemplates']();
             dropdown.isOpen = false;
             await dropdown.fire('change:isOpen');
 
-            expect(mockGetTemplates).not.toHaveBeenCalled();
+            expect(mockGetTasks).not.toHaveBeenCalled();
         });
 
-        it('should open dialog with template on execute', async () => {
+        it('should open dialog with task pre-selected on execute', async () => {
+            // First open dropdown to load tasks
             const dropdown = componentCallbacks['cowriterTemplates']();
-            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+            dropdown.isOpen = true;
+            await dropdown.fire('change:isOpen');
+
+            await dropdown.fire('execute', { source: { taskUid: 42 } });
 
             expect(mockDialogShow).toHaveBeenCalledWith(
-                '', '<p>Full content</p>', '', null,
-                { templateIdentifier: 'improve' },
+                '', '<p>Full content</p>', '', null, 42,
             );
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
         });
@@ -962,7 +1001,7 @@ describe('Cowriter Plugin', () => {
             mockDialogShow.mockRejectedValue(new Error('User cancelled'));
 
             const dropdown = componentCallbacks['cowriterTemplates']();
-            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+            await dropdown.fire('execute', { source: { taskUid: 42 } });
 
             expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
         });
@@ -970,32 +1009,41 @@ describe('Cowriter Plugin', () => {
         it('should not execute when _isProcessing is true', async () => {
             plugin._isProcessing = true;
             const dropdown = componentCallbacks['cowriterTemplates']();
-            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+            await dropdown.fire('execute', { source: { taskUid: 42 } });
             expect(mockDialogShow).not.toHaveBeenCalled();
         });
 
-        it('should log error when getTemplates throws', async () => {
+        it('should log error when getTasks throws', async () => {
             const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-            mockGetTemplates.mockRejectedValue(new Error('Templates API failed'));
+            mockGetTasks.mockRejectedValue(new Error('Tasks API failed'));
 
             const dropdown = componentCallbacks['cowriterTemplates']();
             dropdown.isOpen = true;
             await dropdown.fire('change:isOpen');
 
-            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Templates]', expect.any(Error));
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Tasks]', expect.any(Error));
             consoleSpy.mockRestore();
         });
 
-        it('should log non-cancel errors from template execute', async () => {
+        it('should log non-cancel errors from task execute', async () => {
             const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
             mockDialogShow.mockRejectedValue(new Error('Network error'));
 
             const dropdown = componentCallbacks['cowriterTemplates']();
-            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+            await dropdown.fire('execute', { source: { taskUid: 42 } });
 
-            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Templates]', expect.any(Error));
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Tasks]', expect.any(Error));
             expect(plugin._isProcessing).toBe(false);
             consoleSpy.mockRestore();
+        });
+
+        it('should only load tasks once per session', async () => {
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            dropdown.isOpen = true;
+            await dropdown.fire('change:isOpen');
+            await dropdown.fire('change:isOpen');
+
+            expect(mockGetTasks).toHaveBeenCalledTimes(1);
         });
     });
 });

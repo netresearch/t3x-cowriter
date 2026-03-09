@@ -77,12 +77,13 @@ final readonly class TranslationController
             $options = new TranslationOptions(
                 formality: $translationRequest->formality,
                 domain: $translationRequest->domain,
+                provider: $translationRequest->configuration,
             );
 
             $result = $this->translationService->translate(
                 $translationRequest->text,
                 $translationRequest->targetLanguage,
-                $translationRequest->configuration,
+                null,
                 $options,
             );
 
@@ -132,7 +133,7 @@ final readonly class TranslationController
             return 'The LLM provider rate limit was exceeded. Please wait a moment and try again.';
         }
 
-        return 'Translation failed: ' . $message;
+        return 'Translation failed. Check the TYPO3 system log for details.';
     }
 
     /**

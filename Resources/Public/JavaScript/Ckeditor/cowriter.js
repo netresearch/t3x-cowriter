@@ -6,6 +6,7 @@ import { ButtonView, createDropdown, addListToDropdown, ViewModel } from "@ckedi
 import { Collection } from "@ckeditor/ckeditor5-utils";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
+import Notification from "@typo3/backend/notification.js";
 
 /**
  * Target languages for translation dropdown.
@@ -262,9 +263,11 @@ export class Cowriter extends Plugin {
                     }
 
                     if (!imageUrl) {
-                        console.warn('[Cowriter Vision] No image selected. Click on an image in the editor first.');
+                        Notification.warning('No image selected', 'Click on an image in the editor first.', 5);
                         return;
                     }
+
+                    Notification.info('Analyzing image...', 'Generating alt text', 15);
 
                     const result = await this._service.analyzeImage(imageUrl);
                     if (result?.success && result.altText) {
@@ -276,8 +279,12 @@ export class Cowriter extends Plugin {
                                 writer.insertText(result.altText, editor.model.document.selection.getFirstPosition());
                             }
                         });
+                        Notification.success('Alt text generated', result.altText.substring(0, 80), 3);
+                    } else {
+                        Notification.error('Alt text generation failed', result?.error || 'Unknown error', 5);
                     }
                 } catch (error) {
+                    Notification.error('Alt text generation failed', error?.message || 'Unknown error', 5);
                     console.error('[Cowriter Vision]', error);
                 } finally {
                     this._isProcessing = false;
@@ -316,6 +323,7 @@ export class Cowriter extends Plugin {
 
                 try {
                     const langCode = event.source.languageCode;
+                    const langLabel = event.source.label || langCode;
                     const selection = editor.model.document.selection;
                     const selectedRange = selection.getFirstRange();
 
@@ -326,9 +334,11 @@ export class Cowriter extends Plugin {
                     }
 
                     if (!selectedText) {
-                        console.warn('[Cowriter Translate] No text selected for translation');
+                        Notification.warning('No text selected', 'Please select text in the editor before translating.', 5);
                         return;
                     }
+
+                    Notification.info('Translating...', `Translating to ${langLabel}`, 15);
 
                     const result = await this._service.translate(selectedText, langCode);
                     if (result?.success && result.translation) {
@@ -339,8 +349,13 @@ export class Cowriter extends Plugin {
                             writer.setSelection(selectedRange);
                             editor.model.insertContent(modelFragment);
                         });
+
+                        Notification.success('Translation complete', `Translated to ${langLabel}`, 3);
+                    } else {
+                        Notification.error('Translation failed', result?.error || 'Unknown error', 5);
                     }
                 } catch (error) {
+                    Notification.error('Translation failed', error?.message || 'Unknown error', 5);
                     console.error('[Cowriter Translate]', error);
                 } finally {
                     this._isProcessing = false;
@@ -350,39 +365,48 @@ export class Cowriter extends Plugin {
             return dropdown;
         });
 
-        // Templates dropdown — apply prompt template presets
+        // Tasks dropdown — open dialog with a pre-selected task
         editor.ui.componentFactory.add('cowriterTemplates', (locale) => {
             const dropdown = createDropdown(locale);
+            let tasksLoaded = false;
+            let tasksLoading = false;
 
             dropdown.buttonView.set({
-                label: 'Cowriter - Templates',
+                label: 'Cowriter - Tasks',
                 tooltip: true,
                 withText: false,
                 icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM6 20V4h5v5h5v11H6z"/></svg>',
             });
 
-            // Load templates when dropdown opens
+            // Load tasks when dropdown opens (once per session, guarded against concurrent fetches)
             dropdown.on('change:isOpen', async () => {
-                if (!dropdown.isOpen) return;
+                if (!dropdown.isOpen || tasksLoaded || tasksLoading) return;
+                tasksLoading = true;
 
                 try {
-                    const result = await this._service.getTemplates();
-                    if (!result?.success || !result.templates?.length) return;
+                    const result = await this._service.getTasks();
+                    if (!result?.success || !result.tasks?.length) {
+                        Notification.info('No tasks configured', 'Create tasks in the LLM module first.', 5);
+                        return;
+                    }
 
                     const items = new Collection();
-                    for (const tmpl of result.templates) {
+                    for (const task of result.tasks) {
                         const itemModel = new ViewModel({
-                            label: tmpl.name,
-                            templateIdentifier: tmpl.identifier,
-                            templateDescription: tmpl.description || '',
+                            label: task.name,
+                            taskUid: task.uid,
                             withText: true,
                         });
                         items.add({ type: 'button', model: itemModel });
                     }
 
                     addListToDropdown(dropdown, items);
+                    tasksLoaded = true;
                 } catch (error) {
-                    console.error('[Cowriter Templates]', error);
+                    Notification.error('Failed to load tasks', error?.message || 'Unknown error', 5);
+                    console.error('[Cowriter Tasks]', error);
+                } finally {
+                    tasksLoading = false;
                 }
             });
 
@@ -391,27 +415,39 @@ export class Cowriter extends Plugin {
                 this._isProcessing = true;
 
                 try {
-                    const selectedText = editor.getData();
+                    const taskUid = event.source.taskUid;
+                    const selection = editor.model.document.selection;
+                    const selectedRange = selection.getFirstRange();
+
+                    let selectedText = '';
+                    if (selectedRange && !selectedRange.isCollapsed) {
+                        const content = model.getSelectedContent(selection);
+                        selectedText = editor.data.stringify(content);
+                    }
+
+                    const fullContent = editor.getData();
                     const caps = this._getEditorCapabilities();
                     const recordContext = this._getRecordContext();
 
-                    // Open the cowriter dialog with the template pre-selected
                     const dialog = new CowriterDialog(this._service);
                     const dialogResult = await dialog.show(
-                        '', selectedText, caps, recordContext,
-                        { templateIdentifier: event.source.templateIdentifier },
+                        selectedText || '', fullContent, caps, recordContext, taskUid,
                     );
 
                     if (dialogResult?.content) {
                         const viewFragment = editor.data.processor.toView(dialogResult.content);
                         const modelFragment = editor.data.toModel(viewFragment);
-                        model.change(() => {
+                        model.change((writer) => {
+                            if (selectedRange && !selectedRange.isCollapsed) {
+                                writer.setSelection(selectedRange);
+                            }
                             editor.model.insertContent(modelFragment);
                         });
                     }
                 } catch (error) {
                     if (error?.message && error.message !== 'User cancelled') {
-                        console.error('[Cowriter Templates]', error);
+                        Notification.error('Task failed', error?.message || 'Unknown error', 5);
+                        console.error('[Cowriter Tasks]', error);
                     }
                 } finally {
                     this._isProcessing = false;

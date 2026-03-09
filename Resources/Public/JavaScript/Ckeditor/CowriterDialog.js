@@ -84,9 +84,10 @@ export class CowriterDialog {
      * @param {string} fullContent - Full content of the editor
      * @param {string} [editorCapabilities=''] - Available editor formatting features
      * @param {{table: string, uid: number, field: string}|null} [recordContext=null] - Record context for DB lookups
+     * @param {number|null} [preSelectedTaskUid=null] - Task UID to pre-select in the dropdown
      * @returns {Promise<DialogResult>} Resolves with content to insert, rejects on cancel
      */
-    async show(selectedText, fullContent, editorCapabilities = '', recordContext = null) {
+    async show(selectedText, fullContent, editorCapabilities = '', recordContext = null, preSelectedTaskUid = null) {
         let tasks;
         try {
             const response = await this._service.getTasks();
@@ -99,7 +100,7 @@ export class CowriterDialog {
             return this._showNoTasksModal();
         }
 
-        return this._showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext);
+        return this._showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid);
     }
 
     /**
@@ -188,13 +189,14 @@ export class CowriterDialog {
      * @param {string} fullContent
      * @param {string} editorCapabilities
      * @param {{table: string, uid: number, field: string}|null} recordContext
+     * @param {number|null} [preSelectedTaskUid=null]
      * @returns {Promise<DialogResult>}
      * @private
      */
-    _showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext) {
+    _showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid = null) {
         /** @type {Set<AbortController>} Track reference row listeners for cleanup */
         const referenceAbortControllers = new Set();
-        const container = this._buildDialogContent(tasks, selectedText, fullContent, recordContext, referenceAbortControllers);
+        const container = this._buildDialogContent(tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid);
         /** @type {'idle'|'loading'|'result'} */
         let state = 'idle';
         let resultContent = '';
@@ -367,7 +369,7 @@ export class CowriterDialog {
      * @returns {HTMLElement}
      * @private
      */
-    _buildDialogContent(tasks, selectedText, fullContent, recordContext, referenceAbortControllers) {
+    _buildDialogContent(tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid = null) {
         injectStyles();
         const container = document.createElement('div');
         container.className = 'cowriter-dialog';
@@ -398,8 +400,10 @@ export class CowriterDialog {
             taskSelect.appendChild(option);
         }
 
-        // Select first real task by default if tasks exist
-        if (tasks.length > 0) {
+        // Select pre-selected task or first real task by default
+        if (preSelectedTaskUid && tasks.some(t => t.uid === preSelectedTaskUid)) {
+            taskSelect.value = String(preSelectedTaskUid);
+        } else if (tasks.length > 0) {
             taskSelect.value = String(tasks[0].uid);
         }
         taskGroup.appendChild(taskSelect);

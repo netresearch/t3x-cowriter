@@ -163,6 +163,36 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
         });
 
+        it('should pre-select task when preSelectedTaskUid matches', async () => {
+            const dialog = new CowriterDialog(mockService);
+            // Task uid 2 is "Summarize" in the mock data
+            const showPromise = dialog.show('selected', 'full', '', null, 2);
+
+            await vi.waitFor(() => {
+                const select = document.querySelector('[data-role="task-select"]');
+                expect(select).not.toBeNull();
+                expect(select.value).toBe('2');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should fall back to first task when preSelectedTaskUid does not match', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full', '', null, 999);
+
+            await vi.waitFor(() => {
+                const select = document.querySelector('[data-role="task-select"]');
+                expect(select).not.toBeNull();
+                // Falls back to first task (uid 1)
+                expect(select.value).toBe('1');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
         it('should show "Edit tasks" link when tasksModule route is available', async () => {
             mockService._routes = { tasksModule: '/typo3/module/nrllm/tasks' };
             const dialog = new CowriterDialog(mockService);

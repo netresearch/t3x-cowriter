@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Service\Feature\TranslationService;
+use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\T3Cowriter\Controller\TranslationController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -205,6 +206,68 @@ final class TranslationControllerTest extends TestCase
         self::assertFalse($data['success']);
         self::assertStringContainsString('not configured yet', $data['error']);
         self::assertStringContainsString('LLM module', $data['error']);
+    }
+
+    #[Test]
+    public function translateActionPassesConfigurationAsProviderNotSourceLanguage(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $translationResult = new TranslationResult(
+            translation: 'Hallo Welt',
+            sourceLanguage: 'en',
+            targetLanguage: 'de',
+            confidence: 0.9,
+            usage: new UsageStatistics(50, 30, 80),
+        );
+
+        /** @var list<array{string, string, ?string, TranslationOptions}> */
+        $capturedArgs = [];
+
+        // Use a mock to capture exact arguments
+        $translationServiceMock = $this->createMock(TranslationService::class);
+        $translationServiceMock->expects(self::once())
+            ->method('translate')
+            ->willReturnCallback(static function (
+                string $text,
+                string $targetLanguage,
+                ?string $sourceLanguage,
+                ?TranslationOptions $options,
+            ) use (&$capturedArgs, $translationResult): TranslationResult {
+                $capturedArgs[] = [$text, $targetLanguage, $sourceLanguage, $options];
+
+                return $translationResult;
+            });
+
+        $contextStub = $this->createStub(Context::class);
+        $contextStub->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new TranslationController(
+            $translationServiceMock,
+            $this->rateLimiterStub,
+            $contextStub,
+            new NullLogger(),
+        );
+
+        $request = $this->createJsonRequest([
+            'text'           => 'Hello world',
+            'targetLanguage' => 'de',
+            'configuration'  => 'my-provider',
+            'formality'      => 'formal',
+        ]);
+        $response = $controller->translateAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertCount(1, $capturedArgs);
+
+        [$text, $targetLang, $sourceLang, $options] = $capturedArgs[0];
+        self::assertSame('Hello world', $text);
+        self::assertSame('de', $targetLang);
+        self::assertNull($sourceLang, 'sourceLanguage must be null, not the configuration value');
+        self::assertInstanceOf(TranslationOptions::class, $options);
+        self::assertSame('my-provider', $options->getProvider());
+        self::assertSame('formal', $options->getFormality());
     }
 
     /**
