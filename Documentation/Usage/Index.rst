@@ -39,12 +39,27 @@ The Cowriter dialog lets you choose what to do with your content:
 **Task selection**
     Choose from predefined tasks like "Improve Text", "Summarize",
     "Extend / Elaborate", "Fix Grammar & Spelling", or translations.
-    Each task has a description shown below the dropdown.
+    Each task has a description shown below the dropdown. You can also
+    select "Custom instruction" to write a freeform prompt.
 
 **Context scope**
-    Select whether the AI should work with your selected text or the
-    whole content element. If you have text selected, "Selected text" is
-    pre-selected.
+    Control how much context the AI receives:
+
+    *   **Selection** — only the highlighted text (pre-selected when
+        you have a selection)
+    *   **Full content** — the entire editor content
+    *   **Content element** — the full tt_content record
+    *   **Page content** — all content on the current page
+    *   **Parent page** / **Grandparent page** — include ancestor
+        page content for broader context
+
+    Options that require a record context (Content element and above)
+    are disabled when the record cannot be detected.
+
+**Reference pages** (optional)
+    Add pages whose content should be included as reference material.
+    Search by title or UID, and specify a relation label (e.g.,
+    "style guide", "reference material").
 
 **Additional instructions** (optional)
     Add ad-hoc rules for the current request, e.g., "Write in formal
@@ -52,10 +67,13 @@ The Cowriter dialog lets you choose what to do with your content:
 
 **Execute and preview**
     Click :guilabel:`Execute` to send the request to the LLM. The result
-    appears in a preview area. You can then:
+    appears in a preview area with model and token usage info. You can
+    then:
 
     *   Click :guilabel:`Insert` to replace the content in the editor
-    *   Click :guilabel:`Retry` to re-execute the task
+    *   Click :guilabel:`Reset` to clear the result and adjust settings
+    *   Click :guilabel:`Execute` again to refine the result (the
+        previous output becomes the new input)
     *   Click :guilabel:`Cancel` to discard
 
 Available tasks
