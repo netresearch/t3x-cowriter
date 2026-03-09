@@ -98,18 +98,30 @@ selected text without opening the full dialog.
 1.  Select the text you want to translate
 2.  Click the Translate button (globe icon) in the toolbar
 3.  Choose the target language from the dropdown
-4.  The selected text is replaced with the translation
+4.  A notification confirms the translation is in progress
+5.  The selected text is replaced with the translation
 
 Supported languages:
 
 *   German, English, French, Spanish, Italian
 *   Dutch, Portuguese, Polish, Japanese, Chinese
 
+The translation uses the default LLM configuration from the nr-llm
+extension. Administrators can optionally pass a ``configuration``
+parameter via the API to route translations through a specific LLM
+provider (e.g. DeepL or a dedicated translation model).
+
 ..  note::
 
-    Inline translation requires text to be selected. If no text is
-    selected, nothing happens. For translating entire content elements,
-    use the task-based dialog instead.
+    Inline translation requires text to be selected. A warning
+    notification appears if no text is selected. For translating
+    entire content elements, use the task-based dialog instead.
+
+..  tip::
+
+    Translation preserves HTML formatting. If you select bold or
+    linked text, the formatting is maintained in the translated
+    output.
 
 Alt text generation
 ===================
@@ -117,27 +129,41 @@ Alt text generation
 The **Vision** button (image icon) generates alt text for images using
 LLM vision analysis.
 
-1.  Place your cursor where you want the alt text inserted
+1.  Click on an image in the editor to select it
 2.  Click the Vision button in the toolbar
-3.  Enter the image URL when prompted
-4.  The generated alt text is inserted at the cursor position
+3.  A notification confirms the analysis is in progress
+4.  The alt text is set on the image automatically
+
+..  note::
+
+    You must select an image before clicking the Vision button.
+    A warning notification appears if no image is selected.
 
 ..  tip::
 
     This is useful for accessibility compliance — generate descriptive
     alt text for images without leaving the editor.
 
-Prompt templates
-================
+Tasks shortcut
+==============
 
-The **Templates** dropdown lets you apply predefined prompt templates
-from the toolbar. Templates are loaded from the nr-llm extension's
-task configuration.
+The **Tasks** dropdown (document icon) lets you open the Cowriter
+dialog with a specific task pre-selected, skipping the task selection
+step.
 
-1.  Click the Templates button (document icon) in the toolbar
-2.  Select a template from the dropdown
-3.  The Cowriter dialog opens with the template pre-selected
+1.  Click the Tasks button (document icon) in the toolbar
+2.  Select a task from the dropdown (tasks are loaded from nr-llm)
+3.  The Cowriter dialog opens with the chosen task pre-selected
 4.  Review, optionally adjust instructions, and execute
+
+Tasks are loaded once when you first open the dropdown and cached for
+the duration of the editing session. If you create new tasks in the
+LLM module, reload the page to see them in the dropdown.
+
+..  note::
+
+    If no tasks with ``category = 'content'`` are configured, a
+    notification guides you to the LLM module to create them.
 
 Model override
 ==============

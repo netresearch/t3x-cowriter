@@ -84,7 +84,7 @@ The four toolbar items are:
     Inline translation dropdown (10 languages)
 
 ``cowriterTemplates``
-    Apply prompt template presets from the toolbar
+    Open the Cowriter dialog with a task pre-selected
 
 ..  tip::
 
@@ -144,3 +144,44 @@ ensuring that:
 
     Always configure your LLM provider's API key in the backend. Never
     expose API keys in frontend JavaScript or client-accessible files.
+
+Troubleshooting
+===============
+
+Translation not working
+-----------------------
+
+If the translate button shows "Translation failed", check:
+
+1.  An LLM provider is configured and marked as default in
+    :guilabel:`Admin Tools` > :guilabel:`LLM Management`
+2.  The provider's API key is valid and not expired
+3.  The provider supports the ``translation`` feature
+4.  Check the TYPO3 system log for detailed error messages
+
+No tasks in dropdown
+--------------------
+
+If the Tasks dropdown shows "No tasks configured":
+
+1.  Navigate to :guilabel:`Admin Tools` > :guilabel:`LLM Management`
+    > :guilabel:`Tasks`
+2.  Create at least one task with ``category = 'content'``
+3.  Make sure the task record is not hidden or deleted
+4.  Reload the page in the browser to refresh the task list
+
+API key rejected
+----------------
+
+If you see "The LLM provider rejected the API key":
+
+1.  Check the provider configuration in the LLM module
+2.  Verify the API key is correct and has not been revoked
+3.  Some providers require specific permissions or billing setup
+
+Rate limit exceeded
+-------------------
+
+The Cowriter allows 20 requests per minute per backend user. If you
+hit the limit, wait a moment and try again. The ``Retry-After``
+response header indicates when the limit resets.
