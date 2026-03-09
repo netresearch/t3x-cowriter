@@ -173,10 +173,14 @@ export class CowriterDialog {
                         icon: 'actions-close',
                         trigger: () => {
                             modal.hideModal();
-                            reject(new Error('User cancelled'));
                         },
                     },
                 ],
+            });
+
+            // Handle modal dismissal via Escape key, X button, or Close button
+            modal?.addEventListener?.('typo3-modal-hidden', () => {
+                reject(new Error('User cancelled'));
             });
         });
     }
@@ -314,7 +318,12 @@ export class CowriterDialog {
                     }
                 } catch (error) {
                     activeRequest = null;
-                    if (error?.name === 'AbortError') return; // Request was cancelled
+                    if (error?.name === 'AbortError') {
+                        state = 'idle';
+                        this._updateButtonVisibility(modal, 'idle');
+                        this._setButtonsDisabled(modal, false);
+                        return;
+                    }
                     preview.textContent = `Error: ${error.message}`;
                     preview.classList.add('cowriter-result--empty');
                     this._showDebugDetails(container, {error: error.message}, currentContext, '');
