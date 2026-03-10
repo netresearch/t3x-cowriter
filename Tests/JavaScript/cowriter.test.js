@@ -867,7 +867,7 @@ describe('Cowriter Plugin', () => {
             await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
 
             expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Translate]', expect.any(Error));
-            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Translation API failed', 5);
+            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Translation API failed', 0);
             expect(plugin._isProcessing).toBe(false);
             consoleSpy.mockRestore();
         });
@@ -878,7 +878,7 @@ describe('Cowriter Plugin', () => {
             const dropdown = componentCallbacks['cowriterTranslate']();
             await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
 
-            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Rate limit exceeded', 5);
+            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Rate limit exceeded', 0);
             expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
         });
 

@@ -281,10 +281,10 @@ export class Cowriter extends Plugin {
                         });
                         Notification.success('Alt text generated', result.altText.substring(0, 80), 3);
                     } else {
-                        Notification.error('Alt text generation failed', result?.error || 'Unknown error', 5);
+                        Notification.error('Alt text generation failed', result?.error || 'Unknown error', 0);
                     }
                 } catch (error) {
-                    Notification.error('Alt text generation failed', error?.message || 'Unknown error', 5);
+                    Notification.error('Alt text generation failed', error?.message || 'Unknown error', 0);
                     console.error('[Cowriter Vision]', error);
                 } finally {
                     this._isProcessing = false;
@@ -352,10 +352,10 @@ export class Cowriter extends Plugin {
 
                         Notification.success('Translation complete', `Translated to ${langLabel}`, 3);
                     } else {
-                        Notification.error('Translation failed', result?.error || 'Unknown error', 5);
+                        Notification.error('Translation failed', result?.error || 'Unknown error', 0);
                     }
                 } catch (error) {
-                    Notification.error('Translation failed', error?.message || 'Unknown error', 5);
+                    Notification.error('Translation failed', error?.message || 'Unknown error', 0);
                     console.error('[Cowriter Translate]', error);
                 } finally {
                     this._isProcessing = false;
@@ -403,7 +403,7 @@ export class Cowriter extends Plugin {
                     addListToDropdown(dropdown, items);
                     tasksLoaded = true;
                 } catch (error) {
-                    Notification.error('Failed to load tasks', error?.message || 'Unknown error', 5);
+                    Notification.error('Failed to load tasks', error?.message || 'Unknown error', 0);
                     console.error('[Cowriter Tasks]', error);
                 } finally {
                     tasksLoading = false;
@@ -446,7 +446,7 @@ export class Cowriter extends Plugin {
                     }
                 } catch (error) {
                     if (error?.message && error.message !== 'User cancelled') {
-                        Notification.error('Task failed', error?.message || 'Unknown error', 5);
+                        Notification.error('Task failed', error?.message || 'Unknown error', 0);
                         console.error('[Cowriter Tasks]', error);
                     }
                 } finally {
