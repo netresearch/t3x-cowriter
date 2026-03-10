@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
+use Doctrine\DBAL\Result;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Task;
@@ -34,7 +35,12 @@ use Psr\Log\LoggerInterface;
 use ReflectionMethod;
 use RuntimeException;
 use stdClass;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Expression\CompositeExpression;
+use TYPO3\CMS\Core\Database\Query\Expression\ExpressionBuilder;
+use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Http\JsonResponse;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
@@ -50,6 +56,7 @@ final class AjaxControllerTest extends TestCase
     private Context&MockObject $contextMock;
     private LoggerInterface&MockObject $loggerMock;
     private ContextAssemblyServiceInterface&MockObject $contextAssemblyMock;
+    private ConnectionPool&MockObject $connectionPoolMock;
 
     protected function setUp(): void
     {
@@ -62,6 +69,7 @@ final class AjaxControllerTest extends TestCase
         $this->contextMock           = $this->createMock(Context::class);
         $this->loggerMock            = $this->createMock(LoggerInterface::class);
         $this->contextAssemblyMock   = $this->createMock(ContextAssemblyServiceInterface::class);
+        $this->connectionPoolMock    = $this->createMock(ConnectionPool::class);
 
         // Default: rate limit allows request
         $this->rateLimiterMock
@@ -85,6 +93,7 @@ final class AjaxControllerTest extends TestCase
             $this->contextMock,
             $this->loggerMock,
             $this->contextAssemblyMock,
+            $this->connectionPoolMock,
         );
     }
 
@@ -268,6 +277,29 @@ final class AjaxControllerTest extends TestCase
         $this->assertArrayHasKey('error', $data);
         $this->assertStringContainsString('provider', strtolower($data['error']));
         $this->assertStringContainsString('try again', strtolower($data['error']));
+    }
+
+    #[Test]
+    public function chatActionReturnsGuidanceWhenNoProviderConfigured(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('No provider specified and no default provider configured'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('is configured yet', $data['error']);
+        self::assertStringContainsString('LLM module', $data['error']);
     }
 
     #[Test]
@@ -751,6 +783,7 @@ final class AjaxControllerTest extends TestCase
             $this->contextMock,
             $this->loggerMock,
             $this->contextAssemblyMock,
+            $this->connectionPoolMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
@@ -1000,6 +1033,7 @@ final class AjaxControllerTest extends TestCase
             $this->contextMock,
             $this->loggerMock,
             $this->contextAssemblyMock,
+            $this->connectionPoolMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => 'Hello']]]);
@@ -1036,6 +1070,7 @@ final class AjaxControllerTest extends TestCase
             $this->contextMock,
             $this->loggerMock,
             $this->contextAssemblyMock,
+            $this->connectionPoolMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
@@ -1453,8 +1488,8 @@ final class AjaxControllerTest extends TestCase
     #[Test]
     public function getTasksActionReturnsActiveTasks(): void
     {
-        $task1 = $this->createTaskMock(1, 'improve', 'Improve Text', 'Enhance readability', true);
-        $task2 = $this->createTaskMock(2, 'summarize', 'Summarize', 'Create summary', true);
+        $task1 = $this->createTaskMock(1, 'improve', 'Improve Text', 'Enhance readability', true, 'Improve this: {{input}}');
+        $task2 = $this->createTaskMock(2, 'summarize', 'Summarize', 'Create summary', true, 'Summarize: {{input}}');
 
         $this->taskRepositoryMock
             ->method('findByCategory')
@@ -1470,6 +1505,8 @@ final class AjaxControllerTest extends TestCase
         self::assertSame('improve', $data['tasks'][0]['identifier']);
         self::assertSame('Improve Text', $data['tasks'][0]['name']);
         self::assertSame('Enhance readability', $data['tasks'][0]['description']);
+        self::assertSame('Improve this: {{input}}', $data['tasks'][0]['promptTemplate']);
+        self::assertSame('Summarize: {{input}}', $data['tasks'][1]['promptTemplate']);
     }
 
     #[Test]
@@ -1505,6 +1542,22 @@ final class AjaxControllerTest extends TestCase
         self::assertSame('fix<test>', $data['tasks'][0]['identifier']);
         self::assertSame('Fix Grammar & Spelling', $data['tasks'][0]['name']);
         self::assertSame('Desc with "quotes"', $data['tasks'][0]['description']);
+    }
+
+    #[Test]
+    public function getTasksActionReturnsRawPromptTemplate(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true, '<script>alert("xss")</script> {{input}}');
+
+        $this->taskRepositoryMock
+            ->method('findByCategory')
+            ->willReturn(new TestQueryResult([$task]));
+
+        $response = $this->subject->getTasksAction($this->createMock(ServerRequestInterface::class));
+
+        $data = $this->decodeJsonResponse($response);
+        // Raw content — frontend sanitizes before DOM insertion
+        self::assertSame('<script>alert("xss")</script> {{input}}', $data['tasks'][0]['promptTemplate']);
     }
 
     #[Test]
@@ -1585,6 +1638,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 999,
             'context'     => 'some text',
             'contextType' => 'selection',
+            'instruction' => 'Improve this',
         ]);
 
         $response = $this->subject->executeTaskAction($request);
@@ -1605,6 +1659,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 1,
             'context'     => 'some text',
             'contextType' => 'selection',
+            'instruction' => 'Improve this',
         ]);
 
         $response = $this->subject->executeTaskAction($request);
@@ -1616,9 +1671,6 @@ final class AjaxControllerTest extends TestCase
     public function executeTaskActionSuccessfulExecution(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('buildPrompt')
-            ->with(['input' => 'Hello world'])
-            ->willReturn('Improve: Hello world');
         $task->method('getConfiguration')->willReturn(null);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -1636,6 +1688,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 1,
             'context'     => 'Hello world',
             'contextType' => 'selection',
+            'instruction' => 'Improve: Hello world',
         ]);
 
         $response = $this->subject->executeTaskAction($request);
@@ -1647,13 +1700,9 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function executeTaskActionAppendsAdHocRulesToPrompt(): void
+    public function executeTaskActionUsesInstructionAsUserMessage(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        // Use callback so the ad-hoc rules injected into {{input}} are visible
-        $task->method('buildPrompt')->willReturnCallback(
-            static fn (array $vars) => 'Improve: ' . ($vars['input'] ?? 'text'),
-        );
         $task->method('getConfiguration')->willReturn(null);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -1668,16 +1717,15 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    // [0] = scope system message, [1] = user prompt with ad-hoc rules before input
+                    // [0] = formatting instruction, [1] = scope system message, [last] = user message
                     $userMsg = $messages[count($messages) - 1];
 
                     return $messages[0]['role'] === 'system'
-                        && str_contains($messages[0]['content'], 'selected a portion of text')
+                        && str_contains($messages[0]['content'], 'Do NOT use markdown')
+                        && $messages[1]['role'] === 'system'
+                        && str_contains($messages[1]['content'], 'selected a portion of text')
                         && $userMsg['role'] === 'user'
-                        && str_contains($userMsg['content'], 'ADDITIONAL RULES (follow these exactly')
-                        && str_contains($userMsg['content'], 'Be formal')
-                        && str_contains($userMsg['content'], 'Content to transform:')
-                        && str_contains($userMsg['content'], 'text');
+                        && $userMsg['content'] === 'Be formal and improve this text';
                 }),
                 $config,
             )
@@ -1687,7 +1735,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 1,
             'context'     => 'text',
             'contextType' => 'selection',
-            'adHocRules'  => 'Be formal',
+            'instruction' => 'Be formal and improve this text',
         ]);
 
         $this->subject->executeTaskAction($request);
@@ -1697,7 +1745,6 @@ final class AjaxControllerTest extends TestCase
     public function executeTaskActionInjectsEditorCapabilitiesWithInlineStyleExamples(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('buildPrompt')->willReturn('Improve: text');
         $task->method('getConfiguration')->willReturn(null);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -1712,15 +1759,18 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    // [0] = scope, [1] = capabilities, [2] = user prompt
-                    return count($messages) === 3
+                    // [0] = formatting, [1] = scope, [2] = editor_content, [3] = capabilities, [4] = user prompt
+                    return count($messages) === 5
                         && $messages[0]['role'] === 'system'
-                        && str_contains($messages[0]['content'], 'selected a portion of text')
+                        && str_contains($messages[0]['content'], 'Do NOT use markdown')
                         && $messages[1]['role'] === 'system'
-                        && str_contains($messages[1]['content'], 'bold')
-                        && str_contains($messages[1]['content'], 'tables')
-                        && str_contains($messages[1]['content'], '<span style="color: #hex">')
-                        && str_contains($messages[1]['content'], '<mark>');
+                        && str_contains($messages[1]['content'], 'selected a portion of text')
+                        && $messages[2]['role'] === 'system'
+                        && str_contains($messages[2]['content'], '<editor_content>')
+                        && $messages[3]['role'] === 'system'
+                        && str_contains($messages[3]['content'], 'bold')
+                        && str_contains($messages[3]['content'], 'tables')
+                        && str_contains($messages[3]['content'], '<mark>');
                 }),
                 $config,
             )
@@ -1730,6 +1780,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'            => 1,
             'context'            => 'text',
             'contextType'        => 'selection',
+            'instruction'        => 'Improve this text',
             'editorCapabilities' => 'bold, tables, lists',
         ]);
 
@@ -1740,7 +1791,6 @@ final class AjaxControllerTest extends TestCase
     public function executeTaskActionSkipsCapabilitiesWhenEmpty(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('buildPrompt')->willReturn('Improve: text');
         $task->method('getConfiguration')->willReturn(null);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -1755,10 +1805,14 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    // [0] = scope system message, [1] = user message (no capabilities)
-                    return count($messages) === 2
+                    // [0] = formatting, [1] = scope, [2] = editor_content, [3] = user message (no capabilities)
+                    return count($messages) === 4
                         && $messages[0]['role'] === 'system'
-                        && $messages[1]['role'] === 'user';
+                        && str_contains($messages[0]['content'], 'Do NOT use markdown')
+                        && $messages[1]['role'] === 'system'
+                        && $messages[2]['role'] === 'system'
+                        && str_contains($messages[2]['content'], '<editor_content>')
+                        && $messages[3]['role'] === 'user';
                 }),
                 $config,
             )
@@ -1768,6 +1822,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 1,
             'context'     => 'text',
             'contextType' => 'selection',
+            'instruction' => 'Improve this',
         ]);
 
         $this->subject->executeTaskAction($request);
@@ -1779,7 +1834,6 @@ final class AjaxControllerTest extends TestCase
         $taskConfig = $this->createConfigurationMock('task-config', 'Task Config', false);
 
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('buildPrompt')->willReturn('Prompt');
         $task->method('getConfiguration')->willReturn($taskConfig);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -1795,6 +1849,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 1,
             'context'     => 'text',
             'contextType' => 'selection',
+            'instruction' => 'Improve this',
         ]);
 
         $this->subject->executeTaskAction($request);
@@ -1804,7 +1859,6 @@ final class AjaxControllerTest extends TestCase
     public function executeTaskActionReturnsErrorOnProviderException(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('buildPrompt')->willReturn('Prompt');
         $task->method('getConfiguration')->willReturn(null);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -1829,6 +1883,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 1,
             'context'     => 'text',
             'contextType' => 'selection',
+            'instruction' => 'Improve this',
         ]);
 
         $response = $this->subject->executeTaskAction($request);
@@ -1843,7 +1898,6 @@ final class AjaxControllerTest extends TestCase
     public function executeTaskActionReturnsErrorOnUnexpectedException(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('buildPrompt')->willReturn('Prompt');
         $task->method('getConfiguration')->willReturn(null);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -1869,6 +1923,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 1,
             'context'     => 'text',
             'contextType' => 'selection',
+            'instruction' => 'Improve this',
         ]);
 
         $response = $this->subject->executeTaskAction($request);
@@ -1901,12 +1956,14 @@ final class AjaxControllerTest extends TestCase
             $this->contextMock,
             $this->loggerMock,
             $this->contextAssemblyMock,
+            $this->connectionPoolMock,
         );
 
         $request = $this->createRequestWithJsonBody([
             'taskUid'     => 1,
             'context'     => 'text',
             'contextType' => 'selection',
+            'instruction' => 'Improve this',
         ]);
 
         $response = $this->subject->executeTaskAction($request);
@@ -1918,7 +1975,6 @@ final class AjaxControllerTest extends TestCase
     public function executeTaskActionReturnsErrorWhenNoConfiguration(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('buildPrompt')->willReturn('Prompt');
         $task->method('getConfiguration')->willReturn(null);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -1928,6 +1984,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 1,
             'context'     => 'text',
             'contextType' => 'selection',
+            'instruction' => 'Improve this',
         ]);
 
         $response = $this->subject->executeTaskAction($request);
@@ -1949,12 +2006,6 @@ final class AjaxControllerTest extends TestCase
 
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('getConfiguration')->willReturn(null);
-        // buildPrompt receives the ORIGINAL editor content, not the assembled context
-        $task->method('buildPrompt')
-            ->with(['input' => 'original text'])
-            ->willReturnCallback(
-                fn (array $vars) => 'Improve: ' . $vars['input'],
-            );
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
 
         $config = $this->createConfigurationMock();
@@ -1966,13 +2017,19 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages) use ($assembledContext): bool {
-                    // [0] = scope constraint, [1] = reference context in XML, [last] = user prompt
-                    $scopeMsg = $messages[0];
-                    $refMsg   = $messages[1];
-                    $userMsg  = $messages[count($messages) - 1];
+                    // [0] = formatting, [1] = scope, [2] = editor_content, [3] = reference context, [last] = user
+                    $fmtMsg    = $messages[0];
+                    $scopeMsg  = $messages[1];
+                    $editorMsg = $messages[2];
+                    $refMsg    = $messages[3];
+                    $userMsg   = $messages[count($messages) - 1];
 
-                    return $scopeMsg['role'] === 'system'
+                    return $fmtMsg['role'] === 'system'
+                        && str_contains($fmtMsg['content'], 'Do NOT use markdown')
+                        && $scopeMsg['role'] === 'system'
                         && str_contains($scopeMsg['content'], 'selected a portion of text')
+                        && $editorMsg['role'] === 'system'
+                        && str_contains($editorMsg['content'], '<editor_content>')
                         && $refMsg['role'] === 'system'
                         && str_contains($refMsg['content'], '<reference_context')
                         && str_contains($refMsg['content'], 'Do NOT include this content in your output')
@@ -1988,6 +2045,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'       => 1,
             'context'       => 'original text',
             'contextType'   => 'selection',
+            'instruction'   => 'Improve: original text',
             'contextScope'  => 'page',
             'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
         ]);
@@ -2004,9 +2062,6 @@ final class AjaxControllerTest extends TestCase
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('getConfiguration')->willReturn(null);
-        $task->method('buildPrompt')->willReturnCallback(
-            fn (array $vars) => 'Improve: ' . $vars['input'],
-        );
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
 
         $config = $this->createConfigurationMock();
@@ -2017,11 +2072,15 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->willReturn($completionResponse);
 
+        // assembleContext should NOT be called when no contextScope is set
+        $this->contextAssemblyMock->expects(self::never())->method('assembleContext');
+
         // contextScope empty means use original context
         $request = $this->createRequestWithJsonBody([
             'taskUid'     => 1,
             'context'     => 'original selected text',
             'contextType' => 'selection',
+            'instruction' => 'Improve: original selected text',
         ]);
 
         $response = $this->subject->executeTaskAction($request);
@@ -2029,8 +2088,6 @@ final class AjaxControllerTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertTrue($body['success']);
-        // assembleContext should NOT have been called
-        $this->contextAssemblyMock->expects(self::never())->method('assembleContext');
     }
 
     #[Test]
@@ -2051,13 +2108,13 @@ final class AjaxControllerTest extends TestCase
 
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('getConfiguration')->willReturn(null);
-        $task->method('buildPrompt')->willReturn('Improve: text');
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
 
         $request = $this->createRequestWithJsonBody([
             'taskUid'       => 1,
             'context'       => 'original text',
             'contextType'   => 'selection',
+            'instruction'   => 'Improve this text',
             'contextScope'  => 'element',
             'recordContext' => ['table' => 'tt_content', 'uid' => 99, 'field' => 'bodytext'],
         ]);
@@ -2068,6 +2125,122 @@ final class AjaxControllerTest extends TestCase
         self::assertSame(500, $response->getStatusCode());
         self::assertFalse($body['success']);
         self::assertStringContainsString('assemble context', $body['error']);
+    }
+
+    #[Test]
+    public function executeTaskActionSkipsContextAssemblyForBasicScopeWithRecordContext(): void
+    {
+        // Kills LogicalAnd→LogicalOr mutant: scope IS basic ('selection') but recordContext IS set.
+        // Should NOT assemble context even though recordContext is present.
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willReturn($completionResponse);
+
+        $this->contextAssemblyMock->expects(self::never())->method('assembleContext');
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'       => 1,
+            'context'       => 'some text',
+            'contextType'   => 'selection',
+            'instruction'   => 'Improve: some text',
+            'contextScope'  => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionSkipsScopeInstructionForWhitespaceOnlyContext(): void
+    {
+        // Kills UnwrapTrim mutant: whitespace-only context should NOT produce scope instruction.
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock
+            ->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    // No message should contain scope instruction text
+                    foreach ($messages as $msg) {
+                        if (str_contains($msg['content'] ?? '', 'user selected a portion')) {
+                            return false;
+                        }
+                        if (str_contains($msg['content'] ?? '', 'Return the complete transformed content')) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => '   ',
+            'contextType' => 'text',
+            'instruction' => 'Generate new content',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionIncludesFormattingInstructionInFirstSystemMessage(): void
+    {
+        // Kills Concat/ConcatOperandRemoval mutants: assert exact formatting instruction content.
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock
+            ->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    $first = $messages[0];
+
+                    return $first['role'] === 'system'
+                        && str_contains($first['content'], 'writing assistant integrated into a rich text editor')
+                        && str_contains($first['content'], 'Respond ONLY with the content')
+                        && str_contains($first['content'], 'Use HTML tags for formatting')
+                        && str_contains($first['content'], 'Do NOT use markdown syntax');
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'some text',
+            'contextType' => 'selection',
+            'instruction' => 'Improve this',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        self::assertSame(200, $response->getStatusCode());
     }
 
     // =========================================================================
@@ -2161,9 +2334,6 @@ final class AjaxControllerTest extends TestCase
 
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('getConfiguration')->willReturn(null);
-        $task->method('buildPrompt')->willReturnCallback(
-            fn (array $vars) => 'Improve: ' . $vars['input'],
-        );
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
 
         $config = $this->createConfigurationMock();
@@ -2176,11 +2346,11 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages) use ($assembledContext): bool {
-                    // Messages: [0]=scope, [1]=reference_context, [2]=user prompt
-                    if (count($messages) < 3) {
+                    // Messages: [0]=formatting, [1]=scope, [2]=editor_content, [3]=reference_context, [4]=user
+                    if (count($messages) < 5) {
                         return false;
                     }
-                    $refContent = $messages[1]['content'];
+                    $refContent = $messages[3]['content'];
 
                     // Each fragment from the concatenation must appear, in order
                     return str_contains($refContent, '<reference_context>')
@@ -2191,12 +2361,12 @@ final class AjaxControllerTest extends TestCase
                         && str_contains($refContent, 'Do NOT include this content in your output.')
                         && str_contains($refContent, $assembledContext)
                         && str_contains($refContent, '</reference_context>')
-                        // Verify ordering: <reference_context> before Surrounding, before Do NOT, before actual context, before </reference_context>
+                        // Verify ordering
                         && strpos($refContent, '<reference_context>') < strpos($refContent, 'Surrounding content')
                         && strpos($refContent, 'Surrounding content') < strpos($refContent, 'Do NOT include')
                         && strpos($refContent, 'Do NOT include') < strpos($refContent, $assembledContext)
                         && strpos($refContent, $assembledContext) < strpos($refContent, '</reference_context>')
-                        // Verify newline before assembled context (kills ConcatOperandRemoval removing "\n")
+                        // Verify newline before assembled context
                         && str_contains($refContent, "Do NOT include this content in your output.\n" . $assembledContext)
                         && str_contains($refContent, $assembledContext . "\n" . '</reference_context>');
                 }),
@@ -2208,6 +2378,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'       => 1,
             'context'       => 'text to improve',
             'contextType'   => 'selection',
+            'instruction'   => 'Improve: text to improve',
             'contextScope'  => 'page',
             'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
         ]);
@@ -2221,7 +2392,6 @@ final class AjaxControllerTest extends TestCase
     {
         // Kills Concat/ConcatOperandRemoval mutants #39-46 on editor capabilities message
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('buildPrompt')->willReturn('Improve: text');
         $task->method('getConfiguration')->willReturn(null);
 
         $this->taskRepositoryMock->method('findByUid')->willReturn($task);
@@ -2236,25 +2406,21 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    // Messages: [0]=scope, [1]=capabilities, [2]=user prompt
-                    if (count($messages) < 3) {
+                    // Messages: [0]=formatting, [1]=scope, [2]=editor_content, [3]=capabilities, [4]=user
+                    if (count($messages) < 5) {
                         return false;
                     }
-                    $capContent = $messages[1]['content'];
+                    $capContent = $messages[3]['content'];
 
                     // Each fragment from the concatenation must appear in order
                     return str_contains($capContent, 'The rich text editor supports these formatting features:')
                         && str_contains($capContent, 'bold, italic, links')
                         && str_contains($capContent, 'You may use any of these in the output.')
-                        && str_contains($capContent, 'For inline styles, use: <span style="color: #hex"> for font colors,')
-                        && str_contains($capContent, '<span style="background-color: #hex"> for background colors,')
                         && str_contains($capContent, '<mark> for text highlighting.')
                         // Verify ordering
                         && strpos($capContent, 'rich text editor') < strpos($capContent, 'bold, italic')
                         && strpos($capContent, 'bold, italic') < strpos($capContent, 'You may use')
-                        && strpos($capContent, 'You may use') < strpos($capContent, 'For inline styles')
-                        && strpos($capContent, 'For inline styles') < strpos($capContent, 'background-color')
-                        && strpos($capContent, 'background-color') < strpos($capContent, '<mark>');
+                        && strpos($capContent, 'You may use') < strpos($capContent, '<mark>');
                 }),
                 $config,
             )
@@ -2264,6 +2430,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'            => 1,
             'context'            => 'text',
             'contextType'        => 'selection',
+            'instruction'        => 'Improve this text',
             'editorCapabilities' => 'bold, italic, links',
         ]);
 
@@ -2271,53 +2438,652 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function executeTaskActionAdHocRulesContainsAllFragmentsInOrder(): void
+    public function executeTaskActionCustomModeNoTask(): void
     {
-        // Kills Concat/ConcatOperandRemoval mutants #19-23 on ad-hoc rules in promptInput
-        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
-        $task->method('getConfiguration')->willReturn(null);
-        // buildPrompt passes through the input so we can inspect the full prompt
-        $task->method('buildPrompt')->willReturnCallback(
-            static fn (array $vars) => $vars['input'],
-        );
-        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
-
+        // taskUid=0 skips task loading, uses instruction directly
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
 
-        $completionResponse = $this->createCompletionResponse('Result');
+        $completionResponse = $this->createCompletionResponse('Custom result');
 
         $this->llmServiceManagerMock
             ->expects($this->once())
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    $userContent = $messages[count($messages) - 1]['content'];
+                    // [0] = formatting, [1] = scope, [2] = editor_content, [3] = user instruction
+                    return count($messages) === 4
+                        && $messages[0]['role'] === 'system'
+                        && str_contains($messages[0]['content'], 'Do NOT use markdown')
+                        && $messages[1]['role'] === 'system'
+                        && str_contains($messages[1]['content'], 'selected a portion of text')
+                        && $messages[2]['role'] === 'system'
+                        && str_contains($messages[2]['content'], '<editor_content>')
+                        && str_contains($messages[2]['content'], 'some text')
+                        && str_contains($messages[2]['content'], '</editor_content>')
+                        && $messages[3]['role'] === 'user'
+                        && $messages[3]['content'] === 'Make this text more formal';
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
 
-                    // Verify all fragments are present and in order
-                    return str_contains($userContent, 'ADDITIONAL RULES (follow these exactly')
-                        && str_contains($userContent, 'Use formal tone')
-                        && str_contains($userContent, 'Content to transform:')
-                        && str_contains($userContent, 'my input text')
-                        // Verify order: ADDITIONAL RULES before adHocRules before blank line before Content to transform before input
-                        && strpos($userContent, 'ADDITIONAL RULES') < strpos($userContent, 'Use formal tone')
-                        && strpos($userContent, 'Use formal tone') < strpos($userContent, 'Content to transform:')
-                        && strpos($userContent, 'Content to transform:') < strpos($userContent, 'my input text')
-                        // Verify the double newline separator (kills ConcatOperandRemoval removing "\n\n")
-                        && str_contains($userContent, "Use formal tone\n\nContent to transform:");
+        // taskUid=0 is custom mode — no task loaded
+        $this->taskRepositoryMock->expects(self::never())->method('findByUid');
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 0,
+            'context'     => 'some text',
+            'contextType' => 'selection',
+            'instruction' => 'Make this text more formal',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+    }
+
+    #[Test]
+    public function executeTaskActionCustomModeEmptyContext(): void
+    {
+        // Custom mode with empty context — no scope instruction, no editor ref
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Generated content');
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    // [0] = formatting instruction, [1] = user instruction (no scope/editor when context empty)
+                    return count($messages) === 2
+                        && $messages[0]['role'] === 'system'
+                        && str_contains($messages[0]['content'], 'Do NOT use markdown')
+                        && $messages[1]['role'] === 'user'
+                        && $messages[1]['content'] === 'Write a blog post about PHP 8.5';
                 }),
                 $config,
             )
             ->willReturn($completionResponse);
 
         $request = $this->createRequestWithJsonBody([
-            'taskUid'     => 1,
-            'context'     => 'my input text',
-            'contextType' => 'selection',
-            'adHocRules'  => 'Use formal tone',
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => '',
+            'instruction' => 'Write a blog post about PHP 8.5',
         ]);
 
-        $this->subject->executeTaskAction($request);
+        $response = $this->subject->executeTaskAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+    }
+
+    // ===========================================
+    // Markdown-to-HTML Post-Processing Tests
+    // ===========================================
+
+    #[Test]
+    public function executeTaskActionConvertsMarkdownToHtml(): void
+    {
+        $markdownContent = "**Bold text** and *italic*\n\n# Heading\n\n- Item 1\n- Item 2";
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse($markdownContent);
+        $this->llmServiceManagerMock->method('chatWithConfiguration')->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => '',
+            'instruction' => 'Write something',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        $data     = $this->decodeJsonResponse($response);
+
+        self::assertSame(200, $response->getStatusCode(), 'Response error: ' . ($data['error'] ?? 'none'));
+        self::assertTrue($data['success']);
+        // Markdown should be converted to HTML (then HTML-escaped by CompleteResponse)
+        $content = html_entity_decode($data['content'], ENT_QUOTES, 'UTF-8');
+        self::assertStringContainsString('<strong>Bold text</strong>', $content);
+        self::assertStringContainsString('<em>italic</em>', $content);
+        self::assertStringContainsString('<h2>Heading</h2>', $content);
+        self::assertStringContainsString('<ul>', $content);
+        self::assertStringContainsString('<li>Item 1</li>', $content);
+        // Should NOT contain markdown syntax
+        self::assertStringNotContainsString('**Bold', $content);
+        self::assertStringNotContainsString('# Heading', $content);
+    }
+
+    #[Test]
+    public function executeTaskActionPreservesHtmlResponse(): void
+    {
+        $htmlContent = '<p><strong>Bold</strong> and <em>italic</em></p><h2>Heading</h2>';
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse($htmlContent);
+        $this->llmServiceManagerMock->method('chatWithConfiguration')->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => '',
+            'instruction' => 'Write something',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        $data     = $this->decodeJsonResponse($response);
+
+        self::assertTrue($data['success']);
+        // HTML content should pass through unchanged (only HTML-escaped by CompleteResponse)
+        $content = html_entity_decode($data['content'], ENT_QUOTES, 'UTF-8');
+        self::assertStringContainsString('<strong>Bold</strong>', $content);
+        self::assertStringContainsString('<h2>Heading</h2>', $content);
+    }
+
+    #[Test]
+    public function executeTaskActionConvertsMixedHtmlMarkdown(): void
+    {
+        // Model outputs HTML headings but markdown inline formatting
+        $mixedContent = "<h2>Title</h2>\n\nSome text with **bold** and *italic* words.\n\nMore **emphasis** here.";
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse($mixedContent);
+        $this->llmServiceManagerMock->method('chatWithConfiguration')->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => '',
+            'instruction' => 'Write something',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        $data     = $this->decodeJsonResponse($response);
+
+        self::assertSame(200, $response->getStatusCode());
+        $content = html_entity_decode($data['content'], ENT_QUOTES, 'UTF-8');
+        // HTML heading preserved
+        self::assertStringContainsString('<h2>Title</h2>', $content);
+        // Inline markdown converted to HTML
+        self::assertStringContainsString('<strong>bold</strong>', $content);
+        self::assertStringContainsString('<em>italic</em>', $content);
+        // Bare text wrapped in <p>
+        self::assertStringContainsString('<p>', $content);
+        // No markdown remnants
+        self::assertStringNotContainsString('**bold**', $content);
+        self::assertStringNotContainsString('*italic*', $content);
+    }
+
+    #[Test]
+    public function executeTaskActionIncludesDebugMessagesInDevMode(): void
+    {
+        $GLOBALS['TYPO3_CONF_VARS']['BE']['debug'] = true;
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock->method('chatWithConfiguration')->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => '',
+            'instruction' => 'Test instruction',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        $data     = $this->decodeJsonResponse($response);
+
+        self::assertArrayHasKey('debugMessages', $data);
+        self::assertIsArray($data['debugMessages']);
+        // Should contain at least the formatting instruction and the user message
+        self::assertGreaterThanOrEqual(2, count($data['debugMessages']));
+        self::assertSame('system', $data['debugMessages'][0]['role']);
+        self::assertSame('user', $data['debugMessages'][count($data['debugMessages']) - 1]['role']);
+
+        unset($GLOBALS['TYPO3_CONF_VARS']['BE']['debug']);
+    }
+
+    #[Test]
+    public function executeTaskActionExcludesDebugMessagesInProduction(): void
+    {
+        $GLOBALS['TYPO3_CONF_VARS']['BE']['debug'] = false;
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock->method('chatWithConfiguration')->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => '',
+            'instruction' => 'Test instruction',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        $data     = $this->decodeJsonResponse($response);
+
+        self::assertArrayNotHasKey('debugMessages', $data);
+
+        unset($GLOBALS['TYPO3_CONF_VARS']['BE']['debug']);
+    }
+
+    // ===========================================
+    // searchPagesAction Tests
+    // ===========================================
+
+    #[Test]
+    public function searchPagesActionReturnsEmptyForEmptyQuery(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => '']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['pages']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturnsEmptyForMissingQuery(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn([]);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['pages']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturnsMatchingPagesByTitle(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('1=1');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $rows = [
+            ['uid' => 5, 'title' => 'Test Page', 'slug' => '/test-page'],
+            ['uid' => 12, 'title' => 'Another Test', 'slug' => '/another-test'],
+        ];
+
+        $this->mockQueryBuilderForSearchPages($rows);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Test']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertCount(2, $data['pages']);
+        self::assertSame(5, $data['pages'][0]['uid']);
+        self::assertSame('Test Page', $data['pages'][0]['title']);
+        self::assertSame('/test-page', $data['pages'][0]['slug']);
+        self::assertSame(12, $data['pages'][1]['uid']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionSearchesByNumericUid(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('1=1');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $rows = [
+            ['uid' => 42, 'title' => 'Page 42', 'slug' => '/page-42'],
+        ];
+
+        $this->mockQueryBuilderForSearchPages($rows);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => '42']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertCount(1, $data['pages']);
+        self::assertSame(42, $data['pages'][0]['uid']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionAppliesPermissionClause(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('pages.perms_everybody & 1');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $this->mockQueryBuilderForSearchPages([]);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Home']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['pages']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionSkipsEmptyPermissionClause(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $this->mockQueryBuilderForSearchPages([
+            ['uid' => 1, 'title' => 'Root', 'slug' => '/'],
+        ]);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Root']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertCount(1, $data['pages']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturns403WhenNoBackendUser(): void
+    {
+        unset($GLOBALS['BE_USER']);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Test']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(403, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame('No backend user session.', $data['error']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturns403WhenBackendUserIsNotAuthenticated(): void
+    {
+        $GLOBALS['BE_USER'] = new stdClass();
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Test']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(403, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionReturns500OnException(): void
+    {
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('1=1');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $this->connectionPoolMock
+            ->method('getQueryBuilderForTable')
+            ->willThrowException(new RuntimeException('DB connection failed'));
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'Test']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame('Failed to search pages.', $data['error']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    // ===========================================
+    // Markdown Conversion Tests (via Reflection)
+    // ===========================================
+
+    #[Test]
+    public function convertBlockMarkdownConvertsHeadings(): void
+    {
+        $input    = "# Heading 1\n## Heading 2\n### Heading 3";
+        $expected = "<h2>Heading 1</h2>\n<h3>Heading 2</h3>\n<h4>Heading 3</h4>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownConvertsUnorderedList(): void
+    {
+        $input    = "- Item 1\n- Item 2\n* Item 3";
+        $expected = "<ul>\n<li>Item 1</li>\n<li>Item 2</li>\n<li>Item 3</li>\n</ul>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownConvertsOrderedList(): void
+    {
+        $input    = "1. First\n2. Second\n3. Third";
+        $expected = "<ol>\n<li>First</li>\n<li>Second</li>\n<li>Third</li>\n</ol>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownHandlesListTransitionUlToOl(): void
+    {
+        $input    = "- Bullet\n1. Number";
+        $expected = "<ul>\n<li>Bullet</li>\n</ul>\n<ol>\n<li>Number</li>\n</ol>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownHandlesListTransitionOlToUl(): void
+    {
+        $input    = "1. Number\n- Bullet";
+        $expected = "<ol>\n<li>Number</li>\n</ol>\n<ul>\n<li>Bullet</li>\n</ul>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownClosesListBeforeHeading(): void
+    {
+        $input    = "- Item\n# Heading";
+        $expected = "<ul>\n<li>Item</li>\n</ul>\n<h2>Heading</h2>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownClosesListOnEmptyLine(): void
+    {
+        $input    = "- Item 1\n\nParagraph text";
+        $expected = "<ul>\n<li>Item 1</li>\n</ul>\n<p>Paragraph text</p>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownClosesListBeforeBareText(): void
+    {
+        $input    = "- Item 1\nBare text line";
+        $expected = "<ul>\n<li>Item 1</li>\n</ul>\n<p>Bare text line</p>";
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownWrapsBareTextInParagraph(): void
+    {
+        $input    = 'Just some text';
+        $expected = '<p>Just some text</p>';
+
+        self::assertSame($expected, $this->invokeConvertBlockMarkdown($input));
+    }
+
+    #[Test]
+    public function convertBlockMarkdownHandlesMixedContent(): void
+    {
+        $input  = "# Title\n\n- Item A\n- Item B\n\n1. One\n2. Two\n\nSome paragraph.";
+        $result = $this->invokeConvertBlockMarkdown($input);
+
+        self::assertStringContainsString('<h2>Title</h2>', $result);
+        self::assertStringContainsString('<ul>', $result);
+        self::assertStringContainsString('<li>Item A</li>', $result);
+        self::assertStringContainsString('</ul>', $result);
+        self::assertStringContainsString('<ol>', $result);
+        self::assertStringContainsString('<li>One</li>', $result);
+        self::assertStringContainsString('</ol>', $result);
+        self::assertStringContainsString('<p>Some paragraph.</p>', $result);
+    }
+
+    #[Test]
+    public function wrapBareTextBlocksWrapsUnwrappedText(): void
+    {
+        $input  = "<h2>Title</h2>\n\nSome bare text\n\n<p>Already wrapped</p>";
+        $result = $this->invokeWrapBareTextBlocks($input);
+
+        self::assertStringContainsString('<h2>Title</h2>', $result);
+        self::assertStringContainsString('<p>Some bare text</p>', $result);
+        self::assertStringContainsString('<p>Already wrapped</p>', $result);
+    }
+
+    #[Test]
+    public function wrapBareTextBlocksPreservesInternalLineBreaks(): void
+    {
+        $input  = "Line one\nLine two";
+        $result = $this->invokeWrapBareTextBlocks($input);
+
+        self::assertSame('<p>Line one<br>Line two</p>', $result);
+    }
+
+    #[Test]
+    public function wrapBareTextBlocksSkipsEmptyBlocks(): void
+    {
+        // Leading/trailing double newlines produce empty strings from preg_split
+        $input  = "\n\n<h2>Title</h2>\n\n<p>Content</p>\n\n";
+        $result = $this->invokeWrapBareTextBlocks($input);
+
+        self::assertStringContainsString('<h2>Title</h2>', $result);
+        self::assertStringContainsString('<p>Content</p>', $result);
+        // Empty blocks should be skipped, not wrapped in <p></p>
+        self::assertStringNotContainsString('<p></p>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsLinksWithSafeScheme(): void
+    {
+        $input  = 'Visit [Example](https://example.com) now';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<a href="https://example.com">Example</a>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsLinksWithHashScheme(): void
+    {
+        $input  = 'Go to [section](#anchor)';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<a href="#anchor">section</a>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsLinksWithRelativePath(): void
+    {
+        $input  = 'See [page](/some/path)';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<a href="/some/path">page</a>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownStripsLinksWithDangerousScheme(): void
+    {
+        $input  = 'Click [here](javascript:alert(1))';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringNotContainsString('<a ', $result);
+        self::assertStringNotContainsString('javascript:', $result);
+        self::assertStringContainsString('here', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownStripsLinksWithDataScheme(): void
+    {
+        $input  = 'Click [here](data:text/html,<script>alert(1)</script>)';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringNotContainsString('<a ', $result);
+        self::assertStringContainsString('here', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsInlineCode(): void
+    {
+        $input  = 'Use `console.log()` for debugging';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<code>console.log()</code>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownConvertsStrikethrough(): void
+    {
+        $input  = 'This is ~~deleted~~ text';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertStringContainsString('<s>deleted</s>', $result);
+    }
+
+    #[Test]
+    public function convertMarkdownToHtmlSkipsLargeContent(): void
+    {
+        $largeContent = str_repeat('**bold** ', 8000);
+        $result       = $this->invokeConvertMarkdownToHtml($largeContent);
+
+        self::assertSame($largeContent, $result);
     }
 
     // ===========================================
@@ -2330,6 +3096,7 @@ final class AjaxControllerTest extends TestCase
         string $name,
         string $description,
         bool $isActive,
+        string $promptTemplate = '',
     ): Task&MockObject {
         $mock = $this->createMock(Task::class);
         $mock->method('getUid')->willReturn($uid);
@@ -2337,6 +3104,7 @@ final class AjaxControllerTest extends TestCase
         $mock->method('getName')->willReturn($name);
         $mock->method('getDescription')->willReturn($description);
         $mock->method('isActive')->willReturn($isActive);
+        $mock->method('getPromptTemplate')->willReturn($promptTemplate);
 
         return $mock;
     }
@@ -2360,10 +3128,14 @@ final class AjaxControllerTest extends TestCase
             ->method('chatWithConfiguration')
             ->with(
                 $this->callback(static function (array $messages): bool {
-                    // Whitespace-only capabilities should be skipped: [0] = scope, [1] = user
-                    return count($messages) === 2
-                        && $messages[0]['role'] === 'system'
-                        && $messages[1]['role'] === 'user';
+                    // Whitespace-only capabilities should be skipped — no message should contain capabilities
+                    foreach ($messages as $msg) {
+                        if (str_contains($msg['content'] ?? '', 'editor capabilities')) {
+                            return false;
+                        }
+                    }
+
+                    return true;
                 }),
                 $config,
             )
@@ -2373,6 +3145,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'            => 1,
             'context'            => 'text',
             'contextType'        => 'selection',
+            'instruction'        => 'Improve: text',
             'editorCapabilities' => '   ',
         ]);
 
@@ -2380,7 +3153,7 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function executeTaskActionSkipsAdHocRulesWhenWhitespaceOnly(): void
+    public function executeTaskActionDoesNotIncludeAdditionalRulesInMessages(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('buildPrompt')->willReturnCallback(
@@ -2402,7 +3175,6 @@ final class AjaxControllerTest extends TestCase
                 $this->callback(static function (array $messages): bool {
                     $userMsg = $messages[count($messages) - 1];
 
-                    // Whitespace-only ad-hoc rules should be skipped — no ADDITIONAL RULES prefix
                     return $userMsg['role'] === 'user'
                         && !str_contains($userMsg['content'], 'ADDITIONAL RULES');
                 }),
@@ -2414,7 +3186,7 @@ final class AjaxControllerTest extends TestCase
             'taskUid'     => 1,
             'context'     => 'text',
             'contextType' => 'selection',
-            'adHocRules'  => '   ',
+            'instruction' => 'Improve: text',
         ]);
 
         $this->subject->executeTaskAction($request);
@@ -2470,5 +3242,80 @@ final class AjaxControllerTest extends TestCase
         $objects = array_filter($items, static fn (mixed $item): bool => is_object($item));
 
         return new TestQueryResult(array_values($objects));
+    }
+
+    /**
+     * Mock the ConnectionPool → QueryBuilder chain for searchPagesAction.
+     *
+     * @param list<array{uid: int, title: string, slug: string}> $rows
+     */
+    private function mockQueryBuilderForSearchPages(array $rows): void
+    {
+        $compositeExpr = $this->createMock(CompositeExpression::class);
+
+        $expressionBuilder = $this->createMock(ExpressionBuilder::class);
+        $expressionBuilder->method('like')->willReturn('title LIKE ?');
+        $expressionBuilder->method('eq')->willReturn('uid = ?');
+        $expressionBuilder->method('or')->willReturn($compositeExpr);
+
+        $result = $this->createMock(Result::class);
+        $result->method('fetchAllAssociative')->willReturn($rows);
+
+        $queryBuilder = $this->createMock(QueryBuilder::class);
+        $queryBuilder->method('select')->willReturnSelf();
+        $queryBuilder->method('from')->willReturnSelf();
+        $queryBuilder->method('setMaxResults')->willReturnSelf();
+        $queryBuilder->method('where')->willReturnSelf();
+        $queryBuilder->method('andWhere')->willReturnSelf();
+        $queryBuilder->method('orderBy')->willReturnSelf();
+        $queryBuilder->method('expr')->willReturn($expressionBuilder);
+        $queryBuilder->method('createNamedParameter')->willReturn('?');
+        $queryBuilder->method('escapeLikeWildcards')->willReturnArgument(0);
+        $queryBuilder->method('executeQuery')->willReturn($result);
+
+        $this->connectionPoolMock
+            ->method('getQueryBuilderForTable')
+            ->with('pages')
+            ->willReturn($queryBuilder);
+    }
+
+    /**
+     * Invoke the private convertBlockMarkdown method via reflection.
+     */
+    private function invokeConvertBlockMarkdown(string $content): string
+    {
+        $method = new ReflectionMethod(AjaxController::class, 'convertBlockMarkdown');
+
+        return $method->invoke($this->subject, $content);
+    }
+
+    /**
+     * Invoke the private wrapBareTextBlocks method via reflection.
+     */
+    private function invokeWrapBareTextBlocks(string $content): string
+    {
+        $method = new ReflectionMethod(AjaxController::class, 'wrapBareTextBlocks');
+
+        return $method->invoke($this->subject, $content);
+    }
+
+    /**
+     * Invoke the private convertInlineMarkdown method via reflection.
+     */
+    private function invokeConvertInlineMarkdown(string $text): string
+    {
+        $method = new ReflectionMethod(AjaxController::class, 'convertInlineMarkdown');
+
+        return $method->invoke($this->subject, $text);
+    }
+
+    /**
+     * Invoke the private convertMarkdownToHtml method via reflection.
+     */
+    private function invokeConvertMarkdownToHtml(string $content): string
+    {
+        $method = new ReflectionMethod(AjaxController::class, 'convertMarkdownToHtml');
+
+        return $method->invoke($this->subject, $content);
     }
 }

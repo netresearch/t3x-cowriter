@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use JsonException;
+use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
@@ -20,6 +21,7 @@ use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
+use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -27,10 +29,14 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Database\Connection;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\JsonResponse;
 use TYPO3\CMS\Core\Http\Response;
 use TYPO3\CMS\Core\Http\Stream;
+use TYPO3\CMS\Core\Type\Bitmask\Permission;
 
 /**
  * AJAX controller for LLM interactions via nr-llm extension.
@@ -59,6 +65,16 @@ final readonly class AjaxController
     private const ALLOWED_ROLES = ['user', 'assistant'];
 
     /**
+     * Maximum length of a page search query string in characters.
+     */
+    private const MAX_SEARCH_QUERY_LENGTH = 200;
+
+    /**
+     * Maximum number of page search results to return.
+     */
+    private const MAX_SEARCH_RESULTS = 20;
+
+    /**
      * System prompt for the cowriter assistant.
      */
     private const SYSTEM_PROMPT = <<<'PROMPT'
@@ -76,6 +92,7 @@ final readonly class AjaxController
         private Context $context,
         private LoggerInterface $logger,
         private ContextAssemblyServiceInterface $contextAssemblyService,
+        private ConnectionPool $connectionPool,
     ) {}
 
     /**
@@ -147,7 +164,7 @@ final readonly class AjaxController
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'LLM provider error occurred. Please try again later.'],
+                $this->buildErrorResponse('LLM provider error occurred. Please try again later.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -158,7 +175,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'An unexpected error occurred.'],
+                $this->buildErrorResponse('An unexpected error occurred.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -240,9 +257,8 @@ final readonly class AjaxController
                 'exception' => $e->getMessage(),
             ]);
 
-            // Don't expose provider details to client - log them instead
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('LLM provider error occurred. Please try again later.')->jsonSerialize(),
+                $this->buildErrorResponse('LLM provider error occurred. Please try again later.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -253,7 +269,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('An unexpected error occurred.')->jsonSerialize(),
+                $this->buildErrorResponse('An unexpected error occurred.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -406,10 +422,11 @@ final readonly class AjaxController
             }
 
             $list[] = [
-                'uid'         => $task->getUid(),
-                'identifier'  => $task->getIdentifier(),
-                'name'        => $task->getName(),
-                'description' => $task->getDescription(),
+                'uid'            => $task->getUid(),
+                'identifier'     => $task->getIdentifier(),
+                'name'           => $task->getName(),
+                'description'    => $task->getDescription(),
+                'promptTemplate' => $task->getPromptTemplate(),
             ];
         }
 
@@ -464,8 +481,12 @@ final readonly class AjaxController
     /**
      * Execute a cowriter task with context.
      *
-     * Loads the task, builds the prompt from its template + context,
-     * optionally appends ad-hoc rules, and executes via LLM.
+     * The frontend sends the instruction text derived from the selected prompt
+     * template, with any {{input}}/context placeholder removed, or a custom
+     * user-written instruction. The actual editor content/context is sent
+     * separately (e.g. in the <editor_content> system message). When taskUid > 0,
+     * task configuration is used for LLM routing; when taskUid === 0, custom mode
+     * is used.
      */
     public function executeTaskAction(ServerRequestInterface $request): ResponseInterface
     {
@@ -484,21 +505,22 @@ final readonly class AjaxController
             );
         }
 
-        // Load and validate the task
-        $task = $this->taskRepository->findByUid($dto->taskUid);
-        if (!$task instanceof Task || !$task->isActive()) {
-            return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('Task not found or inactive.')->jsonSerialize(),
-                $rateLimitResult,
-                404,
-            );
+        // Resolve task (optional — taskUid=0 is custom mode)
+        $task = null;
+        if ($dto->taskUid > 0) {
+            $task = $this->taskRepository->findByUid($dto->taskUid);
+            if (!$task instanceof Task || !$task->isActive()) {
+                return $this->jsonResponseWithRateLimitHeaders(
+                    CompleteResponse::error('Task not found or inactive.')->jsonSerialize(),
+                    $rateLimitResult,
+                    404,
+                );
+            }
         }
 
-        // Input is ALWAYS the editor content (the text to transform)
-        $input              = $dto->context;
         $surroundingContext = '';
 
-        // For extended scopes, assemble surrounding context as reference (NOT as input)
+        // For extended scopes, assemble surrounding context as reference
         if (!in_array($dto->contextScope, ['', 'selection', 'text'], true)
             && $dto->recordContext !== null
         ) {
@@ -523,30 +545,38 @@ final readonly class AjaxController
             }
         }
 
-        // Build prompt — inject ad-hoc rules BEFORE the input content so the LLM
-        // processes them as part of the instructions, not as an afterthought.
-        $promptInput = $input;
-        if (trim($dto->adHocRules) !== '') {
-            $promptInput = "ADDITIONAL RULES (follow these exactly — they override default behavior):\n"
-                . $dto->adHocRules . "\n\n"
-                . "Content to transform:\n" . $input;
-        }
-
-        $prompt = $task->buildPrompt(['input' => $promptInput]);
-
         // Build messages
         $messages = [];
 
-        // Tell the LLM exactly what scope it is working with
-        $isSelection      = $dto->contextType === 'selection';
-        $scopeInstruction = $isSelection
-            ? 'The user selected a portion of text. '
-                . 'Return ONLY the transformed selection — '
-                . 'do not add surrounding content or change the scope of the text.'
-            : 'Return the complete transformed content.';
-        $messages[] = ['role' => 'system', 'content' => $scopeInstruction];
+        // Core formatting instruction — must be first system message for reliable adherence
+        $messages[] = [
+            'role'    => 'system',
+            'content' => 'You are a writing assistant integrated into a rich text editor (CKEditor). '
+                . 'Respond ONLY with the content — no explanations, no preamble, no markdown. '
+                . 'Use HTML tags for formatting (e.g., <strong>, <em>, <ul>, <ol>, <h2>, <p>). '
+                . 'Do NOT use markdown syntax like **bold**, *italic*, # headings, or ```code blocks```.',
+        ];
 
-        // Inject surrounding context as read-only reference (BEFORE the prompt)
+        // Tell the LLM exactly what scope it is working with (when context is present)
+        if (trim($dto->context) !== '') {
+            $isSelection      = $dto->contextType === 'selection';
+            $scopeInstruction = $isSelection
+                ? 'The user selected a portion of text. '
+                    . 'Return ONLY the transformed selection — '
+                    . 'do not add surrounding content or change the scope of the text.'
+                : 'Return the complete transformed content.';
+            $messages[] = ['role' => 'system', 'content' => $scopeInstruction];
+        }
+
+        // Inject editor content as structured system message
+        if (trim($dto->context) !== '') {
+            $messages[] = [
+                'role'    => 'system',
+                'content' => "<editor_content>\n" . $dto->context . "\n</editor_content>",
+            ];
+        }
+
+        // Inject surrounding context as read-only reference (BEFORE the instruction)
         if ($surroundingContext !== '') {
             $messages[] = [
                 'role'    => 'system',
@@ -567,17 +597,16 @@ final readonly class AjaxController
                 'role'    => 'system',
                 'content' => 'The rich text editor supports these formatting features: '
                     . $dto->editorCapabilities
-                    . ". You may use any of these in the output.\n"
-                    . 'For inline styles, use: <span style="color: #hex"> for font colors, '
-                    . '<span style="background-color: #hex"> for background colors, '
-                    . '<mark> for text highlighting.',
+                    . '. You may use any of these in the output. '
+                    . 'Use <mark> for text highlighting.',
             ];
         }
 
-        $messages[] = ['role' => 'user', 'content' => $prompt];
+        // Instruction is the user message — it IS the full prompt
+        $messages[] = ['role' => 'user', 'content' => $dto->instruction];
 
         // Resolve configuration: task's config → request's config → default
-        $taskConfig    = $task->getConfiguration();
+        $taskConfig    = $task?->getConfiguration();
         $configuration = $taskConfig instanceof LlmConfiguration
             ? $taskConfig
             : $this->resolveConfiguration($dto->configuration);
@@ -595,8 +624,33 @@ final readonly class AjaxController
         try {
             $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
 
+            // Post-process: convert markdown to HTML if the model ignored the formatting instruction
+            $rawContent       = $response->content ?? '';
+            $convertedContent = $this->convertMarkdownToHtml($rawContent);
+            if ($convertedContent !== $rawContent) {
+                $response = new CompletionResponse(
+                    content: $convertedContent,
+                    model: $response->model,
+                    usage: $response->usage,
+                    finishReason: $response->finishReason,
+                    provider: $response->provider,
+                    toolCalls: $response->toolCalls,
+                    metadata: $response->metadata,
+                    thinking: $response->thinking,
+                );
+            }
+
+            $responseData = CompleteResponse::success($response)->jsonSerialize();
+
+            // Only expose raw LLM messages in TYPO3 development mode
+            /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
+            $typo3ConfVars = $GLOBALS['TYPO3_CONF_VARS'] ?? [];
+            if (($typo3ConfVars['BE']['debug'] ?? false) === true) {
+                $responseData['debugMessages'] = $messages;
+            }
+
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::success($response)->jsonSerialize(),
+                $responseData,
                 $rateLimitResult,
             );
         } catch (ProviderException $e) {
@@ -606,7 +660,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('LLM provider error occurred. Please try again later.')->jsonSerialize(),
+                $this->buildErrorResponse('LLM provider error occurred. Please try again later.', $e),
                 $rateLimitResult,
                 500,
             );
@@ -618,11 +672,107 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('An unexpected error occurred.')->jsonSerialize(),
+                $this->buildErrorResponse('An unexpected error occurred.', $e),
                 $rateLimitResult,
                 500,
             );
         }
+    }
+
+    /**
+     * Search pages by title or UID for the reference page picker.
+     */
+    public function searchPagesAction(ServerRequestInterface $request): ResponseInterface
+    {
+        /** @var string $rawQuery */
+        $rawQuery = $request->getQueryParams()['query'] ?? '';
+        $query    = mb_substr(trim((string) $rawQuery), 0, self::MAX_SEARCH_QUERY_LENGTH);
+        if ($query === '' || (!ctype_digit($query) && mb_strlen($query) < 2)) {
+            return new JsonResponse(['success' => true, 'pages' => []]);
+        }
+
+        $backendUser = $GLOBALS['BE_USER'] ?? null;
+        if (!$backendUser instanceof BackendUserAuthentication) {
+            return new JsonResponse(['success' => false, 'error' => 'No backend user session.'], 403);
+        }
+
+        try {
+            $qb = $this->connectionPool->getQueryBuilderForTable('pages');
+            $qb->select('uid', 'title', 'slug')
+                ->from('pages')
+                ->setMaxResults(self::MAX_SEARCH_RESULTS);
+
+            $conditions = [
+                $qb->expr()->like(
+                    'title',
+                    $qb->createNamedParameter('%' . $qb->escapeLikeWildcards($query) . '%'),
+                ),
+            ];
+
+            if (ctype_digit($query)) {
+                $conditions[] = $qb->expr()->eq('uid', $qb->createNamedParameter((int) $query, Connection::PARAM_INT));
+            }
+
+            $qb->where($qb->expr()->or(...$conditions));
+
+            $permClause = $backendUser->getPagePermsClause(Permission::PAGE_SHOW);
+            if ($permClause !== '') {
+                $qb->andWhere($permClause);
+            }
+
+            $qb->orderBy('title', 'ASC');
+
+            $rows = $qb->executeQuery()->fetchAllAssociative();
+
+            /** @var list<array{uid: int|string, title: string, slug: string|null}> $rows */
+            $pages = array_map(PageSearchResult::fromRow(...), $rows);
+
+            return new JsonResponse(['success' => true, 'pages' => $pages]);
+        } catch (Throwable $e) {
+            $this->logger->error('Page search failed', ['exception' => $e->getMessage()]);
+
+            return new JsonResponse(
+                ['success' => false, 'error' => 'Failed to search pages.'],
+                500,
+            );
+        }
+    }
+
+    /**
+     * Build an error response array, including debug details when BE.debug is enabled.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildErrorResponse(string $message, Throwable $exception): array
+    {
+        $userMessage = $this->enrichErrorMessage($message, $exception);
+        $response    = CompleteResponse::error($userMessage)->jsonSerialize();
+
+        /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
+        $typo3ConfVars = $GLOBALS['TYPO3_CONF_VARS'] ?? [];
+        if (($typo3ConfVars['BE']['debug'] ?? false) === true) {
+            $response['debugError'] = $exception->getMessage();
+        }
+
+        return $response;
+    }
+
+    /**
+     * Enrich generic error messages with user-friendly guidance for known causes.
+     */
+    private function enrichErrorMessage(string $fallback, Throwable $exception): string
+    {
+        $exMessage = $exception->getMessage();
+
+        if (str_contains($exMessage, 'no default provider configured') || str_contains($exMessage, 'No default LLM configuration')) {
+            return 'No LLM provider is configured yet. An administrator needs to set up a provider and configuration in the LLM module (Admin Tools > LLM).';
+        }
+
+        if (str_contains($exMessage, '401') || str_contains($exMessage, 'Unauthorized')) {
+            return 'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.';
+        }
+
+        return $fallback;
     }
 
     /**
@@ -747,5 +897,187 @@ final readonly class AjaxController
             'Content-Type'  => 'text/event-stream',
             'Cache-Control' => 'no-cache',
         ]);
+    }
+
+    /**
+     * Convert markdown-formatted LLM output to HTML.
+     *
+     * Small LLM models (e.g., qwen3:0.6b) may output pure markdown, mixed
+     * HTML+markdown, or proper HTML. This method handles all three cases:
+     * - Pure markdown → full block + inline conversion
+     * - Mixed (e.g. <h2> headings but **bold** inline) → inline conversion + paragraph wrapping
+     * - Proper HTML → pass through unchanged
+     */
+    private function convertMarkdownToHtml(string $content): string
+    {
+        // Skip conversion for very large outputs to avoid regex performance issues
+        if (mb_strlen($content) > 65536) {
+            return $content;
+        }
+
+        $hasHtmlBlocks     = preg_match('/<(p|div|h[1-6]|ul|ol|li|table|blockquote)\b/i', $content) === 1;
+        $hasInlineMarkdown = preg_match('/\*\*.+?\*\*/', $content) === 1
+            || preg_match('/(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)/', $content) === 1
+            || preg_match('/`[^`]+`/', $content) === 1
+            || preg_match('/~~.+?~~/', $content) === 1
+            || preg_match('/\[.+?\]\(.+?\)/', $content) === 1;
+        $hasBlockMarkdown = preg_match('/(^#{1,6}\s|^[-*]\s|^\d+\.\s)/m', $content) === 1;
+
+        if (!$hasInlineMarkdown && !$hasBlockMarkdown) {
+            return $content;
+        }
+
+        // Always convert inline markdown (even in mixed HTML+markdown content)
+        $content = $this->convertInlineMarkdown($content);
+
+        if (!$hasHtmlBlocks) {
+            // Pure markdown — also convert block-level patterns
+            return $this->convertBlockMarkdown($content);
+        }
+
+        // Mixed HTML + bare text — wrap unwrapped text blocks in <p> tags
+        return $this->wrapBareTextBlocks($content);
+    }
+
+    /**
+     * Convert block-level markdown (headings, lists, paragraphs) to HTML.
+     */
+    private function convertBlockMarkdown(string $content): string
+    {
+        $lines  = explode("\n", $content);
+        $html   = [];
+        $inList = null;
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+
+            if ($trimmed === '') {
+                if ($inList !== null) {
+                    $html[] = '</' . $inList . '>';
+                    $inList = null;
+                }
+
+                continue;
+            }
+
+            // Headings: # → h2, ## → h3 (h1 is reserved for page title)
+            if (preg_match('/^(#{1,6})\s+(.+)$/', $trimmed, $m) === 1) {
+                if ($inList !== null) {
+                    $html[] = '</' . $inList . '>';
+                    $inList = null;
+                }
+
+                $level  = min(strlen($m[1]) + 1, 6);
+                $html[] = sprintf('<h%d>%s</h%d>', $level, $m[2], $level);
+
+                continue;
+            }
+
+            // Unordered list: - item or * item
+            if (preg_match('/^[-*]\s+(.+)$/', $trimmed, $m) === 1) {
+                if ($inList !== 'ul') {
+                    if ($inList !== null) {
+                        $html[] = '</' . $inList . '>';
+                    }
+
+                    $html[] = '<ul>';
+                    $inList = 'ul';
+                }
+
+                $html[] = '<li>' . $m[1] . '</li>';
+
+                continue;
+            }
+
+            // Ordered list: 1. item
+            if (preg_match('/^\d+\.\s+(.+)$/', $trimmed, $m) === 1) {
+                if ($inList !== 'ol') {
+                    if ($inList !== null) {
+                        $html[] = '</' . $inList . '>';
+                    }
+
+                    $html[] = '<ol>';
+                    $inList = 'ol';
+                }
+
+                $html[] = '<li>' . $m[1] . '</li>';
+
+                continue;
+            }
+
+            if ($inList !== null) {
+                $html[] = '</' . $inList . '>';
+                $inList = null;
+            }
+
+            $html[] = '<p>' . $trimmed . '</p>';
+        }
+
+        if ($inList !== null) {
+            $html[] = '</' . $inList . '>';
+        }
+
+        return implode("\n", $html);
+    }
+
+    /**
+     * Wrap bare text blocks in <p> tags (for mixed HTML+text content).
+     */
+    private function wrapBareTextBlocks(string $content): string
+    {
+        $blocks = preg_split('/\n{2,}/', $content);
+        if ($blocks === false) {
+            return $content;
+        }
+
+        $result = [];
+
+        foreach ($blocks as $block) {
+            $trimmed = trim($block);
+
+            if ($trimmed === '') {
+                continue;
+            }
+
+            // Already an HTML block element — keep as-is
+            if (preg_match('/^<(p|div|h[1-6]|ul|ol|li|table|blockquote|hr)\b/i', $trimmed) === 1) {
+                $result[] = $trimmed;
+            } else {
+                // Bare text — wrap in <p>, preserve internal line breaks
+                $result[] = '<p>' . str_replace("\n", '<br>', $trimmed) . '</p>';
+            }
+        }
+
+        return implode("\n", $result);
+    }
+
+    /**
+     * Convert inline markdown formatting to HTML.
+     */
+    private function convertInlineMarkdown(string $text): string
+    {
+        // Bold: **text**
+        $text = (string) preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text);
+        // Italic: *text* (but not inside HTML tags or already-converted strong)
+        $text = (string) preg_replace('/(?<![<\w*])\*([^*]+)\*(?![>\w])/', '<em>$1</em>', $text);
+        // Links: [text](url) — only allow safe URL schemes
+        $text = (string) preg_replace_callback(
+            '/\[(.+?)\]\((.+?)\)/',
+            static function (array $m): string {
+                $url = trim($m[2]);
+                if (preg_match('#^(https?://|/|\#)#i', $url) === 1) {
+                    return '<a href="' . htmlspecialchars($url, ENT_QUOTES) . '">' . $m[1] . '</a>';
+                }
+
+                return $m[1]; // Strip link with dangerous scheme
+            },
+            $text,
+        );
+        // Inline code: `code`
+        $text = (string) preg_replace('/`(.+?)`/', '<code>$1</code>', $text);
+        // Strikethrough: ~~text~~
+        $text = (string) preg_replace('/~~(.+?)~~/', '<s>$1</s>', $text);
+
+        return $text;
     }
 }

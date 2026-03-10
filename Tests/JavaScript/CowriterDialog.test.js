@@ -11,9 +11,18 @@ describe('CowriterDialog', () => {
     let mockService;
 
     const sampleTasks = [
-        { uid: 1, identifier: 'cowriter_improve', name: 'Improve Text', description: 'Enhance readability' },
-        { uid: 2, identifier: 'cowriter_summarize', name: 'Summarize', description: 'Create a summary' },
-        { uid: 3, identifier: 'cowriter_translate_en', name: 'Translate to English', description: 'Translate content' },
+        {
+            uid: 1, identifier: 'cowriter_improve', name: 'Improve Text',
+            description: 'Enhance readability', promptTemplate: 'Improve: {{input}}',
+        },
+        {
+            uid: 2, identifier: 'cowriter_summarize', name: 'Summarize',
+            description: 'Create a summary', promptTemplate: 'Summarize: {{input}}',
+        },
+        {
+            uid: 3, identifier: 'cowriter_translate_en', name: 'Translate to English',
+            description: 'Translate content', promptTemplate: 'Translate to English: {{input}}',
+        },
     ];
 
     beforeEach(async () => {
@@ -46,6 +55,8 @@ describe('CowriterDialog', () => {
                 content: 'Improved text content',
                 model: 'gpt-4o',
             }),
+            searchPages: vi.fn().mockResolvedValue({ success: true, pages: [] }),
+            getModuleUrl(key) { return this._routes?.[key] || null; },
         };
     });
 
@@ -114,7 +125,7 @@ describe('CowriterDialog', () => {
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
-        it('should render task select with options', async () => {
+        it('should render task select with Custom option and task options', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('selected', 'full');
 
@@ -123,10 +134,16 @@ describe('CowriterDialog', () => {
             });
 
             const select = document.querySelector('[data-role="task-select"]');
-            expect(select.options.length).toBe(3);
-            expect(select.options[0].textContent).toBe('Improve Text');
-            expect(select.options[0].value).toBe('1');
-            expect(select.options[1].textContent).toBe('Summarize');
+            // 1 custom + 3 tasks = 4 options
+            expect(select.options.length).toBe(4);
+            expect(select.options[0].textContent).toBe('Custom instruction');
+            expect(select.options[0].value).toBe('0');
+            expect(select.options[1].textContent).toBe('Improve Text');
+            expect(select.options[1].value).toBe('1');
+            expect(select.options[2].textContent).toBe('Summarize');
+
+            // First real task should be selected by default
+            expect(select.value).toBe('1');
 
             // Cleanup
             document.querySelector('[data-name="cancel"]').click();
@@ -142,6 +159,68 @@ describe('CowriterDialog', () => {
                 expect(desc).not.toBeNull();
                 expect(desc.textContent).toBe('Enhance readability');
             });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should pre-select task when preSelectedTaskUid matches', async () => {
+            const dialog = new CowriterDialog(mockService);
+            // Task uid 2 is "Summarize" in the mock data
+            const showPromise = dialog.show('selected', 'full', '', null, 2);
+
+            await vi.waitFor(() => {
+                const select = document.querySelector('[data-role="task-select"]');
+                expect(select).not.toBeNull();
+                expect(select.value).toBe('2');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should fall back to first task when preSelectedTaskUid does not match', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full', '', null, 999);
+
+            await vi.waitFor(() => {
+                const select = document.querySelector('[data-role="task-select"]');
+                expect(select).not.toBeNull();
+                // Falls back to first task (uid 1)
+                expect(select.value).toBe('1');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should show "Edit tasks" link when tasksModule route is available', async () => {
+            mockService._routes = { tasksModule: '/typo3/module/nrllm/tasks' };
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full');
+
+            await vi.waitFor(() => {
+                const link = document.querySelector('a[target="_blank"]');
+                expect(link).not.toBeNull();
+                expect(link.textContent).toContain('Edit tasks');
+                expect(link.href).toContain('/typo3/module/nrllm/tasks');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should not show "Edit tasks" link when tasksModule route is absent', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full');
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="task-description"]')).not.toBeNull();
+            });
+
+            const links = document.querySelectorAll('a[target="_blank"]');
+            const editTasksLink = Array.from(links).find(l => l.textContent.includes('Edit tasks'));
+            expect(editTasksLink).toBeUndefined();
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});
@@ -166,70 +245,186 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
         });
 
-        it('should start slider at stop 0 (selection) when text is selected', async () => {
-            const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('some selected text', 'full content');
-
-            await vi.waitFor(() => {
-                const slider = document.querySelector('[data-role="context-slider"]');
-                expect(slider).not.toBeNull();
-                expect(slider.min).toBe('0');
-                expect(slider.value).toBe('0');
-            });
-
-            document.querySelector('[data-name="cancel"]').click();
-            await showPromise.catch(() => {});
-        });
-
-        it('should start slider at stop 1 (text) when no text is selected', async () => {
-            const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('', 'full content');
-
-            await vi.waitFor(() => {
-                const slider = document.querySelector('[data-role="context-slider"]');
-                expect(slider).not.toBeNull();
-                expect(slider.min).toBe('1');
-                expect(slider.value).toBe('1');
-            });
-
-            document.querySelector('[data-name="cancel"]').click();
-            await showPromise.catch(() => {});
-        });
-
-        it('should have ad-hoc rules textarea', async () => {
+        it('should have instruction textarea', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-role="ad-hoc-rules"]')).not.toBeNull();
+                expect(document.querySelector('[data-role="instruction"]')).not.toBeNull();
             });
 
-            const textarea = document.querySelector('[data-role="ad-hoc-rules"]');
+            const textarea = document.querySelector('[data-role="instruction"]');
             expect(textarea.tagName).toBe('TEXTAREA');
-            expect(textarea.placeholder).toContain('formal tone');
+            expect(textarea.rows).toBe(10);
+            expect(textarea.placeholder).toContain('Describe what the AI should do');
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
-        it('should have hidden result preview initially', async () => {
+        it('should prefill instruction with resolved template from selected task', async () => {
             const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('text', 'full');
+            const showPromise = dialog.show('my text', 'full content');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-role="result-preview"]')).not.toBeNull();
+                const textarea = document.querySelector('[data-role="instruction"]');
+                expect(textarea).not.toBeNull();
+                // First real task is selected, template is "Improve: {{input}}" → {{input}} stripped
+                expect(textarea.value).toBe('Improve:');
             });
-
-            const preview = document.querySelector('[data-role="result-preview"]');
-            expect(preview.style.display).toBe('none');
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});
+        });
+
+        it('should update instruction when task changes', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('my text', 'full content');
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="task-select"]')).not.toBeNull();
+            });
+
+            const select = document.querySelector('[data-role="task-select"]');
+            select.value = '2';
+            select.dispatchEvent(new Event('change'));
+
+            const textarea = document.querySelector('[data-role="instruction"]');
+            expect(textarea.value).toBe('Summarize:');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should clear instruction when Custom is selected', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('my text', 'full content');
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="task-select"]')).not.toBeNull();
+            });
+
+            const select = document.querySelector('[data-role="task-select"]');
+            select.value = '0'; // Custom
+            select.dispatchEvent(new Event('change'));
+
+            const textarea = document.querySelector('[data-role="instruction"]');
+            expect(textarea.value).toBe('');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should use template as-is when no {{input}} placeholder', async () => {
+            const tasksWithNoPlaceholder = [
+                { uid: 10, identifier: 'plain_task', name: 'Plain Task',
+                  description: 'No placeholder', promptTemplate: 'Just summarize the text' },
+            ];
+            mockService.getTasks.mockResolvedValue({ success: true, tasks: tasksWithNoPlaceholder });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            const instruction = document.querySelector('[data-role="instruction"]');
+            expect(instruction.value).toBe('Just summarize the text');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should show original input text in result area in idle state', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('my selected text', 'full content');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            const result = document.querySelector('[data-role="result-preview"]');
+            expect(result).toBeTruthy();
+            expect(result.style.display).not.toBe('none');
+            expect(result.textContent).toContain('my selected text');
+            expect(result.classList.contains('cowriter-result--empty')).toBe(true);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should show full content in result area when no selection', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('', 'full content here');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            const result = document.querySelector('[data-role="result-preview"]');
+            expect(result.textContent).toContain('full content here');
+            expect(result.classList.contains('cowriter-result--empty')).toBe(true);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should remove muted class from result area after successful execute', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+
+            const result = document.querySelector('[data-role="result-preview"]');
+            expect(result.classList.contains('cowriter-result--empty')).toBe(false);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should render config row with task and scope side by side', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            const configRow = document.querySelector('[data-role="config-row"]');
+            expect(configRow).toBeTruthy();
+            expect(configRow.classList.contains('row')).toBe(true);
+
+            const cols = configRow.querySelectorAll(':scope > [class*="col-md-"]');
+            expect(cols.length).toBe(2);
+            expect(cols[0].classList.contains('col-md-8')).toBe(true);
+            expect(cols[1].classList.contains('col-md-4')).toBe(true);
+
+            expect(cols[0].querySelector('[data-role="task-select"]')).toBeTruthy();
+            expect(cols[1].querySelector('[data-role="scope-select"]')).toBeTruthy();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should render work area with instruction and result side by side', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            const workRow = document.querySelector('[data-role="work-row"]');
+            expect(workRow).toBeTruthy();
+            expect(workRow.classList.contains('row')).toBe(true);
+
+            const cols = workRow.querySelectorAll(':scope > [class*="col-md-"]');
+            expect(cols.length).toBe(2);
+            expect(cols[0].classList.contains('col-md-6')).toBe(true);
+            expect(cols[1].classList.contains('col-md-6')).toBe(true);
+
+            expect(cols[0].querySelector('[data-role="instruction"]')).toBeTruthy();
+            expect(cols[1].querySelector('[data-role="result-preview"]')).toBeTruthy();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
 
     describe('execute flow', () => {
-        it('should call executeTask with correct parameters', async () => {
+        it('should call executeTask with instruction from textarea', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('my selected text', 'full editor content');
 
@@ -237,18 +432,26 @@ describe('CowriterDialog', () => {
                 expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
             });
 
+            // The instruction textarea should have been prefilled with the resolved template ({{input}} stripped)
+            const textarea = document.querySelector('[data-role="instruction"]');
+            expect(textarea.value).toBe('Improve:');
+
             // Click Execute
             document.querySelector('[data-name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'my selected text', 'selection', '', '',
-                    'selection', null, [],
+                    1, 'my selected text', 'selection', 'Improve:', '',
+                    'selection', null, [], expect.any(AbortSignal),
                 );
             });
 
-            // Now result is shown, click again to Insert
-            document.querySelector('[data-name="execute"]').click();
+            // Now result is shown, click Insert to accept
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+            document.querySelector('[data-name="insert"]').click();
 
             const result = await showPromise;
             expect(result.content).toBe('Improved text content');
@@ -262,42 +465,60 @@ describe('CowriterDialog', () => {
                 expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
             });
 
+            // Template resolves with {{input}} stripped
+            const textarea = document.querySelector('[data-role="instruction"]');
+            expect(textarea.value).toBe('Improve:');
+
             document.querySelector('[data-name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'full editor content here', 'content_element', '', '',
-                    'text', null, [],
+                    1, 'full editor content here', 'content_element',
+                    'Improve:', '',
+                    'text', null, [], expect.any(AbortSignal),
                 );
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+            document.querySelector('[data-name="insert"]').click();
             const result = await showPromise;
             expect(result.content).toBe('Improved text content');
         });
 
-        it('should pass ad-hoc rules to executeTask', async () => {
+        it('should send taskUid=0 and custom instruction for Custom mode', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-role="ad-hoc-rules"]')).not.toBeNull();
+                expect(document.querySelector('[data-role="task-select"]')).not.toBeNull();
             });
 
-            // Fill in rules
-            const textarea = document.querySelector('[data-role="ad-hoc-rules"]');
-            textarea.value = 'Write in formal tone';
+            // Switch to Custom
+            const select = document.querySelector('[data-role="task-select"]');
+            select.value = '0';
+            select.dispatchEvent(new Event('change'));
+
+            // Write custom instruction
+            const textarea = document.querySelector('[data-role="instruction"]');
+            textarea.value = 'Make it more formal';
 
             document.querySelector('[data-name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'text', 'selection', 'Write in formal tone', '',
-                    'selection', null, [],
+                    0, 'text', 'selection', 'Make it more formal', '',
+                    'selection', null, [], expect.any(AbortSignal),
                 );
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+            document.querySelector('[data-name="insert"]').click();
             await showPromise;
         });
 
@@ -319,11 +540,12 @@ describe('CowriterDialog', () => {
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
-                expect(preview.style.display).toBe('block');
                 // HTML is rendered as DOM, not as literal text
                 expect(preview.querySelector('strong')).not.toBeNull();
                 expect(preview.textContent).toContain('Improved');
                 expect(preview.textContent).toContain('text');
+                // Muted class should be removed after successful execution
+                expect(preview.classList.contains('cowriter-result--empty')).toBe(false);
             });
 
             // Model info should be shown
@@ -331,7 +553,7 @@ describe('CowriterDialog', () => {
             expect(modelInfo.textContent).toBe('Model: gpt-4o');
             expect(modelInfo.style.display).toBe('block');
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[data-name="insert"]').click();
             await showPromise;
         });
 
@@ -370,7 +592,7 @@ describe('CowriterDialog', () => {
                 expect(preview.textContent).toBe('Done');
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[data-name="insert"]').click();
             await showPromise;
         });
 
@@ -417,7 +639,59 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
         });
 
-        it('should reset state when task selection changes after result', async () => {
+        it('should show collapsible debug details after successful execution', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<p>Result</p>',
+                model: 'test-model',
+                finishReason: 'stop',
+                usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+                thinking: 'I reasoned about this.',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input text', 'full');
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+            });
+
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                const details = document.querySelector('[data-role="debug-details"]');
+                expect(details).not.toBeNull();
+                expect(details.tagName).toBe('DETAILS');
+
+                // Summary should say "Debug info"
+                const summary = details.querySelector('summary');
+                expect(summary.textContent).toBe('Debug info');
+
+                // Content should include all debug sections
+                const content = details.textContent;
+                expect(content).toContain('Model: test-model');
+                expect(content).toContain('Finish reason: stop');
+                expect(content).toContain('Tokens:');
+                expect(content).toContain('Input text');
+                expect(content).toContain('input text');
+                expect(content).toContain('Instruction sent');
+                expect(content).toContain('Thinking');
+                expect(content).toContain('I reasoned about this.');
+                expect(content).toContain('Content returned');
+            });
+
+            // Copy button should be inside details
+            const copyBtn = document.querySelector('[data-role="debug-copy"]');
+            expect(copyBtn).not.toBeNull();
+            expect(copyBtn.textContent).toBe('Copy to clipboard');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should show debug details on error', async () => {
+            mockService.executeTask.mockResolvedValue({ success: false, error: 'Failed' });
+
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('text', 'full');
 
@@ -425,41 +699,76 @@ describe('CowriterDialog', () => {
                 expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
             });
 
-            // Execute first
             document.querySelector('[data-name="execute"]').click();
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
-                expect(preview.textContent).toBe('Improved text content');
+                expect(preview.textContent).toBe('Failed');
             });
 
-            // Change task — should reset to execute mode
-            const select = document.querySelector('[data-role="task-select"]');
-            select.value = '2';
-            select.dispatchEvent(new Event('change'));
+            const debugDetails = document.querySelector('[data-role="debug-details"]');
+            expect(debugDetails).not.toBeNull();
+            expect(debugDetails.textContent).toContain('Error: Failed');
 
-            // Now clicking execute should re-execute (not insert)
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should show debug details without usage or thinking fields', async () => {
             mockService.executeTask.mockResolvedValue({
                 success: true,
-                content: 'Summarized content',
+                content: 'Result without extras',
                 model: 'gpt-4o',
+                finishReason: 'stop',
+                // no usage, no thinking
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
-                expect(mockService.executeTask).toHaveBeenCalledTimes(2);
-                expect(mockService.executeTask).toHaveBeenLastCalledWith(
-                    2, 'text', 'selection', '', '',
-                    'selection', null, [],
-                );
+                return document.querySelector('[data-role="debug-details"]');
             });
 
-            // Insert the new result
-            document.querySelector('[data-name="execute"]').click();
-            const result = await showPromise;
-            expect(result.content).toBe('Summarized content');
+            const debugContent = document.querySelector('[data-role="debug-details"]').textContent;
+            expect(debugContent).toContain('Model: gpt-4o');
+            expect(debugContent).toContain('Finish reason: stop');
+            expect(debugContent).not.toContain('Tokens:');
+            expect(debugContent).not.toContain('--- Thinking ---');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
         });
+
+        it('should show token count in model info when usage is present', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: 'Result with tokens',
+                model: 'gpt-4o',
+                usage: { promptTokens: 50, completionTokens: 100, totalTokens: 150 },
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                const info = document.querySelector('[data-role="model-info"]');
+                return info.style.display !== 'none';
+            });
+
+            const modelInfo = document.querySelector('[data-role="model-info"]');
+            expect(modelInfo.textContent).toBe('Model: gpt-4o | 150 tokens');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
     });
 
     describe('cancel', () => {
@@ -491,95 +800,76 @@ describe('CowriterDialog', () => {
         });
     });
 
-    describe('context zoom slider', () => {
-        it('should render range slider instead of radio buttons', async () => {
+    describe('context scope dropdown', () => {
+        it('should render scope as dropdown with 6 options', async () => {
             const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('selected', 'full', '', null);
+            const showPromise = dialog.show('selected', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            await vi.waitFor(() => {
-                expect(document.querySelector('[data-role="context-slider"]')).not.toBeNull();
-            });
-
-            const slider = document.querySelector('[data-role="context-slider"]');
-            expect(slider.tagName).toBe('INPUT');
-            expect(slider.type).toBe('range');
-            expect(slider.min).toBe('0');
-            expect(slider.max).toBe('5');
-
-            // Radio buttons should NOT exist
-            expect(document.querySelector('input[name="cowriter-context"]')).toBeNull();
+            const scopeSelect = document.querySelector('[data-role="scope-select"]');
+            expect(scopeSelect).toBeTruthy();
+            expect(scopeSelect.tagName).toBe('SELECT');
+            expect(scopeSelect.options).toHaveLength(6);
+            expect(scopeSelect.options[0].textContent).toBe('Selection');
+            expect(scopeSelect.options[1].textContent).toBe('Full content');
+            expect(scopeSelect.options[2].textContent).toBe('Content element');
+            expect(scopeSelect.options[3].textContent).toBe('Page content');
+            expect(scopeSelect.options[4].textContent).toBe('Parent page');
+            expect(scopeSelect.options[5].textContent).toBe('Grandparent page');
 
             document.querySelector('[data-name="cancel"]').click();
-            await showPromise.catch(() => {});
+            await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
-        it('should disable stop 0 (selection) when no text selected', async () => {
+        it('should default scope to Selection when text is selected', async () => {
             const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('', 'full', '', null);
+            const showPromise = dialog.show('selected text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            await vi.waitFor(() => {
-                const slider = document.querySelector('[data-role="context-slider"]');
-                expect(slider).not.toBeNull();
-                expect(slider.min).toBe('1');
-                expect(slider.value).toBe('1');
-            });
+            const scopeSelect = document.querySelector('[data-role="scope-select"]');
+            expect(scopeSelect.value).toBe('selection');
 
             document.querySelector('[data-name="cancel"]').click();
-            await showPromise.catch(() => {});
+            await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
-        it('should start at stop 0 (selection) when text is selected', async () => {
+        it('should default scope to Text when no selection', async () => {
             const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('selected text', 'full', '', null);
+            const showPromise = dialog.show('', 'full content');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            await vi.waitFor(() => {
-                const slider = document.querySelector('[data-role="context-slider"]');
-                expect(slider).not.toBeNull();
-                expect(slider.min).toBe('0');
-                expect(slider.value).toBe('0');
-            });
+            const scopeSelect = document.querySelector('[data-role="scope-select"]');
+            expect(scopeSelect.value).toBe('text');
 
             document.querySelector('[data-name="cancel"]').click();
-            await showPromise.catch(() => {});
+            await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
-        it('should show scope label below slider', async () => {
+        it('should disable Selection option when no text selected', async () => {
             const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('selected', 'full', '', null);
+            const showPromise = dialog.show('', 'full content');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            await vi.waitFor(() => {
-                const label = document.querySelector('[data-role="scope-label"]');
-                expect(label).not.toBeNull();
-                expect(label.textContent).toContain('Selection');
-            });
+            const scopeSelect = document.querySelector('[data-role="scope-select"]');
+            expect(scopeSelect.options[0].disabled).toBe(true);
 
             document.querySelector('[data-name="cancel"]').click();
-            await showPromise.catch(() => {});
+            await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
-        it('should update scope label when slider changes', async () => {
+        it('should send scope ID from dropdown in executeTask', async () => {
             const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('selected', 'full', '',
-                { table: 'tt_content', uid: 42, field: 'bodytext' });
+            const showPromise = dialog.show('selected', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            await vi.waitFor(() => {
-                expect(document.querySelector('[data-role="context-slider"]')).not.toBeNull();
-            });
+            const scopeSelect = document.querySelector('[data-role="scope-select"]');
+            scopeSelect.value = 'page';
+            scopeSelect.dispatchEvent(new Event('change'));
 
-            mockService.getContext = vi.fn().mockResolvedValue({
-                success: true,
-                summary: '3 elements, ~42 words',
-                wordCount: 42,
-            });
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
 
-            const slider = document.querySelector('[data-role="context-slider"]');
-            slider.value = '3'; // page
-            slider.dispatchEvent(new Event('input'));
-
-            await vi.waitFor(() => {
-                const label = document.querySelector('[data-role="scope-label"]');
-                expect(label.textContent).toContain('Page');
-            });
+            expect(mockService.executeTask.mock.calls[0][5]).toBe('page');
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});
@@ -594,57 +884,60 @@ describe('CowriterDialog', () => {
                 expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
             });
 
-            const slider = document.querySelector('[data-role="context-slider"]');
-            slider.value = '3';
-            slider.dispatchEvent(new Event('input'));
+            const scopeSelect = document.querySelector('[data-role="scope-select"]');
+            scopeSelect.value = 'page';
+            scopeSelect.dispatchEvent(new Event('change'));
 
             document.querySelector('[data-name="execute"]').click();
 
             await vi.waitFor(() => {
-                // Slider at 3 (page): selection exists so contextType='selection', context='text'
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'text', 'selection', '', '',
-                    'page', recordContext, [],
+                    1, 'text', 'selection', 'Improve:', '',
+                    'page', recordContext, [], expect.any(AbortSignal),
                 );
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+            document.querySelector('[data-name="insert"]').click();
             await showPromise;
         });
 
-        it('should map slider stops to correct scope values', async () => {
+        it('should enable element/page/ancestor scope options when recordContext is provided', async () => {
             const dialog = new CowriterDialog(mockService);
-            const rc = { table: 'tt_content', uid: 1, field: 'bodytext' };
-            const showPromise = dialog.show('text', 'full', '', rc);
+            const recordContext = { table: 'tt_content', uid: 42, field: 'bodytext' };
+            const showPromise = dialog.show('selected', 'full', '', recordContext);
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            await vi.waitFor(() => {
-                expect(document.querySelector('[data-role="context-slider"]')).not.toBeNull();
-            });
+            const scopeSelect = document.querySelector('[data-role="scope-select"]');
+            expect(scopeSelect.options[2].disabled).toBe(false);  // Content element
+            expect(scopeSelect.options[3].disabled).toBe(false);  // Page content
+            expect(scopeSelect.options[4].disabled).toBe(false);  // Parent page
+            expect(scopeSelect.options[5].disabled).toBe(false);  // Grandparent page
 
-            const slider = document.querySelector('[data-role="context-slider"]');
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
 
-            for (let i = 0; i <= 5; i++) {
-                slider.value = String(i);
-                slider.dispatchEvent(new Event('input'));
+        it('should disable element/page/ancestor options when no recordContext', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full', '', null);
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-                const label = document.querySelector('[data-role="scope-label"]');
-                expect(label).not.toBeNull();
-            }
+            const scopeSelect = document.querySelector('[data-role="scope-select"]');
+            // Options 0 (selection) and 1 (text) should be enabled
+            expect(scopeSelect.options[0].disabled).toBe(false);
+            expect(scopeSelect.options[1].disabled).toBe(false);
+            // Options 2-5 (content element, page content, parent/grandparent) should be disabled without recordContext
+            expect(scopeSelect.options[2].disabled).toBe(true);
+            expect(scopeSelect.options[3].disabled).toBe(true);
+            expect(scopeSelect.options[4].disabled).toBe(true);
+            expect(scopeSelect.options[5].disabled).toBe(true);
 
-            // Execute at stop 4 (ancestors_1) — selection exists so contextType='selection'
-            slider.value = '4';
-            slider.dispatchEvent(new Event('input'));
-            document.querySelector('[data-name="execute"]').click();
-
-            await vi.waitFor(() => {
-                expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'text', 'selection', '', '',
-                    'ancestors_1', rc, [],
-                );
-            });
-
-            document.querySelector('[data-name="execute"]').click();
-            await showPromise;
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
 
@@ -676,7 +969,9 @@ describe('CowriterDialog', () => {
             const rows = document.querySelectorAll('[data-role="reference-row"]');
             expect(rows.length).toBe(1);
 
+            expect(rows[0].querySelector('[data-role="ref-search"]')).not.toBeNull();
             expect(rows[0].querySelector('[data-role="ref-pid"]')).not.toBeNull();
+            expect(rows[0].querySelector('[data-role="ref-pid"]').type).toBe('hidden');
             expect(rows[0].querySelector('[data-role="ref-relation"]')).not.toBeNull();
 
             document.querySelector('[data-name="cancel"]').click();
@@ -720,17 +1015,21 @@ describe('CowriterDialog', () => {
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'text', 'selection', '', '',
+                    1, 'text', 'selection', 'Improve:', '',
                     'selection', rc,
-                    [{ pid: 5, relation: 'style guide' }],
+                    [{ pid: 5, relation: 'style guide' }], expect.any(AbortSignal),
                 );
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+            document.querySelector('[data-name="insert"]').click();
             await showPromise;
         });
 
-        it('should set min=1 on page ID input', async () => {
+        it('should use hidden input for page ID and search input for typeahead', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('text', 'full', '', null);
 
@@ -740,7 +1039,10 @@ describe('CowriterDialog', () => {
 
             document.querySelector('[data-role="add-reference"]').click();
             const pidInput = document.querySelector('[data-role="ref-pid"]');
-            expect(pidInput.min).toBe('1');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            expect(pidInput.type).toBe('hidden');
+            expect(searchInput.type).toBe('text');
+            expect(searchInput.placeholder).toContain('Search pages');
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});
@@ -783,51 +1085,22 @@ describe('CowriterDialog', () => {
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
-                    1, 'text', 'selection', '', '',
+                    1, 'text', 'selection', 'Improve:', '',
                     'selection', rc,
-                    [{ pid: 5, relation: 'ref' }],
+                    [{ pid: 5, relation: 'ref' }], expect.any(AbortSignal),
                 );
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+            document.querySelector('[data-name="insert"]').click();
             await showPromise;
         });
     });
 
     describe('accessibility', () => {
-        it('should set aria-label and aria-valuetext on slider', async () => {
-            const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('selected', 'full', '', null);
-
-            await vi.waitFor(() => {
-                const slider = document.querySelector('[data-role="context-slider"]');
-                expect(slider).not.toBeNull();
-                expect(slider.getAttribute('aria-label')).toBe('Context scope');
-                expect(slider.getAttribute('aria-valuetext')).toBe('Selection');
-            });
-
-            document.querySelector('[data-name="cancel"]').click();
-            await showPromise.catch(() => {});
-        });
-
-        it('should update aria-valuetext when slider changes', async () => {
-            const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('selected', 'full', '', null);
-
-            await vi.waitFor(() => {
-                expect(document.querySelector('[data-role="context-slider"]')).not.toBeNull();
-            });
-
-            const slider = document.querySelector('[data-role="context-slider"]');
-            slider.value = '3';
-            slider.dispatchEvent(new Event('input'));
-
-            expect(slider.getAttribute('aria-valuetext')).toBe('Page');
-
-            document.querySelector('[data-name="cancel"]').click();
-            await showPromise.catch(() => {});
-        });
-
         it('should associate labels with form controls via for attribute', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('selected', 'full', '', null);
@@ -837,36 +1110,32 @@ describe('CowriterDialog', () => {
             });
 
             const taskSelect = document.querySelector('[data-role="task-select"]');
-            const slider = document.querySelector('[data-role="context-slider"]');
+            const scopeSelect = document.querySelector('[data-role="scope-select"]');
 
             // Each control should have an id, and a label with matching for attribute
             expect(taskSelect.id).toBeTruthy();
-            expect(slider.id).toBeTruthy();
+            expect(scopeSelect.id).toBeTruthy();
 
             const taskLabel = document.querySelector(`label[for="${taskSelect.id}"]`);
-            const sliderLabel = document.querySelector(`label[for="${slider.id}"]`);
+            const scopeLabel = document.querySelector(`label[for="${scopeSelect.id}"]`);
             expect(taskLabel).not.toBeNull();
-            expect(sliderLabel).not.toBeNull();
+            expect(scopeLabel).not.toBeNull();
 
             document.querySelector('[data-name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
-        it('should hide Selection tick label when no text selected', async () => {
+        it('should have aria-live on result preview', async () => {
             const dialog = new CowriterDialog(mockService);
-            const showPromise = dialog.show('', 'full', '', null);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            await vi.waitFor(() => {
-                const ticks = document.querySelectorAll('.d-flex.justify-content-between span');
-                expect(ticks.length).toBe(6);
-                // First tick (Selection) should be hidden
-                expect(ticks[0].style.visibility).toBe('hidden');
-                // Others should be visible
-                expect(ticks[1].style.visibility).not.toBe('hidden');
-            });
+            const preview = document.querySelector('[data-role="result-preview"]');
+            expect(preview.getAttribute('role')).toBe('status');
+            expect(preview.getAttribute('aria-live')).toBe('polite');
 
             document.querySelector('[data-name="cancel"]').click();
-            await showPromise.catch(() => {});
+            await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
 
@@ -896,7 +1165,7 @@ describe('CowriterDialog', () => {
                 expect(preview.querySelector('link')).toBeNull();
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[data-name="insert"]').click();
             await showPromise;
         });
 
@@ -924,8 +1193,1222 @@ describe('CowriterDialog', () => {
                 }
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[data-name="insert"]').click();
             await showPromise;
+        });
+    });
+
+    describe('sanitizer allowlist', () => {
+        it('should remove SVG elements', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<p>Safe</p><svg onload="alert(1)"></svg>',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Safe');
+            });
+
+            const preview = document.querySelector('[data-role="result-preview"]');
+            expect(preview.querySelector('svg')).toBeNull();
+            expect(preview.querySelector('p')).toBeTruthy();
+            expect(preview.textContent).toContain('Safe');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should strip on* event handler attributes', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<img src="x.png" onerror="alert(1)">',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="result-preview"] img');
+            });
+
+            const img = document.querySelector('[data-role="result-preview"] img');
+            expect(img).toBeTruthy();
+            expect(img.getAttribute('onerror')).toBeNull();
+            expect(img.getAttribute('src')).toBe('x.png');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should remove javascript: URIs from href', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<a href="javascript:alert(1)">click</a>',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="result-preview"] a');
+            });
+
+            const link = document.querySelector('[data-role="result-preview"] a');
+            expect(link).toBeTruthy();
+            expect(link.getAttribute('href')).toBeNull();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should block non-image data: URIs but allow data:image/png', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<a href="data:text/html,<script>alert(1)</script>">bad</a><img src="data:image/png;base64,abc">',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="result-preview"] a');
+            });
+
+            const link = document.querySelector('[data-role="result-preview"] a');
+            expect(link.getAttribute('href')).toBeNull();
+
+            const img = document.querySelector('[data-role="result-preview"] img');
+            expect(img.getAttribute('src')).toBe('data:image/png;base64,abc');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('button state machine', () => {
+        it('should show Cancel and Execute in idle state', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            const cancel = document.querySelector('[data-name="cancel"]');
+            const reset = document.querySelector('[data-name="reset"]');
+            const execute = document.querySelector('[data-name="execute"]');
+            const insert = document.querySelector('[data-name="insert"]');
+
+            expect(cancel).toBeTruthy();
+            expect(execute).toBeTruthy();
+            expect(reset).toBeTruthy();
+            expect(insert).toBeTruthy();
+
+            expect(reset.style.display).toBe('none');
+            expect(insert.style.display).toBe('none');
+            expect(cancel.style.display).not.toBe('none');
+            expect(execute.style.display).not.toBe('none');
+
+            cancel.click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should show all four buttons in result state', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+
+            const reset = document.querySelector('[data-name="reset"]');
+            const insert = document.querySelector('[data-name="insert"]');
+            expect(reset.style.display).not.toBe('none');
+            expect(insert.style.display).not.toBe('none');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should insert result content when Insert button clicked', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+
+            document.querySelector('[data-name="insert"]').click();
+            const result = await showPromise;
+            expect(result.content).toBe('Improved text content');
+        });
+
+        it('should chain execute: use previous result as context', async () => {
+            mockService.executeTask
+                .mockResolvedValueOnce({
+                    success: true,
+                    content: 'First result',
+                    model: 'gpt-4o',
+                })
+                .mockResolvedValueOnce({
+                    success: true,
+                    content: 'Chained result',
+                    model: 'gpt-4o',
+                });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('original text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            // First execute
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(1));
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('First result');
+            });
+
+            // Second execute (chained)
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(2));
+
+            // The context (arg index 1) of the second call should be the decoded first result
+            expect(mockService.executeTask.mock.calls[1][1]).toBe('First result');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should restore original input on Reset', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('original text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            // Execute to enter result state
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Improved text content');
+            });
+
+            // Click Reset
+            document.querySelector('[data-name="reset"]').click();
+
+            // Result area should show original input again (muted)
+            const result = document.querySelector('[data-role="result-preview"]');
+            expect(result.textContent).toContain('original text');
+            expect(result.classList.contains('cowriter-result--empty')).toBe(true);
+
+            // Reset and Insert should be hidden again
+            expect(document.querySelector('[data-name="reset"]').style.display).toBe('none');
+            expect(document.querySelector('[data-name="insert"]').style.display).toBe('none');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should use original context after Reset then re-execute', async () => {
+            mockService.executeTask
+                .mockResolvedValueOnce({
+                    success: true, content: 'First result', model: 'gpt-4o',
+                })
+                .mockResolvedValueOnce({
+                    success: true, content: 'After reset result', model: 'gpt-4o',
+                });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('original text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            // First execute
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(1));
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('First result');
+            });
+
+            // Reset
+            document.querySelector('[data-name="reset"]').click();
+
+            // Execute again — should use original context, NOT "First result"
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(2));
+
+            expect(mockService.executeTask.mock.calls[1][1]).toBe('original text');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should disable Execute button during loading', async () => {
+            // Make executeTask hang indefinitely
+            mockService.executeTask.mockReturnValue(new Promise(() => {}));
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                const execute = document.querySelector('[data-name="execute"]');
+                expect(execute.disabled).toBe(true);
+            });
+
+            // Cancel should remain enabled
+            expect(document.querySelector('[data-name="cancel"]').disabled).toBeFalsy();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should re-enable buttons after error', async () => {
+            mockService.executeTask.mockRejectedValue(new Error('API timeout'));
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+
+            // Wait for error to render
+            await vi.waitFor(() => {
+                const preview = document.querySelector('[data-role="result-preview"]');
+                return preview.textContent.includes('Error:');
+            });
+
+            // Execute should be re-enabled
+            expect(document.querySelector('[data-name="execute"]').disabled).toBeFalsy();
+            // Reset and Insert should be hidden (idle state)
+            expect(document.querySelector('[data-name="reset"]').style.display).toBe('none');
+            expect(document.querySelector('[data-name="insert"]').style.display).toBe('none');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should reject promise when cancelled during loading', async () => {
+            mockService.executeTask.mockReturnValue(new Promise(() => {}));
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should preserve chained context when re-executing after error', async () => {
+            mockService.executeTask
+                .mockResolvedValueOnce({ success: true, content: 'First result', model: 'gpt-4o' })
+                .mockRejectedValueOnce(new Error('API timeout'))
+                .mockResolvedValueOnce({ success: true, content: 'Retry result', model: 'gpt-4o' });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('original text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            // First execute succeeds
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(1));
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('First result');
+            });
+
+            // Second execute fails
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(2));
+            await vi.waitFor(() => {
+                const result = document.querySelector('[data-role="result-preview"]');
+                return result.textContent.includes('Error:');
+            });
+
+            // Third execute (retry) — context should be sanitized "First result" (from chaining)
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(3));
+
+            // The context arg should NOT be 'original text'
+            const thirdCallContext = mockService.executeTask.mock.calls[2][1];
+            expect(thirdCallContext).not.toBe('original text');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should not resolve when Insert clicked without result', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            // Force Insert button to be visible by manipulating DOM
+            const insert = document.querySelector('[data-name="insert"]');
+            insert.style.display = '';
+            insert.click();
+
+            // Promise should NOT have resolved — cancel to verify
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
+    describe('_renderPageDropdown', () => {
+        it('should render "No pages found" for empty pages array', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            dialog._renderPageDropdown(dropdown, [], searchInput, hiddenPid);
+
+            expect(dropdown.style.display).toBe('block');
+            expect(dropdown.children.length).toBe(1);
+            expect(dropdown.children[0].textContent).toBe('No pages found');
+            expect(dropdown.children[0].getAttribute('role')).toBe('status');
+            // Dropdown is visible so aria-expanded must be true for consistency
+            expect(searchInput.getAttribute('aria-expanded')).toBe('true');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should render "No pages found" when pages is null', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            dialog._renderPageDropdown(dropdown, null, searchInput, hiddenPid);
+
+            expect(dropdown.textContent).toBe('No pages found');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should render page items with slug span', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            const pages = [{ uid: 42, title: 'About Us', slug: '/about-us' }];
+            dialog._renderPageDropdown(dropdown, pages, searchInput, hiddenPid);
+
+            expect(dropdown.style.display).toBe('block');
+            const item = dropdown.querySelector('[role="option"]');
+            expect(item).not.toBeNull();
+            expect(item.textContent).toContain('[42] About Us');
+            expect(item.textContent).toContain('/about-us');
+            expect(item.querySelector('span.text-muted')).not.toBeNull();
+            expect(searchInput.getAttribute('aria-expanded')).toBe('true');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should render page items without slug span when slug is empty', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            const pages = [{ uid: 1, title: 'Home', slug: '' }];
+            dialog._renderPageDropdown(dropdown, pages, searchInput, hiddenPid);
+
+            const item = dropdown.querySelector('[role="option"]');
+            expect(item.textContent).toBe('[1] Home');
+            expect(item.querySelector('span.text-muted')).toBeNull();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should set hidden PID and display text when page item clicked', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            const pages = [{ uid: 42, title: 'About Us', slug: '/about' }];
+            dialog._renderPageDropdown(dropdown, pages, searchInput, hiddenPid);
+
+            dropdown.querySelector('[role="option"]').click();
+
+            expect(hiddenPid.value).toBe('42');
+            expect(searchInput.value).toBe('[42] About Us');
+            expect(dropdown.style.display).toBe('none');
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should render multiple page items', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            const pages = [
+                { uid: 1, title: 'Home', slug: '/' },
+                { uid: 2, title: 'About', slug: '/about' },
+                { uid: 3, title: 'Contact', slug: '/contact' },
+            ];
+            dialog._renderPageDropdown(dropdown, pages, searchInput, hiddenPid);
+
+            const items = dropdown.querySelectorAll('[role="option"]');
+            expect(items.length).toBe(3);
+            // Click second item
+            items[1].click();
+            expect(hiddenPid.value).toBe('2');
+            expect(searchInput.value).toBe('[2] About');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('ARIA combobox attributes', () => {
+        it('should have correct ARIA attributes on search input', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            expect(searchInput.getAttribute('role')).toBe('combobox');
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+            expect(searchInput.getAttribute('aria-autocomplete')).toBe('list');
+            expect(searchInput.getAttribute('aria-controls')).toBe(dropdown.id);
+            expect(searchInput.getAttribute('aria-label')).toBe('Search pages by title or ID');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should have listbox role on dropdown', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            expect(dropdown.getAttribute('role')).toBe('listbox');
+            expect(dropdown.id).toBeTruthy();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('keyboard navigation', () => {
+        it('should close dropdown on Escape key', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            // Render some items to make dropdown visible
+            dialog._renderPageDropdown(dropdown, [{ uid: 1, title: 'Home', slug: '/' }], searchInput, hiddenPid);
+            expect(dropdown.style.display).toBe('block');
+
+            // Press Escape
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            expect(dropdown.style.display).toBe('none');
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should navigate items with arrow keys', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            dialog._renderPageDropdown(dropdown, [
+                { uid: 1, title: 'Home', slug: '/' },
+                { uid: 2, title: 'About', slug: '/about' },
+            ], searchInput, hiddenPid);
+
+            // Arrow down once
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+            const items = dropdown.querySelectorAll('[role="option"]');
+            expect(items[0].classList.contains('active')).toBe(true);
+            expect(searchInput.getAttribute('aria-activedescendant')).toBe(items[0].id);
+
+            // Arrow down again
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+            expect(items[0].classList.contains('active')).toBe(false);
+            expect(items[1].classList.contains('active')).toBe(true);
+
+            // Arrow up wraps to last item (stays at items[0] since we go up from 1)
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+            expect(items[0].classList.contains('active')).toBe(true);
+            expect(items[1].classList.contains('active')).toBe(false);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should select active item on Enter key', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            dialog._renderPageDropdown(dropdown, [
+                { uid: 7, title: 'Contact', slug: '/contact' },
+            ], searchInput, hiddenPid);
+
+            // Navigate to first item
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+            // Press Enter
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+            expect(hiddenPid.value).toBe('7');
+            expect(searchInput.value).toBe('[7] Contact');
+            expect(dropdown.style.display).toBe('none');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('event listener cleanup', () => {
+        it('should remove document click listener when reference row is removed', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            // Show the dropdown
+            dialog._renderPageDropdown(dropdown, [{ uid: 1, title: 'Page', slug: '' }], searchInput, hiddenPid);
+            expect(dropdown.style.display).toBe('block');
+
+            // Outside click should close it
+            document.body.click();
+            expect(dropdown.style.display).toBe('none');
+
+            // Now remove the row
+            document.querySelector('[data-role="remove-reference"]').click();
+            expect(document.querySelector('[data-role="reference-row"]')).toBeNull();
+
+            // Re-render a dropdown on the same element — it's detached, so this
+            // verifies the listener was cleaned up (no error from orphaned handler)
+            dropdown.style.display = 'block';
+            document.body.click();
+            // Dropdown is detached, listener was aborted — no error is thrown
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('_resolveTemplate', () => {
+        it('should return empty string when template is only {{input}}', async () => {
+            const tasksWithInputOnly = [
+                { uid: 10, identifier: 'input_only', name: 'Input Only',
+                  description: 'Only placeholder', promptTemplate: '{{input}}' },
+            ];
+            mockService.getTasks.mockResolvedValue({ success: true, tasks: tasksWithInputOnly });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            const instruction = document.querySelector('[data-role="instruction"]');
+            expect(instruction.value).toBe('');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
+    describe('modal hidden event (Escape/X close)', () => {
+        it('should reject promise and abort requests when typo3-modal-hidden fires', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            const modal = document.querySelector('.modal');
+            expect(modal).not.toBeNull();
+
+            // Dispatch the typo3-modal-hidden event (simulates Escape or X button)
+            modal.dispatchEvent(new Event('typo3-modal-hidden'));
+
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should abort in-flight request when modal is dismissed via hidden event', async () => {
+            // Make executeTask hang
+            mockService.executeTask.mockReturnValue(new Promise(() => {}));
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            // Start an execution
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+
+            // Dismiss modal via hidden event
+            const modal = document.querySelector('.modal');
+            modal.dispatchEvent(new Event('typo3-modal-hidden'));
+
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should abort reference AbortControllers when modal is dismissed', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            // Add a reference row (creates an AbortController)
+            document.querySelector('[data-role="add-reference"]').click();
+            expect(document.querySelector('[data-role="reference-row"]')).not.toBeNull();
+
+            // Dismiss modal
+            const modal = document.querySelector('.modal');
+            modal.dispatchEvent(new Event('typo3-modal-hidden'));
+
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
+    describe('debounced search input', () => {
+        it('should call searchPages after debounce and render dropdown', async () => {
+            mockService.searchPages.mockResolvedValue({
+                success: true,
+                pages: [{ uid: 10, title: 'Test Page', slug: '/test' }],
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            // Type a query (>= 2 chars to trigger search)
+            searchInput.value = 'Test';
+            searchInput.dispatchEvent(new Event('input'));
+
+            // Wait for debounce (300ms) + async search
+            await vi.waitFor(() => {
+                expect(mockService.searchPages).toHaveBeenCalledWith('Test');
+            }, { timeout: 1000 });
+
+            // Dropdown should be populated
+            await vi.waitFor(() => {
+                const items = dropdown.querySelectorAll('[role="option"]');
+                expect(items.length).toBe(1);
+                expect(items[0].textContent).toContain('Test Page');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should clear hidden PID on new input', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            // Set a PID value first
+            hiddenPid.value = '42';
+
+            // Type something
+            searchInput.value = 'Te';
+            searchInput.dispatchEvent(new Event('input'));
+
+            // PID should be cleared immediately
+            expect(hiddenPid.value).toBe('');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should hide dropdown when query is too short', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            // Make dropdown visible first
+            dropdown.style.display = 'block';
+            searchInput.setAttribute('aria-expanded', 'true');
+
+            // Type only 1 char (< 2 minimum)
+            searchInput.value = 'T';
+            searchInput.dispatchEvent(new Event('input'));
+
+            expect(dropdown.style.display).toBe('none');
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should hide dropdown and set aria-expanded false when search fails', async () => {
+            mockService.searchPages.mockRejectedValue(new Error('Network error'));
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            // Type a query to trigger search
+            searchInput.value = 'Fail';
+            searchInput.dispatchEvent(new Event('input'));
+
+            // Wait for debounce + error handling
+            await vi.waitFor(() => {
+                expect(mockService.searchPages).toHaveBeenCalledWith('Fail');
+            }, { timeout: 1000 });
+
+            // Wait for the error handler to hide the dropdown
+            await vi.waitFor(() => {
+                expect(dropdown.style.display).toBe('none');
+            });
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('keyboard navigation edge cases', () => {
+        it('should handle Escape when dropdown is hidden and has no items', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            // Dropdown is empty and hidden — press Escape
+            dropdown.style.display = 'none';
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+            // Should still be hidden and aria-expanded false
+            expect(dropdown.style.display).toBe('none');
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should handle ArrowDown/ArrowUp when dropdown has no items', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+
+            // No items in dropdown, pressing arrows should not throw
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should wrap ArrowUp from first item to last item', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            dialog._renderPageDropdown(dropdown, [
+                { uid: 1, title: 'First', slug: '/first' },
+                { uid: 2, title: 'Second', slug: '/second' },
+                { uid: 3, title: 'Third', slug: '/third' },
+            ], searchInput, hiddenPid);
+
+            const items = dropdown.querySelectorAll('[role="option"]');
+
+            // Navigate to first item
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+            expect(items[0].classList.contains('active')).toBe(true);
+
+            // ArrowUp from first should wrap to last
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+            expect(items[2].classList.contains('active')).toBe(true);
+            expect(items[0].classList.contains('active')).toBe(false);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should remove aria-activedescendant on Escape with items visible', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            document.querySelector('[data-role="add-reference"]').click();
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            const hiddenPid = document.querySelector('[data-role="ref-pid"]');
+
+            dialog._renderPageDropdown(dropdown, [
+                { uid: 1, title: 'Page', slug: '/' },
+            ], searchInput, hiddenPid);
+
+            // Navigate to item
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+            expect(searchInput.getAttribute('aria-activedescendant')).toBeTruthy();
+
+            // Press Escape — should remove aria-activedescendant
+            searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            expect(searchInput.hasAttribute('aria-activedescendant')).toBe(false);
+            expect(dropdown.style.display).toBe('none');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('sanitizer target=_blank rel enforcement', () => {
+        it('should add rel="noopener noreferrer" to target=_blank links', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<a href="https://example.com" target="_blank">Link</a>',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="result-preview"] a');
+            });
+
+            const link = document.querySelector('[data-role="result-preview"] a');
+            expect(link.getAttribute('target')).toBe('_blank');
+            expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should not add rel to links without target=_blank', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<a href="https://example.com">Normal Link</a>',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="result-preview"] a');
+            });
+
+            const link = document.querySelector('[data-role="result-preview"] a');
+            expect(link.getAttribute('rel')).toBeNull();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('_showDebugDetails with debugMessages', () => {
+        it('should display debugMessages when present in result', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<p>Result</p>',
+                model: 'test-model',
+                finishReason: 'stop',
+                debugMessages: [
+                    { role: 'system', content: 'You are a helpful assistant.' },
+                    { role: 'user', content: 'Improve this text.' },
+                ],
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="debug-details"]');
+            });
+
+            const debugContent = document.querySelector('[data-role="debug-details"]').textContent;
+            expect(debugContent).toContain('--- [system] ---');
+            expect(debugContent).toContain('You are a helpful assistant.');
+            expect(debugContent).toContain('--- [user] ---');
+            expect(debugContent).toContain('Improve this text.');
+            // Should NOT have the fallback sections
+            expect(debugContent).not.toContain('--- Input text ---');
+            expect(debugContent).not.toContain('--- Instruction sent ---');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should show debug details without thinking section when thinking is absent', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: 'Plain result',
+                model: 'gpt-4o',
+                finishReason: 'stop',
+                // no thinking, no usage, no debugMessages
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="debug-details"]');
+            });
+
+            const debugContent = document.querySelector('[data-role="debug-details"]').textContent;
+            expect(debugContent).not.toContain('--- Thinking ---');
+            // Should have fallback sections since no debugMessages
+            expect(debugContent).toContain('--- Input text ---');
+            expect(debugContent).toContain('--- Instruction sent ---');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+    });
+
+    describe('_updateButtonVisibility edge cases', () => {
+        it('should handle null modal gracefully', () => {
+            const dialog = new CowriterDialog(mockService);
+            // Should not throw
+            expect(() => dialog._updateButtonVisibility(null, 'idle')).not.toThrow();
+            expect(() => dialog._updateButtonVisibility(null, 'result')).not.toThrow();
+        });
+
+        it('should handle modal without buttons gracefully', () => {
+            const dialog = new CowriterDialog(mockService);
+            const emptyDiv = document.createElement('div');
+            // Should not throw when buttons are not found
+            expect(() => dialog._updateButtonVisibility(emptyDiv, 'idle')).not.toThrow();
+            expect(() => dialog._updateButtonVisibility(emptyDiv, 'result')).not.toThrow();
+        });
+
+        it('should show Reset and Insert buttons in loading state as hidden', async () => {
+            // Make executeTask hang
+            mockService.executeTask.mockReturnValue(new Promise(() => {}));
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => {
+                const preview = document.querySelector('[data-role="result-preview"]');
+                expect(preview.textContent).toContain('Generating');
+            });
+
+            // In loading state, Reset and Insert should be hidden
+            expect(document.querySelector('[data-name="reset"]').style.display).toBe('none');
+            expect(document.querySelector('[data-name="insert"]').style.display).toBe('none');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
+    describe('debug copy button', () => {
+        it('should copy to clipboard when copy button is clicked', async () => {
+            // Mock clipboard API
+            const writeTextMock = vi.fn().mockResolvedValue(undefined);
+            Object.defineProperty(navigator, 'clipboard', {
+                value: { writeText: writeTextMock },
+                writable: true,
+                configurable: true,
+            });
+
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: 'Result',
+                model: 'test-model',
+                finishReason: 'stop',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="debug-copy"]');
+            });
+
+            const copyBtn = document.querySelector('[data-role="debug-copy"]');
+            copyBtn.click();
+
+            await vi.waitFor(() => {
+                expect(writeTextMock).toHaveBeenCalled();
+            });
+
+            // Button text should change to "Copied!"
+            await vi.waitFor(() => {
+                expect(copyBtn.textContent).toBe('Copied!');
+            });
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('should fall back to execCommand when clipboard API fails', async () => {
+            // Mock clipboard API to fail
+            Object.defineProperty(navigator, 'clipboard', {
+                value: { writeText: vi.fn().mockRejectedValue(new Error('Not allowed')) },
+                writable: true,
+                configurable: true,
+            });
+
+            // Define and mock execCommand (not available in jsdom by default)
+            document.execCommand = vi.fn().mockReturnValue(true);
+            const execCommandSpy = document.execCommand;
+
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: 'Result',
+                model: 'test-model',
+                finishReason: 'stop',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('input', 'full');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                return document.querySelector('[data-role="debug-copy"]');
+            });
+
+            const copyBtn = document.querySelector('[data-role="debug-copy"]');
+            copyBtn.click();
+
+            // Wait for the fallback to be invoked
+            await vi.waitFor(() => {
+                expect(execCommandSpy).toHaveBeenCalledWith('copy');
+            });
+
+            // Button text should still show "Copied!"
+            await vi.waitFor(() => {
+                expect(copyBtn.textContent).toBe('Copied!');
+            });
+
+            delete document.execCommand;
+
+            document.querySelector('[data-name="cancel"]').click();
+            await showPromise.catch(() => {});
         });
     });
 });

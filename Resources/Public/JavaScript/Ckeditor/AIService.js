@@ -32,16 +32,19 @@
 /**
  * @typedef {object} CompleteResponse
  * @property {boolean} success - Whether the request succeeded
- * @property {string} content - The generated content
+ * @property {string} [content] - The generated content (when success=true)
+ * @property {string} [error] - Error message (when success=false)
  * @property {string} [model] - The model used for generation
  * @property {string} [finishReason] - Why generation stopped (stop, length, etc.)
  * @property {{promptTokens: number, completionTokens: number, totalTokens: number}} [usage] - Token usage statistics
+ * @property {string} [thinking] - Model thinking output (when available)
+ * @property {Array<{role: string, content: string}>} [debugMessages] - LLM messages sent (dev mode only)
  */
 
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, tasksModule: string|null, llmModule: string|null}}
      * @private
      */
     _routes = {
@@ -55,6 +58,9 @@ export class AIService {
         translate: null,
         templates: null,
         tools: null,
+        pageSearch: null,
+        tasksModule: null,
+        llmModule: null,
     };
 
     constructor() {
@@ -70,7 +76,19 @@ export class AIService {
             this._routes.translate = TYPO3.settings.ajaxUrls.tx_cowriter_translate || null;
             this._routes.templates = TYPO3.settings.ajaxUrls.tx_cowriter_templates || null;
             this._routes.tools = TYPO3.settings.ajaxUrls.tx_cowriter_tools || null;
+            this._routes.pageSearch = TYPO3.settings.ajaxUrls.tx_cowriter_page_search || null;
+            this._routes.tasksModule = TYPO3.settings.ajaxUrls.nrllm_tasks_module || null;
+            this._routes.llmModule = TYPO3.settings.ajaxUrls.nrllm_module || null;
         }
+    }
+
+    /**
+     * Get a backend module URL by key.
+     * @param {string} key - Route key (e.g. 'tasksModule', 'llmModule')
+     * @returns {string|null}
+     */
+    getModuleUrl(key) {
+        return this._routes[key] || null;
     }
 
     /**
@@ -250,7 +268,7 @@ export class AIService {
     /**
      * Fetch available cowriter tasks.
      *
-     * @returns {Promise<{success: boolean, tasks: Array<{uid: number, identifier: string, name: string, description: string}>}>}
+     * @returns {Promise<{success: boolean, tasks: Array<{uid: number, identifier: string, name: string, description: string, promptTemplate: string}>}>}
      */
     async getTasks() {
         if (!this._routes.tasks) {
@@ -309,17 +327,19 @@ export class AIService {
      * @param {number} taskUid
      * @param {string} context
      * @param {string} contextType
-     * @param {string} [adHocRules='']
+     * @param {string} [instruction='']
      * @param {string} [editorCapabilities='']
      * @param {string} [contextScope='']
      * @param {{table: string, uid: number, field: string}|null} [recordContext=null]
      * @param {Array<{pid: number, relation: string}>} [referencePages=[]]
+     * @param {AbortSignal} [signal] - Optional AbortSignal to cancel the request
      * @returns {Promise<CompleteResponse>}
      */
     async executeTask(
         taskUid, context, contextType,
-        adHocRules = '', editorCapabilities = '',
+        instruction = '', editorCapabilities = '',
         contextScope = '', recordContext = null, referencePages = [],
+        signal = undefined,
     ) {
         if (!this._routes.taskExecute) {
             throw new Error(
@@ -333,9 +353,10 @@ export class AIService {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                taskUid, context, contextType, adHocRules, editorCapabilities,
+                taskUid, context, contextType, instruction, editorCapabilities,
                 contextScope, recordContext, referencePages,
             }),
+            signal,
         });
 
         if (!response.ok) {
@@ -447,6 +468,27 @@ export class AIService {
             throw new Error(error.error || `HTTP ${response.status}`);
         }
 
+        return response.json();
+    }
+
+    /**
+     * Search pages by title or UID for the reference page picker.
+     *
+     * @param {string} query - Search query (title substring or UID)
+     * @returns {Promise<{success: boolean, pages: Array<{uid: number, title: string, slug: string}>}>}
+     */
+    async searchPages(query) {
+        if (!this._routes.pageSearch) {
+            throw new Error('TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.');
+        }
+        const params = new URLSearchParams({ query });
+        const separator = this._routes.pageSearch.includes('?') ? '&' : '?';
+        const url = `${this._routes.pageSearch}${separator}${params.toString()}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
         return response.json();
     }
 }

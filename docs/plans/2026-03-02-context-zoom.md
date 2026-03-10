@@ -456,7 +456,7 @@ public function __construct(
     public int $taskUid,
     public string $context,
     public string $contextType,
-    public string $adHocRules,
+    public string $instruction,
     public ?string $configuration,
     public string $editorCapabilities = '',
     public string $contextScope = '',
@@ -1471,7 +1471,7 @@ Update `executeTask` signature:
  * @param {number} taskUid
  * @param {string} context
  * @param {string} contextType
- * @param {string} [adHocRules='']
+ * @param {string} [instruction='']
  * @param {string} [editorCapabilities='']
  * @param {string} [contextScope='']
  * @param {{table: string, uid: number, field: string}|null} [recordContext=null]
@@ -1480,7 +1480,7 @@ Update `executeTask` signature:
  */
 async executeTask(
     taskUid, context, contextType,
-    adHocRules = '', editorCapabilities = '',
+    instruction = '', editorCapabilities = '',
     contextScope = '', recordContext = null, referencePages = [],
 ) {
     // ... existing validation ...
@@ -1489,7 +1489,7 @@ async executeTask(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            taskUid, context, contextType, adHocRules, editorCapabilities,
+            taskUid, context, contextType, instruction, editorCapabilities,
             contextScope, recordContext, referencePages,
         }),
     });
@@ -1896,10 +1896,10 @@ _showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext) 
         const contextScope = scopes[scopeIndex] || 'selection';
         const contextType = scopeIndex === 0 ? 'selection' : 'content_element';
         const context = contextType === 'selection' ? selectedText : fullContent;
-        const adHocRules = container.querySelector('[data-role="ad-hoc-rules"]').value.trim();
+        const instruction = container.querySelector('[data-role="instruction"]').value.trim();
 
         const result = await this._service.executeTask(
-            taskUid, context, contextType, adHocRules, editorCapabilities,
+            taskUid, context, contextType, instruction, editorCapabilities,
             contextScope, recordContext, [],
         );
         // ... rest of result handling unchanged ...
@@ -2201,7 +2201,7 @@ for (const row of refRows) {
 }
 
 const result = await this._service.executeTask(
-    taskUid, context, contextType, adHocRules, editorCapabilities,
+    taskUid, context, contextType, instruction, editorCapabilities,
     contextScope, recordContext, referencePages,
 );
 ```

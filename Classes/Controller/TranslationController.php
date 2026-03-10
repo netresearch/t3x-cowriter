@@ -77,12 +77,13 @@ final readonly class TranslationController
             $options = new TranslationOptions(
                 formality: $translationRequest->formality,
                 domain: $translationRequest->domain,
+                provider: $translationRequest->configuration,
             );
 
             $result = $this->translationService->translate(
                 $translationRequest->text,
                 $translationRequest->targetLanguage,
-                $translationRequest->configuration,
+                null,
                 $options,
             );
 
@@ -103,12 +104,36 @@ final readonly class TranslationController
                 'targetLanguage' => $translationRequest->targetLanguage,
             ]);
 
+            $userError = $this->getUserFriendlyError($e);
+
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'Translation failed. Please try again.'],
+                ['success' => false, 'error' => $userError],
                 $rateLimitResult,
                 500,
             );
         }
+    }
+
+    /**
+     * Map known exception messages to user-friendly error strings.
+     */
+    private function getUserFriendlyError(Throwable $e): string
+    {
+        $message = $e->getMessage();
+
+        if (str_contains($message, 'no default provider configured') || str_contains($message, 'No default LLM configuration')) {
+            return 'Translation is not configured yet. An administrator needs to set up an LLM provider and mark a configuration as default in the LLM module.';
+        }
+
+        if (str_contains($message, '401') || str_contains($message, 'Unauthorized') || str_contains($message, 'authentication')) {
+            return 'The LLM provider rejected the API key. An administrator should check the provider configuration in the LLM module.';
+        }
+
+        if (str_contains($message, '429') || str_contains($message, 'rate limit')) {
+            return 'The LLM provider rate limit was exceeded. Please wait a moment and try again.';
+        }
+
+        return 'Translation failed. Check the TYPO3 system log for details.';
     }
 
     /**

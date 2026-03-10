@@ -27,9 +27,13 @@ final readonly class ExecuteTaskRequest
     private const MAX_CONTEXT_LENGTH = 32768;
 
     /**
-     * Maximum allowed ad-hoc rules length in characters.
+     * Maximum allowed instruction length in characters.
+     *
+     * The instruction contains the user's directive or the resolved template
+     * with placeholders removed. It must not include the full editor text,
+     * which is provided separately via the context field.
      */
-    private const MAX_RULES_LENGTH = 4096;
+    private const MAX_INSTRUCTION_LENGTH = 32768;
 
     /**
      * Maximum allowed editor capabilities length in characters.
@@ -90,7 +94,7 @@ final readonly class ExecuteTaskRequest
         public int $taskUid,
         public string $context,
         public string $contextType,
-        public string $adHocRules,
+        public string $instruction,
         public ?string $configuration,
         public string $editorCapabilities = '',
         public string $contextScope = '',
@@ -121,7 +125,7 @@ final readonly class ExecuteTaskRequest
             taskUid: self::extractInt($data, 'taskUid'),
             context: self::extractString($data, 'context'),
             contextType: self::extractString($data, 'contextType'),
-            adHocRules: self::extractString($data, 'adHocRules'),
+            instruction: self::extractString($data, 'instruction'),
             configuration: self::extractNullableString($data, 'configuration'),
             editorCapabilities: self::extractString($data, 'editorCapabilities'),
             contextScope: self::extractString($data, 'contextScope'),
@@ -135,11 +139,7 @@ final readonly class ExecuteTaskRequest
      */
     public function isValid(): bool
     {
-        if ($this->taskUid <= 0) {
-            return false;
-        }
-
-        if (trim($this->context) === '') {
+        if ($this->taskUid < 0) {
             return false;
         }
 
@@ -147,11 +147,17 @@ final readonly class ExecuteTaskRequest
             return false;
         }
 
-        if (!in_array($this->contextType, self::ALLOWED_CONTEXT_TYPES, true)) {
+        // contextType is required when context is non-empty
+        if (trim($this->context) !== '' && !in_array($this->contextType, self::ALLOWED_CONTEXT_TYPES, true)) {
             return false;
         }
 
-        if (mb_strlen($this->adHocRules, 'UTF-8') > self::MAX_RULES_LENGTH) {
+        // Instruction is required (the full prompt to send to LLM)
+        if (trim($this->instruction) === '') {
+            return false;
+        }
+
+        if (mb_strlen($this->instruction, 'UTF-8') > self::MAX_INSTRUCTION_LENGTH) {
             return false;
         }
 

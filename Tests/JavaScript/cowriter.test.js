@@ -3,7 +3,7 @@
  *
  * CKEditor bundle is mocked via vitest.config.js alias.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Cowriter Plugin', () => {
     let Cowriter;
@@ -53,7 +53,9 @@ describe('Cowriter Plugin', () => {
 
             // Mock AIService and CowriterDialog before importing cowriter
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
-                AIService: class MockAIService {},
+                AIService: class MockAIService {
+                    getModuleUrl(key) { return this._routes?.[key] || null; }
+                },
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
                 CowriterDialog: class MockCowriterDialog {
@@ -187,6 +189,17 @@ describe('Cowriter Plugin', () => {
 
             await capturedButton.fire('execute');
             expect(plugin._isProcessing).toBe(false);
+        });
+
+        it('should log non-cancel errors to console', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockDialogShow.mockRejectedValue(new Error('Network failure'));
+            mockSelection(false, '<p>prompt</p>');
+
+            await capturedButton.fire('execute');
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter]', expect.any(Error));
+            consoleSpy.mockRestore();
         });
 
         it('should set selection to range before inserting replacement', async () => {
@@ -364,6 +377,88 @@ describe('Cowriter Plugin', () => {
             const context = plugin._getRecordContext();
             expect(context).toBeNull();
         });
+
+        it('should find textarea via Strategy 2 (walk up from editable DOM root)', () => {
+            const plugin = new Cowriter();
+
+            // Create a DOM structure where textarea is an ancestor-sibling of editableRoot
+            const grandparent = document.createElement('div');
+            const textarea = document.createElement('textarea');
+            textarea.name = 'data[tx_news_domain_model_news][42][bodytext]';
+            grandparent.appendChild(textarea);
+
+            const editorWrapper = document.createElement('div');
+            grandparent.appendChild(editorWrapper);
+            const editableRoot = document.createElement('div');
+            editorWrapper.appendChild(editableRoot);
+
+            plugin.editor = {
+                sourceElement: document.createElement('div'), // no textarea child
+                editing: { view: { getDomRoot: () => editableRoot } },
+            };
+
+            const context = plugin._getRecordContext();
+            expect(context).toEqual({
+                table: 'tx_news_domain_model_news',
+                uid: 42,
+                field: 'bodytext',
+            });
+        });
+
+        it('should find textarea via Strategy 3 (search all textareas in document)', () => {
+            const plugin = new Cowriter();
+
+            // Put a textarea in the document body
+            const textarea = document.createElement('textarea');
+            textarea.name = 'data[pages][7][abstract]';
+            document.body.appendChild(textarea);
+
+            plugin.editor = {
+                sourceElement: document.createElement('div'),
+                editing: { view: { getDomRoot: () => null } },
+            };
+
+            const context = plugin._getRecordContext();
+            expect(context).toEqual({
+                table: 'pages',
+                uid: 7,
+                field: 'abstract',
+            });
+
+            // Cleanup
+            textarea.remove();
+        });
+
+        it('should find record context via Strategy 4 (URL parsing)', () => {
+            const plugin = new Cowriter();
+
+            // Mock window.location.search
+            const origSearch = window.location.search;
+            Object.defineProperty(window, 'location', {
+                value: { ...window.location, search: '?edit[tt_content][55]=edit' },
+                writable: true,
+                configurable: true,
+            });
+
+            plugin.editor = {
+                sourceElement: null,
+                editing: { view: { getDomRoot: () => null } },
+            };
+
+            const context = plugin._getRecordContext();
+            expect(context).toEqual({
+                table: 'tt_content',
+                uid: 55,
+                field: 'bodytext',
+            });
+
+            // Restore
+            Object.defineProperty(window, 'location', {
+                value: { ...window.location, search: origSearch },
+                writable: true,
+                configurable: true,
+            });
+        });
     });
 
     describe('init', () => {
@@ -466,6 +561,7 @@ describe('Cowriter Plugin', () => {
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
                 AIService: class MockAIService {
                     analyzeImage = mockAnalyzeImage;
+                    getModuleUrl(key) { return this._routes?.[key] || null; }
                 },
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
@@ -478,12 +574,13 @@ describe('Cowriter Plugin', () => {
             componentCallbacks = {};
             mockEditor = {
                 model: {
-                    document: { selection: { getFirstRange: vi.fn(), getFirstPosition: vi.fn() } },
+                    document: { selection: { getFirstRange: vi.fn(), getFirstPosition: vi.fn(), getSelectedElement: vi.fn().mockReturnValue(null) } },
                     change: vi.fn((cb) => cb(mockEditor._writer)),
                     insertContent: vi.fn(),
                     getSelectedContent: vi.fn(),
                 },
-                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn() },
+                _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn(), setAttribute: vi.fn() },
+                editing: { view: { document: { selection: { getSelectedElement: vi.fn().mockReturnValue(null) } } } },
                 data: {
                     processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
                     toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
@@ -516,29 +613,29 @@ describe('Cowriter Plugin', () => {
             expect(button.label).toBe('Cowriter - Generate alt text');
         });
 
-        it('should call analyzeImage and insert result', async () => {
-            // Mock window.prompt
-            globalThis.prompt = vi.fn().mockReturnValue('https://example.com/img.jpg');
+        it('should call analyzeImage and set alt attribute on selected image', async () => {
+            const selectedImage = {
+                is: vi.fn((_, name) => name === 'imageBlock'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/img.jpg'),
+            };
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(selectedImage);
 
             const button = componentCallbacks['cowriterVision']();
             await button.fire('execute');
 
             expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg');
             expect(mockEditor.model.change).toHaveBeenCalled();
-            expect(mockEditor._writer.insertText).toHaveBeenCalledWith('A cat', undefined);
-
-            delete globalThis.prompt;
+            expect(mockEditor._writer.setAttribute).toHaveBeenCalledWith('alt', 'A cat', selectedImage);
         });
 
-        it('should do nothing when prompt is cancelled', async () => {
-            globalThis.prompt = vi.fn().mockReturnValue(null);
+        it('should do nothing when no image is selected', async () => {
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(null);
+            mockEditor.editing = { view: { document: { selection: { getSelectedElement: vi.fn().mockReturnValue(null) } } } };
 
             const button = componentCallbacks['cowriterVision']();
             await button.fire('execute');
 
             expect(mockAnalyzeImage).not.toHaveBeenCalled();
-
-            delete globalThis.prompt;
         });
 
         it('should not execute when _isProcessing is true', async () => {
@@ -547,6 +644,115 @@ describe('Cowriter Plugin', () => {
             await button.fire('execute');
             expect(mockAnalyzeImage).not.toHaveBeenCalled();
         });
+
+        it('should log error when analyzeImage throws', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockAnalyzeImage.mockRejectedValue(new Error('Vision API failed'));
+
+            const selectedImage = {
+                is: vi.fn((_, name) => name === 'imageBlock'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/img.jpg'),
+            };
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(selectedImage);
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Vision]', expect.any(Error));
+            expect(plugin._isProcessing).toBe(false);
+            consoleSpy.mockRestore();
+        });
+
+        it('should detect image from editing view fallback (img element)', async () => {
+            // No image in model selection
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(null);
+
+            // But editing view has an img element
+            const viewImg = {
+                is: vi.fn((_, name) => name === 'img'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/fallback.jpg'),
+                getChild: vi.fn(),
+            };
+            mockEditor.editing = {
+                view: {
+                    document: {
+                        selection: {
+                            getSelectedElement: vi.fn().mockReturnValue(viewImg),
+                        },
+                    },
+                },
+            };
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/fallback.jpg');
+        });
+
+        it('should detect image from editing view fallback (child img element)', async () => {
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(null);
+
+            const childImg = {
+                is: vi.fn((_, name) => name === 'img'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/child.jpg'),
+            };
+            const viewWrapper = {
+                is: vi.fn(() => false),
+                getAttribute: vi.fn().mockReturnValue(''),
+                getChild: vi.fn((idx) => idx === 0 ? childImg : null),
+            };
+            mockEditor.editing = {
+                view: {
+                    document: {
+                        selection: {
+                            getSelectedElement: vi.fn().mockReturnValue(viewWrapper),
+                        },
+                    },
+                },
+            };
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/child.jpg');
+        });
+
+        it('should use insertText when selected element is not an image', async () => {
+            // Model selection returns a non-image element
+            const nonImageElement = {
+                is: vi.fn(() => false),
+                getAttribute: vi.fn().mockReturnValue(''),
+            };
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(nonImageElement);
+
+            // But editing view has an img (for URL detection)
+            const viewImg = {
+                is: vi.fn((_, name) => name === 'img'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/img.jpg'),
+                getChild: vi.fn(),
+            };
+            mockEditor.editing = {
+                view: {
+                    document: {
+                        selection: {
+                            getSelectedElement: vi.fn().mockReturnValue(viewImg),
+                        },
+                    },
+                },
+            };
+
+            // Mock insertText on writer
+            mockEditor._writer.insertText = vi.fn();
+            const mockPosition = { offset: 0 };
+            mockEditor.model.document.selection.getFirstPosition = vi.fn().mockReturnValue(mockPosition);
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg');
+            // Since selectedElement.is('element', 'imageBlock') returns false, insertText is used
+            expect(mockEditor._writer.insertText).toHaveBeenCalledWith('A cat', mockPosition);
+        });
     });
 
     describe('cowriterTranslate dropdown', () => {
@@ -554,6 +760,8 @@ describe('Cowriter Plugin', () => {
         let mockEditor;
         let componentCallbacks;
         let mockTranslate;
+        /** @type {typeof import('@typo3/backend/notification.js').default} */
+        let Notification;
 
         beforeEach(async () => {
             vi.resetModules();
@@ -563,6 +771,7 @@ describe('Cowriter Plugin', () => {
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
                 AIService: class MockAIService {
                     translate = mockTranslate;
+                    getModuleUrl(key) { return this._routes?.[key] || null; }
                 },
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
@@ -571,6 +780,10 @@ describe('Cowriter Plugin', () => {
 
             const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
             Cowriter = module.Cowriter;
+
+            // Import the same Notification instance used by the re-imported cowriter.js
+            const notifModule = await import('@typo3/backend/notification.js');
+            Notification = notifModule.default;
 
             componentCallbacks = {};
             mockEditor = {
@@ -611,6 +824,7 @@ describe('Cowriter Plugin', () => {
         afterEach(() => {
             vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
             vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
+            vi.clearAllMocks();
         });
 
         it('should create translate dropdown with correct label', () => {
@@ -621,10 +835,12 @@ describe('Cowriter Plugin', () => {
         it('should translate selected text on execute', async () => {
             const dropdown = componentCallbacks['cowriterTranslate']();
             // Simulate selecting German from dropdown
-            await dropdown.fire('execute', { source: { languageCode: 'de' } });
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
 
             expect(mockTranslate).toHaveBeenCalledWith('<p>Hello World</p>', 'de');
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
+            expect(Notification.info).toHaveBeenCalledWith('Translating...', 'Translating to German', 15);
+            expect(Notification.success).toHaveBeenCalledWith('Translation complete', 'Translated to German', 3);
         });
 
         it('should not translate when no text is selected', async () => {
@@ -632,9 +848,12 @@ describe('Cowriter Plugin', () => {
             mockEditor.data.stringify.mockReturnValue('');
 
             const dropdown = componentCallbacks['cowriterTranslate']();
-            await dropdown.fire('execute', { source: { languageCode: 'fr' } });
+            await dropdown.fire('execute', { source: { languageCode: 'fr', label: 'French' } });
 
             expect(mockTranslate).not.toHaveBeenCalled();
+            expect(Notification.warning).toHaveBeenCalledWith(
+                'No text selected', 'Please select text in the editor before translating.', 5,
+            );
         });
 
         it('should not execute when _isProcessing is true', async () => {
@@ -643,27 +862,83 @@ describe('Cowriter Plugin', () => {
             await dropdown.fire('execute', { source: { languageCode: 'de' } });
             expect(mockTranslate).not.toHaveBeenCalled();
         });
+
+        it('should log error when translate throws', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockTranslate.mockRejectedValue(new Error('Translation API failed'));
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Translate]', expect.any(Error));
+            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Translation API failed', 0, []);
+            expect(plugin._isProcessing).toBe(false);
+            consoleSpy.mockRestore();
+        });
+
+        it('should show error notification when translate returns success:false', async () => {
+            mockTranslate.mockResolvedValue({ success: false, error: 'Rate limit exceeded' });
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Rate limit exceeded', 0, []);
+            expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
+        });
+
+        it('should include Open LLM Settings action when llmModule route is available', async () => {
+            mockTranslate.mockRejectedValue(new Error('Translation is not configured yet'));
+            plugin._service._routes = { llmModule: '/typo3/module/nrllm/overview' };
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            const actions = Notification.error.mock.calls[0][3];
+            expect(actions).toHaveLength(1);
+            expect(actions[0].label).toBe('Open LLM Settings');
+        });
+
+        it('should return empty actions for rate limit errors even with llmModule route', async () => {
+            mockTranslate.mockRejectedValue(new Error('rate limit exceeded'));
+            plugin._service._routes = { llmModule: '/typo3/module/nrllm/overview' };
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            const actions = Notification.error.mock.calls[0][3];
+            expect(actions).toHaveLength(0);
+        });
+
+        it('should fall back to language code when label is missing', async () => {
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de' } });
+
+            expect(Notification.info).toHaveBeenCalledWith('Translating...', 'Translating to de', 15);
+        });
     });
 
     describe('cowriterTemplates dropdown', () => {
         let plugin;
         let mockEditor;
         let componentCallbacks;
-        let mockGetTemplates;
+        let mockGetTasks;
         let mockDialogShow;
+        /** @type {typeof import('@typo3/backend/notification.js').default} */
+        let Notification;
 
         beforeEach(async () => {
             vi.resetModules();
 
-            mockGetTemplates = vi.fn().mockResolvedValue({
+            mockGetTasks = vi.fn().mockResolvedValue({
                 success: true,
-                templates: [{ identifier: 'improve', name: 'Improve', description: '' }],
+                tasks: [{ uid: 42, identifier: 'improve', name: 'Improve', description: '' }],
             });
             mockDialogShow = vi.fn().mockResolvedValue({ content: 'Improved text' });
 
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
                 AIService: class MockAIService {
-                    getTemplates = mockGetTemplates;
+                    getTasks = mockGetTasks;
+                    getModuleUrl(key) { return this._routes?.[key] || null; }
                 },
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
@@ -674,6 +949,9 @@ describe('Cowriter Plugin', () => {
 
             const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
             Cowriter = module.Cowriter;
+
+            const notifModule = await import('@typo3/backend/notification.js');
+            Notification = notifModule.default;
 
             componentCallbacks = {};
             mockEditor = {
@@ -709,36 +987,40 @@ describe('Cowriter Plugin', () => {
         afterEach(() => {
             vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
             vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
+            vi.clearAllMocks();
         });
 
-        it('should create templates dropdown with correct label', () => {
+        it('should create tasks dropdown with correct label', () => {
             const dropdown = componentCallbacks['cowriterTemplates']();
-            expect(dropdown.buttonView.label).toBe('Cowriter - Templates');
+            expect(dropdown.buttonView.label).toBe('Cowriter - Tasks');
         });
 
-        it('should load templates on dropdown open', async () => {
+        it('should load tasks on dropdown open', async () => {
             const dropdown = componentCallbacks['cowriterTemplates']();
             dropdown.isOpen = true;
             await dropdown.fire('change:isOpen');
 
-            expect(mockGetTemplates).toHaveBeenCalled();
+            expect(mockGetTasks).toHaveBeenCalled();
         });
 
-        it('should not load templates when dropdown closes', async () => {
+        it('should not load tasks when dropdown closes', async () => {
             const dropdown = componentCallbacks['cowriterTemplates']();
             dropdown.isOpen = false;
             await dropdown.fire('change:isOpen');
 
-            expect(mockGetTemplates).not.toHaveBeenCalled();
+            expect(mockGetTasks).not.toHaveBeenCalled();
         });
 
-        it('should open dialog with template on execute', async () => {
+        it('should open dialog with task pre-selected on execute', async () => {
+            // First open dropdown to load tasks
             const dropdown = componentCallbacks['cowriterTemplates']();
-            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+            dropdown.isOpen = true;
+            await dropdown.fire('change:isOpen');
+
+            await dropdown.fire('execute', { source: { taskUid: 42 } });
 
             expect(mockDialogShow).toHaveBeenCalledWith(
-                '', '<p>Full content</p>', '', null,
-                { templateIdentifier: 'improve' },
+                '', '<p>Full content</p>', '', null, 42,
             );
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
         });
@@ -747,7 +1029,7 @@ describe('Cowriter Plugin', () => {
             mockDialogShow.mockRejectedValue(new Error('User cancelled'));
 
             const dropdown = componentCallbacks['cowriterTemplates']();
-            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+            await dropdown.fire('execute', { source: { taskUid: 42 } });
 
             expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
         });
@@ -755,8 +1037,41 @@ describe('Cowriter Plugin', () => {
         it('should not execute when _isProcessing is true', async () => {
             plugin._isProcessing = true;
             const dropdown = componentCallbacks['cowriterTemplates']();
-            await dropdown.fire('execute', { source: { templateIdentifier: 'improve' } });
+            await dropdown.fire('execute', { source: { taskUid: 42 } });
             expect(mockDialogShow).not.toHaveBeenCalled();
+        });
+
+        it('should log error when getTasks throws', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockGetTasks.mockRejectedValue(new Error('Tasks API failed'));
+
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            dropdown.isOpen = true;
+            await dropdown.fire('change:isOpen');
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Tasks]', expect.any(Error));
+            consoleSpy.mockRestore();
+        });
+
+        it('should log non-cancel errors from task execute', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            mockDialogShow.mockRejectedValue(new Error('Network error'));
+
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            await dropdown.fire('execute', { source: { taskUid: 42 } });
+
+            expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Tasks]', expect.any(Error));
+            expect(plugin._isProcessing).toBe(false);
+            consoleSpy.mockRestore();
+        });
+
+        it('should only load tasks once per session', async () => {
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            dropdown.isOpen = true;
+            await dropdown.fire('change:isOpen');
+            await dropdown.fire('change:isOpen');
+
+            expect(mockGetTasks).toHaveBeenCalledTimes(1);
         });
     });
 });

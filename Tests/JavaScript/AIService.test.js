@@ -48,6 +48,33 @@ describe('AIService', () => {
             expect(service._routes.context).toBe('/typo3/ajax/tx_cowriter_context');
         });
 
+        it('should initialize tasksModule route from TYPO3.settings.ajaxUrls', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.nrllm_tasks_module = '/typo3/module/nrllm/tasks';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+            const service = new ServiceClass();
+            expect(service._routes.tasksModule).toBe('/typo3/module/nrllm/tasks');
+        });
+
+        it('should initialize llmModule route from TYPO3.settings.ajaxUrls', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.nrllm_module = '/typo3/module/nrllm/overview';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+            const service = new ServiceClass();
+            expect(service._routes.llmModule).toBe('/typo3/module/nrllm/overview');
+        });
+
+        it('should return module URL via getModuleUrl()', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.nrllm_module = '/typo3/module/nrllm/overview';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const service = new module.AIService();
+            expect(service.getModuleUrl('llmModule')).toBe('/typo3/module/nrllm/overview');
+            expect(service.getModuleUrl('nonexistent')).toBeNull();
+        });
+
         it('should handle missing TYPO3 global', async () => {
             delete globalThis.TYPO3;
             vi.resetModules();
@@ -736,7 +763,7 @@ describe('AIService', () => {
                     taskUid: 1,
                     context: 'Hello world',
                     contextType: 'selection',
-                    adHocRules: 'Be formal',
+                    instruction: 'Be formal',
                     editorCapabilities: '',
                     contextScope: '',
                     recordContext: null,
@@ -746,7 +773,7 @@ describe('AIService', () => {
             expect(result).toEqual(mockResponse);
         });
 
-        it('should default adHocRules to empty string', async () => {
+        it('should default instruction to empty string', async () => {
             TYPO3Mock.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
             vi.resetModules();
             const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
@@ -761,7 +788,7 @@ describe('AIService', () => {
             await service.executeTask(1, 'text', 'selection');
 
             const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
-            expect(body.adHocRules).toBe('');
+            expect(body.instruction).toBe('');
             expect(body.editorCapabilities).toBe('');
         });
 
@@ -1162,6 +1189,73 @@ describe('AIService', () => {
 
             const service = new ServiceClass();
             await expect(service.executeTools('Query')).rejects.toThrow('Unknown error');
+        });
+    });
+
+    describe('searchPages', () => {
+        it('should throw when pageSearch route is not configured', async () => {
+            const service = new AIService();
+            expect(service._routes.pageSearch).toBeNull();
+            await expect(service.searchPages('test')).rejects.toThrow(
+                'TYPO3 AJAX routes not configured'
+            );
+        });
+
+        it('should send GET request with query parameter', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_page_search = '/typo3/ajax/tx_cowriter_page_search';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            const mockResponse = { success: true, pages: [{ uid: 1, title: 'Home', slug: '/' }] };
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            });
+
+            const service = new ServiceClass();
+            const result = await service.searchPages('Home');
+
+            expect(globalThis.fetch).toHaveBeenCalledWith(
+                '/typo3/ajax/tx_cowriter_page_search?query=Home'
+            );
+            expect(result).toEqual(mockResponse);
+        });
+
+        it('should handle query parameter with existing query string', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_page_search = '/typo3/ajax/tx_cowriter_page_search?token=abc';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ success: true, pages: [] }),
+            });
+
+            const service = new ServiceClass();
+            await service.searchPages('test');
+
+            expect(globalThis.fetch).toHaveBeenCalledWith(
+                '/typo3/ajax/tx_cowriter_page_search?token=abc&query=test'
+            );
+        });
+
+        it('should throw on non-ok response', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_page_search = '/typo3/ajax/tx_cowriter_page_search';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                json: () => Promise.resolve({ error: 'Failed to search pages.' }),
+            });
+
+            const service = new ServiceClass();
+            await expect(service.searchPages('test')).rejects.toThrow('Failed to search pages.');
         });
     });
 

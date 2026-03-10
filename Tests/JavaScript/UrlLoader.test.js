@@ -177,6 +177,9 @@ describe('UrlLoader', () => {
                 tx_cowriter_tasks: '/tasks',
                 tx_cowriter_task_execute: '/task-execute',
                 tx_cowriter_context: '/context',
+                tx_cowriter_page_search: '/page-search',
+                nrllm_tasks_module: '/tasks-module',
+                nrllm_module: '/llm-module',
                 __proto__: { polluted: true },
                 malicious_route: '/evil',
                 constructor: '/hack',
@@ -199,6 +202,9 @@ describe('UrlLoader', () => {
             expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_tasks).toBe('/tasks');
             expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_task_execute).toBe('/task-execute');
             expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_context).toBe('/context');
+            expect(TYPO3Mock.settings.ajaxUrls.tx_cowriter_page_search).toBe('/page-search');
+            expect(TYPO3Mock.settings.ajaxUrls.nrllm_tasks_module).toBe('/tasks-module');
+            expect(TYPO3Mock.settings.ajaxUrls.nrllm_module).toBe('/llm-module');
 
             // Non-allowed keys should be filtered out
             expect(TYPO3Mock.settings.ajaxUrls.malicious_route).toBeUndefined();

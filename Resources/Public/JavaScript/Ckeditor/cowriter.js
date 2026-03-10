@@ -2,9 +2,11 @@
 // @ts-check
 
 import { Plugin } from "@ckeditor/ckeditor5-core";
-import { ButtonView, createDropdown, addListToDropdown, Model, Collection } from "@ckeditor/ckeditor5-ui";
+import { ButtonView, createDropdown, addListToDropdown, ViewModel } from "@ckeditor/ckeditor5-ui";
+import { Collection } from "@ckeditor/ckeditor5-utils";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
+import Notification from "@typo3/backend/notification.js";
 
 /**
  * Target languages for translation dropdown.
@@ -22,6 +24,43 @@ const TRANSLATION_LANGUAGES = [
     { code: 'ja', label: 'Japanese' },
     { code: 'zh', label: 'Chinese' },
 ];
+
+/**
+ * Build a TYPO3 Notification action that opens the LLM module.
+ *
+ * @param {string} label - Action link text
+ * @param {string|null} url - Backend module URL (null = no action)
+ * @returns {Array<{label: string, action: {execute: function}}>}
+ */
+function buildModuleAction(label, url) {
+    if (!url) return [];
+    return [{ label, action: { execute: () => { window.open(url, '_blank', 'noopener,noreferrer'); } } }];
+}
+
+/**
+ * Build error notification actions based on the error message content.
+ * Returns appropriate "Open LLM Settings" links depending on the error type.
+ *
+ * @param {string} errorMessage - The error message from the backend
+ * @param {AIService} service - The AIService instance (for route access)
+ * @returns {Array<{label: string, action: {execute: function}}>}
+ */
+function errorActions(errorMessage, service) {
+    const msg = (errorMessage || '').toLowerCase();
+    const llmModuleUrl = service.getModuleUrl?.('llmModule') ?? null;
+
+    if (msg.includes('not configured') || msg.includes('no llm provider') || msg.includes('no default')
+        || msg.includes('api key') || msg.includes('unauthorized') || msg.includes('401')) {
+        return buildModuleAction('Open LLM Settings', llmModuleUrl);
+    }
+
+    if (msg.includes('rate limit') || msg.includes('429')) {
+        return []; // No action needed — just wait
+    }
+
+    // Generic errors: offer the LLM module as a starting point
+    return buildModuleAction('Open LLM Settings', llmModuleUrl);
+}
 
 /**
  * Cowriter CKEditor plugin.
@@ -99,21 +138,61 @@ export class Cowriter extends Plugin {
      * @private
      */
     _getRecordContext() {
+        const pattern = /^data\[(\w+)]\[(\d+)]\[(\w+)]$/;
+        const urlPattern = /^edit\[(\w+)]\[(\d+)]$/;
+
+        // Strategy 1: CKEditor 5 sourceElement (textarea itself or a wrapper containing one)
         const el = this.editor.sourceElement;
-        if (!el) return null;
+        if (el) {
+            const textarea = el.tagName === 'TEXTAREA' ? el : el.querySelector('textarea[name^="data["]');
+            if (textarea?.name) {
+                const match = textarea.name.match(pattern);
+                if (match) return { table: match[1], uid: parseInt(match[2], 10), field: match[3] };
+            }
+        }
 
-        // The source element may be the textarea itself or a wrapper containing it
-        const textarea = el.tagName === 'TEXTAREA' ? el : el.querySelector('textarea');
-        if (!textarea?.name) return null;
+        // Strategy 2: Walk up from CKEditor's editable DOM root to find FormEngine textarea
+        // In TYPO3 v13/v14, the textarea may be a sibling/ancestor of the editable area,
+        // not a child of sourceElement (especially with web component wrappers)
+        const editableRoot = this.editor.editing?.view?.getDomRoot();
+        if (editableRoot) {
+            let parent = editableRoot.parentElement;
+            while (parent && parent !== document.body) {
+                const ta = parent.querySelector('textarea[name^="data["]');
+                if (ta?.name) {
+                    const match = ta.name.match(pattern);
+                    if (match) return { table: match[1], uid: parseInt(match[2], 10), field: match[3] };
+                }
+                parent = parent.parentElement;
+            }
+        }
 
-        const match = textarea.name.match(/^data\[(\w+)]\[(\d+)]\[(\w+)]$/);
-        if (!match) return null;
+        // Strategy 3: Search all textareas in the document (fallback for unusual DOM layouts)
+        for (const ta of document.querySelectorAll('textarea[name^="data["]')) {
+            const match = ta.name.match(pattern);
+            if (match) return { table: match[1], uid: parseInt(match[2], 10), field: match[3] };
+        }
 
-        return {
-            table: match[1],
-            uid: parseInt(match[2], 10),
-            field: match[3],
-        };
+        // Strategy 4: Parse TYPO3 edit URL (e.g. ?edit[tt_content][123]=edit)
+        try {
+            const searchStr = window.location.search
+                || window.parent?.location?.search || '';
+            const params = new URLSearchParams(searchStr);
+            for (const [key] of params) {
+                const urlMatch = key.match(urlPattern);
+                if (urlMatch) {
+                    return {
+                        table: urlMatch[1],
+                        uid: parseInt(urlMatch[2], 10),
+                        field: 'bodytext',
+                    };
+                }
+            }
+        } catch {
+            // URL parsing or cross-origin access failed
+        }
+
+        return null;
     }
 
     async init() {
@@ -198,16 +277,53 @@ export class Cowriter extends Plugin {
                 this._isProcessing = true;
 
                 try {
-                    const imageUrl = prompt('Enter image URL for alt text generation:');
-                    if (!imageUrl) return;
+                    // Detect selected image in the editor
+                    const selectedElement = editor.model.document.selection.getSelectedElement();
+                    let imageUrl = '';
+
+                    if (selectedElement && (selectedElement.is('element', 'imageBlock') || selectedElement.is('element', 'imageInline'))) {
+                        imageUrl = selectedElement.getAttribute('src') || '';
+                    }
+
+                    if (!imageUrl) {
+                        // Fallback: check editing view for selected image
+                        const viewSelection = editor.editing.view.document.selection;
+                        const viewElement = viewSelection.getSelectedElement();
+                        if (viewElement) {
+                            const img = viewElement.is('element', 'img')
+                                ? viewElement
+                                : viewElement.getChild?.(0)?.is?.('element', 'img') ? viewElement.getChild(0) : null;
+                            if (img) {
+                                imageUrl = img.getAttribute('src') || '';
+                            }
+                        }
+                    }
+
+                    if (!imageUrl) {
+                        Notification.warning('No image selected', 'Click on an image in the editor first.', 5);
+                        return;
+                    }
+
+                    Notification.info('Analyzing image...', 'Generating alt text', 15);
 
                     const result = await this._service.analyzeImage(imageUrl);
                     if (result?.success && result.altText) {
                         editor.model.change(writer => {
-                            writer.insertText(result.altText, editor.model.document.selection.getFirstPosition());
+                            // If the selected element is an image, set its alt attribute
+                            if (selectedElement && (selectedElement.is('element', 'imageBlock') || selectedElement.is('element', 'imageInline'))) {
+                                writer.setAttribute('alt', result.altText, selectedElement);
+                            } else {
+                                writer.insertText(result.altText, editor.model.document.selection.getFirstPosition());
+                            }
                         });
+                        Notification.success('Alt text generated', result.altText.substring(0, 80), 3);
+                    } else {
+                        const msg = result?.error || 'Unknown error';
+                        Notification.error('Alt text generation failed', msg, 0, errorActions(msg, this._service));
                     }
                 } catch (error) {
+                    const msg = error?.message || 'Unknown error';
+                    Notification.error('Alt text generation failed', msg, 0, errorActions(msg, this._service));
                     console.error('[Cowriter Vision]', error);
                 } finally {
                     this._isProcessing = false;
@@ -223,7 +339,7 @@ export class Cowriter extends Plugin {
             const items = new Collection();
 
             for (const lang of TRANSLATION_LANGUAGES) {
-                const itemModel = new Model({
+                const itemModel = new ViewModel({
                     label: lang.label,
                     languageCode: lang.code,
                     withText: true,
@@ -246,6 +362,7 @@ export class Cowriter extends Plugin {
 
                 try {
                     const langCode = event.source.languageCode;
+                    const langLabel = event.source.label || langCode;
                     const selection = editor.model.document.selection;
                     const selectedRange = selection.getFirstRange();
 
@@ -256,9 +373,11 @@ export class Cowriter extends Plugin {
                     }
 
                     if (!selectedText) {
-                        console.warn('[Cowriter Translate] No text selected for translation');
+                        Notification.warning('No text selected', 'Please select text in the editor before translating.', 5);
                         return;
                     }
+
+                    Notification.info('Translating...', `Translating to ${langLabel}`, 15);
 
                     const result = await this._service.translate(selectedText, langCode);
                     if (result?.success && result.translation) {
@@ -269,8 +388,15 @@ export class Cowriter extends Plugin {
                             writer.setSelection(selectedRange);
                             editor.model.insertContent(modelFragment);
                         });
+
+                        Notification.success('Translation complete', `Translated to ${langLabel}`, 3);
+                    } else {
+                        const msg = result?.error || 'Unknown error';
+                        Notification.error('Translation failed', msg, 0, errorActions(msg, this._service));
                     }
                 } catch (error) {
+                    const msg = error?.message || 'Unknown error';
+                    Notification.error('Translation failed', msg, 0, errorActions(msg, this._service));
                     console.error('[Cowriter Translate]', error);
                 } finally {
                     this._isProcessing = false;
@@ -280,39 +406,49 @@ export class Cowriter extends Plugin {
             return dropdown;
         });
 
-        // Templates dropdown — apply prompt template presets
+        // Tasks dropdown — open dialog with a pre-selected task
         editor.ui.componentFactory.add('cowriterTemplates', (locale) => {
             const dropdown = createDropdown(locale);
+            let tasksLoaded = false;
+            let tasksLoading = false;
 
             dropdown.buttonView.set({
-                label: 'Cowriter - Templates',
+                label: 'Cowriter - Tasks',
                 tooltip: true,
                 withText: false,
                 icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM6 20V4h5v5h5v11H6z"/></svg>',
             });
 
-            // Load templates when dropdown opens
+            // Load tasks when dropdown opens (once per session, guarded against concurrent fetches)
             dropdown.on('change:isOpen', async () => {
-                if (!dropdown.isOpen) return;
+                if (!dropdown.isOpen || tasksLoaded || tasksLoading) return;
+                tasksLoading = true;
 
                 try {
-                    const result = await this._service.getTemplates();
-                    if (!result?.success || !result.templates?.length) return;
+                    const result = await this._service.getTasks();
+                    if (!result?.success || !result.tasks?.length) {
+                        Notification.info('No tasks configured', 'Create tasks in the LLM module first.', 5);
+                        return;
+                    }
 
                     const items = new Collection();
-                    for (const tmpl of result.templates) {
-                        const itemModel = new Model({
-                            label: tmpl.name,
-                            templateIdentifier: tmpl.identifier,
-                            templateDescription: tmpl.description || '',
+                    for (const task of result.tasks) {
+                        const itemModel = new ViewModel({
+                            label: task.name,
+                            taskUid: task.uid,
                             withText: true,
                         });
                         items.add({ type: 'button', model: itemModel });
                     }
 
                     addListToDropdown(dropdown, items);
+                    tasksLoaded = true;
                 } catch (error) {
-                    console.error('[Cowriter Templates]', error);
+                    const msg = error?.message || 'Unknown error';
+                    Notification.error('Failed to load tasks', msg, 0, errorActions(msg, this._service));
+                    console.error('[Cowriter Tasks]', error);
+                } finally {
+                    tasksLoading = false;
                 }
             });
 
@@ -321,27 +457,40 @@ export class Cowriter extends Plugin {
                 this._isProcessing = true;
 
                 try {
-                    const selectedText = editor.getData();
+                    const taskUid = event.source.taskUid;
+                    const selection = editor.model.document.selection;
+                    const selectedRange = selection.getFirstRange();
+
+                    let selectedText = '';
+                    if (selectedRange && !selectedRange.isCollapsed) {
+                        const content = model.getSelectedContent(selection);
+                        selectedText = editor.data.stringify(content);
+                    }
+
+                    const fullContent = editor.getData();
                     const caps = this._getEditorCapabilities();
                     const recordContext = this._getRecordContext();
 
-                    // Open the cowriter dialog with the template pre-selected
                     const dialog = new CowriterDialog(this._service);
                     const dialogResult = await dialog.show(
-                        '', selectedText, caps, recordContext,
-                        { templateIdentifier: event.source.templateIdentifier },
+                        selectedText || '', fullContent, caps, recordContext, taskUid,
                     );
 
                     if (dialogResult?.content) {
                         const viewFragment = editor.data.processor.toView(dialogResult.content);
                         const modelFragment = editor.data.toModel(viewFragment);
-                        model.change(() => {
+                        model.change((writer) => {
+                            if (selectedRange && !selectedRange.isCollapsed) {
+                                writer.setSelection(selectedRange);
+                            }
                             editor.model.insertContent(modelFragment);
                         });
                     }
                 } catch (error) {
                     if (error?.message && error.message !== 'User cancelled') {
-                        console.error('[Cowriter Templates]', error);
+                        const msg = error?.message || 'Unknown error';
+                        Notification.error('Task failed', msg, 0, errorActions(msg, this._service));
+                        console.error('[Cowriter Tasks]', error);
                     }
                 } finally {
                     this._isProcessing = false;

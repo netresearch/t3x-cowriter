@@ -44,6 +44,7 @@ function createMockModal(options) {
     el.appendChild(footer);
 
     el.hideModal = () => {
+        el.dispatchEvent(new Event('typo3-modal-hidden'));
         el.remove();
     };
 

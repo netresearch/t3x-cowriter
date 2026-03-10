@@ -12,9 +12,17 @@ export default defineConfig({
                 __dirname,
                 'Tests/JavaScript/__mocks__/ckeditor5-ui.js'
             ),
+            '@ckeditor/ckeditor5-utils': resolve(
+                __dirname,
+                'Tests/JavaScript/__mocks__/ckeditor5-utils.js'
+            ),
             '@typo3/backend/modal.js': resolve(
                 __dirname,
                 'Tests/JavaScript/__mocks__/typo3-backend-modal.js'
+            ),
+            '@typo3/backend/notification.js': resolve(
+                __dirname,
+                'Tests/JavaScript/__mocks__/typo3-backend-notification.js'
             ),
             '@netresearch/t3_cowriter/AIService': resolve(
                 __dirname,
