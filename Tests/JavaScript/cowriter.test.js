@@ -867,7 +867,7 @@ describe('Cowriter Plugin', () => {
             await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
 
             expect(consoleSpy).toHaveBeenCalledWith('[Cowriter Translate]', expect.any(Error));
-            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Translation API failed', 0);
+            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Translation API failed', 0, []);
             expect(plugin._isProcessing).toBe(false);
             consoleSpy.mockRestore();
         });
@@ -878,8 +878,31 @@ describe('Cowriter Plugin', () => {
             const dropdown = componentCallbacks['cowriterTranslate']();
             await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
 
-            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Rate limit exceeded', 0);
+            expect(Notification.error).toHaveBeenCalledWith('Translation failed', 'Rate limit exceeded', 0, []);
             expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
+        });
+
+        it('should include Open LLM Settings action when llmModule route is available', async () => {
+            mockTranslate.mockRejectedValue(new Error('Translation is not configured yet'));
+            plugin._service._routes = { llmModule: '/typo3/module/nrllm/overview' };
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            const actions = Notification.error.mock.calls[0][3];
+            expect(actions).toHaveLength(1);
+            expect(actions[0].label).toBe('Open LLM Settings');
+        });
+
+        it('should return empty actions for rate limit errors even with llmModule route', async () => {
+            mockTranslate.mockRejectedValue(new Error('rate limit exceeded'));
+            plugin._service._routes = { llmModule: '/typo3/module/nrllm/overview' };
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            const actions = Notification.error.mock.calls[0][3];
+            expect(actions).toHaveLength(0);
         });
 
         it('should fall back to language code when label is missing', async () => {

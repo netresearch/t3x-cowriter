@@ -26,6 +26,43 @@ const TRANSLATION_LANGUAGES = [
 ];
 
 /**
+ * Build a TYPO3 Notification action that opens the LLM module.
+ *
+ * @param {string} label - Action link text
+ * @param {string|null} url - Backend module URL (null = no action)
+ * @returns {Array<{label: string, action: {execute: function}}>}
+ */
+function buildModuleAction(label, url) {
+    if (!url) return [];
+    return [{ label, action: { execute: () => { window.open(url, '_blank'); } } }];
+}
+
+/**
+ * Build error notification actions based on the error message content.
+ * Returns appropriate "Open LLM Settings" links depending on the error type.
+ *
+ * @param {string} errorMessage - The error message from the backend
+ * @param {AIService} service - The AIService instance (for route access)
+ * @returns {Array<{label: string, action: {execute: function}}>}
+ */
+function errorActions(errorMessage, service) {
+    const msg = (errorMessage || '').toLowerCase();
+    const llmModuleUrl = service._routes?.llmModule || null;
+
+    if (msg.includes('not configured') || msg.includes('no llm provider') || msg.includes('no default')
+        || msg.includes('api key') || msg.includes('unauthorized') || msg.includes('401')) {
+        return buildModuleAction('Open LLM Settings', llmModuleUrl);
+    }
+
+    if (msg.includes('rate limit') || msg.includes('429')) {
+        return []; // No action needed — just wait
+    }
+
+    // Generic errors: offer the LLM module as a starting point
+    return buildModuleAction('Open LLM Settings', llmModuleUrl);
+}
+
+/**
  * Cowriter CKEditor plugin.
  *
  * Provides AI-powered text completion within the TYPO3 backend RTE.
@@ -281,10 +318,12 @@ export class Cowriter extends Plugin {
                         });
                         Notification.success('Alt text generated', result.altText.substring(0, 80), 3);
                     } else {
-                        Notification.error('Alt text generation failed', result?.error || 'Unknown error', 0);
+                        const msg = result?.error || 'Unknown error';
+                        Notification.error('Alt text generation failed', msg, 0, errorActions(msg, this._service));
                     }
                 } catch (error) {
-                    Notification.error('Alt text generation failed', error?.message || 'Unknown error', 0);
+                    const msg = error?.message || 'Unknown error';
+                    Notification.error('Alt text generation failed', msg, 0, errorActions(msg, this._service));
                     console.error('[Cowriter Vision]', error);
                 } finally {
                     this._isProcessing = false;
@@ -352,10 +391,12 @@ export class Cowriter extends Plugin {
 
                         Notification.success('Translation complete', `Translated to ${langLabel}`, 3);
                     } else {
-                        Notification.error('Translation failed', result?.error || 'Unknown error', 0);
+                        const msg = result?.error || 'Unknown error';
+                        Notification.error('Translation failed', msg, 0, errorActions(msg, this._service));
                     }
                 } catch (error) {
-                    Notification.error('Translation failed', error?.message || 'Unknown error', 0);
+                    const msg = error?.message || 'Unknown error';
+                    Notification.error('Translation failed', msg, 0, errorActions(msg, this._service));
                     console.error('[Cowriter Translate]', error);
                 } finally {
                     this._isProcessing = false;
@@ -403,7 +444,8 @@ export class Cowriter extends Plugin {
                     addListToDropdown(dropdown, items);
                     tasksLoaded = true;
                 } catch (error) {
-                    Notification.error('Failed to load tasks', error?.message || 'Unknown error', 0);
+                    const msg = error?.message || 'Unknown error';
+                    Notification.error('Failed to load tasks', msg, 0, errorActions(msg, this._service));
                     console.error('[Cowriter Tasks]', error);
                 } finally {
                     tasksLoading = false;
@@ -446,7 +488,8 @@ export class Cowriter extends Plugin {
                     }
                 } catch (error) {
                     if (error?.message && error.message !== 'User cancelled') {
-                        Notification.error('Task failed', error?.message || 'Unknown error', 0);
+                        const msg = error?.message || 'Unknown error';
+                        Notification.error('Task failed', msg, 0, errorActions(msg, this._service));
                         console.error('[Cowriter Tasks]', error);
                     }
                 } finally {
