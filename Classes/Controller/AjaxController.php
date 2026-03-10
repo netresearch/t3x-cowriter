@@ -21,6 +21,7 @@ use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
+use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -624,7 +625,7 @@ final readonly class AjaxController
             $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
 
             // Post-process: convert markdown to HTML if the model ignored the formatting instruction
-            $rawContent = $response->content ?? '';
+            $rawContent       = $response->content ?? '';
             $convertedContent = $this->convertMarkdownToHtml($rawContent);
             if ($convertedContent !== $rawContent) {
                 $response = new CompletionResponse(
@@ -724,11 +725,7 @@ final readonly class AjaxController
             $rows = $qb->executeQuery()->fetchAllAssociative();
 
             /** @var list<array{uid: int|string, title: string, slug: string|null}> $rows */
-            $pages = array_map(static fn (array $row): array => [
-                'uid'   => (int) $row['uid'],
-                'title' => (string) $row['title'],
-                'slug'  => (string) ($row['slug'] ?? ''),
-            ], $rows);
+            $pages = array_map(PageSearchResult::fromRow(...), $rows);
 
             return new JsonResponse(['success' => true, 'pages' => $pages]);
         } catch (Throwable $e) {
