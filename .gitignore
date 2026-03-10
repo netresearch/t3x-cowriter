@@ -40,6 +40,9 @@ Documentation-GENERATED-temp/
 # Playwright
 /blob-report/
 
+# Planning docs
+docs/
+
 # direnv
 .envrc
 .direnv/
