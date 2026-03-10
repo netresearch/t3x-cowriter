@@ -2127,6 +2127,122 @@ final class AjaxControllerTest extends TestCase
         self::assertStringContainsString('assemble context', $body['error']);
     }
 
+    #[Test]
+    public function executeTaskActionSkipsContextAssemblyForBasicScopeWithRecordContext(): void
+    {
+        // Kills LogicalAnd→LogicalOr mutant: scope IS basic ('selection') but recordContext IS set.
+        // Should NOT assemble context even though recordContext is present.
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willReturn($completionResponse);
+
+        $this->contextAssemblyMock->expects(self::never())->method('assembleContext');
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'       => 1,
+            'context'       => 'some text',
+            'contextType'   => 'selection',
+            'instruction'   => 'Improve: some text',
+            'contextScope'  => 'selection',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionSkipsScopeInstructionForWhitespaceOnlyContext(): void
+    {
+        // Kills UnwrapTrim mutant: whitespace-only context should NOT produce scope instruction.
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock
+            ->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    // No message should contain scope instruction text
+                    foreach ($messages as $msg) {
+                        if (str_contains($msg['content'] ?? '', 'user selected a portion')) {
+                            return false;
+                        }
+                        if (str_contains($msg['content'] ?? '', 'Return the complete transformed content')) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => '   ',
+            'contextType' => 'text',
+            'instruction' => 'Generate new content',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionIncludesFormattingInstructionInFirstSystemMessage(): void
+    {
+        // Kills Concat/ConcatOperandRemoval mutants: assert exact formatting instruction content.
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock
+            ->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    $first = $messages[0];
+
+                    return $first['role'] === 'system'
+                        && str_contains($first['content'], 'writing assistant integrated into a rich text editor')
+                        && str_contains($first['content'], 'Respond ONLY with the content')
+                        && str_contains($first['content'], 'Use HTML tags for formatting')
+                        && str_contains($first['content'], 'Do NOT use markdown syntax');
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'some text',
+            'contextType' => 'selection',
+            'instruction' => 'Improve this',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        self::assertSame(200, $response->getStatusCode());
+    }
+
     // =========================================================================
     // getContextAction
     // =========================================================================

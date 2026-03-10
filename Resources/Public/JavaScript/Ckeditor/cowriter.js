@@ -34,7 +34,7 @@ const TRANSLATION_LANGUAGES = [
  */
 function buildModuleAction(label, url) {
     if (!url) return [];
-    return [{ label, action: { execute: () => { window.open(url, '_blank'); } } }];
+    return [{ label, action: { execute: () => { window.open(url, '_blank', 'noopener,noreferrer'); } } }];
 }
 
 /**
