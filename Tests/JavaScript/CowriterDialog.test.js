@@ -56,6 +56,7 @@ describe('CowriterDialog', () => {
                 model: 'gpt-4o',
             }),
             searchPages: vi.fn().mockResolvedValue({ success: true, pages: [] }),
+            getModuleUrl(key) { return this._routes?.[key] || null; },
         };
     });
 

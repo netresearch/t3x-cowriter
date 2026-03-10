@@ -354,12 +354,12 @@ export class CowriterDialog {
                 ],
             });
 
-            // Handle modal dismissal via Escape key or X button (Bootstrap hidden event)
+            // Handle modal dismissal — always clean up listeners/requests
             modal?.addEventListener?.('typo3-modal-hidden', () => {
+                activeRequest?.abort();
+                for (const ac of referenceAbortControllers) ac.abort();
+                referenceAbortControllers.clear();
                 if (!resolved) {
-                    activeRequest?.abort();
-                    for (const ac of referenceAbortControllers) ac.abort();
-                    referenceAbortControllers.clear();
                     reject(new Error('User cancelled'));
                 }
             });
@@ -410,7 +410,7 @@ export class CowriterDialog {
         }
 
         // Select pre-selected task or first real task by default
-        if (preSelectedTaskUid && tasks.some(t => t.uid === preSelectedTaskUid)) {
+        if (preSelectedTaskUid !== null && preSelectedTaskUid !== undefined && tasks.some(t => t.uid === preSelectedTaskUid)) {
             taskSelect.value = String(preSelectedTaskUid);
         } else if (tasks.length > 0) {
             taskSelect.value = String(tasks[0].uid);
@@ -426,11 +426,12 @@ export class CowriterDialog {
         taskDesc.textContent = selectedOption?.dataset.description || '';
         taskDescRow.appendChild(taskDesc);
 
-        const tasksModuleUrl = this._service._routes?.tasksModule;
+        const tasksModuleUrl = this._service.getModuleUrl?.('tasksModule') ?? null;
         if (tasksModuleUrl) {
             const editLink = document.createElement('a');
             editLink.href = tasksModuleUrl;
             editLink.target = '_blank';
+            editLink.rel = 'noopener noreferrer';
             editLink.className = 'form-text text-body-secondary text-nowrap ms-2';
             editLink.textContent = 'Edit tasks \u2197';
             editLink.title = 'Manage tasks in LLM module';

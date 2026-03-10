@@ -66,6 +66,15 @@ describe('AIService', () => {
             expect(service._routes.llmModule).toBe('/typo3/module/nrllm/overview');
         });
 
+        it('should return module URL via getModuleUrl()', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.nrllm_module = '/typo3/module/nrllm/overview';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const service = new module.AIService();
+            expect(service.getModuleUrl('llmModule')).toBe('/typo3/module/nrllm/overview');
+            expect(service.getModuleUrl('nonexistent')).toBeNull();
+        });
+
         it('should handle missing TYPO3 global', async () => {
             delete globalThis.TYPO3;
             vi.resetModules();

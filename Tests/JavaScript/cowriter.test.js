@@ -53,7 +53,9 @@ describe('Cowriter Plugin', () => {
 
             // Mock AIService and CowriterDialog before importing cowriter
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
-                AIService: class MockAIService {},
+                AIService: class MockAIService {
+                    getModuleUrl(key) { return this._routes?.[key] || null; }
+                },
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
                 CowriterDialog: class MockCowriterDialog {
@@ -559,6 +561,7 @@ describe('Cowriter Plugin', () => {
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
                 AIService: class MockAIService {
                     analyzeImage = mockAnalyzeImage;
+                    getModuleUrl(key) { return this._routes?.[key] || null; }
                 },
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
@@ -768,6 +771,7 @@ describe('Cowriter Plugin', () => {
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
                 AIService: class MockAIService {
                     translate = mockTranslate;
+                    getModuleUrl(key) { return this._routes?.[key] || null; }
                 },
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
@@ -934,6 +938,7 @@ describe('Cowriter Plugin', () => {
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
                 AIService: class MockAIService {
                     getTasks = mockGetTasks;
+                    getModuleUrl(key) { return this._routes?.[key] || null; }
                 },
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({

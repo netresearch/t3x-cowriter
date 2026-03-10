@@ -47,7 +47,7 @@ function buildModuleAction(label, url) {
  */
 function errorActions(errorMessage, service) {
     const msg = (errorMessage || '').toLowerCase();
-    const llmModuleUrl = service._routes?.llmModule || null;
+    const llmModuleUrl = service.getModuleUrl?.('llmModule') ?? null;
 
     if (msg.includes('not configured') || msg.includes('no llm provider') || msg.includes('no default')
         || msg.includes('api key') || msg.includes('unauthorized') || msg.includes('401')) {

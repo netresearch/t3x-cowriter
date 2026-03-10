@@ -44,7 +44,7 @@
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, tasksModule: string|null, llmModule: string|null}}
      * @private
      */
     _routes = {
@@ -80,6 +80,15 @@ export class AIService {
             this._routes.tasksModule = TYPO3.settings.ajaxUrls.nrllm_tasks_module || null;
             this._routes.llmModule = TYPO3.settings.ajaxUrls.nrllm_module || null;
         }
+    }
+
+    /**
+     * Get a backend module URL by key.
+     * @param {string} key - Route key (e.g. 'tasksModule', 'llmModule')
+     * @returns {string|null}
+     */
+    getModuleUrl(key) {
+        return this._routes[key] || null;
     }
 
     /**

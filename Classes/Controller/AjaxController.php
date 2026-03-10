@@ -480,9 +480,12 @@ final readonly class AjaxController
     /**
      * Execute a cowriter task with context.
      *
-     * The frontend sends the fully resolved instruction (prompt template with context
-     * substituted, or a custom user-written instruction). When taskUid > 0, task
-     * configuration is used for LLM routing; when taskUid === 0, custom mode is used.
+     * The frontend sends the instruction text derived from the selected prompt
+     * template, with any {{input}}/context placeholder removed, or a custom
+     * user-written instruction. The actual editor content/context is sent
+     * separately (e.g. in the <editor_content> system message). When taskUid > 0,
+     * task configuration is used for LLM routing; when taskUid === 0, custom mode
+     * is used.
      */
     public function executeTaskAction(ServerRequestInterface $request): ResponseInterface
     {
@@ -621,8 +624,9 @@ final readonly class AjaxController
             $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
 
             // Post-process: convert markdown to HTML if the model ignored the formatting instruction
-            $convertedContent = $this->convertMarkdownToHtml($response->content);
-            if ($convertedContent !== $response->content) {
+            $rawContent = $response->content ?? '';
+            $convertedContent = $this->convertMarkdownToHtml($rawContent);
+            if ($convertedContent !== $rawContent) {
                 $response = new CompletionResponse(
                     content: $convertedContent,
                     model: $response->model,
@@ -682,7 +686,7 @@ final readonly class AjaxController
         /** @var string $rawQuery */
         $rawQuery = $request->getQueryParams()['query'] ?? '';
         $query    = mb_substr(trim((string) $rawQuery), 0, self::MAX_SEARCH_QUERY_LENGTH);
-        if ($query === '') {
+        if ($query === '' || (!ctype_digit($query) && mb_strlen($query) < 2)) {
             return new JsonResponse(['success' => true, 'pages' => []]);
         }
 
@@ -719,11 +723,11 @@ final readonly class AjaxController
 
             $rows = $qb->executeQuery()->fetchAllAssociative();
 
-            /** @var list<array{uid: int|string, title: string, slug: string}> $rows */
+            /** @var list<array{uid: int|string, title: string, slug: string|null}> $rows */
             $pages = array_map(static fn (array $row): array => [
                 'uid'   => (int) $row['uid'],
-                'title' => $row['title'],
-                'slug'  => $row['slug'],
+                'title' => (string) $row['title'],
+                'slug'  => (string) ($row['slug'] ?? ''),
             ], $rows);
 
             return new JsonResponse(['success' => true, 'pages' => $pages]);
