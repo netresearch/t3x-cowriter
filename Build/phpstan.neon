@@ -1,28 +1,11 @@
 includes:
-    - %currentWorkingDirectory%/.Build/vendor/phpstan/phpstan-strict-rules/rules.neon
-    - %currentWorkingDirectory%/.Build/vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - %currentWorkingDirectory%/.Build/vendor/netresearch/typo3-ci-workflows/config/phpstan/phpstan.neon
     - %currentWorkingDirectory%/Build/phpstan-baseline.neon
 
 parameters:
-    # Level 10 for maximum type safety
-    level: 10
-
     paths:
         - %currentWorkingDirectory%/Classes/
         - %currentWorkingDirectory%/Configuration/
 
     excludePaths:
-        - %currentWorkingDirectory%/.Build/*
-        - %currentWorkingDirectory%/ext_emconf.php
         - %currentWorkingDirectory%/ext_localconf.php
-
-    # Strict configuration options
-    treatPhpDocTypesAsCertain: false
-
-    # Advanced type inference and checking
-    inferPrivatePropertyTypeFromConstructor: true
-    checkMissingCallableSignature: true
-    checkUninitializedProperties: true
-
-    # Ignore patterns for TYPO3-specific code
-    ignoreErrors: []

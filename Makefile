@@ -1,9 +1,8 @@
 # Makefile for t3_cowriter TYPO3 Extension
 # AI-powered content writing assistant for TYPO3 CKEditor
 
-.PHONY: help
-help: ## Show available targets
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+# Import shared targets (install, cgl, phpstan, rector, lint, ci, test, clean, help)
+-include .Build/vendor/netresearch/typo3-ci-workflows/Makefile.include
 
 # ===================================
 # DDEV Environment Commands
@@ -46,59 +45,8 @@ ssh: ## SSH into DDEV web container
 	ddev ssh
 
 # ===================================
-# Composer & Quality Commands
+# Test Commands (extension-specific)
 # ===================================
-
-.PHONY: install
-install: ## Install composer dependencies
-	composer install
-
-.PHONY: cgl
-cgl: ## Check code style (dry-run)
-	composer ci:test:php:cgl
-
-.PHONY: cgl-fix
-cgl-fix: ## Fix code style
-	composer ci:cgl
-
-.PHONY: phpstan
-phpstan: ## Run PHPStan static analysis
-	composer ci:test:php:phpstan
-
-.PHONY: rector
-rector: ## Run Rector dry-run
-	composer ci:test:php:rector
-
-.PHONY: lint
-lint: ## Run all linters (PHP syntax + PHPStan + code style)
-	@echo "==> Running PHP lint..."
-	composer ci:test:php:lint
-	@echo "==> Running PHPStan..."
-	composer ci:test:php:phpstan
-	@echo "==> Running code style check..."
-	composer ci:test:php:cgl
-	@echo "==> Running Rector check..."
-	composer ci:test:php:rector
-	@echo "All linters passed"
-
-.PHONY: ci
-ci: ## Run complete CI pipeline (pre-commit checks)
-	composer ci:test
-
-# ===================================
-# Test Commands
-# ===================================
-
-.PHONY: test
-test: test-unit test-integration test-e2e test-functional ## Run all tests
-
-.PHONY: test-unit
-test-unit: ## Run unit tests
-	composer ci:test:php:unit
-
-.PHONY: test-functional
-test-functional: ## Run functional tests
-	composer ci:test:php:functional
 
 .PHONY: test-integration
 test-integration: ## Run integration tests
@@ -129,17 +77,6 @@ seed: ## Import Ollama seed data (provider, models, configs)
 .PHONY: ollama-pull
 ollama-pull: ## Pull default Ollama model (if not already present)
 	@ddev ollama pull || echo "Ollama not ready yet. Pull manually: ddev ollama pull"
-
-# ===================================
-# Cleanup
-# ===================================
-
-.PHONY: clean
-clean: ## Clean temporary files and caches
-	rm -rf .php-cs-fixer.cache
-	rm -rf var/
-	rm -rf .Build/.cache
-	rm -rf .phplint.cache
 
 # ===================================
 # Documentation

@@ -15,4 +15,5 @@
 /package-lock.json      export-ignore
 /playwright.config.ts   export-ignore
 /renovate.json          export-ignore
+/captainhook.json       export-ignore
 /vitest.config.js       export-ignore
