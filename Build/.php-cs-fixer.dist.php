@@ -23,7 +23,8 @@ $repoRoot = __DIR__ . '/..';
 
 $finder = PhpCsFixer\Finder::create()
     ->in($repoRoot)
-    ->exclude(['.Build', 'config', 'node_modules', 'var']);
+    ->exclude(['.Build', 'config', 'node_modules', 'var'])
+    ->notName('ext_emconf.php');
 
 $config = new PhpCsFixer\Config();
 $config

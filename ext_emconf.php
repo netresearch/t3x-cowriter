@@ -5,8 +5,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-declare(strict_types=1);
-
 $EM_CONF[$_EXTKEY] = [
     'title'          => 'AI Cowriter',
     'description'    => 'With the help of AI you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.',
