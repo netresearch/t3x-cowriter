@@ -195,9 +195,9 @@ open var/coverage/unit/index.html
 - TYPO3 backend route authentication with nonce-based URL tokens
 - Content Security Policy (CSP) compatible
 
-## Migration to v4.x
+## Migration to v3.x
 
-Version 4.0 requires TYPO3 v13.4+ and PHP 8.2+. It removes the frontend-only architecture
+Version 3.0 requires TYPO3 v13.4+ and PHP 8.2+. It removes the frontend-only architecture
 and uses the nr-llm extension for provider-agnostic LLM access. API keys are no longer stored
 in extension settings.
 

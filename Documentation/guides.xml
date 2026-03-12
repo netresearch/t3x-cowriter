@@ -1,18 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<guides xmlns="https://www.phpdoc.org/guides"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="https://www.phpdoc.org/guides vendor/phpdocumentor/guides-cli/resources/schema/guides.xsd"
-        theme="typo3docs">
-    <project title="AI Cowriter for TYPO3"
-             version="3.0"
-             release="3.0.0"
-             copyright="Netresearch DTT GmbH"/>
-    <extension extension-key="t3_cowriter"
-               vendor="netresearch"
-               repository="https://github.com/netresearch/t3x-cowriter"
-               project-home="https://github.com/netresearch/t3x-cowriter"
-               project-contact="https://github.com/netresearch/t3x-cowriter/issues"
-               edit-on-github="netresearch/t3x-cowriter"
-               edit-on-github-branch="main"/>
+<guides
+    xmlns="https://www.phpdoc.org/guides"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://www.phpdoc.org/guides vendor/phpdocumentor/guides-cli/resources/schema/guides.xsd"
+    theme="typo3docs"
+>
+    <project
+        title="AI Cowriter for TYPO3"
+        version="3.0"
+        release="3.0.0"
+        copyright="since 2024 by Netresearch DTT GmbH"
+    />
+
+    <extension
+        class="\T3Docs\Typo3DocsTheme\DependencyInjection\Typo3DocsThemeExtension"
+        interlink-shortcode="netresearch/t3-cowriter"
+        typo3-core-preferred="stable"
+        project-home="https://extensions.typo3.org/extension/t3_cowriter"
+        project-contact="https://github.com/netresearch/t3x-cowriter/issues"
+        project-repository="https://github.com/netresearch/t3x-cowriter"
+        project-issues="https://github.com/netresearch/t3x-cowriter/issues"
+        project-discussions="https://github.com/netresearch/t3x-cowriter/discussions"
+        edit-on-github="netresearch/t3x-cowriter"
+        edit-on-github-branch="main"
+        edit-on-github-directory="Documentation"
+    />
+
     <inventory id="t3coreapi" url="https://docs.typo3.org/m/typo3/reference-coreapi/main/en-us/"/>
 </guides>

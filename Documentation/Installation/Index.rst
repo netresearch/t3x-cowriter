@@ -36,16 +36,15 @@ Version matrix
 ==============  ==============  ================
 Extension       TYPO3           PHP
 ==============  ==============  ================
-4.x             13.4 - 14       8.2 - 8.5
-3.x             14.0            8.5
+3.x             13.4 - 14       8.2 - 8.5
 2.x             12.4            8.2 - 8.4
 1.x             11.5            7.4 - 8.1
 ==============  ==============  ================
 
-Migration to 4.x
+Migration to 3.x
 =================
 
-Version 4.0.0 introduces significant architectural changes:
+Version 3.0.0 introduces significant architectural changes:
 
 1.  **Install nr-llm extension**: The LLM provider abstraction is now handled
     by the separate :composer:`netresearch/nr-llm` extension.
