@@ -10,14 +10,14 @@ The extension is installed via Composer only.
 
 ..  note::
 
-    This extension requires the :composer:`netresearch/nr-llm` extension
+    This extension requires the :ref:`nr-llm extension <nrllm:start>`
     for LLM provider abstraction.
 
 Composer installation
 =====================
 
-Install via Composer (the :composer:`netresearch/nr-llm` dependency is installed
-automatically):
+Install via Composer (the :ref:`nr-llm <nrllm:start>` dependency
+is installed automatically):
 
 ..  code-block:: bash
 
@@ -47,10 +47,10 @@ Migration to 3.x
 Version 3.0.0 introduces significant architectural changes:
 
 1.  **Install nr-llm extension**: The LLM provider abstraction is now handled
-    by the separate :composer:`netresearch/nr-llm` extension.
+    by the separate :ref:`nr-llm extension <nrllm:start>`.
 
 2.  **Configure providers in nr-llm**: API keys and provider settings are
-    now managed through the nr-llm extension configuration.
+    now managed through the :ref:`nr-llm configuration <nrllm:configuration>`.
 
 3.  **Remove old configuration**: The old ``apiKey`` and ``model`` settings
     in the t3_cowriter extension are no longer used.

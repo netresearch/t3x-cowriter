@@ -11,8 +11,9 @@ What does it do?
 
 The AI Cowriter extension integrates multiple LLM providers directly into the
 TYPO3 CKEditor, allowing editors to generate content with the help of artificial
-intelligence. Using the nr-llm extension, it supports OpenAI, Anthropic Claude,
-Google Gemini, OpenRouter, Mistral, and Groq.
+intelligence. Using the
+:ref:`nr-llm extension <nrllm:start>`, it supports OpenAI,
+Anthropic Claude, Google Gemini, OpenRouter, Mistral, and Groq.
 
 Did you ever wish to have a second person to work on a TYPO3 page together with
 you? This extension allows you to do exactly that. With the help of AI you can
@@ -39,7 +40,8 @@ Features
 *   **CKEditor Integration**: Four toolbar buttons for writing, translation,
     vision, and templates
 *   **Multi-Provider Support**: Works with all LLM providers supported by
-    nr-llm (OpenAI, Claude, Gemini, OpenRouter, Mistral, Groq)
+    :ref:`nr-llm <nrllm:start>` (OpenAI, Claude, Gemini,
+    OpenRouter, Mistral, Groq)
 *   **Secure Backend Proxy**: API keys never exposed to frontend — all
     requests proxied through TYPO3 backend
 *   **Context control**: Choose between selected text or full content element
@@ -55,5 +57,5 @@ Requirements
 
 *   TYPO3 v13.4 or v14
 *   PHP 8.2 or higher
-*   netresearch/nr-llm extension (for LLM provider configuration)
+*   :ref:`nr-llm extension <nrllm:start>` (for LLM provider configuration)
 *   CKEditor (rte_ckeditor) extension
