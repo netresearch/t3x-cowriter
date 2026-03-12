@@ -17,6 +17,7 @@ use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
@@ -93,6 +94,7 @@ final readonly class AjaxController
         private LoggerInterface $logger,
         private ContextAssemblyServiceInterface $contextAssemblyService,
         private ConnectionPool $connectionPool,
+        private DiagnosticService $diagnosticService,
     ) {}
 
     /**
@@ -748,6 +750,13 @@ final readonly class AjaxController
         $userMessage = $this->enrichErrorMessage($message, $exception);
         $response    = CompleteResponse::error($userMessage)->jsonSerialize();
 
+        $exMessage = $exception->getMessage();
+        if (str_contains($exMessage, 'no default provider configured')
+            || str_contains($exMessage, 'No default LLM configuration')
+        ) {
+            $response['statusUrl'] = 'cowriter_status';
+        }
+
         /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
         $typo3ConfVars = $GLOBALS['TYPO3_CONF_VARS'] ?? [];
         if (($typo3ConfVars['BE']['debug'] ?? false) === true) {
@@ -764,12 +773,29 @@ final readonly class AjaxController
     {
         $exMessage = $exception->getMessage();
 
-        if (str_contains($exMessage, 'no default provider configured') || str_contains($exMessage, 'No default LLM configuration')) {
-            return 'No LLM provider is configured yet. An administrator needs to set up a provider and configuration in the LLM module (Admin Tools > LLM).';
+        if (str_contains($exMessage, 'no default provider configured')
+            || str_contains($exMessage, 'No default LLM configuration')
+        ) {
+            $result = $this->diagnosticService->runFirst();
+            $failure = $result->getFirstFailure();
+
+            if ($failure !== null) {
+                return $failure->message
+                    . ' Open the Cowriter Setup Status page'
+                    . ' for details.';
+            }
+
+            return 'LLM is not configured yet.'
+                . ' Open the Cowriter Setup Status page'
+                . ' for details.';
         }
 
-        if (str_contains($exMessage, '401') || str_contains($exMessage, 'Unauthorized')) {
-            return 'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.';
+        if (str_contains($exMessage, '401')
+            || str_contains($exMessage, 'Unauthorized')
+        ) {
+            return 'The LLM provider rejected the API key.'
+                . ' Please ask an administrator to check'
+                . ' the provider settings.';
         }
 
         return $fallback;

@@ -14,6 +14,10 @@ use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Service\Feature\TranslationService;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\T3Cowriter\Controller\TranslationController;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
+use Netresearch\T3Cowriter\Service\Dto\Severity;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -31,22 +35,28 @@ final class TranslationControllerTest extends TestCase
 {
     private TranslationService&Stub $translationServiceStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
+    private DiagnosticService&Stub $diagnosticServiceStub;
     private TranslationController $subject;
 
     protected function setUp(): void
     {
         $this->translationServiceStub = $this->createStub(TranslationService::class);
         $this->rateLimiterStub        = $this->createStub(RateLimiterInterface::class);
+        $this->diagnosticServiceStub  = $this->createStub(DiagnosticService::class);
         $contextStub                  = $this->createStub(Context::class);
 
         $contextStub->method('getPropertyFromAspect')
             ->willReturn(1);
+
+        $this->diagnosticServiceStub->method('runFirst')
+            ->willReturn(new DiagnosticResult(true, []));
 
         $this->subject = new TranslationController(
             $this->translationServiceStub,
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
+            $this->diagnosticServiceStub,
         );
     }
 
@@ -190,7 +200,7 @@ final class TranslationControllerTest extends TestCase
     }
 
     #[Test]
-    public function translateActionReturnsGuidanceWhenNoProviderConfigured(): void
+    public function translateActionReturnsDiagnosticMessageWhenNoProviderConfigured(): void
     {
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
@@ -198,14 +208,38 @@ final class TranslationControllerTest extends TestCase
         $this->translationServiceStub->method('translate')
             ->willThrowException(new RuntimeException('No provider specified and no default provider configured'));
 
+        $diagnosticStub = $this->createStub(DiagnosticService::class);
+        $diagnosticStub->method('runFirst')
+            ->willReturn(new DiagnosticResult(false, [
+                new DiagnosticCheck(
+                    key: 'provider_exists',
+                    passed: false,
+                    message: 'No LLM provider configured.',
+                    severity: Severity::Error,
+                    fixRoute: 'nrllm_providers',
+                ),
+            ]));
+
+        $contextStub = $this->createStub(Context::class);
+        $contextStub->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new TranslationController(
+            $this->translationServiceStub,
+            $this->rateLimiterStub,
+            $contextStub,
+            new NullLogger(),
+            $diagnosticStub,
+        );
+
         $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
-        $response = $this->subject->translateAction($request);
+        $response = $controller->translateAction($request);
 
         self::assertSame(500, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
-        self::assertStringContainsString('not configured yet', $data['error']);
-        self::assertStringContainsString('LLM module', $data['error']);
+        self::assertStringContainsString('No LLM provider configured', $data['error']);
+        self::assertStringContainsString('Setup Status', $data['error']);
+        self::assertSame('cowriter_status', $data['statusUrl']);
     }
 
     #[Test]
@@ -248,6 +282,7 @@ final class TranslationControllerTest extends TestCase
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
+            $this->diagnosticServiceStub,
         );
 
         $request = $this->createJsonRequest([

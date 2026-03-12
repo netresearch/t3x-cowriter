@@ -20,6 +20,8 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
@@ -57,6 +59,7 @@ final class AjaxControllerTest extends TestCase
     private LoggerInterface&MockObject $loggerMock;
     private ContextAssemblyServiceInterface&MockObject $contextAssemblyMock;
     private ConnectionPool&MockObject $connectionPoolMock;
+    private DiagnosticService&MockObject $diagnosticServiceMock;
 
     protected function setUp(): void
     {
@@ -70,6 +73,7 @@ final class AjaxControllerTest extends TestCase
         $this->loggerMock            = $this->createMock(LoggerInterface::class);
         $this->contextAssemblyMock   = $this->createMock(ContextAssemblyServiceInterface::class);
         $this->connectionPoolMock    = $this->createMock(ConnectionPool::class);
+        $this->diagnosticServiceMock = $this->createMock(DiagnosticService::class);
 
         // Default: rate limit allows request
         $this->rateLimiterMock
@@ -85,6 +89,10 @@ final class AjaxControllerTest extends TestCase
             ->method('getPropertyFromAspect')
             ->willReturn(1);
 
+        $this->diagnosticServiceMock
+            ->method('runFirst')
+            ->willReturn(new DiagnosticResult(true, []));
+
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
             $this->configRepositoryMock,
@@ -94,6 +102,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->diagnosticServiceMock,
         );
     }
 
@@ -298,8 +307,9 @@ final class AjaxControllerTest extends TestCase
         self::assertSame(500, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
         self::assertFalse($data['success']);
-        self::assertStringContainsString('is configured yet', $data['error']);
-        self::assertStringContainsString('LLM module', $data['error']);
+        self::assertStringContainsString('not configured yet', $data['error']);
+        self::assertStringContainsString('Setup Status', $data['error']);
+        self::assertSame('cowriter_status', $data['statusUrl']);
     }
 
     #[Test]
@@ -784,6 +794,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->diagnosticServiceMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
@@ -1034,6 +1045,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->diagnosticServiceMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => 'Hello']]]);
@@ -1071,6 +1083,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->diagnosticServiceMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
@@ -1957,6 +1970,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->diagnosticServiceMock,
         );
 
         $request = $this->createRequestWithJsonBody([

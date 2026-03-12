@@ -20,6 +20,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
 use TYPO3\CMS\Core\Context\Context;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
 use TYPO3\CMS\Core\Http\JsonResponse;
 
 /**
@@ -34,6 +35,7 @@ final readonly class TranslationController
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
+        private DiagnosticService $diagnosticService,
     ) {}
 
     public function translateAction(ServerRequestInterface $request): ResponseInterface
@@ -106,8 +108,16 @@ final readonly class TranslationController
 
             $userError = $this->getUserFriendlyError($e);
 
+            $errorData = ['success' => false, 'error' => $userError];
+
+            if (str_contains($e->getMessage(), 'no default provider configured')
+                || str_contains($e->getMessage(), 'No default LLM configuration')
+            ) {
+                $errorData['statusUrl'] = 'cowriter_status';
+            }
+
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $userError],
+                $errorData,
                 $rateLimitResult,
                 500,
             );
@@ -121,19 +131,39 @@ final readonly class TranslationController
     {
         $message = $e->getMessage();
 
-        if (str_contains($message, 'no default provider configured') || str_contains($message, 'No default LLM configuration')) {
-            return 'Translation is not configured yet. An administrator needs to set up an LLM provider and mark a configuration as default in the LLM module.';
+        if (str_contains($message, 'no default provider configured')
+            || str_contains($message, 'No default LLM configuration')
+        ) {
+            $result = $this->diagnosticService->runFirst();
+            $failure = $result->getFirstFailure();
+
+            if ($failure !== null) {
+                return $failure->message
+                    . ' Open the Cowriter Setup Status page for details.';
+            }
+
+            return 'Translation is not configured yet.'
+                . ' Open the Cowriter Setup Status page for details.';
         }
 
-        if (str_contains($message, '401') || str_contains($message, 'Unauthorized') || str_contains($message, 'authentication')) {
-            return 'The LLM provider rejected the API key. An administrator should check the provider configuration in the LLM module.';
+        if (str_contains($message, '401')
+            || str_contains($message, 'Unauthorized')
+            || str_contains($message, 'authentication')
+        ) {
+            return 'The LLM provider rejected the API key.'
+                . ' An administrator should check the provider'
+                . ' configuration in the LLM module.';
         }
 
-        if (str_contains($message, '429') || str_contains($message, 'rate limit')) {
-            return 'The LLM provider rate limit was exceeded. Please wait a moment and try again.';
+        if (str_contains($message, '429')
+            || str_contains($message, 'rate limit')
+        ) {
+            return 'The LLM provider rate limit was exceeded.'
+                . ' Please wait a moment and try again.';
         }
 
-        return 'Translation failed. Check the TYPO3 system log for details.';
+        return 'Translation failed.'
+            . ' Check the TYPO3 system log for details.';
     }
 
     /**

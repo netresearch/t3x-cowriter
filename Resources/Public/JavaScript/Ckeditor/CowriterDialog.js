@@ -310,6 +310,9 @@ export class CowriterDialog {
                         this._updateButtonVisibility(modal, 'result');
                     } else {
                         preview.textContent = result.error || 'No content returned';
+                        if (result.statusUrl) {
+                            this._appendStatusLink(preview, result.statusUrl);
+                        }
                         preview.classList.add('cowriter-result--empty');
                         this._showDebugDetails(container, result, inputText, instruction);
                         resultContent = '';
@@ -325,6 +328,9 @@ export class CowriterDialog {
                         return;
                     }
                     preview.textContent = `Error: ${error.message}`;
+                    if (error.statusUrl) {
+                        this._appendStatusLink(preview, error.statusUrl);
+                    }
                     preview.classList.add('cowriter-result--empty');
                     this._showDebugDetails(container, {error: error.message}, currentContext, '');
                     resultContent = '';
@@ -926,6 +932,18 @@ export class CowriterDialog {
      * @param {string} instructionSent - The instruction that was sent
      * @private
      */
+    _appendStatusLink(container, statusUrlKey) {
+        const url = this._service.getModuleUrl('statusModule');
+        if (!url) {
+            return;
+        }
+        const link = document.createElement('a');
+        link.href = url;
+        link.textContent = ' Open Setup Status';
+        link.className = 'ms-1';
+        container.appendChild(link);
+    }
+
     _showDebugDetails(container, result, inputText, instructionSent) {
         // Remove existing debug section if re-executing
         container.querySelector('[data-role="debug-details"]')?.remove();

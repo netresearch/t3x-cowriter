@@ -44,7 +44,7 @@
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, tasksModule: string|null, llmModule: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
      * @private
      */
     _routes = {
@@ -61,6 +61,7 @@ export class AIService {
         pageSearch: null,
         tasksModule: null,
         llmModule: null,
+        statusModule: null,
     };
 
     constructor() {
@@ -79,6 +80,7 @@ export class AIService {
             this._routes.pageSearch = TYPO3.settings.ajaxUrls.tx_cowriter_page_search || null;
             this._routes.tasksModule = TYPO3.settings.ajaxUrls.nrllm_tasks_module || null;
             this._routes.llmModule = TYPO3.settings.ajaxUrls.nrllm_module || null;
+            this._routes.statusModule = TYPO3.settings.ajaxUrls.cowriter_status || null;
         }
     }
 
@@ -105,6 +107,20 @@ export class AIService {
     }
 
     /**
+     * Throw an error from a failed response, preserving statusUrl if present.
+     * @param {Response} response
+     * @private
+     */
+    async _throwResponseError(response) {
+        const body = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const err = new Error(body.error || `HTTP ${response.status}`);
+        if (body.statusUrl) {
+            err.statusUrl = body.statusUrl;
+        }
+        throw err;
+    }
+
+    /**
      * Send a chat request with conversation history.
      *
      * @param {ChatMessage[]} messages - Array of messages in the conversation
@@ -123,8 +139,7 @@ export class AIService {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
 
         return response.json();
@@ -149,8 +164,7 @@ export class AIService {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
 
         return response.json();
@@ -186,9 +200,11 @@ export class AIService {
             // Try JSON first, then SSE format (backend may return text/event-stream errors)
             const text = await response.text().catch(() => '');
             let errorMessage = `HTTP ${response.status}`;
+            let statusUrl = null;
             try {
                 const json = JSON.parse(text);
                 errorMessage = json.error || errorMessage;
+                statusUrl = json.statusUrl || null;
             } catch {
                 // Try SSE format: "data: {"error": "..."}\n\n"
                 const match = text.match(/^data:\s*(.+)/m);
@@ -196,10 +212,15 @@ export class AIService {
                     try {
                         const sseData = JSON.parse(match[1]);
                         errorMessage = sseData.error || errorMessage;
+                        statusUrl = sseData.statusUrl || null;
                     } catch { /* use HTTP status fallback */ }
                 }
             }
-            throw new Error(errorMessage);
+            const err = new Error(errorMessage);
+            if (statusUrl) {
+                err.statusUrl = statusUrl;
+            }
+            throw err;
         }
 
         if (!response.body) {
@@ -282,8 +303,7 @@ export class AIService {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
 
         return response.json();
@@ -314,8 +334,7 @@ export class AIService {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
 
         return response.json();
@@ -360,8 +379,7 @@ export class AIService {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
 
         return response.json();
@@ -391,8 +409,7 @@ export class AIService {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
 
         return response.json();
@@ -418,8 +435,7 @@ export class AIService {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
 
         return response.json();
@@ -444,8 +460,7 @@ export class AIService {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
 
         return response.json();
@@ -464,8 +479,7 @@ export class AIService {
         const response = await fetch(this._routes.templates);
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
 
         return response.json();
@@ -486,8 +500,7 @@ export class AIService {
         const url = `${this._routes.pageSearch}${separator}${params.toString()}`;
         const response = await fetch(url);
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || `HTTP ${response.status}`);
+            await this._throwResponseError(response);
         }
         return response.json();
     }
