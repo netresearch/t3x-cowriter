@@ -9,9 +9,9 @@ Configuration
 LLM provider setup
 ==================
 
-The Cowriter extension uses the :composer:`netresearch/nr-llm` extension for
-LLM provider configuration. Configure your preferred provider in the nr-llm
-extension settings.
+The Cowriter extension uses the :ref:`nr-llm extension <nrllm:start>` for
+LLM provider configuration. Configure your preferred provider in the
+:ref:`nr-llm backend module <nrllm:configuration-backend-module>`.
 
 Supported providers
 -------------------
@@ -33,7 +33,8 @@ Configuration steps
 
 ..  tip::
 
-    See the `nr-llm documentation <https://github.com/netresearch/t3x-nr-llm>`_
+    See the
+    :ref:`nr-llm provider configuration <nrllm:configuration-provider>`
     for detailed provider configuration options.
 
 RTE configuration
@@ -98,9 +99,10 @@ The four toolbar items are:
 Task configuration
 ==================
 
-The Cowriter dialog shows tasks from the nr-llm extension with
-``category = 'content'``. Default tasks (Improve, Summarize, Extend,
-Fix Grammar, Translate EN/DE) are seeded during installation.
+The Cowriter dialog shows :ref:`tasks <nrllm:configuration-tasks>` from
+the nr-llm extension with ``category = 'content'``. Default tasks
+(Improve, Summarize, Extend, Fix Grammar, Translate EN/DE) are seeded
+during installation.
 
 Adding custom tasks
 -------------------

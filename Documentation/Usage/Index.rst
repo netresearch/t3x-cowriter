@@ -79,8 +79,9 @@ The Cowriter dialog lets you choose what to do with your content:
 Available tasks
 ===============
 
-Tasks are configured in the nr-llm extension (``tx_nrllm_task`` table)
-with ``category = 'content'``. The following default tasks are provided:
+:ref:`Tasks <nrllm:configuration-tasks>` are configured in the
+nr-llm extension (``tx_nrllm_task`` table) with
+``category = 'content'``. The following default tasks are provided:
 
 .. list-table::
    :header-rows: 1
@@ -124,10 +125,12 @@ Supported languages:
 *   German, English, French, Spanish, Italian
 *   Dutch, Portuguese, Polish, Japanese, Chinese
 
-The translation uses the default LLM configuration from the nr-llm
-extension. Administrators can optionally pass a ``configuration``
-parameter via the API to route translations through a specific LLM
-provider (e.g. DeepL or a dedicated translation model).
+The translation uses the default
+:ref:`LLM configuration <nrllm:configuration-llm>` from the
+nr-llm extension. Administrators can optionally pass a
+``configuration`` parameter via the API to route translations
+through a specific LLM provider (e.g. DeepL or a dedicated
+translation model).
 
 ..  note::
 
