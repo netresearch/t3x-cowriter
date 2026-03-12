@@ -28,7 +28,7 @@
 
 AI-powered content assistant for TYPO3 CKEditor - write better content with help from AI.
 
-![TYPO3 AI cowriter](Documentation/Images/t3-cowriter.gif)
+![Cowriter dialog in TYPO3 v14 backend](Documentation/Images/CowriterHero.png)
 
 ## Features
 

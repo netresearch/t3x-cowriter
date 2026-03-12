@@ -50,8 +50,11 @@ If you don't have a custom RTE configuration, include the static PageTSconfig:
 2.  Open :guilabel:`Page Properties` > :guilabel:`Resources`
 3.  Add the static PageTSconfig from :guilabel:`t3_cowriter`
 
-..  image:: /Images/pagetsconfig.png
-    :alt: PageTSconfig include dialog
+..  figure:: /Images/pagetsconfig.png
+    :alt: Page TSconfig configuration in TYPO3 v14
+    :class: with-border with-shadow
+
+    The Page TSconfig field with ``RTE.default.preset = cowriter``.
 
 Option 2: Custom RTE configuration
 ----------------------------------
