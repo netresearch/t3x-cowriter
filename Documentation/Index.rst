@@ -33,8 +33,12 @@ AI Cowriter (t3_cowriter)
 Work on TYPO3 pages with an AI-powered digital assistant that helps you write
 your content directly in the CKEditor rich text editor.
 
-..  image:: /Images/t3-cowriter.gif
-    :alt: AI Cowriter in action
+..  figure:: /Images/CowriterHero.png
+    :alt: Cowriter dialog in TYPO3 v14 backend
+    :class: with-border with-shadow
+
+    The Cowriter dialog with task selection, context scope, instruction,
+    and result preview in the TYPO3 v14 backend.
 
 ----
 
