@@ -13,6 +13,8 @@ use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Service\Feature\TranslationService;
 use Netresearch\T3Cowriter\Controller\TranslationController;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
@@ -22,6 +24,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 
 /**
@@ -56,11 +59,19 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
         // Default: context returns user ID
         $this->contextMock->method('getPropertyFromAspect')->willReturn(1);
 
+        $backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
+        $backendUriBuilderMock->method('buildUriFromRoute')->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+
+        $diagnosticServiceMock = $this->createMock(DiagnosticService::class);
+        $diagnosticServiceMock->method('runFirst')->willReturn(new DiagnosticResult(true, []));
+
         $this->subject = new TranslationController(
             $this->translationServiceMock,
             $this->rateLimiterMock,
             $this->contextMock,
             new NullLogger(),
+            $backendUriBuilderMock,
+            $diagnosticServiceMock,
         );
     }
 

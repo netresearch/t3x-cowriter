@@ -35,3 +35,6 @@ services:
 
   Netresearch\T3Cowriter\Controller\ToolController:
     public: true
+
+  Netresearch\T3Cowriter\Controller\Backend\StatusController:
+    public: true

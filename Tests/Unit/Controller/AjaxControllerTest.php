@@ -20,6 +20,8 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
@@ -35,6 +37,7 @@ use Psr\Log\LoggerInterface;
 use ReflectionMethod;
 use RuntimeException;
 use stdClass;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -57,6 +60,8 @@ final class AjaxControllerTest extends TestCase
     private LoggerInterface&MockObject $loggerMock;
     private ContextAssemblyServiceInterface&MockObject $contextAssemblyMock;
     private ConnectionPool&MockObject $connectionPoolMock;
+    private BackendUriBuilder&MockObject $backendUriBuilderMock;
+    private DiagnosticService&MockObject $diagnosticServiceMock;
 
     protected function setUp(): void
     {
@@ -70,6 +75,11 @@ final class AjaxControllerTest extends TestCase
         $this->loggerMock            = $this->createMock(LoggerInterface::class);
         $this->contextAssemblyMock   = $this->createMock(ContextAssemblyServiceInterface::class);
         $this->connectionPoolMock    = $this->createMock(ConnectionPool::class);
+        $this->backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
+        $this->backendUriBuilderMock
+            ->method('buildUriFromRoute')
+            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+        $this->diagnosticServiceMock = $this->createMock(DiagnosticService::class);
 
         // Default: rate limit allows request
         $this->rateLimiterMock
@@ -85,6 +95,10 @@ final class AjaxControllerTest extends TestCase
             ->method('getPropertyFromAspect')
             ->willReturn(1);
 
+        $this->diagnosticServiceMock
+            ->method('runFirst')
+            ->willReturn(new DiagnosticResult(true, []));
+
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
             $this->configRepositoryMock,
@@ -94,6 +108,8 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
+            $this->diagnosticServiceMock,
         );
     }
 
@@ -298,8 +314,111 @@ final class AjaxControllerTest extends TestCase
         self::assertSame(500, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
         self::assertFalse($data['success']);
-        self::assertStringContainsString('is configured yet', $data['error']);
-        self::assertStringContainsString('LLM module', $data['error']);
+        self::assertSame(
+            'LLM is not configured yet. Ask an administrator to check the Cowriter Setup Status page for details.',
+            $data['error'],
+        );
+        self::assertSame('/typo3/module/cowriter/status', $data['statusUrl']);
+    }
+
+    #[Test]
+    public function chatActionReturnsApiKeyRejectedMessageFor401(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('HTTP 401 Unauthorized'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame(
+            'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.',
+            $data['error'],
+        );
+    }
+
+    #[Test]
+    public function chatActionReturnsApiKeyRejectedMessageForOnly401Code(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('HTTP 401 error'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame(
+            'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.',
+            $data['error'],
+        );
+    }
+
+    #[Test]
+    public function chatActionReturnsApiKeyRejectedMessageForOnlyUnauthorized(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('Request Unauthorized'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame(
+            'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.',
+            $data['error'],
+        );
+    }
+
+    #[Test]
+    public function chatActionReturnsGenericProviderErrorForUnknownProviderException(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('Connection timed out'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame(
+            'LLM provider error occurred. Please try again later.',
+            $data['error'],
+        );
     }
 
     #[Test]
@@ -784,6 +903,8 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
+            $this->diagnosticServiceMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
@@ -1034,6 +1155,8 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
+            $this->diagnosticServiceMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => 'Hello']]]);
@@ -1071,6 +1194,8 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
+            $this->diagnosticServiceMock,
         );
 
         $request  = $this->createRequestWithJsonBody(['prompt' => 'Test']);
@@ -1957,6 +2082,8 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
+            $this->diagnosticServiceMock,
         );
 
         $request = $this->createRequestWithJsonBody([

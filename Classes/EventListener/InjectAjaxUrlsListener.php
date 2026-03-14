@@ -99,6 +99,8 @@ final readonly class InjectAjaxUrlsListener
                 ->buildUriFromRoute('nrllm_tasks'),
             'nrllm_module' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('nrllm_overview'),
+            'cowriter_status' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('cowriter_status'),
         ];
 
         return json_encode($urls, JSON_THROW_ON_ERROR);

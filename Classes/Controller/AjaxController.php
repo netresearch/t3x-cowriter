@@ -23,12 +23,15 @@ use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
 use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\Connection;
@@ -93,6 +96,8 @@ final readonly class AjaxController
         private LoggerInterface $logger,
         private ContextAssemblyServiceInterface $contextAssemblyService,
         private ConnectionPool $connectionPool,
+        private BackendUriBuilder $backendUriBuilder,
+        private DiagnosticService $diagnosticService,
     ) {}
 
     /**
@@ -748,6 +753,15 @@ final readonly class AjaxController
         $userMessage = $this->enrichErrorMessage($message, $exception);
         $response    = CompleteResponse::error($userMessage)->jsonSerialize();
 
+        if ($this->isConfigurationError($exception)) {
+            try {
+                $response['statusUrl'] = (string) $this->backendUriBuilder
+                    ->buildUriFromRoute('cowriter_status');
+            } catch (Throwable) {
+                // Route resolution failed — omit status URL
+            }
+        }
+
         /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
         $typo3ConfVars = $GLOBALS['TYPO3_CONF_VARS'] ?? [];
         if (($typo3ConfVars['BE']['debug'] ?? false) === true) {
@@ -762,17 +776,46 @@ final readonly class AjaxController
      */
     private function enrichErrorMessage(string $fallback, Throwable $exception): string
     {
-        $exMessage = $exception->getMessage();
+        if ($this->isConfigurationError($exception)) {
+            try {
+                $failure = $this->diagnosticService->runFirst()->getFirstFailure();
+            } catch (Throwable) {
+                $failure = null;
+            }
 
-        if (str_contains($exMessage, 'no default provider configured') || str_contains($exMessage, 'No default LLM configuration')) {
-            return 'No LLM provider is configured yet. An administrator needs to set up a provider and configuration in the LLM module (Admin Tools > LLM).';
+            if ($failure instanceof DiagnosticCheck) {
+                return $failure->message
+                    . ' Ask an administrator to check the Cowriter Setup Status page'
+                    . ' for details.';
+            }
+
+            return 'LLM is not configured yet.'
+                . ' Ask an administrator to check the Cowriter Setup Status page'
+                . ' for details.';
         }
 
-        if (str_contains($exMessage, '401') || str_contains($exMessage, 'Unauthorized')) {
-            return 'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.';
+        $exMessage = $exception->getMessage();
+
+        if (str_contains($exMessage, '401')
+            || str_contains($exMessage, 'Unauthorized')
+        ) {
+            return 'The LLM provider rejected the API key.'
+                . ' Please ask an administrator to check'
+                . ' the provider settings.';
         }
 
         return $fallback;
+    }
+
+    /**
+     * Check whether the exception indicates a missing LLM configuration.
+     */
+    private function isConfigurationError(Throwable $exception): bool
+    {
+        $message = $exception->getMessage();
+
+        return str_contains($message, 'no default provider configured')
+            || str_contains($message, 'No default LLM configuration');
     }
 
     /**
