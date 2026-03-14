@@ -9,9 +9,8 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Service;
 
-use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Closure;
-use Countable;
+use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\ModelRepository;
 use Netresearch\NrLlm\Domain\Repository\ProviderRepository;
@@ -85,9 +84,7 @@ readonly class DiagnosticService
 
     private function checkProviderExists(): DiagnosticCheck
     {
-        /** @var Countable $result */
-        $result = $this->providerRepository->findAll();
-        $count  = $result->count();
+        $count = $this->providerRepository->findAll()->count(); // @phpstan-ignore method.nonObject
 
         return new DiagnosticCheck(
             key: 'provider_exists',
@@ -144,9 +141,7 @@ readonly class DiagnosticService
 
     private function checkModelExists(): DiagnosticCheck
     {
-        /** @var Countable $result */
-        $result = $this->modelRepository->findAll();
-        $count  = $result->count();
+        $count = $this->modelRepository->findAll()->count(); // @phpstan-ignore method.nonObject
 
         return new DiagnosticCheck(
             key: 'model_exists',
@@ -176,9 +171,7 @@ readonly class DiagnosticService
 
     private function checkConfigurationExists(): DiagnosticCheck
     {
-        /** @var Countable $result */
-        $result = $this->configurationRepository->findAll();
-        $count  = $result->count();
+        $count = $this->configurationRepository->findAll()->count(); // @phpstan-ignore method.nonObject
 
         return new DiagnosticCheck(
             key: 'configuration_exists',

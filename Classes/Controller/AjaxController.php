@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
-use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use JsonException;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
@@ -25,6 +24,7 @@ use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
 use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
