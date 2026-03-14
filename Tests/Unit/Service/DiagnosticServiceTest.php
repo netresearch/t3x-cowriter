@@ -24,6 +24,9 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 
 #[CoversClass(DiagnosticService::class)]
+#[CoversClass(\Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck::class)]
+#[CoversClass(\Netresearch\T3Cowriter\Service\Dto\DiagnosticResult::class)]
+#[CoversClass(Severity::class)]
 final class DiagnosticServiceTest extends TestCase
 {
     private ProviderRepository&Stub $providerRepoStub;
