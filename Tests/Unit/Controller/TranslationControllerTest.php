@@ -206,6 +206,69 @@ final class TranslationControllerTest extends TestCase
     }
 
     #[Test]
+    public function translateActionReturnsApiKeyRejectedForOnly401Code(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $this->translationServiceStub->method('translate')
+            ->willThrowException(new RuntimeException('HTTP 401 error'));
+
+        $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
+        $response = $this->subject->translateAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+        self::assertSame(
+            'The LLM provider rejected the API key. An administrator should check the provider configuration in the LLM module.',
+            $data['error'],
+        );
+    }
+
+    #[Test]
+    public function translateActionReturnsApiKeyRejectedForOnlyUnauthorized(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $this->translationServiceStub->method('translate')
+            ->willThrowException(new RuntimeException('Request Unauthorized'));
+
+        $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
+        $response = $this->subject->translateAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+        self::assertSame(
+            'The LLM provider rejected the API key. An administrator should check the provider configuration in the LLM module.',
+            $data['error'],
+        );
+    }
+
+    #[Test]
+    public function translateActionReturnsApiKeyRejectedForOnlyAuthentication(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $this->translationServiceStub->method('translate')
+            ->willThrowException(new RuntimeException('Token authentication failed'));
+
+        $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
+        $response = $this->subject->translateAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+        self::assertSame(
+            'The LLM provider rejected the API key. An administrator should check the provider configuration in the LLM module.',
+            $data['error'],
+        );
+    }
+
+    #[Test]
     public function translateActionReturnsDiagnosticMessageWhenNoProviderConfigured(): void
     {
         $this->rateLimiterStub->method('checkLimit')

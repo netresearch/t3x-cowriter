@@ -347,6 +347,56 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
+    public function chatActionReturnsApiKeyRejectedMessageForOnly401Code(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('HTTP 401 error'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame(
+            'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.',
+            $data['error'],
+        );
+    }
+
+    #[Test]
+    public function chatActionReturnsApiKeyRejectedMessageForOnlyUnauthorized(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('Request Unauthorized'));
+
+        $this->loggerMock->expects($this->once())->method('error');
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertSame(
+            'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.',
+            $data['error'],
+        );
+    }
+
+    #[Test]
     public function chatActionReturnsGenericProviderErrorForUnknownProviderException(): void
     {
         $messages = [['role' => 'user', 'content' => 'Hello']];

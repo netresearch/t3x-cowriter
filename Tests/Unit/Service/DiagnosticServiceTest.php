@@ -74,6 +74,7 @@ final class DiagnosticServiceTest extends TestCase
         foreach ($result->checks as $check) {
             self::assertTrue($check->passed);
             self::assertSame(Severity::Ok, $check->severity);
+            self::assertNull($check->fixRoute, sprintf('Check "%s" should have null fixRoute when passed', $check->key));
         }
 
         self::assertSame('1 provider(s) configured.', $result->checks[0]->message);
@@ -194,6 +195,133 @@ final class DiagnosticServiceTest extends TestCase
         self::assertSame('configuration_default', $failure->key);
         self::assertSame('No default LLM configuration. Mark one as default in Admin Tools > LLM > Configurations.', $failure->message);
         self::assertSame('nrllm_configurations', $failure->fixRoute);
+    }
+
+    #[Test]
+    public function runAllSetsErrorSeverityAndFixRouteWhenNoActiveProvider(): void
+    {
+        $provider = $this->createStub(Provider::class);
+
+        $this->providerRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([$provider]));
+        $this->providerRepoStub->method('countActive')->willReturn(0);
+
+        $this->modelRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([new stdClass()]));
+        $this->modelRepoStub->method('countActive')->willReturn(1);
+
+        $config = $this->createStub(LlmConfiguration::class);
+        $config->method('getName')->willReturn('Default');
+        $this->configRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([$config]));
+        $this->configRepoStub->method('countActive')->willReturn(1);
+        $this->configRepoStub->method('findDefault')->willReturn($config);
+
+        $service = $this->createService();
+        $result  = $service->runAll();
+
+        self::assertFalse($result->ok);
+
+        // Find the provider_active check specifically
+        $providerActiveCheck = null;
+        foreach ($result->checks as $check) {
+            if ($check->key === 'provider_active') {
+                $providerActiveCheck = $check;
+
+                break;
+            }
+        }
+
+        self::assertNotNull($providerActiveCheck);
+        self::assertFalse($providerActiveCheck->passed);
+        self::assertSame(Severity::Error, $providerActiveCheck->severity);
+        self::assertSame('nrllm_providers', $providerActiveCheck->fixRoute);
+    }
+
+    #[Test]
+    public function runAllSetsErrorSeverityAndFixRouteWhenNoActiveModel(): void
+    {
+        $provider = $this->createStub(Provider::class);
+        $provider->method('hasApiKey')->willReturn(true);
+
+        $this->providerRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([$provider]));
+        $this->providerRepoStub->method('countActive')->willReturn(1);
+        $this->providerRepoStub->method('findActive')
+            ->willReturn(new TestQueryResult([$provider]));
+
+        $this->modelRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([new stdClass()]));
+        $this->modelRepoStub->method('countActive')->willReturn(0);
+
+        $config = $this->createStub(LlmConfiguration::class);
+        $config->method('getName')->willReturn('Default');
+        $this->configRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([$config]));
+        $this->configRepoStub->method('countActive')->willReturn(1);
+        $this->configRepoStub->method('findDefault')->willReturn($config);
+
+        $service = $this->createService();
+        $result  = $service->runAll();
+
+        self::assertFalse($result->ok);
+
+        $modelActiveCheck = null;
+        foreach ($result->checks as $check) {
+            if ($check->key === 'model_active') {
+                $modelActiveCheck = $check;
+
+                break;
+            }
+        }
+
+        self::assertNotNull($modelActiveCheck);
+        self::assertFalse($modelActiveCheck->passed);
+        self::assertSame(Severity::Error, $modelActiveCheck->severity);
+        self::assertSame('nrllm_models', $modelActiveCheck->fixRoute);
+    }
+
+    #[Test]
+    public function runAllSetsErrorSeverityAndFixRouteWhenNoActiveConfiguration(): void
+    {
+        $provider = $this->createStub(Provider::class);
+        $provider->method('hasApiKey')->willReturn(true);
+
+        $this->providerRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([$provider]));
+        $this->providerRepoStub->method('countActive')->willReturn(1);
+        $this->providerRepoStub->method('findActive')
+            ->willReturn(new TestQueryResult([$provider]));
+
+        $this->modelRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([new stdClass()]));
+        $this->modelRepoStub->method('countActive')->willReturn(1);
+
+        $config = $this->createStub(LlmConfiguration::class);
+        $config->method('getName')->willReturn('Default');
+        $this->configRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([$config]));
+        $this->configRepoStub->method('countActive')->willReturn(0);
+        $this->configRepoStub->method('findDefault')->willReturn($config);
+
+        $service = $this->createService();
+        $result  = $service->runAll();
+
+        self::assertFalse($result->ok);
+
+        $configActiveCheck = null;
+        foreach ($result->checks as $check) {
+            if ($check->key === 'configuration_active') {
+                $configActiveCheck = $check;
+
+                break;
+            }
+        }
+
+        self::assertNotNull($configActiveCheck);
+        self::assertFalse($configActiveCheck->passed);
+        self::assertSame(Severity::Error, $configActiveCheck->severity);
+        self::assertSame('nrllm_configurations', $configActiveCheck->fixRoute);
     }
 
     #[Test]
