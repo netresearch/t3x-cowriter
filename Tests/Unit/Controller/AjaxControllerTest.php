@@ -3116,10 +3116,10 @@ final class AjaxControllerTest extends TestCase
                     }
 
                     // Verify correct ordering of all fragments
-                    $posWriting  = strpos($first, 'You are a writing assistant');
-                    $posRespond  = strpos($first, 'Respond ONLY with the content');
-                    $posUseHtml  = strpos($first, 'Use HTML tags for formatting');
-                    $posDoNot    = strpos($first, 'Do NOT use markdown syntax');
+                    $posWriting = strpos($first, 'You are a writing assistant');
+                    $posRespond = strpos($first, 'Respond ONLY with the content');
+                    $posUseHtml = strpos($first, 'Use HTML tags for formatting');
+                    $posDoNot   = strpos($first, 'Do NOT use markdown syntax');
 
                     return $posWriting < $posRespond
                         && $posRespond < $posUseHtml
