@@ -134,6 +134,25 @@ final class DiagnosticServiceTest extends TestCase
     }
 
     #[Test]
+    public function runFirstDetectsNoActiveProviderWithApiKey(): void
+    {
+        $this->providerRepoStub->method('findAll')
+            ->willReturn(new TestQueryResult([$this->createStub(Provider::class)]));
+        $this->providerRepoStub->method('countActive')->willReturn(1);
+        $this->providerRepoStub->method('findActive')
+            ->willReturn(new TestQueryResult([]));
+
+        $service = $this->createService();
+        $result  = $service->runFirst();
+
+        self::assertFalse($result->ok);
+        $failure = $result->getFirstFailure();
+        self::assertNotNull($failure);
+        self::assertSame('provider_has_api_key', $failure->key);
+        self::assertStringContainsString('No active provider has an API key', $failure->message);
+    }
+
+    #[Test]
     public function runAllDetectsNoDefaultConfiguration(): void
     {
         $provider = $this->createStub(Provider::class);
