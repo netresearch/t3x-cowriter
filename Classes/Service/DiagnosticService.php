@@ -126,6 +126,16 @@ readonly class DiagnosticService
             }
         }
 
+        if ($withKey === 0 && $withoutKey === '') {
+            return new DiagnosticCheck(
+                key: 'provider_has_api_key',
+                passed: false,
+                message: 'No active provider has an API key. Add one in Admin Tools > LLM > Providers.',
+                severity: Severity::Error,
+                fixRoute: 'nrllm_providers',
+            );
+        }
+
         $passed = $withKey > 0;
 
         return new DiagnosticCheck(

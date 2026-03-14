@@ -31,6 +31,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\Connection;
@@ -95,6 +96,7 @@ final readonly class AjaxController
         private LoggerInterface $logger,
         private ContextAssemblyServiceInterface $contextAssemblyService,
         private ConnectionPool $connectionPool,
+        private BackendUriBuilder $backendUriBuilder,
         private DiagnosticService $diagnosticService,
     ) {}
 
@@ -751,11 +753,8 @@ final readonly class AjaxController
         $userMessage = $this->enrichErrorMessage($message, $exception);
         $response    = CompleteResponse::error($userMessage)->jsonSerialize();
 
-        $exMessage = $exception->getMessage();
-        if (str_contains($exMessage, 'no default provider configured')
-            || str_contains($exMessage, 'No default LLM configuration')
-        ) {
-            $response['statusUrl'] = 'cowriter_status';
+        if ($this->isConfigurationError($exception)) {
+            $response['statusUrl'] = (string) $this->backendUriBuilder->buildUriFromRoute('cowriter_status');
         }
 
         /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
@@ -772,11 +771,7 @@ final readonly class AjaxController
      */
     private function enrichErrorMessage(string $fallback, Throwable $exception): string
     {
-        $exMessage = $exception->getMessage();
-
-        if (str_contains($exMessage, 'no default provider configured')
-            || str_contains($exMessage, 'No default LLM configuration')
-        ) {
+        if ($this->isConfigurationError($exception)) {
             $result  = $this->diagnosticService->runFirst();
             $failure = $result->getFirstFailure();
 
@@ -791,6 +786,8 @@ final readonly class AjaxController
                 . ' for details.';
         }
 
+        $exMessage = $exception->getMessage();
+
         if (str_contains($exMessage, '401')
             || str_contains($exMessage, 'Unauthorized')
         ) {
@@ -800,6 +797,17 @@ final readonly class AjaxController
         }
 
         return $fallback;
+    }
+
+    /**
+     * Check whether the exception indicates a missing LLM configuration.
+     */
+    private function isConfigurationError(Throwable $exception): bool
+    {
+        $message = $exception->getMessage();
+
+        return str_contains($message, 'no default provider configured')
+            || str_contains($message, 'No default LLM configuration');
     }
 
     /**

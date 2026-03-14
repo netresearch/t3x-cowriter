@@ -37,6 +37,7 @@ use Psr\Log\LoggerInterface;
 use ReflectionMethod;
 use RuntimeException;
 use stdClass;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -59,6 +60,7 @@ final class AjaxControllerTest extends TestCase
     private LoggerInterface&MockObject $loggerMock;
     private ContextAssemblyServiceInterface&MockObject $contextAssemblyMock;
     private ConnectionPool&MockObject $connectionPoolMock;
+    private BackendUriBuilder&MockObject $backendUriBuilderMock;
     private DiagnosticService&MockObject $diagnosticServiceMock;
 
     protected function setUp(): void
@@ -73,6 +75,10 @@ final class AjaxControllerTest extends TestCase
         $this->loggerMock            = $this->createMock(LoggerInterface::class);
         $this->contextAssemblyMock   = $this->createMock(ContextAssemblyServiceInterface::class);
         $this->connectionPoolMock    = $this->createMock(ConnectionPool::class);
+        $this->backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
+        $this->backendUriBuilderMock
+            ->method('buildUriFromRoute')
+            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
         $this->diagnosticServiceMock = $this->createMock(DiagnosticService::class);
 
         // Default: rate limit allows request
@@ -102,6 +108,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
             $this->diagnosticServiceMock,
         );
     }
@@ -309,7 +316,7 @@ final class AjaxControllerTest extends TestCase
         self::assertFalse($data['success']);
         self::assertStringContainsString('not configured yet', $data['error']);
         self::assertStringContainsString('Setup Status', $data['error']);
-        self::assertSame('cowriter_status', $data['statusUrl']);
+        self::assertSame('/typo3/module/cowriter/status', $data['statusUrl']);
     }
 
     #[Test]
@@ -794,6 +801,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
             $this->diagnosticServiceMock,
         );
 
@@ -1045,6 +1053,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
             $this->diagnosticServiceMock,
         );
 
@@ -1083,6 +1092,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
             $this->diagnosticServiceMock,
         );
 
@@ -1970,6 +1980,7 @@ final class AjaxControllerTest extends TestCase
             $this->loggerMock,
             $this->contextAssemblyMock,
             $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
             $this->diagnosticServiceMock,
         );
 

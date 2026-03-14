@@ -21,6 +21,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Http\JsonResponse;
 
@@ -36,6 +37,7 @@ final readonly class TranslationController
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
+        private BackendUriBuilder $backendUriBuilder,
         private DiagnosticService $diagnosticService,
     ) {}
 
@@ -111,10 +113,8 @@ final readonly class TranslationController
 
             $errorData = ['success' => false, 'error' => $userError];
 
-            if (str_contains($e->getMessage(), 'no default provider configured')
-                || str_contains($e->getMessage(), 'No default LLM configuration')
-            ) {
-                $errorData['statusUrl'] = 'cowriter_status';
+            if ($this->isConfigurationError($e)) {
+                $errorData['statusUrl'] = (string) $this->backendUriBuilder->buildUriFromRoute('cowriter_status');
             }
 
             return $this->jsonResponseWithRateLimitHeaders(
@@ -130,11 +130,7 @@ final readonly class TranslationController
      */
     private function getUserFriendlyError(Throwable $e): string
     {
-        $message = $e->getMessage();
-
-        if (str_contains($message, 'no default provider configured')
-            || str_contains($message, 'No default LLM configuration')
-        ) {
+        if ($this->isConfigurationError($e)) {
             $result  = $this->diagnosticService->runFirst();
             $failure = $result->getFirstFailure();
 
@@ -146,6 +142,8 @@ final readonly class TranslationController
             return 'Translation is not configured yet.'
                 . ' Open the Cowriter Setup Status page for details.';
         }
+
+        $message = $e->getMessage();
 
         if (str_contains($message, '401')
             || str_contains($message, 'Unauthorized')
@@ -165,6 +163,17 @@ final readonly class TranslationController
 
         return 'Translation failed.'
             . ' Check the TYPO3 system log for details.';
+    }
+
+    /**
+     * Check whether the exception indicates a missing LLM configuration.
+     */
+    private function isConfigurationError(Throwable $exception): bool
+    {
+        $message = $exception->getMessage();
+
+        return str_contains($message, 'no default provider configured')
+            || str_contains($message, 'No default LLM configuration');
     }
 
     /**

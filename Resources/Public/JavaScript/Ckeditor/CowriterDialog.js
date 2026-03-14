@@ -311,7 +311,7 @@ export class CowriterDialog {
                     } else {
                         preview.textContent = result.error || 'No content returned';
                         if (result.statusUrl) {
-                            this._appendStatusLink(preview, result.statusUrl);
+                            this._appendStatusLink(preview);
                         }
                         preview.classList.add('cowriter-result--empty');
                         this._showDebugDetails(container, result, inputText, instruction);
@@ -329,7 +329,7 @@ export class CowriterDialog {
                     }
                     preview.textContent = `Error: ${error.message}`;
                     if (error.statusUrl) {
-                        this._appendStatusLink(preview, error.statusUrl);
+                        this._appendStatusLink(preview);
                     }
                     preview.classList.add('cowriter-result--empty');
                     this._showDebugDetails(container, {error: error.message}, currentContext, '');
@@ -932,7 +932,7 @@ export class CowriterDialog {
      * @param {string} instructionSent - The instruction that was sent
      * @private
      */
-    _appendStatusLink(container, statusUrlKey) {
+    _appendStatusLink(container) {
         const url = this._service.getModuleUrl('statusModule');
         if (!url) {
             return;
@@ -941,6 +941,8 @@ export class CowriterDialog {
         link.href = url;
         link.textContent = ' Open Setup Status';
         link.className = 'ms-1';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
         container.appendChild(link);
     }
 

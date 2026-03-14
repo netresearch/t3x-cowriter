@@ -41,6 +41,24 @@
  * @property {Array<{role: string, content: string}>} [debugMessages] - LLM messages sent (dev mode only)
  */
 
+/**
+ * Error with optional status URL for configuration issues.
+ */
+class AIServiceError extends Error {
+    /** @type {string|null} */
+    statusUrl = null;
+
+    /**
+     * @param {string} message
+     * @param {string|null} [statusUrl]
+     */
+    constructor(message, statusUrl = null) {
+        super(message);
+        this.name = 'AIServiceError';
+        this.statusUrl = statusUrl;
+    }
+}
+
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
@@ -113,11 +131,10 @@ export class AIService {
      */
     async _throwResponseError(response) {
         const body = await response.json().catch(() => ({ error: 'Unknown error' }));
-        const err = new Error(body.error || `HTTP ${response.status}`);
-        if (body.statusUrl) {
-            err.statusUrl = body.statusUrl;
-        }
-        throw err;
+        throw new AIServiceError(
+            body.error || `HTTP ${response.status}`,
+            body.statusUrl || null,
+        );
     }
 
     /**
@@ -216,11 +233,7 @@ export class AIService {
                     } catch { /* use HTTP status fallback */ }
                 }
             }
-            const err = new Error(errorMessage);
-            if (statusUrl) {
-                err.statusUrl = statusUrl;
-            }
-            throw err;
+            throw new AIServiceError(errorMessage, statusUrl);
         }
 
         if (!response.body) {

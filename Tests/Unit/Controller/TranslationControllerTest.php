@@ -28,6 +28,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 
 #[CoversClass(TranslationController::class)]
@@ -35,6 +36,7 @@ final class TranslationControllerTest extends TestCase
 {
     private TranslationService&Stub $translationServiceStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
+    private BackendUriBuilder&Stub $backendUriBuilderStub;
     private DiagnosticService&Stub $diagnosticServiceStub;
     private TranslationController $subject;
 
@@ -42,8 +44,11 @@ final class TranslationControllerTest extends TestCase
     {
         $this->translationServiceStub = $this->createStub(TranslationService::class);
         $this->rateLimiterStub        = $this->createStub(RateLimiterInterface::class);
-        $this->diagnosticServiceStub  = $this->createStub(DiagnosticService::class);
-        $contextStub                  = $this->createStub(Context::class);
+        $this->backendUriBuilderStub  = $this->createStub(BackendUriBuilder::class);
+        $this->backendUriBuilderStub->method('buildUriFromRoute')
+            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+        $this->diagnosticServiceStub = $this->createStub(DiagnosticService::class);
+        $contextStub                 = $this->createStub(Context::class);
 
         $contextStub->method('getPropertyFromAspect')
             ->willReturn(1);
@@ -56,6 +61,7 @@ final class TranslationControllerTest extends TestCase
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
+            $this->backendUriBuilderStub,
             $this->diagnosticServiceStub,
         );
     }
@@ -228,6 +234,7 @@ final class TranslationControllerTest extends TestCase
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
+            $this->backendUriBuilderStub,
             $diagnosticStub,
         );
 
@@ -239,7 +246,7 @@ final class TranslationControllerTest extends TestCase
         self::assertFalse($data['success']);
         self::assertStringContainsString('No LLM provider configured', $data['error']);
         self::assertStringContainsString('Setup Status', $data['error']);
-        self::assertSame('cowriter_status', $data['statusUrl']);
+        self::assertSame('/typo3/module/cowriter/status', $data['statusUrl']);
     }
 
     #[Test]
@@ -282,6 +289,7 @@ final class TranslationControllerTest extends TestCase
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
+            $this->backendUriBuilderStub,
             $this->diagnosticServiceStub,
         );
 
