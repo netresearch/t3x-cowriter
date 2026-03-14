@@ -20,6 +20,8 @@ use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
@@ -31,6 +33,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
@@ -98,6 +101,16 @@ abstract class AbstractE2ETestCase extends TestCase
         // Create connection pool mock
         $connectionPool = $this->createMock(ConnectionPool::class);
 
+        // Create backend URI builder mock
+        $backendUriBuilder = $this->createMock(BackendUriBuilder::class);
+        $backendUriBuilder->method('buildUriFromRoute')
+            ->willReturn('/typo3/module/cowriter/status');
+
+        // Create diagnostic service mock
+        $diagnosticService = $this->createMock(DiagnosticService::class);
+        $diagnosticService->method('runFirst')
+            ->willReturn(new DiagnosticResult(true, []));
+
         // Create controller with mocked dependencies
         $controller = new AjaxController(
             $serviceManager,
@@ -108,6 +121,8 @@ abstract class AbstractE2ETestCase extends TestCase
             $this->logger,
             $contextAssembly,
             $connectionPool,
+            $backendUriBuilder,
+            $diagnosticService,
         );
 
         return [

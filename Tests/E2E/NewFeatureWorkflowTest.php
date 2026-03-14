@@ -19,6 +19,8 @@ use Netresearch\NrLlm\Service\Feature\VisionService;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Controller\TranslationController;
 use Netresearch\T3Cowriter\Controller\VisionController;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
@@ -29,6 +31,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
 use stdClass;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 
 /**
@@ -104,11 +107,21 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         // Default: return user ID 1
         $context->method('getPropertyFromAspect')->willReturn(1);
 
+        $backendUriBuilder = $this->createMock(BackendUriBuilder::class);
+        $backendUriBuilder->method('buildUriFromRoute')
+            ->willReturn('/typo3/module/cowriter/status');
+
+        $diagnosticService = $this->createMock(DiagnosticService::class);
+        $diagnosticService->method('runFirst')
+            ->willReturn(new DiagnosticResult(true, []));
+
         $controller = new TranslationController(
             $translationService,
             $rateLimiter,
             $context,
             $this->logger,
+            $backendUriBuilder,
+            $diagnosticService,
         );
 
         return [
@@ -383,11 +396,21 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
             new RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
         );
 
+        $backendUriBuilder2 = $this->createMock(BackendUriBuilder::class);
+        $backendUriBuilder2->method('buildUriFromRoute')
+            ->willReturn('/typo3/module/cowriter/status');
+
+        $diagnosticService2 = $this->createMock(DiagnosticService::class);
+        $diagnosticService2->method('runFirst')
+            ->willReturn(new DiagnosticResult(true, []));
+
         $controller = new TranslationController(
             $stack['translationService'],
             $stack['rateLimiter'],
             $stack['context'],
             $this->logger,
+            $backendUriBuilder2,
+            $diagnosticService2,
         );
 
         // Act

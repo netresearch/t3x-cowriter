@@ -15,11 +15,14 @@ use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 
 /**
  * E2E tests for complete Cowriter workflows.
@@ -78,6 +81,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         return [
@@ -529,6 +534,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -564,6 +571,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest([
@@ -726,6 +735,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -878,6 +889,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -917,6 +930,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest(['prompt' => 'Test']);
@@ -1350,6 +1365,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest([
@@ -1444,6 +1461,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $contextAssembly,
             $stack['connectionPool'],
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createQueryParamsRequest([
@@ -1479,6 +1498,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $contextAssembly,
             $stack['connectionPool'],
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createQueryParamsRequest([
@@ -1841,6 +1862,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $contextAssembly,
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest([
@@ -1913,6 +1936,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $contextAssembly,
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest([
@@ -1964,6 +1989,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $contextAssembly,
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest([
@@ -2111,6 +2138,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $contextAssembly,
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest([
@@ -2177,6 +2206,8 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $contextAssembly,
             $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createCowriterStatusUriBuilderMock(),
+            $this->createPassingDiagnosticServiceMock(),
         );
 
         $request = $this->createJsonRequest([
@@ -2191,5 +2222,21 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
 
         // assembleContext should NOT have been called (selection scope)
         self::assertSame(200, $result->getStatusCode());
+    }
+
+    private function createCowriterStatusUriBuilderMock(): BackendUriBuilder
+    {
+        $mock = $this->createMock(BackendUriBuilder::class);
+        $mock->method('buildUriFromRoute')->willReturn('/typo3/module/cowriter/status');
+
+        return $mock;
+    }
+
+    private function createPassingDiagnosticServiceMock(): DiagnosticService
+    {
+        $mock = $this->createMock(DiagnosticService::class);
+        $mock->method('runFirst')->willReturn(new DiagnosticResult(true, []));
+
+        return $mock;
     }
 }
