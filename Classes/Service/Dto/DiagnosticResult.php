@@ -34,6 +34,6 @@ final readonly class DiagnosticResult
     {
         $failure = $this->getFirstFailure();
 
-        return $failure !== null ? $failure->message : '';
+        return $failure instanceof DiagnosticCheck ? $failure->message : '';
     }
 }

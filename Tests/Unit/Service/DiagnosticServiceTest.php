@@ -21,6 +21,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 #[CoversClass(DiagnosticService::class)]
 final class DiagnosticServiceTest extends TestCase
@@ -52,7 +53,7 @@ final class DiagnosticServiceTest extends TestCase
             ->willReturn(new TestQueryResult([$provider]));
 
         $this->modelRepoStub->method('findAll')
-            ->willReturn(new TestQueryResult([new \stdClass()]));
+            ->willReturn(new TestQueryResult([new stdClass()]));
         $this->modelRepoStub->method('countActive')->willReturn(1);
 
         $this->configRepoStub->method('findAll')
@@ -147,7 +148,7 @@ final class DiagnosticServiceTest extends TestCase
             ->willReturn(new TestQueryResult([$provider]));
 
         $this->modelRepoStub->method('findAll')
-            ->willReturn(new TestQueryResult([new \stdClass()]));
+            ->willReturn(new TestQueryResult([new stdClass()]));
         $this->modelRepoStub->method('countActive')->willReturn(1);
 
         $this->configRepoStub->method('findAll')
@@ -182,7 +183,7 @@ final class DiagnosticServiceTest extends TestCase
             ->willReturn(new TestQueryResult([$provider]));
 
         $this->modelRepoStub->method('findAll')
-            ->willReturn(new TestQueryResult([new \stdClass()]));
+            ->willReturn(new TestQueryResult([new stdClass()]));
         $this->modelRepoStub->method('countActive')->willReturn(1);
 
         $this->configRepoStub->method('findAll')

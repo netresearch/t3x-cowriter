@@ -13,9 +13,9 @@ use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Throwable;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
-use TYPO3\CMS\Core\Http\HtmlResponse;
 
 /**
  * Backend module showing LLM configuration status for the Cowriter extension.
@@ -32,13 +32,13 @@ final readonly class StatusController
 
     public function indexAction(ServerRequestInterface $request): ResponseInterface
     {
-        $result = $this->diagnosticService->runAll();
+        $result  = $this->diagnosticService->runAll();
         $fixUrls = $this->buildFixUrls($result->checks);
 
         $moduleTemplate = $this->moduleTemplateFactory->create($request);
         $moduleTemplate->assignMultiple([
-            'result' => $result,
-            'checks' => $result->checks,
+            'result'  => $result,
+            'checks'  => $result->checks,
             'fixUrls' => $fixUrls,
         ]);
 
@@ -49,6 +49,7 @@ final readonly class StatusController
      * Build backend URLs for fix links.
      *
      * @param list<DiagnosticCheck> $checks
+     *
      * @return array<string, string>
      */
     private function buildFixUrls(array $checks): array
@@ -67,7 +68,7 @@ final readonly class StatusController
             try {
                 $urls[$check->fixRoute] = (string) $this->backendUriBuilder
                     ->buildUriFromRoute($check->fixRoute);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // Route not available — skip
             }
         }

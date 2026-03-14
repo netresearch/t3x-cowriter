@@ -9,10 +9,12 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use JsonException;
 use Netresearch\NrLlm\Service\Feature\TranslationService;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
@@ -20,7 +22,6 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
 use TYPO3\CMS\Core\Context\Context;
-use Netresearch\T3Cowriter\Service\DiagnosticService;
 use TYPO3\CMS\Core\Http\JsonResponse;
 
 /**
@@ -134,10 +135,10 @@ final readonly class TranslationController
         if (str_contains($message, 'no default provider configured')
             || str_contains($message, 'No default LLM configuration')
         ) {
-            $result = $this->diagnosticService->runFirst();
+            $result  = $this->diagnosticService->runFirst();
             $failure = $result->getFirstFailure();
 
-            if ($failure !== null) {
+            if ($failure instanceof DiagnosticCheck) {
                 return $failure->message
                     . ' Open the Cowriter Setup Status page for details.';
             }

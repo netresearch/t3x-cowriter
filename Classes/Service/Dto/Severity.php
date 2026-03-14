@@ -11,7 +11,7 @@ namespace Netresearch\T3Cowriter\Service\Dto;
 
 enum Severity: string
 {
-    case Ok = 'ok';
+    case Ok      = 'ok';
     case Warning = 'warning';
-    case Error = 'error';
+    case Error   = 'error';
 }

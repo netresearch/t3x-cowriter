@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Service;
 
+use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Closure;
+use Countable;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\ModelRepository;
 use Netresearch\NrLlm\Domain\Repository\ProviderRepository;
@@ -46,10 +49,10 @@ readonly class DiagnosticService
     private function run(bool $stopOnFailure): DiagnosticResult
     {
         $checks = [];
-        $ok = true;
+        $ok     = true;
 
         foreach ($this->getCheckCallbacks() as $callback) {
-            $check = $callback();
+            $check    = $callback();
             $checks[] = $check;
 
             if (!$check->passed) {
@@ -64,7 +67,7 @@ readonly class DiagnosticService
     }
 
     /**
-     * @return list<\Closure(): DiagnosticCheck>
+     * @return list<Closure(): DiagnosticCheck>
      */
     private function getCheckCallbacks(): array
     {
@@ -82,7 +85,7 @@ readonly class DiagnosticService
 
     private function checkProviderExists(): DiagnosticCheck
     {
-        /** @var \Countable $result */
+        /** @var Countable $result */
         $result = $this->providerRepository->findAll();
         $count  = $result->count();
 
@@ -114,13 +117,13 @@ readonly class DiagnosticService
 
     private function checkProviderHasApiKey(): DiagnosticCheck
     {
-        $providers = $this->providerRepository->findActive();
-        $withKey = 0;
+        $providers  = $this->providerRepository->findActive();
+        $withKey    = 0;
         $withoutKey = '';
 
         foreach ($providers as $provider) {
             if ($provider->hasApiKey()) {
-                $withKey++;
+                ++$withKey;
             } elseif ($withoutKey === '') {
                 $withoutKey = $provider->getName();
             }
@@ -141,7 +144,7 @@ readonly class DiagnosticService
 
     private function checkModelExists(): DiagnosticCheck
     {
-        /** @var \Countable $result */
+        /** @var Countable $result */
         $result = $this->modelRepository->findAll();
         $count  = $result->count();
 
@@ -173,7 +176,7 @@ readonly class DiagnosticService
 
     private function checkConfigurationExists(): DiagnosticCheck
     {
-        /** @var \Countable $result */
+        /** @var Countable $result */
         $result = $this->configurationRepository->findAll();
         $count  = $result->count();
 
@@ -209,12 +212,12 @@ readonly class DiagnosticService
 
         return new DiagnosticCheck(
             key: 'configuration_default',
-            passed: $default !== null,
-            message: $default !== null
+            passed: $default instanceof LlmConfiguration,
+            message: $default instanceof LlmConfiguration
                 ? sprintf('Default configuration: "%s".', $default->getName())
                 : 'No default LLM configuration. Mark one as default in Admin Tools > LLM > Configurations.',
-            severity: $default !== null ? Severity::Ok : Severity::Error,
-            fixRoute: $default !== null ? null : 'nrllm_configurations',
+            severity: $default instanceof LlmConfiguration ? Severity::Ok : Severity::Error,
+            fixRoute: $default instanceof LlmConfiguration ? null : 'nrllm_configurations',
         );
     }
 }

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use JsonException;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
@@ -17,13 +18,13 @@ use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
-use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
 use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
@@ -776,10 +777,10 @@ final readonly class AjaxController
         if (str_contains($exMessage, 'no default provider configured')
             || str_contains($exMessage, 'No default LLM configuration')
         ) {
-            $result = $this->diagnosticService->runFirst();
+            $result  = $this->diagnosticService->runFirst();
             $failure = $result->getFirstFailure();
 
-            if ($failure !== null) {
+            if ($failure instanceof DiagnosticCheck) {
                 return $failure->message
                     . ' Open the Cowriter Setup Status page'
                     . ' for details.';
