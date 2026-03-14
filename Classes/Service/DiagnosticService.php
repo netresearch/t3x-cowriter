@@ -84,8 +84,7 @@ readonly class DiagnosticService
 
     private function checkProviderExists(): DiagnosticCheck
     {
-        $count = $this->providerRepository->findAll()->count(); // @phpstan-ignore method.nonObject
-
+        $count = $this->providerRepository->findAll()->count();
         return new DiagnosticCheck(
             key: 'provider_exists',
             passed: $count > 0,
@@ -141,8 +140,7 @@ readonly class DiagnosticService
 
     private function checkModelExists(): DiagnosticCheck
     {
-        $count = $this->modelRepository->findAll()->count(); // @phpstan-ignore method.nonObject
-
+        $count = $this->modelRepository->findAll()->count();
         return new DiagnosticCheck(
             key: 'model_exists',
             passed: $count > 0,
@@ -171,8 +169,7 @@ readonly class DiagnosticService
 
     private function checkConfigurationExists(): DiagnosticCheck
     {
-        $count = $this->configurationRepository->findAll()->count(); // @phpstan-ignore method.nonObject
-
+        $count = $this->configurationRepository->findAll()->count();
         return new DiagnosticCheck(
             key: 'configuration_exists',
             passed: $count > 0,
