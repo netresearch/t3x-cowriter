@@ -114,7 +114,12 @@ final readonly class TranslationController
             $errorData = ['success' => false, 'error' => $userError];
 
             if ($this->isConfigurationError($e)) {
-                $errorData['statusUrl'] = (string) $this->backendUriBuilder->buildUriFromRoute('cowriter_status');
+                try {
+                    $errorData['statusUrl'] = (string) $this->backendUriBuilder
+                        ->buildUriFromRoute('cowriter_status');
+                } catch (Throwable) {
+                    // Route resolution failed — omit status URL
+                }
             }
 
             return $this->jsonResponseWithRateLimitHeaders(
@@ -136,11 +141,11 @@ final readonly class TranslationController
 
             if ($failure instanceof DiagnosticCheck) {
                 return $failure->message
-                    . ' Open the Cowriter Setup Status page for details.';
+                    . ' Ask an administrator to check the Cowriter Setup Status page for details.';
             }
 
             return 'Translation is not configured yet.'
-                . ' Open the Cowriter Setup Status page for details.';
+                . ' Ask an administrator to check the Cowriter Setup Status page for details.';
         }
 
         $message = $e->getMessage();

@@ -17,6 +17,8 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
+use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
@@ -27,6 +29,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
+use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
@@ -67,6 +70,12 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         // Default: context returns user ID
         $this->contextMock->method('getPropertyFromAspect')->willReturn(1);
 
+        $backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
+        $backendUriBuilderMock->method('buildUriFromRoute')->willReturn('/typo3/module/cowriter/status');
+
+        $diagnosticServiceMock = $this->createMock(DiagnosticService::class);
+        $diagnosticServiceMock->method('runFirst')->willReturn(new DiagnosticResult(true, []));
+
         $this->subject = new AjaxController(
             $this->llmServiceMock,
             $this->configRepoMock,
@@ -76,6 +85,8 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
             new NullLogger(),
             $this->createMock(ContextAssemblyServiceInterface::class),
             $this->createMock(ConnectionPool::class),
+            $backendUriBuilderMock,
+            $diagnosticServiceMock,
         );
     }
 

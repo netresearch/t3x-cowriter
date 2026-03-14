@@ -754,7 +754,12 @@ final readonly class AjaxController
         $response    = CompleteResponse::error($userMessage)->jsonSerialize();
 
         if ($this->isConfigurationError($exception)) {
-            $response['statusUrl'] = (string) $this->backendUriBuilder->buildUriFromRoute('cowriter_status');
+            try {
+                $response['statusUrl'] = (string) $this->backendUriBuilder
+                    ->buildUriFromRoute('cowriter_status');
+            } catch (Throwable) {
+                // Route resolution failed — omit status URL
+            }
         }
 
         /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
@@ -777,12 +782,12 @@ final readonly class AjaxController
 
             if ($failure instanceof DiagnosticCheck) {
                 return $failure->message
-                    . ' Open the Cowriter Setup Status page'
+                    . ' Ask an administrator to check the Cowriter Setup Status page'
                     . ' for details.';
             }
 
             return 'LLM is not configured yet.'
-                . ' Open the Cowriter Setup Status page'
+                . ' Ask an administrator to check the Cowriter Setup Status page'
                 . ' for details.';
         }
 

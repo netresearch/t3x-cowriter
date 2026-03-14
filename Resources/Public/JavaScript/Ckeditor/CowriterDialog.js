@@ -311,7 +311,7 @@ export class CowriterDialog {
                     } else {
                         preview.textContent = result.error || 'No content returned';
                         if (result.statusUrl) {
-                            this._appendStatusLink(preview);
+                            this._appendStatusLink(preview, result.statusUrl);
                         }
                         preview.classList.add('cowriter-result--empty');
                         this._showDebugDetails(container, result, inputText, instruction);
@@ -329,7 +329,7 @@ export class CowriterDialog {
                     }
                     preview.textContent = `Error: ${error.message}`;
                     if (error.statusUrl) {
-                        this._appendStatusLink(preview);
+                        this._appendStatusLink(preview, error.statusUrl);
                     }
                     preview.classList.add('cowriter-result--empty');
                     this._showDebugDetails(container, {error: error.message}, currentContext, '');
@@ -932,8 +932,8 @@ export class CowriterDialog {
      * @param {string} instructionSent - The instruction that was sent
      * @private
      */
-    _appendStatusLink(container) {
-        const url = this._service.getModuleUrl('statusModule');
+    _appendStatusLink(container, statusUrl) {
+        const url = statusUrl || this._service.getModuleUrl('statusModule');
         if (!url) {
             return;
         }
