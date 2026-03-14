@@ -32,8 +32,8 @@ final class StatusControllerIntegrationTest extends TestCase
         $backendUriBuilder
             ->method('buildUriFromRoute')
             ->willReturnMap([
-                ['nrllm_providers', [], '/typo3/module/nrllm/providers'],
-                ['nrllm_models', [], '/typo3/module/nrllm/models'],
+                ['nrllm_providers', [], new \TYPO3\CMS\Core\Http\Uri('/typo3/module/nrllm/providers')],
+                ['nrllm_models', [], new \TYPO3\CMS\Core\Http\Uri('/typo3/module/nrllm/models')],
             ]);
 
         $controller = new StatusController(

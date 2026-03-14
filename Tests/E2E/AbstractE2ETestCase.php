@@ -104,7 +104,7 @@ abstract class AbstractE2ETestCase extends TestCase
         // Create backend URI builder mock
         $backendUriBuilder = $this->createMock(BackendUriBuilder::class);
         $backendUriBuilder->method('buildUriFromRoute')
-            ->willReturn('/typo3/module/cowriter/status');
+            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
 
         // Create diagnostic service mock
         $diagnosticService = $this->createMock(DiagnosticService::class);

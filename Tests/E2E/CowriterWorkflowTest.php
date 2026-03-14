@@ -2227,7 +2227,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     private function createCowriterStatusUriBuilderMock(): BackendUriBuilder
     {
         $mock = $this->createMock(BackendUriBuilder::class);
-        $mock->method('buildUriFromRoute')->willReturn('/typo3/module/cowriter/status');
+        $mock->method('buildUriFromRoute')->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
 
         return $mock;
     }

@@ -71,7 +71,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->contextMock->method('getPropertyFromAspect')->willReturn(1);
 
         $backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
-        $backendUriBuilderMock->method('buildUriFromRoute')->willReturn('/typo3/module/cowriter/status');
+        $backendUriBuilderMock->method('buildUriFromRoute')->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
 
         $diagnosticServiceMock = $this->createMock(DiagnosticService::class);
         $diagnosticServiceMock->method('runFirst')->willReturn(new DiagnosticResult(true, []));

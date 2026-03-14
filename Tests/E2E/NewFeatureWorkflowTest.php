@@ -109,7 +109,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $backendUriBuilder = $this->createMock(BackendUriBuilder::class);
         $backendUriBuilder->method('buildUriFromRoute')
-            ->willReturn('/typo3/module/cowriter/status');
+            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
 
         $diagnosticService = $this->createMock(DiagnosticService::class);
         $diagnosticService->method('runFirst')
@@ -398,7 +398,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $backendUriBuilder2 = $this->createMock(BackendUriBuilder::class);
         $backendUriBuilder2->method('buildUriFromRoute')
-            ->willReturn('/typo3/module/cowriter/status');
+            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
 
         $diagnosticService2 = $this->createMock(DiagnosticService::class);
         $diagnosticService2->method('runFirst')
