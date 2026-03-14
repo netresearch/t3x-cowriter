@@ -808,6 +808,130 @@ final class ExecuteTaskRequestTest extends TestCase
     }
 
     // =========================================================================
+    // extractNullableString ReturnRemoval (kills ReturnRemoval mutant)
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestReturnsNullForEmptyConfiguration(): void
+    {
+        // Kills ReturnRemoval mutant: extractNullableString removing 'return null'
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'instruction'   => 'Do it',
+            'configuration' => '',
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->configuration);
+    }
+
+    #[Test]
+    public function fromRequestReturnsNullForNullConfiguration(): void
+    {
+        // Explicitly pass null to ensure extractNullableString returns null
+        $request = $this->createJsonRequest([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+            'instruction' => 'Do it',
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->configuration);
+    }
+
+    // =========================================================================
+    // extractRecordContext ReturnRemoval (kills ReturnRemoval mutant)
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestReturnsNullRecordContextForNonArrayValue(): void
+    {
+        // Kills ReturnRemoval mutant on extractRecordContext 'return null'
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'instruction'   => 'Do it',
+            'recordContext' => 'not-an-array',
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->recordContext);
+    }
+
+    // =========================================================================
+    // Default integer values (kills Inc/Dec mutants on uid/pid defaults)
+    // =========================================================================
+
+    #[Test]
+    public function fromRequestRejectsRecordContextWithNonNumericUid(): void
+    {
+        // Kills IncrementInteger/DecrementInteger mutant on default uid value (0 → 1 or -1)
+        // When uid is non-numeric, it defaults to 0 which fails the <= 0 check
+        $request = $this->createJsonRequest([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'instruction'   => 'Do it',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 'not-a-number', 'field' => 'bodytext'],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertNull($dto->recordContext);
+    }
+
+    #[Test]
+    public function fromRequestRejectsReferencePagesWithNonNumericPid(): void
+    {
+        // Kills IncrementInteger/DecrementInteger mutant on default pid value (0 → 1 or -1)
+        $request = $this->createJsonRequest([
+            'taskUid'        => 1,
+            'context'        => 'text',
+            'contextType'    => 'selection',
+            'instruction'    => 'Do it',
+            'referencePages' => [
+                ['pid' => 'not-a-number', 'relation' => 'ref'],
+            ],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertSame([], $dto->referencePages);
+    }
+
+    #[Test]
+    public function fromRequestFiltersReferencePagesWithNegativePid(): void
+    {
+        $request = $this->createJsonRequest([
+            'taskUid'        => 1,
+            'context'        => 'text',
+            'contextType'    => 'selection',
+            'instruction'    => 'Do it',
+            'referencePages' => [
+                ['pid' => -1, 'relation' => 'should be filtered'],
+            ],
+        ]);
+
+        $dto = ExecuteTaskRequest::fromRequest($request);
+        self::assertSame([], $dto->referencePages);
+    }
+
+    // =========================================================================
+    // isValid context trim test (kills UnwrapTrim mutant)
+    // =========================================================================
+
+    #[Test]
+    public function isValidAcceptsWhitespaceOnlyContextWithAnyContextType(): void
+    {
+        // Kills UnwrapTrim mutant: trim($this->context) !== '' → $this->context !== ''
+        // Whitespace-only context is treated as empty after trim, so any contextType is valid
+        $dto = new ExecuteTaskRequest(1, '   ', 'invalid_type', 'Do it', null);
+        self::assertTrue($dto->isValid());
+    }
+
+    // =========================================================================
     // XSS / injection payloads
     // =========================================================================
 

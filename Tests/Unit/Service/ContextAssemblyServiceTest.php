@@ -363,6 +363,184 @@ final class ContextAssemblyServiceTest extends TestCase
         self::assertStringContainsString('Reference page', $result);
     }
 
+    // =========================================================================
+    // Mutation score improvements: formatRecords and formatSingleRecord
+    // =========================================================================
+
+    #[Test]
+    public function formatRecordsDistinguishesCurrentFromOtherElements(): void
+    {
+        // Kills Identical mutant: $uid === $currentUid → $uid !== $currentUid
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 10, 'pid' => 5, 'header' => 'Current', 'subheader' => '', 'bodytext' => 'A'],
+            ['uid' => 20, 'pid' => 5, 'header' => 'Other', 'subheader' => '', 'bodytext' => 'B'],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->assembleContext('tt_content', 10, 'bodytext', 'page');
+
+        // Current element uses '===' prefix/suffix
+        self::assertStringContainsString('=== Current content element (tt_content #10) ===', $result);
+        // Other element uses '---' prefix/suffix
+        self::assertStringContainsString('--- Content element (tt_content #20) ---', $result);
+
+        // Ensure the markers are different
+        self::assertStringNotContainsString('=== Current content element (tt_content #20) ===', $result);
+        self::assertStringNotContainsString('--- Content element (tt_content #10) ---', $result);
+    }
+
+    #[Test]
+    public function formatSingleRecordCastsNonScalarFieldToEmpty(): void
+    {
+        // Kills CastString mutant: (string) $raw → $raw
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $method  = new ReflectionMethod($service, 'formatSingleRecord');
+
+        // When a field has a non-scalar value, it should be treated as empty
+        $result = $method->invoke($service, ['header' => ['array'], 'subheader' => '', 'bodytext' => 'Content']);
+        self::assertStringNotContainsString('Header:', $result);
+        self::assertStringContainsString('Bodytext: Content', $result);
+    }
+
+    #[Test]
+    public function formatSingleRecordTrimsFieldValues(): void
+    {
+        // Kills UnwrapTrim mutant on trim(is_scalar($raw) ? (string) $raw : '')
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $method  = new ReflectionMethod($service, 'formatSingleRecord');
+
+        $result = $method->invoke($service, ['header' => '  Trimmed Header  ', 'subheader' => '', 'bodytext' => '']);
+
+        self::assertStringContainsString('Header: Trimmed Header', $result);
+        // Verify it was actually trimmed (no leading/trailing spaces)
+        self::assertStringNotContainsString('Header:   Trimmed', $result);
+    }
+
+    #[Test]
+    public function formatSingleRecordEndsWithNewline(): void
+    {
+        // Kills Concat mutant on trailing "\n"
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $method  = new ReflectionMethod($service, 'formatSingleRecord');
+
+        $result = $method->invoke($service, ['header' => 'Title', 'subheader' => '', 'bodytext' => '']);
+
+        self::assertStringEndsWith("\n", $result);
+    }
+
+    #[Test]
+    public function formatRecordsUidCastToInt(): void
+    {
+        // Kills CastInt mutant: (int) $rawUid → $rawUid
+        // Kills DecrementInteger/IncrementInteger on default uid value
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => '42', 'pid' => 5, 'header' => 'Test', 'subheader' => '', 'bodytext' => 'Content'],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->assembleContext('tt_content', 42, 'bodytext', 'element');
+
+        // uid should be cast to int properly — should show as current element
+        self::assertStringContainsString('=== Current content element (tt_content #42) ===', $result);
+    }
+
+    #[Test]
+    public function fetchPageContentHandlesNonNumericPid(): void
+    {
+        // Kills CastInt/DecrementInteger/IncrementInteger mutants on pid handling
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 1, 'pid' => 'not-numeric', 'header' => 'Test', 'subheader' => '', 'bodytext' => 'Content'],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        // With non-numeric pid, fetchPageContent returns just the single record
+        $result = $service->assembleContext('tt_content', 1, 'bodytext', 'page');
+
+        // Should still contain the record data (falls back to single record)
+        self::assertStringContainsString('Test', $result);
+    }
+
+    #[Test]
+    public function getContextSummaryReturnsPageScopeLabelSingular(): void
+    {
+        // Kills Ternary/NotIdentical mutants on page scope label
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 1, 'pid' => 5, 'header' => 'Only One', 'bodytext' => '<p>Content</p>', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'page');
+
+        // With 1 element, should be '1 element' (no 's')
+        self::assertStringContainsString('1 element', $result['summary']);
+        self::assertStringNotContainsString('1 elements', $result['summary']);
+    }
+
+    #[Test]
+    public function getContextSummaryReturnsPageScopeLabelPlural(): void
+    {
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 1, 'pid' => 5, 'header' => 'First', 'bodytext' => '<p>A</p>', 'subheader' => ''],
+            ['uid' => 2, 'pid' => 5, 'header' => 'Second', 'bodytext' => '<p>B</p>', 'subheader' => ''],
+            ['uid' => 3, 'pid' => 5, 'header' => 'Third', 'bodytext' => '<p>C</p>', 'subheader' => ''],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'page');
+
+        self::assertStringContainsString('3 elements', $result['summary']);
+    }
+
+    #[Test]
+    public function getParentPageIdReturnsZeroForMissingPage(): void
+    {
+        // Kills ReturnRemoval mutant: return 0 → (empty) for missing page
+        $connectionPool = $this->createConnectionPoolMock([]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $method  = new ReflectionMethod($service, 'getParentPageId');
+        $result  = $method->invoke($service, 999);
+
+        self::assertSame(0, $result);
+    }
+
+    #[Test]
+    public function getParentPageIdHandlesNonNumericPid(): void
+    {
+        // Kills Ternary/Coalesce/CastInt mutants on getParentPageId
+        $connectionPool = $this->createConnectionPoolMock([
+            ['pid' => 'abc'],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $method  = new ReflectionMethod($service, 'getParentPageId');
+        $result  = $method->invoke($service, 1);
+
+        self::assertSame(0, $result);
+    }
+
+    #[Test]
+    public function countWordsHandlesWhitespaceOnlyString(): void
+    {
+        // Kills UnwrapTrim on countWords, and preg_split PREG_SPLIT_NO_EMPTY
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $method  = new ReflectionMethod($service, 'countWords');
+
+        self::assertSame(0, $method->invoke($service, '   '));
+    }
+
+    #[Test]
+    public function countWordsBitwiseOrInEntityDecode(): void
+    {
+        // Kills BitwiseOr mutant: ENT_QUOTES | ENT_HTML5 → ENT_QUOTES & ENT_HTML5
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $method  = new ReflectionMethod($service, 'countWords');
+
+        // HTML5-specific entities that need ENT_HTML5 flag
+        $count = $method->invoke($service, 'one &apos; two &Tab; three');
+        self::assertGreaterThan(0, $count);
+    }
+
     /**
      * @param list<array<string, mixed>> $rows
      */

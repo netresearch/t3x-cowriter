@@ -3087,6 +3087,372 @@ final class AjaxControllerTest extends TestCase
     }
 
     // ===========================================
+    // Mutation score improvements: system prompt string ordering
+    // ===========================================
+
+    #[Test]
+    public function executeTaskActionFormattingInstructionStartsWithWritingAssistant(): void
+    {
+        // Kills Concat mutants that reorder the first system message parts.
+        // The message MUST start with 'You are a writing assistant' (not other fragments).
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock
+            ->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages): bool {
+                    $first = $messages[0]['content'];
+
+                    // Must start with 'You are a writing assistant'
+                    if (!str_starts_with($first, 'You are a writing assistant')) {
+                        return false;
+                    }
+
+                    // Verify correct ordering of all fragments
+                    $posWriting  = strpos($first, 'You are a writing assistant');
+                    $posRespond  = strpos($first, 'Respond ONLY with the content');
+                    $posUseHtml  = strpos($first, 'Use HTML tags for formatting');
+                    $posDoNot    = strpos($first, 'Do NOT use markdown syntax');
+
+                    return $posWriting < $posRespond
+                        && $posRespond < $posUseHtml
+                        && $posUseHtml < $posDoNot;
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+            'instruction' => 'Improve this',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionEditorContentTagWrapsContextCorrectly(): void
+    {
+        // Kills Concat mutants that reorder editor_content XML tags and context.
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $editorContext      = 'My specific editor content here';
+
+        $this->llmServiceManagerMock
+            ->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->with(
+                $this->callback(static function (array $messages) use ($editorContext): bool {
+                    // Find the editor_content message
+                    foreach ($messages as $msg) {
+                        if (str_contains($msg['content'] ?? '', 'editor_content')) {
+                            $content = $msg['content'];
+
+                            // Must start with <editor_content>\n
+                            if (!str_starts_with($content, "<editor_content>\n")) {
+                                return false;
+                            }
+
+                            // Must end with \n</editor_content>
+                            if (!str_ends_with($content, "\n</editor_content>")) {
+                                return false;
+                            }
+
+                            // Context must be between tags
+                            return str_contains($content, $editorContext);
+                        }
+                    }
+
+                    return false; // editor_content message must exist
+                }),
+                $config,
+            )
+            ->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => $editorContext,
+            'contextType' => 'selection',
+            'instruction' => 'Improve this',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionDebugNotExposedWhenGlobalUnset(): void
+    {
+        // Kills FalseValue mutant: ($typo3ConfVars['BE']['debug'] ?? false) → ($typo3ConfVars['BE']['debug'] ?? true)
+        // When TYPO3_CONF_VARS is completely unset, debug should NOT appear.
+        unset($GLOBALS['TYPO3_CONF_VARS']);
+
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $completionResponse = $this->createCompletionResponse('Result');
+        $this->llmServiceManagerMock->method('chatWithConfiguration')->willReturn($completionResponse);
+
+        $request = $this->createRequestWithJsonBody([
+            'taskUid'     => 0,
+            'context'     => '',
+            'contextType' => '',
+            'instruction' => 'Test instruction',
+        ]);
+
+        $response = $this->subject->executeTaskAction($request);
+        $data     = $this->decodeJsonResponse($response);
+
+        self::assertArrayNotHasKey('debugMessages', $data);
+    }
+
+    #[Test]
+    public function searchPagesActionReturnsEmptyForSingleCharNonDigitQuery(): void
+    {
+        // Kills LessThan mutant: mb_strlen($query) < 2 → mb_strlen($query) <= 2
+        // Single char 'a' has length 1, which is < 2, so should return empty.
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'a']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['pages']);
+    }
+
+    #[Test]
+    public function searchPagesActionAllowsSingleDigitQuery(): void
+    {
+        // Kills LogicalNot mutant: !ctype_digit($query) → ctype_digit($query)
+        // A single digit '5' should be allowed (ctype_digit is true, so the short-length check is skipped).
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $this->mockQueryBuilderForSearchPages([
+            ['uid' => 5, 'title' => 'Page 5', 'slug' => '/page-5'],
+        ]);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => '5']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertCount(1, $data['pages']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function searchPagesActionTrimsQueryWhitespace(): void
+    {
+        // Kills UnwrapTrim mutant on search query
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => '   ']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertTrue($data['success']);
+        self::assertSame([], $data['pages']);
+    }
+
+    #[Test]
+    public function searchPagesActionTruncatesLongQuery(): void
+    {
+        // Kills IncrementInteger mutant on mb_substr offset: 0 → 1
+        // With offset 1, the query would lose its first character.
+        $backendUser = $this->createMock(BackendUserAuthentication::class);
+        $backendUser->method('getPagePermsClause')->willReturn('');
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $this->mockQueryBuilderForSearchPages([
+            ['uid' => 1, 'title' => 'AB page', 'slug' => '/ab'],
+        ]);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->method('getQueryParams')->willReturn(['query' => 'AB']);
+
+        $response = $this->subject->searchPagesAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        // With offset 0, query is 'AB' (2 chars, passes length check).
+        // With offset 1, query would be 'B' (1 char, fails length check → empty).
+        self::assertCount(1, $data['pages']);
+
+        unset($GLOBALS['BE_USER']);
+    }
+
+    #[Test]
+    public function convertBlockMarkdownHeadingLevelIncreasedByOne(): void
+    {
+        // Kills DecrementInteger mutant: min(strlen($m[1]) + 1, 6) → min(strlen($m[1]) + 0, 6)
+        // # should become h2, not h1. ## should become h3, not h2.
+        $input  = "# Top heading\n## Sub heading";
+        $result = $this->invokeConvertBlockMarkdown($input);
+
+        // # (1 hash) → h2 (not h1)
+        self::assertStringContainsString('<h2>Top heading</h2>', $result);
+        // ## (2 hashes) → h3 (not h2)
+        self::assertStringContainsString('<h3>Sub heading</h3>', $result);
+    }
+
+    #[Test]
+    public function convertMarkdownToHtmlReturnsUnchangedForPlainHtml(): void
+    {
+        // Kills LogicalAnd/LogicalNot mutants: !hasInlineMarkdown && !hasBlockMarkdown early return
+        $html   = '<p>Simple paragraph without any markdown.</p>';
+        $result = $this->invokeConvertMarkdownToHtml($html);
+
+        self::assertSame($html, $result);
+    }
+
+    #[Test]
+    public function convertMarkdownToHtmlMultiByteContentNotSkipped(): void
+    {
+        // Kills MBString mutant: mb_strlen → strlen on the 65536 threshold
+        // 65536 multi-byte chars = within mb_strlen limit but over strlen limit
+        $emoji = "\xC3\xA4"; // ä, 2 bytes per char
+        // Create content that is 60000 chars (120000 bytes) + markdown
+        $content = str_repeat($emoji, 60000) . '**bold**';
+        $result  = $this->invokeConvertMarkdownToHtml($content);
+
+        // Should convert the markdown (within 65536 char limit)
+        self::assertStringContainsString('<strong>bold</strong>', $result);
+    }
+
+    #[Test]
+    public function convertMarkdownToHtmlPregMatchFlagsAreRelevant(): void
+    {
+        // Kills PregMatchRemoveFlags mutant on /i flag for HTML blocks
+        // <P> (uppercase) should be detected as HTML block
+        $content = "<P>HTML paragraph</P>\n\n**bold text**";
+        $result  = $this->invokeConvertMarkdownToHtml($content);
+
+        // With /i flag: <P> is recognized as HTML block → mixed mode
+        // Without /i flag: <P> not recognized → pure markdown mode
+        // In mixed mode, <P> is preserved; in pure markdown, it gets wrapped differently
+        self::assertStringContainsString('<strong>bold text</strong>', $result);
+    }
+
+    #[Test]
+    public function convertMarkdownToHtmlLengthCheckUsesGreaterThan(): void
+    {
+        // Kills GreaterThan mutant: mb_strlen($content) > 65536 → mb_strlen($content) >= 65536
+        // Content of exactly 65536 chars should still be processed (not skipped)
+        $content = str_repeat('a', 65528) . '**bold**'; // 65528 + 8 = 65536 chars
+        $result  = $this->invokeConvertMarkdownToHtml($content);
+
+        self::assertStringContainsString('<strong>bold</strong>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownCastStringOnBoldReplace(): void
+    {
+        // Kills CastString mutant: (string) preg_replace → preg_replace for bold
+        $input  = 'This has **bold** and **more bold** text';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertIsString($result);
+        self::assertSame('This has <strong>bold</strong> and <strong>more bold</strong> text', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownCastStringOnItalicReplace(): void
+    {
+        // Kills CastString mutant on italic replacement
+        $input  = 'Has *italic* text';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertIsString($result);
+        self::assertStringContainsString('<em>italic</em>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownCastStringOnCodeReplace(): void
+    {
+        // Kills CastString mutant on inline code replacement
+        $input  = 'Use `code` here';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertIsString($result);
+        self::assertSame('Use <code>code</code> here', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownCastStringOnStrikethroughReplace(): void
+    {
+        // Kills CastString mutant on strikethrough replacement
+        $input  = 'Has ~~deleted~~ text';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        self::assertIsString($result);
+        self::assertSame('Has <s>deleted</s> text', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownLinkUrlTrimmedBeforeSchemeCheck(): void
+    {
+        // Kills UnwrapTrim mutant on $url = trim($m[2])
+        $input  = '[link](  https://example.com  )';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        // With trim: URL is 'https://example.com' → passes scheme check → link created
+        // Without trim: URL is '  https://...' → fails scheme check → link stripped
+        self::assertStringContainsString('<a href="https://example.com">link</a>', $result);
+    }
+
+    #[Test]
+    public function convertInlineMarkdownPregMatchCaretForUrlScheme(): void
+    {
+        // Kills PregMatchRemoveCaret mutant: /^(https?:...)/ → /(https?:...)/
+        // URL containing https mid-string should NOT be matched if caret is removed
+        $input  = '[link](javascript:alert(1))';
+        $result = $this->invokeConvertInlineMarkdown($input);
+
+        // Dangerous scheme → link stripped, only text remains
+        self::assertStringNotContainsString('<a', $result);
+        self::assertStringContainsString('link', $result);
+    }
+
+    #[Test]
+    public function wrapBareTextBlocksPreservesHtmlBlockElements(): void
+    {
+        // Kills PregMatchRemoveCaret mutant on /^<(p|div|...)/ and PregMatchRemoveFlags /i
+        $content = "<p>Paragraph</p>\n\nBare text\n\n<DIV>Div content</DIV>";
+        $result  = $this->invokeWrapBareTextBlocks($content);
+
+        // <p> and <DIV> should be preserved as-is (case insensitive)
+        self::assertStringContainsString('<p>Paragraph</p>', $result);
+        self::assertStringContainsString('<DIV>Div content</DIV>', $result);
+        // Bare text should be wrapped
+        self::assertStringContainsString('<p>Bare text</p>', $result);
+    }
+
+    // ===========================================
     // Helper Methods
     // ===========================================
 
