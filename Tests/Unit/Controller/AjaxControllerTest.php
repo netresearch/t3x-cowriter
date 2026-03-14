@@ -1505,6 +1505,73 @@ final class AjaxControllerTest extends TestCase
     }
 
     // ===========================================
+    // statusUrl / isConfigurationError Tests
+    // ===========================================
+
+    #[Test]
+    public function chatActionOmitsStatusUrlWhenBuildUriFromRouteThrows(): void
+    {
+        $backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
+        $backendUriBuilderMock
+            ->method('buildUriFromRoute')
+            ->willThrowException(new RuntimeException('Route not found'));
+
+        $diagnosticServiceMock = $this->createMock(DiagnosticService::class);
+        $diagnosticServiceMock->method('runFirst')
+            ->willReturn(new DiagnosticResult(true, []));
+
+        $subject = new AjaxController(
+            $this->llmServiceManagerMock,
+            $this->configRepositoryMock,
+            $this->taskRepositoryMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
+            $this->loggerMock,
+            $this->contextAssemblyMock,
+            $this->connectionPoolMock,
+            $backendUriBuilderMock,
+            $diagnosticServiceMock,
+        );
+
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('No provider specified and no default provider configured'));
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertArrayNotHasKey('statusUrl', $data);
+    }
+
+    #[Test]
+    public function chatActionRecognisesNoDefaultLlmConfigurationMessage(): void
+    {
+        $messages = [['role' => 'user', 'content' => 'Hello']];
+        $config   = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('No default LLM configuration found'));
+
+        $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $response = $this->subject->chatAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = $this->decodeJsonResponse($response);
+        self::assertFalse($data['success']);
+        self::assertStringContainsString('not configured yet', $data['error']);
+        self::assertSame('/typo3/module/cowriter/status', $data['statusUrl']);
+    }
+
+    // ===========================================
     // Helper Methods
     // ===========================================
 
