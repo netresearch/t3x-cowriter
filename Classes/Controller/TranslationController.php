@@ -136,8 +136,11 @@ final readonly class TranslationController
     private function getUserFriendlyError(Throwable $e): string
     {
         if ($this->isConfigurationError($e)) {
-            $result  = $this->diagnosticService->runFirst();
-            $failure = $result->getFirstFailure();
+            try {
+                $failure = $this->diagnosticService->runFirst()->getFirstFailure();
+            } catch (Throwable) {
+                $failure = null;
+            }
 
             if ($failure instanceof DiagnosticCheck) {
                 return $failure->message

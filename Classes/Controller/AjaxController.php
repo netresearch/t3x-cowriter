@@ -777,8 +777,11 @@ final readonly class AjaxController
     private function enrichErrorMessage(string $fallback, Throwable $exception): string
     {
         if ($this->isConfigurationError($exception)) {
-            $result  = $this->diagnosticService->runFirst();
-            $failure = $result->getFirstFailure();
+            try {
+                $failure = $this->diagnosticService->runFirst()->getFirstFailure();
+            } catch (Throwable) {
+                $failure = null;
+            }
 
             if ($failure instanceof DiagnosticCheck) {
                 return $failure->message
