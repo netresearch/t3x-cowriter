@@ -1,6 +1,7 @@
 # AI Agent Development Guide
 
 **Project:** t3_cowriter - AI-powered content writing assistant for TYPO3 CKEditor
+**Last Updated:** 2026-03-15
 **Type:** TYPO3 CMS Extension (PHP 8.2+ / JavaScript/ES6)
 **TYPO3:** 13.4 LTS + 14.0
 **License:** GPL-3.0-or-later

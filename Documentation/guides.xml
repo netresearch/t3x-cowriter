@@ -10,6 +10,7 @@
         version="3.0"
         release="3.0.0"
         copyright="since 2024 by Netresearch DTT GmbH"
+        extension-key="t3_cowriter"
     />
 
     <extension

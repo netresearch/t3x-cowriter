@@ -39,6 +39,10 @@
             "email": "martin.wunderlich@netresearch.de",
             "homepage": "https://www.netresearch.de",
             "role": "Developer"
+        },
+        {
+            "name": "Netresearch DTT GmbH",
+            "homepage": "https://www.netresearch.de"
         }
     ],
     "support": {
