@@ -8,10 +8,22 @@
 | File | Purpose |
 |------|---------|
 | Controller/AjaxController.php | AJAX handler for CKEditor integration |
+| Controller/Backend/StatusController.php | Setup status diagnostic page (admin only) |
+| Controller/TranslationController.php | Content translation endpoint |
+| Controller/VisionController.php | Image analysis (alt text) |
+| Controller/TemplateController.php | Prompt template listing |
+| Controller/ToolController.php | LLM function calling |
 | Domain/DTO/CompleteRequest.php | Request DTO with validation |
 | Domain/DTO/CompleteResponse.php | Response DTO with HTML escaping |
+| Domain/DTO/ExecuteTaskRequest.php | Task execution request DTO |
+| Domain/DTO/TranslationRequest.php | Translation request DTO |
 | Domain/DTO/UsageData.php | Token usage statistics |
 | EventListener/InjectAjaxUrlsListener.php | AJAX URL injection for frontend |
+| Service/DiagnosticService.php | 8-step LLM config chain checker |
+| Service/Dto/Severity.php | Check severity enum (Ok/Warning/Error) |
+| Service/Dto/DiagnosticCheck.php | Individual check result DTO |
+| Service/Dto/DiagnosticResult.php | Aggregate diagnostic result |
+| Service/ContextAssemblyService.php | Context assembly for task execution |
 | Service/RateLimiterInterface.php | Rate limiter abstraction for DI |
 | Service/RateLimiterService.php | Sliding window rate limiter implementation |
 | Service/RateLimitResult.php | Rate limit check result DTO |
@@ -50,15 +62,30 @@ $response = $this->llmServiceManager->chat($messages, $options);
 ### Response Handling
 
 ```php
-// Handle errors gracefully — rate limiting is done via RateLimiterService,
-// not via provider exceptions
+// Handle errors gracefully with diagnostic messages
 try {
     $response = $this->llmServiceManager->chat($messages, $options);
     return CompleteResponse::success($response);
 } catch (ProviderException $e) {
-    return CompleteResponse::error('LLM provider error occurred. Please try again later.');
+    // enrichErrorMessage checks DiagnosticService for specific failures
+    return $this->buildErrorResponse('LLM provider error occurred.', $e);
 } catch (\Throwable $e) {
-    return CompleteResponse::error('An unexpected error occurred.');
+    return $this->buildErrorResponse('An unexpected error occurred.', $e);
+}
+```
+
+### Diagnostic Integration
+
+Controllers use `DiagnosticService::runFirst()` to provide specific error messages when LLM configuration is incomplete. Always wrap in try/catch since it runs inside an exception handler:
+
+```php
+if ($this->isConfigurationError($exception)) {
+    try {
+        $failure = $this->diagnosticService->runFirst()->getFirstFailure();
+    } catch (\Throwable) {
+        $failure = null;
+    }
+    // Use $failure->message for specific guidance
 }
 ```
 

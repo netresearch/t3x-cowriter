@@ -61,21 +61,30 @@ t3_cowriter/
 ├── Classes/
 │   ├── Controller/
 │   │   ├── AjaxController.php       # Main chat/complete/stream endpoints
+│   │   ├── Backend/
+│   │   │   └── StatusController.php # Setup status diagnostic page
 │   │   ├── VisionController.php     # Image analysis (alt text)
 │   │   ├── TranslationController.php # Content translation
 │   │   ├── TemplateController.php   # Prompt template listing
 │   │   └── ToolController.php       # LLM function calling
 │   ├── Domain/DTO/                  # Request/response DTOs
-│   ├── Tools/ContentQueryTool.php   # Tool definition for TYPO3 queries
-│   └── Service/                     # Rate limiting, context assembly
+│   ├── Service/
+│   │   ├── DiagnosticService.php    # 8-step LLM config chain checker
+│   │   ├── Dto/                     # Severity, DiagnosticCheck, DiagnosticResult
+│   │   ├── ContextAssemblyService.php # Context building for tasks
+│   │   ├── RateLimiterInterface.php # Rate limiter abstraction
+│   │   └── RateLimiterService.php   # Sliding window rate limiter
+│   └── Tools/ContentQueryTool.php   # Tool definition for TYPO3 queries
 ├── Configuration/
-│   ├── Backend/AjaxRoutes.php       # 11 AJAX route definitions
+│   ├── Backend/
+│   │   ├── AjaxRoutes.php           # 11 AJAX route definitions
+│   │   └── Modules.php              # Backend module registration (cowriter_status)
 │   ├── RTE/Cowriter.yaml            # CKEditor toolbar configuration
 │   └── Services.yaml                # DI container
 ├── Resources/Public/JavaScript/Ckeditor/
-│   ├── AIService.js                 # Frontend API client (all endpoints)
+│   ├── AIService.js                 # Frontend API client (all endpoints + AIServiceError)
 │   ├── cowriter.js                  # CKEditor plugin (4 toolbar items)
-│   ├── CowriterDialog.js            # Task dialog UI
+│   ├── CowriterDialog.js            # Task dialog UI (incl. status link on errors)
 │   └── UrlLoader.js                 # CSP-compliant URL injection
 └── Documentation/                   # RST documentation
 ```
@@ -178,8 +187,7 @@ All workflows are in `.github/workflows/`. Key workflows:
 |----------|------|---------|
 | **CI** | `ci.yml` | Multi-version matrix: PHP 8.2-8.5 x TYPO3 v13.4/v14.0 (lint, phpstan, unit, functional, integration, e2e tests) |
 | **PR Quality Gates** | `pr-quality.yml` | Auto-approve, Copilot review, merge readiness checks |
-| **Release** | `release.yml` | SBOM generation, Cosign signing, GitHub Release creation |
-| **SLSA Provenance** | `slsa-provenance.yml` | SLSA Level 3 supply-chain provenance attestation |
+| **Release** | `release.yml` | SBOM generation, Cosign signing, GitHub Release creation, TER publish |
 | **Security** | `security.yml` | Dependency audit, Trivy scanning, security analysis |
 | **CodeQL** | `codeql.yml` | GitHub code scanning for vulnerabilities |
 | **Dependency Review** | `dependency-review.yml` | Review new dependencies in PRs |

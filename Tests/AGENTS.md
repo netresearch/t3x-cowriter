@@ -3,7 +3,12 @@
 **Scope:** Unit and functional tests for t3_cowriter
 **Parent:** [../AGENTS.md](../AGENTS.md)
 
-## Coverage Target: >80%
+## Coverage Targets
+
+- **Codecov patch:** 80% (new code in PRs)
+- **Codecov project:** auto with 2% threshold
+- **Mutation testing (Infection):** Covered Code MSI >= 85%
+- **`#[CoversClass]` is mandatory:** PHPUnit only attributes coverage to classes listed in this attribute. If a test exercises DTO classes indirectly (e.g., DiagnosticServiceTest creates DiagnosticCheck instances), add `#[CoversClass]` for ALL exercised classes.
 
 ## TDD Workflow
 
@@ -89,31 +94,77 @@ composer ci:test && composer ci:test:all
 Tests/
 ├── Unit/
 │   ├── Controller/
-│   │   └── AjaxControllerTest.php
-│   ├── Domain/
-│   │   └── DTO/
-│   │       ├── CompleteRequestTest.php
-│   │       ├── CompleteResponseTest.php
-│   │       └── UsageDataTest.php
+│   │   ├── AjaxControllerTest.php
+│   │   ├── TranslationControllerTest.php
+│   │   ├── VisionControllerTest.php
+│   │   ├── TemplateControllerTest.php
+│   │   └── ToolControllerTest.php
+│   ├── Domain/DTO/
+│   │   ├── CompleteRequestTest.php
+│   │   ├── CompleteResponseTest.php
+│   │   ├── ExecuteTaskRequestTest.php
+│   │   ├── TranslationRequestTest.php
+│   │   ├── ToolRequestTest.php
+│   │   └── UsageDataTest.php
 │   ├── EventListener/
 │   │   └── InjectAjaxUrlsListenerTest.php
 │   └── Service/
+│       ├── ContextAssemblyServiceTest.php
+│       ├── DiagnosticServiceTest.php
 │       ├── RateLimiterServiceTest.php
 │       └── RateLimitResultTest.php
 ├── Integration/
-│   ├── AbstractIntegrationTestCase.php   # Base class with shared fixtures
+│   ├── AbstractIntegrationTestCase.php
 │   └── Controller/
-│       └── AjaxControllerIntegrationTest.php
+│       ├── AjaxControllerIntegrationTest.php
+│       ├── Backend/
+│       │   └── StatusControllerIntegrationTest.php
+│       ├── TranslationControllerIntegrationTest.php
+│       └── VisionControllerIntegrationTest.php
 ├── E2E/
-│   ├── AbstractE2ETestCase.php           # Base class for E2E tests
-│   └── CowriterWorkflowTest.php
+│   ├── AbstractE2ETestCase.php
+│   ├── CowriterWorkflowTest.php
+│   └── NewFeatureWorkflowTest.php
 ├── JavaScript/                           # Vitest tests for frontend
 │   ├── AIService.test.js
 │   ├── cowriter.test.js
+│   ├── CowriterDialog.test.js
 │   └── UrlLoader.test.js
 └── Support/
     └── TestQueryResult.php
 ```
+
+## TYPO3 Final Class Workarounds
+
+`ModuleTemplateFactory` and `ModuleTemplate` are `final` — cannot be mocked/stubbed. For controllers depending on them:
+
+```php
+// Use ReflectionClass to create instance without constructor
+$factory = (new \ReflectionClass(ModuleTemplateFactory::class))
+    ->newInstanceWithoutConstructor();
+
+// Test private methods via reflection
+$method = new ReflectionMethod(StatusController::class, 'buildFixUrls');
+$result = $method->invoke($controller, $checks);
+```
+
+## BackendUriBuilder Mocks
+
+`buildUriFromRoute()` returns `UriInterface`, not `string`. Always return a Uri object:
+
+```php
+$mock->method('buildUriFromRoute')
+    ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/path'));
+```
+
+## Constructor Change Checklist
+
+When adding parameters to a controller constructor, update ALL occurrences:
+```bash
+grep -rn "new AjaxController(" Tests/
+grep -rn "new TranslationController(" Tests/
+```
+This includes Unit/, Integration/, AND E2E/ tests.
 
 ## PHPUnit Attributes
 
