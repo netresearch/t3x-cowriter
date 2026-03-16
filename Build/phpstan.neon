@@ -9,3 +9,5 @@ parameters:
 
     excludePaths:
         - %currentWorkingDirectory%/ext_localconf.php
+
+    reportUnmatchedIgnoredErrors: false
