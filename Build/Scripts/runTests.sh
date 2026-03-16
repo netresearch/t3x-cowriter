@@ -44,6 +44,8 @@ Usage: $(basename "$0") [OPTIONS] <COMMAND>
 Commands:
     unit              Run unit tests
     functional        Run functional tests
+    integration       Run integration tests
+    e2e               Run end-to-end tests
     mutation          Run mutation tests with Infection
     phpstan           Run PHPStan static analysis
     cgl               Run PHP-CS-Fixer in dry-run mode
@@ -139,6 +141,36 @@ run_functional_tests() {
 }
 
 #
+# Run integration tests
+#
+run_integration_tests() {
+    info "Running integration tests..."
+    check_dependencies
+
+    if [[ -f "${ROOT_DIR}/Build/phpunit/IntegrationTests.xml" ]]; then
+        "${VENDOR_BIN}/phpunit" -c "${ROOT_DIR}/Build/phpunit/IntegrationTests.xml" ${EXTRA_TEST_OPTIONS}
+    else
+        warning "IntegrationTests.xml not found, skipping..."
+    fi
+    success "Integration tests completed"
+}
+
+#
+# Run end-to-end tests
+#
+run_e2e_tests() {
+    info "Running end-to-end tests..."
+    check_dependencies
+
+    if [[ -f "${ROOT_DIR}/Build/phpunit/E2ETests.xml" ]]; then
+        "${VENDOR_BIN}/phpunit" -c "${ROOT_DIR}/Build/phpunit/E2ETests.xml" ${EXTRA_TEST_OPTIONS}
+    else
+        warning "E2ETests.xml not found, skipping..."
+    fi
+    success "E2E tests completed"
+}
+
+#
 # Run mutation tests
 #
 run_mutation_tests() {
@@ -225,6 +257,8 @@ run_all() {
     run_rector
     run_unit_tests
     run_functional_tests
+    run_integration_tests
+    run_e2e_tests
     success "All tests and checks completed"
 }
 
@@ -264,6 +298,14 @@ parse_args() {
                 ;;
             functional)
                 run_functional_tests
+                exit 0
+                ;;
+            integration)
+                run_integration_tests
+                exit 0
+                ;;
+            e2e)
+                run_e2e_tests
                 exit 0
                 ;;
             mutation)
