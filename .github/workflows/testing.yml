@@ -1,158 +1,24 @@
 name: Extended Testing
+
 on:
   push:
     branches: [main]
   pull_request:
-permissions:
-  contents: read
+
+permissions: {}
+
 jobs:
-  php-coverage:
-    name: PHP Coverage (${{ matrix.suite }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - suite: unit
-            config: Build/phpunit/UnitTests.xml
-            testsuite: Unit Tests
-            flag: php-unit
-          - suite: integration
-            config: Build/phpunit/IntegrationTests.xml
-            testsuite: Integration Tests
-            flag: php-integration
-          - suite: e2e
-            config: Build/phpunit/E2ETests.xml
-            testsuite: E2E Tests
-            flag: php-e2e
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # 2.37.0
-        with:
-          php-version: '8.5'
-          extensions: pcov
-          coverage: pcov
-          tools: composer:v2
-
-      - name: Install dependencies
-        run: composer install --no-progress
-
-      - name: Run tests with coverage
-        env:
-          PHPUNIT_CONFIG: ${{ matrix.config }}
-          PHPUNIT_SUITE: ${{ matrix.testsuite }}
-          COVERAGE_FILE: .Build/coverage/${{ matrix.suite }}-clover.xml
-        run: |
-          mkdir -p .Build/coverage
-          .Build/bin/phpunit -c "$PHPUNIT_CONFIG" \
-            --testsuite="$PHPUNIT_SUITE" \
-            --coverage-clover="$COVERAGE_FILE"
-
-      - name: Upload coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-        with:
-          files: .Build/coverage/${{ matrix.suite }}-clover.xml
-          flags: ${{ matrix.flag }}
-          name: php-${{ matrix.suite }}
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  mutation-testing:
-    name: Mutation Testing (PHP)
-    runs-on: ubuntu-latest
-    needs: php-coverage
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # 2.37.0
-        with:
-          php-version: '8.5'
-          extensions: pcov
-          coverage: pcov
-          tools: composer:v2
-
-      - name: Install dependencies
-        run: composer install --no-progress
-
-      - name: Generate coverage for infection
-        run: |
-          mkdir -p .Build/logs
-          .Build/bin/phpunit -c Build/phpunit/UnitTests.xml --testsuite="Unit Tests" --coverage-xml=.Build/logs/coverage-xml --log-junit=.Build/logs/junit.xml
-
-      - name: Run mutation testing
-        run: .Build/bin/infection --threads=4 --no-progress --logger-github --skip-initial-tests --coverage=.Build/logs --test-framework-options="--testsuite='Unit Tests'"
-        env:
-          INFECTION_DASHBOARD_API_KEY: ${{ secrets.INFECTION_DASHBOARD_API_KEY }}
-
-  js-coverage:
-    name: JavaScript Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: npm ci || npm install
-
-      - name: Run tests with coverage
-        run: npx vitest run --coverage
-
-      - name: Upload JS coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-        with:
-          files: coverage/lcov.info
-          flags: javascript
-          name: js-coverage
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  fuzz-testing:
-    name: Fuzz Testing (PHP)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # 2.37.0
-        with:
-          php-version: '8.5'
-          tools: composer:v2
-
-      - name: Install dependencies
-        run: composer install --no-progress
-
-      - name: Run fuzz tests
-        run: .Build/bin/phpunit -c Build/phpunit/UnitTests.xml --testsuite="Unit Tests" --group=fuzz
+  extended:
+    uses: netresearch/typo3-ci-workflows/.github/workflows/extended-testing.yml@main
+    permissions:
+      contents: read
+    with:
+      php-test-suites: >-
+        [
+          {"suite":"unit","config":"Build/phpunit/UnitTests.xml","testsuite":"Unit Tests","flag":"php-unit"},
+          {"suite":"integration","config":"Build/phpunit/IntegrationTests.xml","testsuite":"Integration Tests","flag":"php-integration"},
+          {"suite":"e2e","config":"Build/phpunit/E2ETests.xml","testsuite":"E2E Tests","flag":"php-e2e"}
+        ]
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      INFECTION_DASHBOARD_API_KEY: ${{ secrets.INFECTION_DASHBOARD_API_KEY }}
