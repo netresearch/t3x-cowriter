@@ -13,12 +13,8 @@ jobs:
     permissions:
       contents: read
     with:
-      php-test-suites: >-
-        [
-          {"suite":"unit","config":"Build/phpunit/UnitTests.xml","testsuite":"Unit Tests","flag":"php-unit"},
-          {"suite":"integration","config":"Build/phpunit/IntegrationTests.xml","testsuite":"Integration Tests","flag":"php-integration"},
-          {"suite":"e2e","config":"Build/phpunit/E2ETests.xml","testsuite":"E2E Tests","flag":"php-e2e"}
-        ]
+      run-integration-tests: true
+      run-e2e-tests: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       INFECTION_DASHBOARD_API_KEY: ${{ secrets.INFECTION_DASHBOARD_API_KEY }}
