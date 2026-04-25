@@ -72,7 +72,7 @@ final readonly class CompleteResponse implements JsonSerializable
      */
     public static function success(CompletionResponse $response): self
     {
-        $content  = $response->content ?? '';
+        $content  = $response->content;
         $thinking = $response->thinking;
 
         // Fallback: only for clearly non-substantive content (empty/whitespace
@@ -85,8 +85,8 @@ final readonly class CompleteResponse implements JsonSerializable
         return new self(
             success: true,
             content: $content,
-            model: $response->model ?? '',
-            finishReason: $response->finishReason ?? '',
+            model: $response->model,
+            finishReason: $response->finishReason,
             usage: UsageData::fromUsageStatistics($response->usage),
             wasTruncated: $response->wasTruncated(),
             wasFiltered: $response->wasFiltered(),
