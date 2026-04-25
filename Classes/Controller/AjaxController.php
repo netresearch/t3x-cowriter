@@ -161,9 +161,9 @@ final readonly class AjaxController
 
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'      => true,
-                'content'      => $response->content ?? '',
-                'model'        => $response->model ?? '',
-                'finishReason' => $response->finishReason ?? '',
+                'content'      => $response->content,
+                'model'        => $response->model,
+                'finishReason' => $response->finishReason,
             ], $rateLimitResult);
         } catch (ProviderException $e) {
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
@@ -630,7 +630,7 @@ final readonly class AjaxController
             $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
 
             // Post-process: convert markdown to HTML if the model ignored the formatting instruction
-            $rawContent       = $response->content ?? '';
+            $rawContent       = $response->content;
             $convertedContent = $this->convertMarkdownToHtml($rawContent);
             if ($convertedContent !== $rawContent) {
                 $response = new CompletionResponse(
