@@ -11,7 +11,7 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
-use Netresearch\NrLlm\Service\Feature\TranslationService;
+use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\T3Cowriter\Controller\TranslationController;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
@@ -34,7 +34,7 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(TranslationController::class)]
 final class TranslationControllerTest extends TestCase
 {
-    private TranslationService&Stub $translationServiceStub;
+    private TranslationServiceInterface&Stub $translationServiceStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
     private BackendUriBuilder&Stub $backendUriBuilderStub;
     private DiagnosticService&Stub $diagnosticServiceStub;
@@ -42,7 +42,7 @@ final class TranslationControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->translationServiceStub = $this->createStub(TranslationService::class);
+        $this->translationServiceStub = $this->createStub(TranslationServiceInterface::class);
         $this->rateLimiterStub        = $this->createStub(RateLimiterInterface::class);
         $this->backendUriBuilderStub  = $this->createStub(BackendUriBuilder::class);
         $this->backendUriBuilderStub->method('buildUriFromRoute')
@@ -332,7 +332,7 @@ final class TranslationControllerTest extends TestCase
         $capturedArgs = [];
 
         // Use a mock to capture exact arguments
-        $translationServiceMock = $this->createMock(TranslationService::class);
+        $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
         $translationServiceMock->expects(self::once())
             ->method('translate')
             ->willReturnCallback(static function (

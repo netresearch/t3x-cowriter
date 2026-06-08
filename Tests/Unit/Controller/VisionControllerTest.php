@@ -11,7 +11,7 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
-use Netresearch\NrLlm\Service\Feature\VisionService;
+use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\T3Cowriter\Controller\VisionController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -28,13 +28,13 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(VisionController::class)]
 final class VisionControllerTest extends TestCase
 {
-    private VisionService&Stub $visionServiceStub;
+    private VisionServiceInterface&Stub $visionServiceStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
     private VisionController $subject;
 
     protected function setUp(): void
     {
-        $this->visionServiceStub = $this->createStub(VisionService::class);
+        $this->visionServiceStub = $this->createStub(VisionServiceInterface::class);
         $this->rateLimiterStub   = $this->createStub(RateLimiterInterface::class);
         $contextStub             = $this->createStub(Context::class);
 

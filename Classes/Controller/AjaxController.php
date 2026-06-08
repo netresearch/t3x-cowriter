@@ -837,7 +837,7 @@ final readonly class AjaxController
      *
      * @param array<mixed> $rawMessages
      *
-     * @return array<int, array{role: string, content: string}>|null Validated messages or null on failure
+     * @return list<array{role: string, content: string}>|null Validated messages or null on failure
      */
     private function validateMessages(array $rawMessages): ?array
     {

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use JsonException;
-use Netresearch\NrLlm\Service\Feature\TranslationService;
+use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
@@ -33,7 +33,7 @@ use TYPO3\CMS\Core\Http\JsonResponse;
 final readonly class TranslationController
 {
     public function __construct(
-        private TranslationService $translationService,
+        private TranslationServiceInterface $translationService,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,

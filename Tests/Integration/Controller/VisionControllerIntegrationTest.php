@@ -11,7 +11,7 @@ namespace Netresearch\T3Cowriter\Tests\Integration\Controller;
 
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
-use Netresearch\NrLlm\Service\Feature\VisionService;
+use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\T3Cowriter\Controller\VisionController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -35,7 +35,7 @@ use TYPO3\CMS\Core\Context\Context;
 final class VisionControllerIntegrationTest extends AbstractIntegrationTestCase
 {
     private VisionController $subject;
-    private VisionService&MockObject $visionServiceMock;
+    private VisionServiceInterface&MockObject $visionServiceMock;
     private RateLimiterInterface&MockObject $rateLimiterMock;
     private Context&MockObject $contextMock;
 
@@ -44,7 +44,7 @@ final class VisionControllerIntegrationTest extends AbstractIntegrationTestCase
     {
         parent::setUp();
 
-        $this->visionServiceMock = $this->createMock(VisionService::class);
+        $this->visionServiceMock = $this->createMock(VisionServiceInterface::class);
         $this->rateLimiterMock   = $this->createMock(RateLimiterInterface::class);
         $this->contextMock       = $this->createMock(Context::class);
 
