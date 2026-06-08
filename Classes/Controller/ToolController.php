@@ -118,7 +118,7 @@ final readonly class ToolController
      *
      * @param list<string> $enabledTools
      *
-     * @return array<int, array{type: string, function: array{name: string, description: string, parameters: array<string, mixed>}}>
+     * @return list<array{type: string, function: array{name: string, description: string, parameters: array<string, mixed>}}>
      */
     private function resolveTools(array $enabledTools): array
     {

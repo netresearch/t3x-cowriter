@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use JsonException;
-use Netresearch\NrLlm\Service\Feature\VisionService;
+use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Domain\DTO\VisionRequest;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -30,7 +30,7 @@ use TYPO3\CMS\Core\Http\JsonResponse;
 final readonly class VisionController
 {
     public function __construct(
-        private VisionService $visionService,
+        private VisionServiceInterface $visionService,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,

@@ -14,8 +14,8 @@ use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
 use Netresearch\NrLlm\Domain\Repository\PromptTemplateRepository;
-use Netresearch\NrLlm\Service\Feature\TranslationService;
-use Netresearch\NrLlm\Service\Feature\VisionService;
+use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
+use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Controller\TranslationController;
 use Netresearch\T3Cowriter\Controller\VisionController;
@@ -53,11 +53,11 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
     /**
      * Create a VisionController with mocked dependencies.
      *
-     * @return array{controller: VisionController, visionService: VisionService&MockObject, rateLimiter: RateLimiterInterface&MockObject, context: Context&MockObject}
+     * @return array{controller: VisionController, visionService: VisionServiceInterface&MockObject, rateLimiter: RateLimiterInterface&MockObject, context: Context&MockObject}
      */
     private function createVisionStack(): array
     {
-        $visionService = $this->createMock(VisionService::class);
+        $visionService = $this->createMock(VisionServiceInterface::class);
         $rateLimiter   = $this->createMock(RateLimiterInterface::class);
         $context       = $this->createMock(Context::class);
 
@@ -91,11 +91,11 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
     /**
      * Create a TranslationController with mocked dependencies.
      *
-     * @return array{controller: TranslationController, translationService: TranslationService&MockObject, rateLimiter: RateLimiterInterface&MockObject, context: Context&MockObject}
+     * @return array{controller: TranslationController, translationService: TranslationServiceInterface&MockObject, rateLimiter: RateLimiterInterface&MockObject, context: Context&MockObject}
      */
     private function createTranslationStack(): array
     {
-        $translationService = $this->createMock(TranslationService::class);
+        $translationService = $this->createMock(TranslationServiceInterface::class);
         $rateLimiter        = $this->createMock(RateLimiterInterface::class);
         $context            = $this->createMock(Context::class);
 

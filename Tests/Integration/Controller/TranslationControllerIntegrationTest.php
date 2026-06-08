@@ -11,7 +11,7 @@ namespace Netresearch\T3Cowriter\Tests\Integration\Controller;
 
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
-use Netresearch\NrLlm\Service\Feature\TranslationService;
+use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\T3Cowriter\Controller\TranslationController;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
@@ -38,7 +38,7 @@ use TYPO3\CMS\Core\Context\Context;
 final class TranslationControllerIntegrationTest extends AbstractIntegrationTestCase
 {
     private TranslationController $subject;
-    private TranslationService&MockObject $translationServiceMock;
+    private TranslationServiceInterface&MockObject $translationServiceMock;
     private RateLimiterInterface&MockObject $rateLimiterMock;
     private Context&MockObject $contextMock;
 
@@ -47,7 +47,7 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
     {
         parent::setUp();
 
-        $this->translationServiceMock = $this->createMock(TranslationService::class);
+        $this->translationServiceMock = $this->createMock(TranslationServiceInterface::class);
         $this->rateLimiterMock        = $this->createMock(RateLimiterInterface::class);
         $this->contextMock            = $this->createMock(Context::class);
 
