@@ -8,67 +8,20 @@ on:
   schedule:
     - cron: '0 6 * * 1'
 
-permissions: {}
+permissions:
+  contents: read
 
+# Per-extension test matrix (intentional-drift). Security/quality jobs are in checks.yml.
 jobs:
   ci:
     uses: netresearch/typo3-ci-workflows/.github/workflows/ci.yml@main
     permissions:
       contents: read
     with:
-        php-versions: '["8.2","8.3","8.4","8.5"]'
-        typo3-versions: '["^13.4","^14.0"]'
-        typo3-packages: '["typo3/cms-core","typo3/cms-backend","typo3/cms-rte-ckeditor"]'
-        run-functional-tests: true
-        upload-coverage: true
+      php-versions: '["8.2","8.3","8.4","8.5"]'
+      typo3-versions: '["^13.4","^14.0"]'
+      typo3-packages: '["typo3/cms-core","typo3/cms-backend","typo3/cms-rte-ckeditor"]'
+      run-functional-tests: true
+      upload-coverage: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  security:
-    uses: netresearch/typo3-ci-workflows/.github/workflows/security.yml@main
-    permissions:
-      contents: read
-      security-events: write
-
-  fuzz:
-    uses: netresearch/typo3-ci-workflows/.github/workflows/fuzz.yml@main
-    permissions:
-      contents: read
-    with:
-      run-fuzz-tests: false
-      run-mutation-tests: false
-
-  license-check:
-    uses: netresearch/typo3-ci-workflows/.github/workflows/license-check.yml@main
-    permissions:
-      contents: read
-
-  codeql:
-    uses: netresearch/.github/.github/workflows/codeql.yml@main
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-
-  scorecard:
-    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch)
-    uses: netresearch/.github/.github/workflows/scorecard.yml@main
-    permissions:
-      contents: read
-      security-events: write
-      id-token: write
-      actions: read
-
-  dependency-review:
-    if: github.event_name == 'pull_request'
-    uses: netresearch/.github/.github/workflows/dependency-review.yml@main
-    permissions:
-      contents: read
-      pull-requests: write
-
-  pr-quality:
-    if: github.event_name == 'pull_request'
-    uses: netresearch/.github/.github/workflows/pr-quality.yml@main
-    permissions:
-      contents: read
-      pull-requests: write
