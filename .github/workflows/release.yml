@@ -15,8 +15,8 @@ jobs:
       id-token: write
       attestations: write
     with:
-      archive-prefix: t3-cowriter
-      package-name: netresearch/t3-cowriter
-      extension-key: t3_cowriter
+      archive-prefix: 't3-cowriter'
+      package-name: 'netresearch/t3-cowriter'
+      extension-key: 't3_cowriter'
     secrets:
       TYPO3_TER_ACCESS_TOKEN: ${{ secrets.TYPO3_TER_ACCESS_TOKEN }}
