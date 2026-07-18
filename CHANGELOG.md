@@ -1,3 +1,42 @@
+# Unreleased
+
+## CHANGE
+
+- Adopt nr-llm 0.22: require `netresearch/nr-llm ^0.22.0` (was 0.3–0.x)
+- Migrate from the removed nr-llm `PromptTemplate` stack to `Task` (nr-llm ADR-069); the CKEditor task dialog now reads tasks from `tx_nrllm_task` with `category = 'content'`
+- Classify LLM failures via nr-llm typed exceptions (`ConfigurationNotFoundException`, `ProviderResponseException` HTTP status) instead of exception-message string-matching
+- Declare LLM tools with the typed `ToolSpec` value object instead of hand-built arrays
+- Raise the TYPO3 v14 floor to v14.3 (nr-llm 0.22 requires `^14.3`, dropping 14.0–14.2)
+- Correct `ext_emconf.php` constraints (`nr_llm` 0.22.0–0.22.99, TYPO3/rte_ckeditor up to 14.99.99) to match `composer.json`
+
+# 3.1.1 (2026-03-24)
+
+## FIX
+
+- Align the `nr_llm` version constraint between `composer.json` and `ext_emconf.php` (>=0.3 <1.0)
+- Address TYPO3 extension assessment findings
+
+## BUILD
+
+- Share the extended-testing CI workflow from `netresearch/typo3-ci-workflows`
+- Remove redundant `phpunit` from `require-dev` (provided by the CI workflows)
+
+# 3.1.0 (2026-03-14)
+
+## FEATURE
+
+- Diagnostic service and "Setup Status" backend module reporting LLM configuration health
+
+## BUILD
+
+- Integrate `netresearch/typo3-ci-workflows` as a Composer package
+- Raise mutation score to 85%+ (MSI) and improve patch coverage
+
+## DOCS
+
+- Replace outdated TYPO3 v11 screenshots with TYPO3 v14 captures
+- Use interlink references for nr-llm documentation
+
 # 3.0.0 (2026-03-10)
 
 ## BREAKING
