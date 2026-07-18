@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Tools;
 
+use Netresearch\NrLlm\Domain\ValueObject\ToolSpec;
 use Netresearch\T3Cowriter\Tools\ContentQueryTool;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -18,29 +19,27 @@ use PHPUnit\Framework\TestCase;
 final class ContentQueryToolTest extends TestCase
 {
     #[Test]
-    public function definitionReturnsValidToolSchema(): void
+    public function specReturnsValidToolSpec(): void
     {
-        $definition = ContentQueryTool::definition();
+        $spec = ContentQueryTool::spec();
 
-        self::assertSame('function', $definition['type']);
-        self::assertSame('query_content', $definition['function']['name']);
-        self::assertArrayHasKey('parameters', $definition['function']);
+        self::assertSame(ToolSpec::TYPE_FUNCTION, $spec->type);
+        self::assertSame('query_content', $spec->name);
+        self::assertArrayHasKey('properties', $spec->parameters);
     }
 
     #[Test]
-    public function definitionRequiresPageId(): void
+    public function specRequiresPageId(): void
     {
-        $definition = ContentQueryTool::definition();
-        $required   = $definition['function']['parameters']['required'];
+        $required = ContentQueryTool::spec()->parameters['required'];
 
         self::assertContains('pageId', $required);
     }
 
     #[Test]
-    public function definitionIncludesContentTypeProperty(): void
+    public function specIncludesContentTypeProperty(): void
     {
-        $definition = ContentQueryTool::definition();
-        $properties = $definition['function']['parameters']['properties'];
+        $properties = ContentQueryTool::spec()->parameters['properties'];
 
         self::assertArrayHasKey('contentType', $properties);
         self::assertSame('string', $properties['contentType']['type']);

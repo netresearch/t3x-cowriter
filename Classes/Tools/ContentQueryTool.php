@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tools;
 
+use Netresearch\NrLlm\Domain\ValueObject\ToolSpec;
+
 /**
  * Tool definition for LLM function calling.
  *
@@ -20,32 +22,27 @@ namespace Netresearch\T3Cowriter\Tools;
 final class ContentQueryTool
 {
     /**
-     * Get the tool definition for the LLM API.
-     *
-     * @return array{type: string, function: array{name: string, description: string, parameters: array<string, mixed>}}
+     * Get the typed tool specification for the LLM API.
      */
-    public static function definition(): array
+    public static function spec(): ToolSpec
     {
-        return [
-            'type'     => 'function',
-            'function' => [
-                'name'        => 'query_content',
-                'description' => 'Query TYPO3 content elements by type or page. Returns metadata about content elements on a specific page.',
-                'parameters'  => [
-                    'type'       => 'object',
-                    'properties' => [
-                        'pageId' => [
-                            'type'        => 'integer',
-                            'description' => 'TYPO3 page UID to query content from',
-                        ],
-                        'contentType' => [
-                            'type'        => 'string',
-                            'description' => 'Content element type filter (e.g., text, textmedia, header)',
-                        ],
+        return ToolSpec::function(
+            'query_content',
+            'Query TYPO3 content elements by type or page. Returns metadata about content elements on a specific page.',
+            [
+                'type'       => 'object',
+                'properties' => [
+                    'pageId' => [
+                        'type'        => 'integer',
+                        'description' => 'TYPO3 page UID to query content from',
                     ],
-                    'required' => ['pageId'],
+                    'contentType' => [
+                        'type'        => 'string',
+                        'description' => 'Content element type filter (e.g., text, textmedia, header)',
+                    ],
                 ],
+                'required' => ['pageId'],
             ],
-        ];
+        );
     }
 }
