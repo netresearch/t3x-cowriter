@@ -7,7 +7,7 @@
 - Classify LLM failures via nr-llm typed exceptions (`ConfigurationNotFoundException`, `ProviderResponseException` HTTP status) instead of exception-message string-matching
 - Declare LLM tools with the typed `ToolSpec` value object instead of hand-built arrays
 - Raise the TYPO3 v14 floor to v14.3 (nr-llm 0.22 requires `^14.3`, dropping 14.0–14.2)
-- Correct `ext_emconf.php` constraints (`nr_llm` 0.22.0–0.22.99, TYPO3/rte_ckeditor up to 14.99.99) to match `composer.json`
+- Correct `ext_emconf.php` constraints: `nr_llm` to 0.22.0–0.22.99 (matching composer `^0.22.0`) and the TYPO3/rte_ckeditor upper bound to 14.99.99. `composer.json` (`^13.4 || ^14.3`) stays authoritative for the TYPO3 range — ext_emconf's single min–max range cannot express the 14.0–14.2 exclusion
 
 # 3.1.1 (2026-03-24)
 
