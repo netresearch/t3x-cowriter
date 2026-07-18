@@ -15,6 +15,8 @@ use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
+use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
+use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
@@ -39,6 +41,9 @@ final readonly class TranslationController
         private LoggerInterface $logger,
         private BackendUriBuilder $backendUriBuilder,
         private DiagnosticService $diagnosticService,
+        // Stateless; defaulted so manual constructors need no extra argument while
+        // the Symfony container still autowires the shared service.
+        private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
     ) {}
 
     public function translateAction(ServerRequestInterface $request): ResponseInterface
@@ -131,57 +136,49 @@ final readonly class TranslationController
     }
 
     /**
-     * Map known exception messages to user-friendly error strings.
+     * Map a classified nr-llm failure to a user-friendly error string.
      */
     private function getUserFriendlyError(Throwable $e): string
     {
-        if ($this->isConfigurationError($e)) {
-            try {
-                $failure = $this->diagnosticService->runFirst()->getFirstFailure();
-            } catch (Throwable) {
-                $failure = null;
-            }
-
-            if ($failure instanceof DiagnosticCheck) {
-                return $failure->message
-                    . ' Ask an administrator to check the Cowriter Setup Status page for details.';
-            }
-
-            return 'Translation is not configured yet.'
-                . ' Ask an administrator to check the Cowriter Setup Status page for details.';
-        }
-
-        $message = $e->getMessage();
-
-        if (str_contains($message, '401')
-            || str_contains($message, 'Unauthorized')
-            || str_contains($message, 'authentication')
-        ) {
-            return 'The LLM provider rejected the API key.'
+        return match ($this->errorClassifier->classify($e)) {
+            LlmErrorKind::Configuration  => $this->configurationErrorMessage(),
+            LlmErrorKind::Authentication => 'The LLM provider rejected the API key.'
                 . ' An administrator should check the provider'
-                . ' configuration in the LLM module.';
-        }
-
-        if (str_contains($message, '429')
-            || str_contains($message, 'rate limit')
-        ) {
-            return 'The LLM provider rate limit was exceeded.'
-                . ' Please wait a moment and try again.';
-        }
-
-        return 'Translation failed.'
-            . ' Check the TYPO3 system log for details.';
+                . ' configuration in the LLM module.',
+            LlmErrorKind::RateLimit => 'The LLM provider rate limit was exceeded.'
+                . ' Please wait a moment and try again.',
+            LlmErrorKind::Unknown => 'Translation failed.'
+                . ' Check the TYPO3 system log for details.',
+        };
     }
 
     /**
-     * Check whether the exception indicates a missing LLM configuration.
+     * The configuration-missing message, enriched with the first failing setup
+     * diagnostic when one is available.
+     */
+    private function configurationErrorMessage(): string
+    {
+        try {
+            $failure = $this->diagnosticService->runFirst()->getFirstFailure();
+        } catch (Throwable) {
+            $failure = null;
+        }
+
+        if ($failure instanceof DiagnosticCheck) {
+            return $failure->message
+                . ' Ask an administrator to check the Cowriter Setup Status page for details.';
+        }
+
+        return 'Translation is not configured yet.'
+            . ' Ask an administrator to check the Cowriter Setup Status page for details.';
+    }
+
+    /**
+     * Whether the exception indicates a missing LLM configuration.
      */
     private function isConfigurationError(Throwable $exception): bool
     {
-        $message = $exception->getMessage();
-
-        return str_contains($message, 'no default provider configured')
-            || str_contains($message, 'No default LLM configuration');
+        return $this->errorClassifier->classify($exception) === LlmErrorKind::Configuration;
     }
 
     /**

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
-use Netresearch\NrLlm\Domain\Model\PromptTemplate;
-use Netresearch\NrLlm\Domain\Repository\PromptTemplateRepository;
+use Netresearch\NrLlm\Domain\Model\Task;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
@@ -30,7 +30,7 @@ use TYPO3\CMS\Core\Http\JsonResponse;
 final readonly class TemplateController
 {
     public function __construct(
-        private PromptTemplateRepository $templateRepository,
+        private TaskRepository $templateRepository,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
@@ -51,15 +51,15 @@ final readonly class TemplateController
             $result    = [];
 
             foreach ($templates as $template) {
-                if (!$template instanceof PromptTemplate) {
+                if (!$template instanceof Task) {
                     continue;
                 }
 
                 $result[] = [
                     'identifier'  => $template->getIdentifier(),
-                    'name'        => $template->getTitle(),
-                    'description' => $template->getDescription() ?? '',
-                    'category'    => $template->getFeature(),
+                    'name'        => $template->getName(),
+                    'description' => $template->getDescription(),
+                    'category'    => $template->getCategory(),
                 ];
             }
 

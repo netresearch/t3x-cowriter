@@ -9,11 +9,10 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\E2E;
 
-use Netresearch\NrLlm\Domain\Model\PromptTemplate;
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
-use Netresearch\NrLlm\Domain\Repository\PromptTemplateRepository;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\T3Cowriter\Controller\TemplateController;
@@ -23,6 +22,7 @@ use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\TaskStubTrait;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -46,6 +46,8 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(TemplateController::class)]
 final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 {
+    use TaskStubTrait;
+
     // =========================================================================
     // Helper: Create Vision controller stack
     // =========================================================================
@@ -139,11 +141,11 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
     /**
      * Create a TemplateController with mocked dependencies.
      *
-     * @return array{controller: TemplateController, templateRepo: PromptTemplateRepository&MockObject, rateLimiter: RateLimiterInterface&MockObject, context: Context&MockObject}
+     * @return array{controller: TemplateController, templateRepo: TaskRepository&MockObject, rateLimiter: RateLimiterInterface&MockObject, context: Context&MockObject}
      */
     private function createTemplateStack(): array
     {
-        $templateRepo = $this->createMock(PromptTemplateRepository::class);
+        $templateRepo = $this->createMock(TaskRepository::class);
         $rateLimiter  = $this->createMock(RateLimiterInterface::class);
         $context      = $this->createMock(Context::class);
 
@@ -180,28 +182,6 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
     private function createStubRequest(): ServerRequestInterface
     {
         return self::createStub(ServerRequestInterface::class);
-    }
-
-    // =========================================================================
-    // Helper: Create a PromptTemplate stub
-    // =========================================================================
-
-    /**
-     * @return PromptTemplate&MockObject
-     */
-    private function createPromptTemplateStub(
-        string $identifier,
-        string $title,
-        ?string $description,
-        string $feature,
-    ): PromptTemplate&MockObject {
-        $template = $this->createMock(PromptTemplate::class);
-        $template->method('getIdentifier')->willReturn($identifier);
-        $template->method('getTitle')->willReturn($title);
-        $template->method('getDescription')->willReturn($description);
-        $template->method('getFeature')->willReturn($feature);
-
-        return $template;
     }
 
     // =========================================================================
@@ -502,8 +482,8 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
     {
         // Arrange
         $stack     = $this->createTemplateStack();
-        $template1 = $this->createPromptTemplateStub('improve-text', 'Improve Text', 'Improves text quality', 'writing');
-        $template2 = $this->createPromptTemplateStub('summarize', 'Summarize', 'Creates summaries', 'analysis');
+        $template1 = $this->createTaskStub('improve-text', 'Improve Text', 'Improves text quality', 'writing');
+        $template2 = $this->createTaskStub('summarize', 'Summarize', 'Creates summaries', 'analysis');
 
         $queryResult = new TestQueryResult([$template1, $template2]);
         $stack['templateRepo']->method('findActive')->willReturn($queryResult);
@@ -572,9 +552,9 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
     #[Test]
     public function templateWorkflowSkipsInvalidObjects(): void
     {
-        // Arrange: mixed objects — only PromptTemplate instances should appear
+        // Arrange: mixed objects — only Task instances should appear
         $stack         = $this->createTemplateStack();
-        $validTemplate = $this->createPromptTemplateStub('valid', 'Valid Template', 'A valid one', 'writing');
+        $validTemplate = $this->createTaskStub('valid', 'Valid Template', 'A valid one', 'writing');
         $invalidObject = new stdClass();
 
         $queryResult = new TestQueryResult([$validTemplate, $invalidObject, $validTemplate]);
@@ -584,7 +564,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
         $request  = $this->createStubRequest();
         $response = $stack['controller']->listAction($request);
 
-        // Assert: only the 2 valid PromptTemplate instances appear
+        // Assert: only the 2 valid Task instances appear
         self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($data);

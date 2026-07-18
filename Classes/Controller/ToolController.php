@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use JsonException;
+use Netresearch\NrLlm\Domain\ValueObject\ToolSpec;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\T3Cowriter\Domain\DTO\ToolRequest;
@@ -118,13 +119,12 @@ final readonly class ToolController
      *
      * @param list<string> $enabledTools
      *
-     * @return list<array{type: string, function: array{name: string, description: string, parameters: array<string, mixed>}}>
+     * @return list<ToolSpec>
      */
     private function resolveTools(array $enabledTools): array
     {
-        /** @var array<string, array{type: string, function: array{name: string, description: string, parameters: array<string, mixed>}}> $allTools */
         $allTools = [
-            'query_content' => ContentQueryTool::definition(),
+            'query_content' => ContentQueryTool::spec(),
         ];
 
         if ($enabledTools === []) {

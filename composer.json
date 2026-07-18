@@ -52,13 +52,13 @@
     },
     "require": {
         "php": "^8.2",
-        "typo3/cms-core": "^13.4 || ^14.0",
-        "typo3/cms-backend": "^13.4 || ^14.0",
-        "typo3/cms-rte-ckeditor": "^13.4 || ^14.0",
-        "netresearch/nr-llm": ">=0.3 <1.0"
+        "typo3/cms-core": "^13.4 || ^14.3",
+        "typo3/cms-backend": "^13.4 || ^14.3",
+        "typo3/cms-rte-ckeditor": "^13.4 || ^14.3",
+        "netresearch/nr-llm": "^0.22.0"
     },
     "require-dev": {
-        "netresearch/typo3-ci-workflows": "~1.2.0 || ~1.3.0"
+        "netresearch/typo3-ci-workflows": "^1.3"
     },
     "autoload": {
         "psr-4": {
