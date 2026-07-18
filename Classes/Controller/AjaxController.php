@@ -16,6 +16,7 @@ use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
+use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
@@ -162,7 +163,7 @@ final readonly class AjaxController
         }
 
         try {
-            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $this->budgetMetadata());
 
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'      => true,
@@ -256,7 +257,7 @@ final readonly class AjaxController
                 ['role' => 'user', 'content' => $dto->prompt],
             ];
 
-            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $this->budgetMetadata());
 
             return $this->jsonResponseWithRateLimitHeaders(
                 CompleteResponse::success($response)->jsonSerialize(),
@@ -335,7 +336,7 @@ final readonly class AjaxController
         // This implementation collects chunks and returns them in SSE format for compatibility
         try {
             $chunks    = [];
-            $generator = $this->llmServiceManager->streamChatWithConfiguration($messages, $configuration);
+            $generator = $this->llmServiceManager->streamChatWithConfiguration($messages, $configuration, [], $this->budgetMetadata());
 
             foreach ($generator as $chunk) {
                 $chunks[] = 'data: ' . json_encode(['content' => $chunk], JSON_THROW_ON_ERROR) . "\n\n";
@@ -632,7 +633,7 @@ final readonly class AjaxController
         }
 
         try {
-            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $this->budgetMetadata());
 
             // Post-process: convert markdown to HTML if the model ignored the formatting instruction
             $rawContent       = $response->content;
@@ -882,10 +883,30 @@ final readonly class AjaxController
      */
     private function checkRateLimit(): RateLimitResult
     {
+        return $this->rateLimiter->checkLimit((string) $this->currentBackendUserId());
+    }
+
+    /**
+     * The current backend user id, or 0 when there is no session.
+     */
+    private function currentBackendUserId(): int
+    {
         /** @var int|string $userId */
         $userId = $this->context->getPropertyFromAspect('backend.user', 'id', 0);
 
-        return $this->rateLimiter->checkLimit((string) $userId);
+        return (int) $userId;
+    }
+
+    /**
+     * nr-llm budget-attribution metadata for the current backend user, so
+     * per-user BudgetMiddleware enforcement applies to cowriter traffic.
+     * A uid of 0 (no session) is passed through and skipped by the middleware.
+     *
+     * @return array<string, int>
+     */
+    private function budgetMetadata(): array
+    {
+        return [BudgetMiddleware::METADATA_BE_USER_UID => $this->currentBackendUserId()];
     }
 
     /**

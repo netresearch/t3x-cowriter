@@ -88,10 +88,10 @@ final readonly class TranslationController
         }
 
         try {
-            $options = new TranslationOptions(
+            $options = (new TranslationOptions(
                 formality: $translationRequest->formality,
                 domain: $translationRequest->domain,
-            );
+            ))->withBeUserUid((int) $userId);
 
             // When an editor pins a stored configuration, route through the
             // per-configuration path (nr-llm 0.22, #428) so the configuration's
