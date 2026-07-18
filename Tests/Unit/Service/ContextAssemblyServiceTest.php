@@ -162,6 +162,56 @@ final class ContextAssemblyServiceTest extends TestCase
     }
 
     #[Test]
+    public function nonAdminWithPageAccessReceivesContext(): void
+    {
+        // Regression: userHasPageAccess() previously fetched a uid-only page
+        // row, so core calcPerms() returned Permission::NOTHING and denied
+        // EVERY non-admin editor. The access decision must be driven by a row
+        // that carries the perms_* columns. This models doesUserHaveAccess()
+        // granting access iff those columns are present on the fetched row.
+        $backendUser = $this->createStub(BackendUserAuthentication::class);
+        $backendUser->method('isAdmin')->willReturn(false);
+        $backendUser->method('doesUserHaveAccess')->willReturnCallback(
+            static fn (array $row): bool => isset($row['perms_everybody']),
+        );
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $connectionPool = $this->createConnectionPoolMock([
+            // 1st fetch: the tt_content element being summarised.
+            ['uid' => 123, 'pid' => 5, 'header' => 'Test', 'bodytext' => '<p>One two three four</p>', 'subheader' => ''],
+            // 2nd fetch: the page row, now carrying the permission columns.
+            ['uid' => 5, 'pid' => 0, 'perms_userid' => 1, 'perms_groupid' => 0, 'perms_user' => 31, 'perms_group' => 0, 'perms_everybody' => 1],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'element');
+
+        self::assertGreaterThan(0, $result['wordCount']);
+    }
+
+    #[Test]
+    public function nonAdminWithoutPageAccessReceivesNoContext(): void
+    {
+        $backendUser = $this->createStub(BackendUserAuthentication::class);
+        $backendUser->method('isAdmin')->willReturn(false);
+        $backendUser->method('doesUserHaveAccess')->willReturnCallback(
+            static fn (array $row): bool => isset($row['perms_everybody']),
+        );
+        $GLOBALS['BE_USER'] = $backendUser;
+
+        $connectionPool = $this->createConnectionPoolMock([
+            ['uid' => 123, 'pid' => 5, 'header' => 'Test', 'bodytext' => '<p>One two three four</p>', 'subheader' => ''],
+            // Page row without perms_everybody set → access denied.
+            ['uid' => 5, 'pid' => 0, 'perms_userid' => 99, 'perms_groupid' => 0, 'perms_user' => 0, 'perms_group' => 0],
+        ]);
+
+        $service = new ContextAssemblyService($connectionPool);
+        $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'element');
+
+        self::assertSame(0, $result['wordCount']);
+    }
+
+    #[Test]
     public function countWordsStripsHtmlTags(): void
     {
         $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
