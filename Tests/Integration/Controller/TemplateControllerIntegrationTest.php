@@ -9,12 +9,12 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Integration\Controller;
 
-use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
+use Netresearch\T3Cowriter\Tests\Support\TaskStubTrait;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use Override;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -36,6 +36,8 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(TemplateController::class)]
 final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCase
 {
+    use TaskStubTrait;
+
     private TemplateController $subject;
     private TaskRepository&MockObject $templateRepoMock;
 
@@ -68,26 +70,6 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
     private function createStubRequest(): ServerRequestInterface
     {
         return self::createStub(ServerRequestInterface::class);
-    }
-
-    /**
-     * Create a Task stub with common field values.
-     *
-     * @return Task&MockObject
-     */
-    private function createTaskStub(
-        string $identifier,
-        string $name,
-        string $description,
-        string $category,
-    ): Task&MockObject {
-        $template = $this->createMock(Task::class);
-        $template->method('getIdentifier')->willReturn($identifier);
-        $template->method('getName')->willReturn($name);
-        $template->method('getDescription')->willReturn($description);
-        $template->method('getCategory')->willReturn($category);
-
-        return $template;
     }
 
     // =========================================================================

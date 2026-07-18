@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\E2E;
 
-use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
@@ -23,6 +22,7 @@ use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\TaskStubTrait;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -46,6 +46,8 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(TemplateController::class)]
 final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 {
+    use TaskStubTrait;
+
     // =========================================================================
     // Helper: Create Vision controller stack
     // =========================================================================
@@ -180,28 +182,6 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
     private function createStubRequest(): ServerRequestInterface
     {
         return self::createStub(ServerRequestInterface::class);
-    }
-
-    // =========================================================================
-    // Helper: Create a Task stub
-    // =========================================================================
-
-    /**
-     * @return Task&MockObject
-     */
-    private function createTaskStub(
-        string $identifier,
-        string $title,
-        string $description,
-        string $category,
-    ): Task&MockObject {
-        $template = $this->createMock(Task::class);
-        $template->method('getIdentifier')->willReturn($identifier);
-        $template->method('getName')->willReturn($title);
-        $template->method('getDescription')->willReturn($description);
-        $template->method('getCategory')->willReturn($category);
-
-        return $template;
     }
 
     // =========================================================================

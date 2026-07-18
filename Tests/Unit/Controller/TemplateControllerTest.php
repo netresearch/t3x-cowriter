@@ -15,6 +15,7 @@ use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\TaskStubTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
@@ -28,6 +29,8 @@ use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 #[CoversClass(TemplateController::class)]
 final class TemplateControllerTest extends TestCase
 {
+    use TaskStubTrait;
+
     private TaskRepository&Stub $templateRepositoryStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
     private TemplateController $subject;
@@ -55,11 +58,7 @@ final class TemplateControllerTest extends TestCase
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
-        $template = $this->createStub(Task::class);
-        $template->method('getIdentifier')->willReturn('improve');
-        $template->method('getName')->willReturn('Improve Text');
-        $template->method('getDescription')->willReturn('Enhance readability');
-        $template->method('getCategory')->willReturn('content');
+        $template = $this->createTaskStub('improve', 'Improve Text', 'Enhance readability', 'content');
 
         $this->templateRepositoryStub->method('findActive')
             ->willReturn($this->createQueryResult([$template]));
@@ -145,11 +144,7 @@ final class TemplateControllerTest extends TestCase
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
         // Task::getDescription() is non-nullable; an empty description passes through unchanged.
-        $template = $this->createStub(Task::class);
-        $template->method('getIdentifier')->willReturn('no-desc');
-        $template->method('getName')->willReturn('No Description');
-        $template->method('getDescription')->willReturn('');
-        $template->method('getCategory')->willReturn('misc');
+        $template = $this->createTaskStub('no-desc', 'No Description', '', 'misc');
 
         $this->templateRepositoryStub->method('findActive')
             ->willReturn($this->createQueryResult([$template]));
@@ -163,7 +158,7 @@ final class TemplateControllerTest extends TestCase
     }
 
     /**
-     * @param list<Task&Stub> $items
+     * @param list<Task> $items
      */
     private function createQueryResult(array $items): QueryResultInterface&Stub
     {
