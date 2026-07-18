@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Integration\Controller;
 
-use Netresearch\NrLlm\Domain\Model\PromptTemplate;
-use Netresearch\NrLlm\Domain\Repository\PromptTemplateRepository;
+use Netresearch\NrLlm\Domain\Model\Task;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -30,21 +30,21 @@ use TYPO3\CMS\Core\Context\Context;
  * Integration tests for TemplateController.
  *
  * Tests complete request/response flows through the controller
- * with mocked PromptTemplateRepository responses.
+ * with mocked TaskRepository responses.
  */
 #[AllowMockObjectsWithoutExpectations]
 #[CoversClass(TemplateController::class)]
 final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCase
 {
     private TemplateController $subject;
-    private PromptTemplateRepository&MockObject $templateRepoMock;
+    private TaskRepository&MockObject $templateRepoMock;
 
     #[Override]
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->templateRepoMock = $this->createMock(PromptTemplateRepository::class);
+        $this->templateRepoMock = $this->createMock(TaskRepository::class);
 
         $rateLimiter = $this->createStub(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
@@ -71,21 +71,21 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
     }
 
     /**
-     * Create a PromptTemplate stub with common field values.
+     * Create a Task stub with common field values.
      *
-     * @return PromptTemplate&MockObject
+     * @return Task&MockObject
      */
-    private function createPromptTemplateStub(
+    private function createTaskStub(
         string $identifier,
-        string $title,
-        ?string $description,
-        string $feature,
-    ): PromptTemplate&MockObject {
-        $template = $this->createMock(PromptTemplate::class);
+        string $name,
+        string $description,
+        string $category,
+    ): Task&MockObject {
+        $template = $this->createMock(Task::class);
         $template->method('getIdentifier')->willReturn($identifier);
-        $template->method('getTitle')->willReturn($title);
+        $template->method('getName')->willReturn($name);
         $template->method('getDescription')->willReturn($description);
-        $template->method('getFeature')->willReturn($feature);
+        $template->method('getCategory')->willReturn($category);
 
         return $template;
     }
@@ -98,7 +98,7 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
     public function listFlowReturnsFormattedTemplates(): void
     {
         // Arrange
-        $template = $this->createPromptTemplateStub(
+        $template = $this->createTaskStub(
             'improve-text',
             'Improve Text',
             'Enhances text quality and readability.',
@@ -131,9 +131,9 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
     public function listFlowHandlesMultipleTemplates(): void
     {
         // Arrange
-        $template1 = $this->createPromptTemplateStub('improve-text', 'Improve Text', 'Improves quality', 'writing');
-        $template2 = $this->createPromptTemplateStub('summarize', 'Summarize', null, 'analysis');
-        $template3 = $this->createPromptTemplateStub('translate-formal', 'Formal Translation', 'Formal tone', 'translation');
+        $template1 = $this->createTaskStub('improve-text', 'Improve Text', 'Improves quality', 'writing');
+        $template2 = $this->createTaskStub('summarize', 'Summarize', '', 'analysis');
+        $template3 = $this->createTaskStub('translate-formal', 'Formal Translation', 'Formal tone', 'translation');
 
         $queryResult = new TestQueryResult([$template1, $template2, $template3]);
         $this->templateRepoMock->method('findActive')->willReturn($queryResult);
@@ -152,15 +152,15 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
         self::assertSame('summarize', $data['templates'][1]['identifier']);
         self::assertSame('translate-formal', $data['templates'][2]['identifier']);
 
-        // Null description becomes empty string
+        // Empty description passes through unchanged (Task::getDescription() is non-nullable)
         self::assertSame('', $data['templates'][1]['description']);
     }
 
     #[Test]
     public function listFlowFiltersNonTemplateObjects(): void
     {
-        // Arrange: QueryResult contains a mix of PromptTemplate and stdClass
-        $validTemplate = $this->createPromptTemplateStub('valid', 'Valid Template', 'A valid one', 'writing');
+        // Arrange: QueryResult contains a mix of Task and stdClass
+        $validTemplate = $this->createTaskStub('valid', 'Valid Template', 'A valid one', 'writing');
         $invalidObject = new stdClass();
 
         $queryResult = new TestQueryResult([$validTemplate, $invalidObject]);
@@ -170,7 +170,7 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
         $request  = $this->createStubRequest();
         $response = $this->subject->listAction($request);
 
-        // Assert: only the PromptTemplate instance is in the result
+        // Assert: only the Task instance is in the result
         $data = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($data);
         self::assertTrue($data['success']);

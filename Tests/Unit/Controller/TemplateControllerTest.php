@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use ArrayIterator;
-use Netresearch\NrLlm\Domain\Model\PromptTemplate;
-use Netresearch\NrLlm\Domain\Repository\PromptTemplateRepository;
+use Netresearch\NrLlm\Domain\Model\Task;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -28,13 +28,13 @@ use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 #[CoversClass(TemplateController::class)]
 final class TemplateControllerTest extends TestCase
 {
-    private PromptTemplateRepository&Stub $templateRepositoryStub;
+    private TaskRepository&Stub $templateRepositoryStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
     private TemplateController $subject;
 
     protected function setUp(): void
     {
-        $this->templateRepositoryStub = $this->createStub(PromptTemplateRepository::class);
+        $this->templateRepositoryStub = $this->createStub(TaskRepository::class);
         $this->rateLimiterStub        = $this->createStub(RateLimiterInterface::class);
         $contextStub                  = $this->createStub(Context::class);
 
@@ -55,11 +55,11 @@ final class TemplateControllerTest extends TestCase
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
-        $template = $this->createStub(PromptTemplate::class);
+        $template = $this->createStub(Task::class);
         $template->method('getIdentifier')->willReturn('improve');
-        $template->method('getTitle')->willReturn('Improve Text');
+        $template->method('getName')->willReturn('Improve Text');
         $template->method('getDescription')->willReturn('Enhance readability');
-        $template->method('getFeature')->willReturn('content');
+        $template->method('getCategory')->willReturn('content');
 
         $this->templateRepositoryStub->method('findActive')
             ->willReturn($this->createQueryResult([$template]));
@@ -139,16 +139,17 @@ final class TemplateControllerTest extends TestCase
     }
 
     #[Test]
-    public function listActionCoalescesNullDescriptionToEmptyString(): void
+    public function listActionPassesEmptyDescriptionThrough(): void
     {
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
-        $template = $this->createStub(PromptTemplate::class);
+        // Task::getDescription() is non-nullable; an empty description passes through unchanged.
+        $template = $this->createStub(Task::class);
         $template->method('getIdentifier')->willReturn('no-desc');
-        $template->method('getTitle')->willReturn('No Description');
-        $template->method('getDescription')->willReturn(null);
-        $template->method('getFeature')->willReturn('misc');
+        $template->method('getName')->willReturn('No Description');
+        $template->method('getDescription')->willReturn('');
+        $template->method('getCategory')->willReturn('misc');
 
         $this->templateRepositoryStub->method('findActive')
             ->willReturn($this->createQueryResult([$template]));
@@ -162,7 +163,7 @@ final class TemplateControllerTest extends TestCase
     }
 
     /**
-     * @param list<PromptTemplate&Stub> $items
+     * @param list<Task&Stub> $items
      */
     private function createQueryResult(array $items): QueryResultInterface&Stub
     {
