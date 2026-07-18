@@ -6,6 +6,10 @@
 composer.lock
 *.zip
 
+# TYPO3 test-harness build artifacts (composer web-dir + var)
+/packages/
+/var/
+
 # Node.js
 node_modules/
 package-lock.json
