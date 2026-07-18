@@ -48,7 +48,8 @@ Features
 *   **Ad-hoc instructions**: Add custom instructions per request
 *   **Rate limiting**: 20 requests/minute per backend user
 *   **Streaming**: Server-Sent Events for real-time completions
-*   **XSS Protection**: All LLM output is HTML-escaped for defense in depth
+*   **XSS Protection**: LLM output is returned raw and sanitized on the frontend
+    via a DOMParser-based pipeline before insertion into the editor
 *   Support for TYPO3 v13.4 and v14
 *   Compatible with PHP 8.2 — 8.5
 

@@ -46,17 +46,21 @@ public function __construct(
 ## Security (CRITICAL)
 
 ```php
-// ALWAYS escape LLM output to prevent XSS
-content: htmlspecialchars($response->content, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+// LLM output is returned RAW in JSON — do NOT htmlspecialchars() it server-side.
+// The frontend sanitizes it via a DOMParser-based pipeline before it enters the
+// editor; escaping here would double-encode and break that contract.
+content: $response->content,
 ```
 
 ## nr-llm Integration
 
 ```php
-// Use LlmServiceManagerInterface for all LLM operations
+// Use LlmServiceManagerInterface for all LLM operations. Resolve a configuration
+// and pass the backend user id as budget metadata so per-user nr-llm
+// BudgetMiddleware enforcement applies to the call.
 $configuration = $this->configurationRepository->findDefault();
-$options = $configuration->toChatOptions();
-$response = $this->llmServiceManager->chat($messages, $options);
+$metadata      = [BudgetMiddleware::METADATA_BE_USER_UID => $beUserUid];
+$response      = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $metadata);
 ```
 
 ### Response Handling
@@ -64,10 +68,11 @@ $response = $this->llmServiceManager->chat($messages, $options);
 ```php
 // Handle errors gracefully with diagnostic messages
 try {
-    $response = $this->llmServiceManager->chat($messages, $options);
+    $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $metadata);
     return CompleteResponse::success($response);
 } catch (ProviderException $e) {
-    // enrichErrorMessage checks DiagnosticService for specific failures
+    // enrichErrorMessage classifies the failure via LlmErrorClassifier and adds
+    // a Setup-Status link for configuration errors.
     return $this->buildErrorResponse('LLM provider error occurred.', $e);
 } catch (\Throwable $e) {
     return $this->buildErrorResponse('An unexpected error occurred.', $e);
@@ -146,7 +151,7 @@ public static function success(CompletionResponse $response): self
 ## PR/Commit Checklist
 
 1. **PHPStan level 10:** Zero errors
-2. **HTML escaping:** All LLM output escaped
+2. **Output contract:** LLM output returned raw, sanitized on the frontend (no server-side escaping)
 3. **Exception handling:** ProviderException, RateLimitResult handling
 4. **Type safety:** All properties typed
 5. **Tests first:** TDD approach
@@ -172,7 +177,7 @@ public function completeAction(ServerRequestInterface $request): ResponseInterfa
     }
 
     try {
-        $response = $this->llmServiceManager->chat($messages, $options);
+        $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration);
         return new JsonResponse(
             CompleteResponse::success($response)->jsonSerialize()
         );
@@ -188,12 +193,12 @@ public function completeAction(ServerRequestInterface $request): ResponseInterfa
 ### Bad: Missing Error Handling
 
 ```php
-// DON'T: No error handling, no HTML escaping
+// DON'T: no rate limiting, no input validation, no error handling
 public function completeAction($request)
 {
     $body = json_decode($request->getBody()->getContents(), true);
-    $response = $this->llmServiceManager->chat($body['messages']);
-    return new JsonResponse(['content' => $response->content]); // XSS risk!
+    $response = $this->llmServiceManager->chatWithConfiguration($body['messages'], $configuration);
+    return new JsonResponse(['content' => $response->content]); // unhandled ProviderException, no rate limit
 }
 ```
 

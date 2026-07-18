@@ -117,11 +117,8 @@ final readonly class CompleteResponse implements JsonSerializable
     /**
      * Create a rate-limited response with retry information.
      *
-     * Note: Currently unused as nr-llm does not expose RateLimitException.
-     * This method is prepared for future integration when rate limiting
-     * is supported by the nr-llm provider abstraction layer.
-     *
-     * @see https://github.com/netresearch/t3x-nr-llm/issues - Track rate limit support
+     * Used by AjaxController on the 429 path when the cowriter RateLimiterService
+     * (20 requests/minute per backend user) denies a request.
      */
     public static function rateLimited(int $retryAfter): self
     {

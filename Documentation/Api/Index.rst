@@ -75,9 +75,10 @@ Returns ``text/event-stream`` with JSON chunks:
 
 .. code-block:: text
 
-    data: {"content": "TYPO3 ", "done": false}
-    data: {"content": "is a ", "done": false}
-    data: {"content": "powerful...", "done": true, "model": "gpt-5.2"}
+    data: {"content": "TYPO3 "}
+    data: {"content": "is a "}
+    data: {"content": "powerful..."}
+    data: {"done": true, "model": "gpt-5.2"}
 
 .. _api-task-execute:
 
@@ -91,15 +92,20 @@ Execute a predefined task with context assembly.
 .. code-block:: json
 
     {
-        "taskIdentifier": "improve-text",
+        "taskUid": 12,
         "instruction": "Improve this text",
         "context": "<p>Current editor content</p>",
-        "contextScope": "content_element",
+        "contextType": "content_element",
+        "contextScope": "element",
         "configuration": "openai-default",
         "referencePages": [
             {"pid": 42, "relation": "style guide"}
         ]
     }
+
+``taskUid`` is the ``tx_nrllm_task`` record uid. ``contextType`` is one of
+``selection`` or ``content_element``; ``contextScope`` is one of ``selection``,
+``text``, ``element``, ``page``, ``ancestors_1``, ``ancestors_2``.
 
 Translation
 ===========
