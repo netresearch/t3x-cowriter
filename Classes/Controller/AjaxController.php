@@ -25,6 +25,8 @@ use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
+use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
+use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
@@ -98,6 +100,9 @@ final readonly class AjaxController
         private ConnectionPool $connectionPool,
         private BackendUriBuilder $backendUriBuilder,
         private DiagnosticService $diagnosticService,
+        // Stateless; defaulted so manual constructors need no extra argument while
+        // the Symfony container still autowires the shared service.
+        private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
     ) {}
 
     /**
@@ -776,46 +781,46 @@ final readonly class AjaxController
      */
     private function enrichErrorMessage(string $fallback, Throwable $exception): string
     {
-        if ($this->isConfigurationError($exception)) {
-            try {
-                $failure = $this->diagnosticService->runFirst()->getFirstFailure();
-            } catch (Throwable) {
-                $failure = null;
-            }
+        return match ($this->errorClassifier->classify($exception)) {
+            LlmErrorKind::Configuration  => $this->configurationErrorMessage(),
+            LlmErrorKind::Authentication => 'The LLM provider rejected the API key.'
+                . ' Please ask an administrator to check'
+                . ' the provider settings.',
+            LlmErrorKind::RateLimit => 'The LLM provider rate limit was exceeded.'
+                . ' Please wait a moment and try again.',
+            LlmErrorKind::Unknown => $fallback,
+        };
+    }
 
-            if ($failure instanceof DiagnosticCheck) {
-                return $failure->message
-                    . ' Ask an administrator to check the Cowriter Setup Status page'
-                    . ' for details.';
-            }
+    /**
+     * The configuration-missing message, enriched with the first failing setup
+     * diagnostic when one is available.
+     */
+    private function configurationErrorMessage(): string
+    {
+        try {
+            $failure = $this->diagnosticService->runFirst()->getFirstFailure();
+        } catch (Throwable) {
+            $failure = null;
+        }
 
-            return 'LLM is not configured yet.'
+        if ($failure instanceof DiagnosticCheck) {
+            return $failure->message
                 . ' Ask an administrator to check the Cowriter Setup Status page'
                 . ' for details.';
         }
 
-        $exMessage = $exception->getMessage();
-
-        if (str_contains($exMessage, '401')
-            || str_contains($exMessage, 'Unauthorized')
-        ) {
-            return 'The LLM provider rejected the API key.'
-                . ' Please ask an administrator to check'
-                . ' the provider settings.';
-        }
-
-        return $fallback;
+        return 'LLM is not configured yet.'
+            . ' Ask an administrator to check the Cowriter Setup Status page'
+            . ' for details.';
     }
 
     /**
-     * Check whether the exception indicates a missing LLM configuration.
+     * Whether the exception indicates a missing LLM configuration.
      */
     private function isConfigurationError(Throwable $exception): bool
     {
-        $message = $exception->getMessage();
-
-        return str_contains($message, 'no default provider configured')
-            || str_contains($message, 'No default LLM configuration');
+        return $this->errorClassifier->classify($exception) === LlmErrorKind::Configuration;
     }
 
     /**

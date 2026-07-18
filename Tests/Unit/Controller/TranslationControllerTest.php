@@ -11,6 +11,8 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
+use Netresearch\NrLlm\Provider\Exception\ProviderException;
+use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\T3Cowriter\Controller\TranslationController;
@@ -206,13 +208,13 @@ final class TranslationControllerTest extends TestCase
     }
 
     #[Test]
-    public function translateActionReturnsApiKeyRejectedForOnly401Code(): void
+    public function translateActionReturnsApiKeyRejectedOn401(): void
     {
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
         $this->translationServiceStub->method('translate')
-            ->willThrowException(new RuntimeException('HTTP 401 error'));
+            ->willThrowException(new ProviderResponseException(message: 'Unauthorized', httpStatus: 401));
 
         $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
         $response = $this->subject->translateAction($request);
@@ -227,13 +229,13 @@ final class TranslationControllerTest extends TestCase
     }
 
     #[Test]
-    public function translateActionReturnsApiKeyRejectedForOnlyUnauthorized(): void
+    public function translateActionReturnsRateLimitMessageOn429(): void
     {
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
         $this->translationServiceStub->method('translate')
-            ->willThrowException(new RuntimeException('Request Unauthorized'));
+            ->willThrowException(new ProviderResponseException(message: 'Too many requests', httpStatus: 429));
 
         $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
         $response = $this->subject->translateAction($request);
@@ -242,19 +244,19 @@ final class TranslationControllerTest extends TestCase
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
         self::assertSame(
-            'The LLM provider rejected the API key. An administrator should check the provider configuration in the LLM module.',
+            'The LLM provider rate limit was exceeded. Please wait a moment and try again.',
             $data['error'],
         );
     }
 
     #[Test]
-    public function translateActionReturnsApiKeyRejectedForOnlyAuthentication(): void
+    public function translateActionReturnsGenericMessageForOtherProviderStatus(): void
     {
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
         $this->translationServiceStub->method('translate')
-            ->willThrowException(new RuntimeException('Token authentication failed'));
+            ->willThrowException(new ProviderResponseException(message: 'Forbidden', httpStatus: 403));
 
         $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
         $response = $this->subject->translateAction($request);
@@ -263,7 +265,7 @@ final class TranslationControllerTest extends TestCase
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
         self::assertSame(
-            'The LLM provider rejected the API key. An administrator should check the provider configuration in the LLM module.',
+            'Translation failed. Check the TYPO3 system log for details.',
             $data['error'],
         );
     }
@@ -275,7 +277,7 @@ final class TranslationControllerTest extends TestCase
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
         $this->translationServiceStub->method('translate')
-            ->willThrowException(new RuntimeException('No provider specified and no default provider configured'));
+            ->willThrowException(new ProviderException('No provider specified and no default provider configured', 4867297358));
 
         $diagnosticStub = $this->createStub(DiagnosticService::class);
         $diagnosticStub->method('runFirst')
