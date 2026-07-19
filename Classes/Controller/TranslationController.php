@@ -10,6 +10,9 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use JsonException;
+use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
@@ -36,6 +39,7 @@ final readonly class TranslationController
 {
     public function __construct(
         private TranslationServiceInterface $translationService,
+        private LlmConfigurationRepository $configurationRepository,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
@@ -87,15 +91,28 @@ final readonly class TranslationController
             $options = new TranslationOptions(
                 formality: $translationRequest->formality,
                 domain: $translationRequest->domain,
-                provider: $translationRequest->configuration,
             );
 
-            $result = $this->translationService->translate(
-                $translationRequest->text,
-                $translationRequest->targetLanguage,
-                null,
-                $options,
-            );
+            // When an editor pins a stored configuration, route through the
+            // per-configuration path (nr-llm 0.22, #428) so the configuration's
+            // persona/tone, model and provider apply; otherwise use the plain
+            // LLM translation path.
+            $configuration = $this->resolveConfiguration($translationRequest->configuration);
+
+            $result = $configuration instanceof LlmConfiguration
+                ? $this->translationService->translateForConfiguration(
+                    $translationRequest->text,
+                    $translationRequest->targetLanguage,
+                    $configuration,
+                    null,
+                    $options,
+                )
+                : $this->translationService->translate(
+                    $translationRequest->text,
+                    $translationRequest->targetLanguage,
+                    null,
+                    $options,
+                );
 
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'        => true,
@@ -133,6 +150,35 @@ final readonly class TranslationController
                 500,
             );
         }
+    }
+
+    /**
+     * Resolve a pinned configuration by identifier. Returns null when no
+     * identifier was supplied, so translation uses the default LLM path.
+     *
+     * A requested-but-unknown identifier is an error, not a silent fallback:
+     * falling back would apply the default persona/tone/model instead of the
+     * one the editor asked for, without anyone noticing. The thrown exception
+     * is caught in translateAction() and surfaced as a configuration error.
+     *
+     * @throws ConfigurationNotFoundException when $identifier is given but no
+     *                                        matching configuration exists
+     */
+    private function resolveConfiguration(?string $identifier): ?LlmConfiguration
+    {
+        if ($identifier === null || $identifier === '') {
+            return null;
+        }
+
+        $configuration = $this->configurationRepository->findOneByIdentifier($identifier);
+        if (!$configuration instanceof LlmConfiguration) {
+            throw new ConfigurationNotFoundException(
+                sprintf('LLM configuration "%s" not found.', $identifier),
+                1784419200,
+            );
+        }
+
+        return $configuration;
     }
 
     /**
