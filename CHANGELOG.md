@@ -1,5 +1,11 @@
 # Unreleased
 
+# 3.2.0 (2026-07-19)
+
+## ADD
+
+- Per-configuration translation: the translate action can route through a pinned nr-llm configuration via `translateForConfiguration()`, applying its persona/tone, model and provider; a requested-but-missing configuration is reported as an error instead of silently falling back to the default path
+
 ## CHANGE
 
 - Adopt nr-llm 0.22: require `netresearch/nr-llm ^0.22.0` (was 0.3–0.x)
