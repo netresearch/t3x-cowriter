@@ -460,6 +460,52 @@ final class TranslationControllerTest extends TestCase
         self::assertSame('formal', $options->getFormality());
     }
 
+    #[Test]
+    public function translateActionReturnsErrorWhenPinnedConfigurationNotFound(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $configurationRepositoryMock = $this->createMock(LlmConfigurationRepository::class);
+        $configurationRepositoryMock->expects(self::once())
+            ->method('findOneByIdentifier')
+            ->with('missing-config')
+            ->willReturn(null);
+
+        // A requested configuration that does not exist must not silently fall
+        // back to the default translation path.
+        $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
+        $translationServiceMock->expects(self::never())->method('translateForConfiguration');
+        $translationServiceMock->expects(self::never())->method('translate');
+
+        $contextStub = $this->createStub(Context::class);
+        $contextStub->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new TranslationController(
+            $translationServiceMock,
+            $configurationRepositoryMock,
+            $this->rateLimiterStub,
+            $contextStub,
+            new NullLogger(),
+            $this->backendUriBuilderStub,
+            $this->diagnosticServiceStub,
+        );
+
+        $request = $this->createJsonRequest([
+            'text'           => 'Hello world',
+            'targetLanguage' => 'de',
+            'configuration'  => 'missing-config',
+        ]);
+        $response = $controller->translateAction($request);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+        self::assertNotSame('', $data['error']);
+        // Classified as a configuration error, so the status-page link is offered.
+        self::assertArrayHasKey('statusUrl', $data);
+    }
+
     /**
      * @param array<string, mixed> $body
      */

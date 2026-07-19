@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Controller;
 use JsonException;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
@@ -153,8 +154,15 @@ final readonly class TranslationController
 
     /**
      * Resolve a pinned configuration by identifier. Returns null when no
-     * identifier was supplied or none matches, so translation falls back to
-     * the default LLM path.
+     * identifier was supplied, so translation uses the default LLM path.
+     *
+     * A requested-but-unknown identifier is an error, not a silent fallback:
+     * falling back would apply the default persona/tone/model instead of the
+     * one the editor asked for, without anyone noticing. The thrown exception
+     * is caught in translateAction() and surfaced as a configuration error.
+     *
+     * @throws ConfigurationNotFoundException when $identifier is given but no
+     *                                        matching configuration exists
      */
     private function resolveConfiguration(?string $identifier): ?LlmConfiguration
     {
@@ -162,7 +170,15 @@ final readonly class TranslationController
             return null;
         }
 
-        return $this->configurationRepository->findOneByIdentifier($identifier);
+        $configuration = $this->configurationRepository->findOneByIdentifier($identifier);
+        if (!$configuration instanceof LlmConfiguration) {
+            throw new ConfigurationNotFoundException(
+                sprintf('LLM configuration "%s" not found.', $identifier),
+                1784419200,
+            );
+        }
+
+        return $configuration;
     }
 
     /**
