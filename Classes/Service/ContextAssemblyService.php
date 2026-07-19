@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Service;
 
-use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 
@@ -56,9 +55,27 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
             return true;
         }
 
-        $page = BackendUtility::getRecord('pages', $pid, 'uid');
+        // Fetch the permission columns core calcPerms() needs. A uid-only row
+        // makes calcPerms() return Permission::NOTHING for every non-admin, so
+        // the row MUST carry perms_userid/perms_user/perms_groupid/perms_group/
+        // perms_everybody for the access check to reflect the user's real rights.
+        $qb   = $this->connectionPool->getQueryBuilderForTable('pages');
+        $page = $qb
+            ->select(
+                'uid',
+                'pid',
+                'perms_userid',
+                'perms_groupid',
+                'perms_user',
+                'perms_group',
+                'perms_everybody',
+            )
+            ->from('pages')
+            ->where($qb->expr()->eq('uid', $qb->createNamedParameter($pid)))
+            ->executeQuery()
+            ->fetchAssociative();
 
-        return $page !== null && $backendUser->doesUserHaveAccess($page, 1);
+        return $page !== false && $backendUser->doesUserHaveAccess($page, 1);
     }
 
     /**

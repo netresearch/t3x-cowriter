@@ -18,6 +18,7 @@ use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
+use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
@@ -148,6 +149,31 @@ final class AjaxControllerTest extends TestCase
         $this->assertSame('test-model', $data['model']);
         $this->assertArrayHasKey('finishReason', $data);
         $this->assertSame('stop', $data['finishReason']);
+    }
+
+    #[Test]
+    public function chatActionThreadsBudgetMetadataWithBackendUserId(): void
+    {
+        $messages = [
+            ['role' => 'user', 'content' => 'Hello'],
+        ];
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $captured = null;
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(function (array $m, $c, array $metadata = []) use (&$captured): CompletionResponse {
+                $captured = $metadata;
+
+                return $this->createCompletionResponse('Hi');
+            });
+
+        $request = $this->createRequestWithJsonBody(['messages' => $messages]);
+        $this->subject->chatAction($request);
+
+        // contextMock->getPropertyFromAspect returns 1 for the backend user id.
+        self::assertSame([BudgetMiddleware::METADATA_BE_USER_UID => 1], $captured);
     }
 
     #[Test]

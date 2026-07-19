@@ -74,7 +74,7 @@ final readonly class VisionController
         }
 
         try {
-            $options  = new VisionOptions();
+            $options  = (new VisionOptions())->withBeUserUid((int) $userId);
             $response = $this->visionService->analyzeImageFull(
                 $visionRequest->imageUrl,
                 $visionRequest->prompt,
