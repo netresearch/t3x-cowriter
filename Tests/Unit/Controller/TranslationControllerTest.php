@@ -9,8 +9,10 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
+use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
+use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
@@ -37,6 +39,7 @@ use TYPO3\CMS\Core\Context\Context;
 final class TranslationControllerTest extends TestCase
 {
     private TranslationServiceInterface&Stub $translationServiceStub;
+    private LlmConfigurationRepository&Stub $configurationRepositoryStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
     private BackendUriBuilder&Stub $backendUriBuilderStub;
     private DiagnosticService&Stub $diagnosticServiceStub;
@@ -44,9 +47,10 @@ final class TranslationControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->translationServiceStub = $this->createStub(TranslationServiceInterface::class);
-        $this->rateLimiterStub        = $this->createStub(RateLimiterInterface::class);
-        $this->backendUriBuilderStub  = $this->createStub(BackendUriBuilder::class);
+        $this->translationServiceStub      = $this->createStub(TranslationServiceInterface::class);
+        $this->configurationRepositoryStub = $this->createStub(LlmConfigurationRepository::class);
+        $this->rateLimiterStub             = $this->createStub(RateLimiterInterface::class);
+        $this->backendUriBuilderStub       = $this->createStub(BackendUriBuilder::class);
         $this->backendUriBuilderStub->method('buildUriFromRoute')
             ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
         $this->diagnosticServiceStub = $this->createStub(DiagnosticService::class);
@@ -60,6 +64,7 @@ final class TranslationControllerTest extends TestCase
 
         $this->subject = new TranslationController(
             $this->translationServiceStub,
+            $this->configurationRepositoryStub,
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
@@ -296,6 +301,7 @@ final class TranslationControllerTest extends TestCase
 
         $controller = new TranslationController(
             $this->translationServiceStub,
+            $this->configurationRepositoryStub,
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
@@ -317,7 +323,7 @@ final class TranslationControllerTest extends TestCase
     }
 
     #[Test]
-    public function translateActionPassesConfigurationAsProviderNotSourceLanguage(): void
+    public function translateActionRoutesThroughConfigurationWhenPinned(): void
     {
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
@@ -330,11 +336,86 @@ final class TranslationControllerTest extends TestCase
             usage: new UsageStatistics(50, 30, 80),
         );
 
-        /** @var list<array{string, string, ?string, TranslationOptions}> */
+        $configuration = $this->createStub(LlmConfiguration::class);
+
+        $configurationRepositoryMock = $this->createMock(LlmConfigurationRepository::class);
+        $configurationRepositoryMock->expects(self::once())
+            ->method('findOneByIdentifier')
+            ->with('editorial-tone')
+            ->willReturn($configuration);
+
+        /** @var list<array{string, string, LlmConfiguration, ?string, ?TranslationOptions}> */
         $capturedArgs = [];
 
-        // Use a mock to capture exact arguments
         $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
+        $translationServiceMock->expects(self::never())->method('translate');
+        $translationServiceMock->expects(self::once())
+            ->method('translateForConfiguration')
+            ->willReturnCallback(static function (
+                string $text,
+                string $targetLanguage,
+                LlmConfiguration $config,
+                ?string $sourceLanguage,
+                ?TranslationOptions $options,
+            ) use (&$capturedArgs, $translationResult): TranslationResult {
+                $capturedArgs[] = [$text, $targetLanguage, $config, $sourceLanguage, $options];
+
+                return $translationResult;
+            });
+
+        $contextStub = $this->createStub(Context::class);
+        $contextStub->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new TranslationController(
+            $translationServiceMock,
+            $configurationRepositoryMock,
+            $this->rateLimiterStub,
+            $contextStub,
+            new NullLogger(),
+            $this->backendUriBuilderStub,
+            $this->diagnosticServiceStub,
+        );
+
+        $request = $this->createJsonRequest([
+            'text'           => 'Hello world',
+            'targetLanguage' => 'de',
+            'configuration'  => 'editorial-tone',
+            'formality'      => 'formal',
+        ]);
+        $response = $controller->translateAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertCount(1, $capturedArgs);
+
+        [$text, $targetLang, $config, $sourceLang, $options] = $capturedArgs[0];
+        self::assertSame('Hello world', $text);
+        self::assertSame('de', $targetLang);
+        self::assertSame($configuration, $config, 'the resolved configuration must be forwarded');
+        self::assertNull($sourceLang, 'sourceLanguage must be null, not the configuration value');
+        self::assertInstanceOf(TranslationOptions::class, $options);
+        self::assertNull($options->getProvider(), 'the configuration identifier must not leak into provider');
+        self::assertSame('formal', $options->getFormality());
+    }
+
+    #[Test]
+    public function translateActionUsesPlainPathWithNullSourceLanguageWhenNoConfiguration(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $translationResult = new TranslationResult(
+            translation: 'Hallo Welt',
+            sourceLanguage: 'en',
+            targetLanguage: 'de',
+            confidence: 0.9,
+            usage: new UsageStatistics(50, 30, 80),
+        );
+
+        /** @var list<array{string, string, ?string, ?TranslationOptions}> */
+        $capturedArgs = [];
+
+        $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
+        $translationServiceMock->expects(self::never())->method('translateForConfiguration');
         $translationServiceMock->expects(self::once())
             ->method('translate')
             ->willReturnCallback(static function (
@@ -353,6 +434,7 @@ final class TranslationControllerTest extends TestCase
 
         $controller = new TranslationController(
             $translationServiceMock,
+            $this->configurationRepositoryStub,
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
@@ -363,7 +445,6 @@ final class TranslationControllerTest extends TestCase
         $request = $this->createJsonRequest([
             'text'           => 'Hello world',
             'targetLanguage' => 'de',
-            'configuration'  => 'my-provider',
             'formality'      => 'formal',
         ]);
         $response = $controller->translateAction($request);
@@ -376,7 +457,6 @@ final class TranslationControllerTest extends TestCase
         self::assertSame('de', $targetLang);
         self::assertNull($sourceLang, 'sourceLanguage must be null, not the configuration value');
         self::assertInstanceOf(TranslationOptions::class, $options);
-        self::assertSame('my-provider', $options->getProvider());
         self::assertSame('formal', $options->getFormality());
     }
 

@@ -11,6 +11,7 @@ namespace Netresearch\T3Cowriter\Tests\Integration\Controller;
 
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
+use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\T3Cowriter\Controller\TranslationController;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
@@ -65,8 +66,11 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
         $diagnosticServiceMock = $this->createMock(DiagnosticService::class);
         $diagnosticServiceMock->method('runFirst')->willReturn(new DiagnosticResult(true, []));
 
+        $configurationRepositoryMock = $this->createMock(LlmConfigurationRepository::class);
+
         $this->subject = new TranslationController(
             $this->translationServiceMock,
+            $configurationRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
             new NullLogger(),

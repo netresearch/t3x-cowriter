@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Tests\E2E;
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
+use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
@@ -119,6 +120,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $controller = new TranslationController(
             $translationService,
+            $this->createMock(LlmConfigurationRepository::class),
             $rateLimiter,
             $context,
             $this->logger,
@@ -386,6 +388,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $controller = new TranslationController(
             $stack['translationService'],
+            $this->createMock(LlmConfigurationRepository::class),
             $stack['rateLimiter'],
             $stack['context'],
             $this->logger,
