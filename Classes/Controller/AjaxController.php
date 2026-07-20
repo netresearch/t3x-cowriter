@@ -55,6 +55,8 @@ use TYPO3\CMS\Core\Type\Bitmask\Permission;
  */
 final readonly class AjaxController
 {
+    use RateLimitedControllerTrait;
+
     /**
      * Maximum number of messages in a chat conversation.
      */
@@ -919,30 +921,8 @@ final readonly class AjaxController
             429,
         );
 
-        foreach ($result->getHeaders() as $name => $value) {
-            $response = $response->withAddedHeader($name, $value);
-        }
-
-        return $response->withAddedHeader('Retry-After', (string) $result->getRetryAfter());
-    }
-
-    /**
-     * Create JSON response with rate limit headers.
-     *
-     * @param array<string, mixed> $data
-     */
-    private function jsonResponseWithRateLimitHeaders(
-        array $data,
-        RateLimitResult $rateLimitResult,
-        int $statusCode = 200,
-    ): JsonResponse {
-        $response = new JsonResponse($data, $statusCode);
-
-        foreach ($rateLimitResult->getHeaders() as $name => $value) {
-            $response = $response->withAddedHeader($name, $value);
-        }
-
-        return $response;
+        return $this->addRateLimitHeaders($response, $result)
+            ->withAddedHeader('Retry-After', (string) $result->getRetryAfter());
     }
 
     /**

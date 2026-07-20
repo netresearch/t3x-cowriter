@@ -11,6 +11,7 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
+use Netresearch\NrLlm\Domain\ValueObject\ToolSpec;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\ToolController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -165,6 +166,60 @@ final class ToolControllerTest extends TestCase
 
         $data = json_decode((string) $response->getBody(), true);
         self::assertTrue($data['success']);
+    }
+
+    /**
+     * @param list<string> $requestedTools
+     *
+     * @return list<string> the tool names actually passed to chatWithTools()
+     */
+    private function captureResolvedToolNames(array $requestedTools): array
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $captured = [];
+        $this->llmServiceManagerStub->method('chatWithTools')
+            ->willReturnCallback(function (array $messages, array $tools) use (&$captured): CompletionResponse {
+                $captured = array_map(static fn (ToolSpec $spec): string => $spec->name, $tools);
+
+                return new CompletionResponse(
+                    content: 'ok',
+                    model: 'gpt-4',
+                    usage: new UsageStatistics(1, 1, 2),
+                    finishReason: 'stop',
+                    provider: 'openai',
+                    toolCalls: null,
+                    metadata: null,
+                );
+            });
+
+        $body = ['prompt' => 'Query content'];
+        if ($requestedTools !== []) {
+            $body['tools'] = $requestedTools;
+        }
+
+        $this->subject->executeAction($this->createJsonRequest($body));
+
+        return $captured;
+    }
+
+    #[Test]
+    public function resolveToolsDropsUnknownToolFromMixedList(): void
+    {
+        self::assertSame(['query_content'], $this->captureResolvedToolNames(['query_content', 'bogus_tool']));
+    }
+
+    #[Test]
+    public function resolveToolsFallsBackToAllWhenOnlyInvalidToolsRequested(): void
+    {
+        self::assertSame(['query_content'], $this->captureResolvedToolNames(['bogus_tool']));
+    }
+
+    #[Test]
+    public function resolveToolsResolvesAllWhenNoToolsRequested(): void
+    {
+        self::assertSame(['query_content'], $this->captureResolvedToolNames([]));
     }
 
     #[Test]
