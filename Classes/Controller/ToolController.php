@@ -12,9 +12,10 @@ namespace Netresearch\T3Cowriter\Controller;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
+use Netresearch\NrLlm\Service\Option\ToolOptions;
+use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Domain\DTO\ToolRequest;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
-use Netresearch\T3Cowriter\Service\Tool\ToolLoopRunnerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -35,7 +36,7 @@ final readonly class ToolController
     use RateLimitedControllerTrait;
 
     public function __construct(
-        private ToolLoopRunnerInterface $toolLoopRunner,
+        private ToolLoopServiceInterface $toolLoopService,
         private LlmConfigurationRepository $configurationRepository,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
@@ -107,7 +108,12 @@ final readonly class ToolController
             // enabled set by the loop). Never pass [] — that offers no tools.
             $allowedToolNames = $toolRequest->enabledTools !== [] ? $toolRequest->enabledTools : null;
 
-            $result = $this->toolLoopRunner->run($messages, $configuration, $allowedToolNames);
+            $result = $this->toolLoopService->runLoop(
+                $messages,
+                $configuration,
+                $allowedToolNames,
+                ToolOptions::auto(),
+            );
 
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'    => true,

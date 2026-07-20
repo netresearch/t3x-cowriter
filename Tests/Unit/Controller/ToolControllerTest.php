@@ -13,10 +13,10 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
+use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Controller\ToolController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
-use Netresearch\T3Cowriter\Service\Tool\ToolLoopRunnerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
@@ -29,14 +29,14 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(ToolController::class)]
 final class ToolControllerTest extends TestCase
 {
-    private ToolLoopRunnerInterface&Stub $toolLoopRunnerStub;
+    private ToolLoopServiceInterface&Stub $toolLoopServiceStub;
     private LlmConfigurationRepository&Stub $configRepositoryStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
     private ToolController $subject;
 
     protected function setUp(): void
     {
-        $this->toolLoopRunnerStub   = $this->createStub(ToolLoopRunnerInterface::class);
+        $this->toolLoopServiceStub  = $this->createStub(ToolLoopServiceInterface::class);
         $this->configRepositoryStub = $this->createStub(LlmConfigurationRepository::class);
         $this->rateLimiterStub      = $this->createStub(RateLimiterInterface::class);
         $contextStub                = $this->createStub(Context::class);
@@ -44,10 +44,10 @@ final class ToolControllerTest extends TestCase
 
         // Default: a configuration exists and the loop returns a plain result.
         $this->configRepositoryStub->method('findDefault')->willReturn($this->createStub(LlmConfiguration::class));
-        $this->toolLoopRunnerStub->method('run')->willReturn($this->loopResult('Result'));
+        $this->toolLoopServiceStub->method('runLoop')->willReturn($this->loopResult('Result'));
 
         $this->subject = new ToolController(
-            $this->toolLoopRunnerStub,
+            $this->toolLoopServiceStub,
             $this->configRepositoryStub,
             $this->rateLimiterStub,
             $contextStub,
@@ -113,7 +113,7 @@ final class ToolControllerTest extends TestCase
         $this->allowRateLimit();
 
         $captured = 'unset';
-        $this->toolLoopRunnerStub->method('run')
+        $this->toolLoopServiceStub->method('runLoop')
             ->willReturnCallback(function (array $messages, LlmConfiguration $config, ?array $allowed) use (&$captured): ToolLoopResult {
                 $captured = $allowed;
 
@@ -134,7 +134,7 @@ final class ToolControllerTest extends TestCase
         $this->allowRateLimit();
 
         $captured = 'unset';
-        $this->toolLoopRunnerStub->method('run')
+        $this->toolLoopServiceStub->method('runLoop')
             ->willReturnCallback(function (array $messages, LlmConfiguration $config, ?array $allowed) use (&$captured): ToolLoopResult {
                 $captured = $allowed;
 
@@ -176,7 +176,7 @@ final class ToolControllerTest extends TestCase
         $rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
         $subject = new ToolController(
-            $this->toolLoopRunnerStub,
+            $this->toolLoopServiceStub,
             $configRepository,
             $rateLimiter,
             $contextStub,
