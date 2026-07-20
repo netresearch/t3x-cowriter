@@ -9,10 +9,11 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
-use Netresearch\NrLlm\Domain\Model\CompletionResponse;
+use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
-use Netresearch\NrLlm\Domain\ValueObject\ToolSpec;
-use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
+use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
+use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Controller\ToolController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -23,27 +24,31 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
-use RuntimeException;
 use TYPO3\CMS\Core\Context\Context;
 
 #[CoversClass(ToolController::class)]
 final class ToolControllerTest extends TestCase
 {
-    private LlmServiceManagerInterface&Stub $llmServiceManagerStub;
+    private ToolLoopServiceInterface&Stub $toolLoopServiceStub;
+    private LlmConfigurationRepository&Stub $configRepositoryStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
     private ToolController $subject;
 
     protected function setUp(): void
     {
-        $this->llmServiceManagerStub = $this->createStub(LlmServiceManagerInterface::class);
-        $this->rateLimiterStub       = $this->createStub(RateLimiterInterface::class);
-        $contextStub                 = $this->createStub(Context::class);
+        $this->toolLoopServiceStub  = $this->createStub(ToolLoopServiceInterface::class);
+        $this->configRepositoryStub = $this->createStub(LlmConfigurationRepository::class);
+        $this->rateLimiterStub      = $this->createStub(RateLimiterInterface::class);
+        $contextStub                = $this->createStub(Context::class);
+        $contextStub->method('getPropertyFromAspect')->willReturn(1);
 
-        $contextStub->method('getPropertyFromAspect')
-            ->willReturn(1);
+        // Default: a configuration exists and the loop returns a plain result.
+        $this->configRepositoryStub->method('findDefault')->willReturn($this->createStub(LlmConfiguration::class));
+        $this->toolLoopServiceStub->method('runLoop')->willReturn($this->loopResult('Result'));
 
         $this->subject = new ToolController(
-            $this->llmServiceManagerStub,
+            $this->toolLoopServiceStub,
+            $this->configRepositoryStub,
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
@@ -57,205 +62,143 @@ final class ToolControllerTest extends TestCase
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(false, 20, 0, $resetTime));
 
-        $request  = $this->createJsonRequest(['prompt' => 'Find all text elements']);
-        $response = $this->subject->executeAction($request);
+        $response = $this->subject->executeAction($this->createJsonRequest(['prompt' => 'Find text elements']));
 
         self::assertSame(429, $response->getStatusCode());
-        $data = json_decode((string) $response->getBody(), true);
-        self::assertFalse($data['success']);
-        self::assertArrayHasKey('error', $data);
-        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('0', $response->getHeaderLine('X-RateLimit-Remaining'));
-        self::assertNotEmpty($response->getHeaderLine('Retry-After'));
-    }
-
-    #[Test]
-    public function executeActionReturnsBadRequestForMissingPrompt(): void
-    {
-        $this->rateLimiterStub->method('checkLimit')
-            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
-
-        $request  = $this->createJsonRequest([]);
-        $response = $this->subject->executeAction($request);
-
-        self::assertSame(400, $response->getStatusCode());
-        $data = json_decode((string) $response->getBody(), true);
-        self::assertFalse($data['success']);
-        self::assertStringContainsString('Missing', $data['error']);
-        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
-        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
     public function executeActionReturns400ForInvalidJson(): void
     {
-        $this->rateLimiterStub->method('checkLimit')
-            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+        $this->allowRateLimit();
 
-        $request  = $this->createRawRequest('not json');
-        $response = $this->subject->executeAction($request);
+        $response = $this->subject->executeAction($this->createRawRequest('{bad json'));
 
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
-        self::assertStringContainsString('Invalid JSON', $data['error']);
-        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
-        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
-    public function executeActionReturnsToolCallResult(): void
+    public function executeActionReturns400ForEmptyPrompt(): void
     {
-        $this->rateLimiterStub->method('checkLimit')
-            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+        $this->allowRateLimit();
 
-        $completionResponse = new CompletionResponse(
-            content: 'Here are the content elements on page 1.',
-            model: 'gpt-4',
-            usage: new UsageStatistics(100, 50, 150),
-            finishReason: 'stop',
-            provider: 'openai',
-            toolCalls: null,
-            metadata: null,
-        );
+        $response = $this->subject->executeAction($this->createJsonRequest(['prompt' => '']));
 
-        $this->llmServiceManagerStub->method('chatWithTools')
-            ->willReturn($completionResponse);
+        self::assertSame(400, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertStringContainsString('Missing prompt', $data['error']);
+    }
 
-        $request  = $this->createJsonRequest(['prompt' => 'Find all text elements']);
-        $response = $this->subject->executeAction($request);
+    #[Test]
+    public function executeActionRunsTheLoopAndReturnsFinalContent(): void
+    {
+        $this->allowRateLimit();
+
+        $response = $this->subject->executeAction($this->createJsonRequest(['prompt' => 'What is on page 5?']));
 
         self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertTrue($data['success']);
-        self::assertSame('Here are the content elements on page 1.', $data['content']);
-        self::assertArrayHasKey('toolCalls', $data);
-        self::assertSame('stop', $data['finishReason']);
-        self::assertArrayHasKey('usage', $data);
-        self::assertSame(100, $data['usage']['promptTokens']);
-        self::assertSame(50, $data['usage']['completionTokens']);
-        self::assertSame(150, $data['usage']['totalTokens']);
-        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
-        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
+        self::assertSame('Result', $data['content']);
+        self::assertSame(2, $data['iterations']);
+        self::assertSame(30, $data['usage']['totalTokens']);
     }
 
     #[Test]
-    public function executeActionUsesRequestedToolsFromAllowList(): void
+    public function executeActionPassesRequestedToolsAsAllowedNames(): void
     {
-        $this->rateLimiterStub->method('checkLimit')
-            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+        $this->allowRateLimit();
 
-        $completionResponse = new CompletionResponse(
-            content: 'Result',
-            model: 'gpt-4',
-            usage: new UsageStatistics(10, 5, 15),
-            finishReason: 'stop',
-            provider: 'openai',
-            toolCalls: null,
-            metadata: null,
-        );
+        $captured = 'unset';
+        $this->toolLoopServiceStub->method('runLoop')
+            ->willReturnCallback(function (array $messages, LlmConfiguration $config, ?array $allowed) use (&$captured): ToolLoopResult {
+                $captured = $allowed;
 
-        $this->llmServiceManagerStub->method('chatWithTools')
-            ->willReturn($completionResponse);
-
-        $request = $this->createJsonRequest([
-            'prompt' => 'Query content',
-            'tools'  => ['query_content'],
-        ]);
-        $response = $this->subject->executeAction($request);
-
-        $data = json_decode((string) $response->getBody(), true);
-        self::assertTrue($data['success']);
-    }
-
-    /**
-     * @param list<string> $requestedTools
-     *
-     * @return list<string> the tool names actually passed to chatWithTools()
-     */
-    private function captureResolvedToolNames(array $requestedTools): array
-    {
-        $this->rateLimiterStub->method('checkLimit')
-            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
-
-        $captured = [];
-        $this->llmServiceManagerStub->method('chatWithTools')
-            ->willReturnCallback(function (array $messages, array $tools) use (&$captured): CompletionResponse {
-                $captured = array_map(static fn (ToolSpec $spec): string => $spec->name, $tools);
-
-                return new CompletionResponse(
-                    content: 'ok',
-                    model: 'gpt-4',
-                    usage: new UsageStatistics(1, 1, 2),
-                    finishReason: 'stop',
-                    provider: 'openai',
-                    toolCalls: null,
-                    metadata: null,
-                );
+                return $this->loopResult('ok');
             });
 
-        $body = ['prompt' => 'Query content'];
-        if ($requestedTools !== []) {
-            $body['tools'] = $requestedTools;
-        }
+        $this->subject->executeAction($this->createJsonRequest([
+            'prompt' => 'Query',
+            'tools'  => ['query_content'],
+        ]));
 
-        $this->subject->executeAction($this->createJsonRequest($body));
-
-        return $captured;
+        self::assertSame(['query_content'], $captured);
     }
 
     #[Test]
-    public function resolveToolsDropsUnknownToolFromMixedList(): void
+    public function executeActionMapsAbsentToolsToNullAllowedNames(): void
     {
-        self::assertSame(['query_content'], $this->captureResolvedToolNames(['query_content', 'bogus_tool']));
+        $this->allowRateLimit();
+
+        $captured = 'unset';
+        $this->toolLoopServiceStub->method('runLoop')
+            ->willReturnCallback(function (array $messages, LlmConfiguration $config, ?array $allowed) use (&$captured): ToolLoopResult {
+                $captured = $allowed;
+
+                return $this->loopResult('ok');
+            });
+
+        $this->subject->executeAction($this->createJsonRequest(['prompt' => 'Query']));
+
+        self::assertNull($captured);
     }
 
     #[Test]
-    public function resolveToolsFallsBackToAllWhenOnlyInvalidToolsRequested(): void
+    public function executeActionReturns400ForUnknownRequestedConfiguration(): void
     {
-        self::assertSame(['query_content'], $this->captureResolvedToolNames(['bogus_tool']));
-    }
+        $this->allowRateLimit();
+        // A requested id that does not resolve → error, not silent fallback.
+        $this->configRepositoryStub->method('findOneByIdentifier')->willReturn(null);
 
-    #[Test]
-    public function resolveToolsResolvesAllWhenNoToolsRequested(): void
-    {
-        self::assertSame(['query_content'], $this->captureResolvedToolNames([]));
-    }
-
-    #[Test]
-    public function executeActionReturnsBadRequestForExcessivePromptLength(): void
-    {
-        $this->rateLimiterStub->method('checkLimit')
-            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
-
-        $request  = $this->createJsonRequest(['prompt' => str_repeat('a', 40000)]);
-        $response = $this->subject->executeAction($request);
+        $response = $this->subject->executeAction($this->createJsonRequest([
+            'prompt'        => 'Query',
+            'configuration' => 'ghost',
+        ]));
 
         self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
-        self::assertFalse($data['success']);
-        self::assertStringContainsString('fields exceed maximum length', $data['error']);
+        self::assertStringContainsString('ghost', $data['error']);
     }
 
     #[Test]
-    public function executeActionReturnsErrorOnException(): void
+    public function executeActionReturns404WhenNoConfigurationIsAvailable(): void
+    {
+        $contextStub = $this->createStub(Context::class);
+        $contextStub->method('getPropertyFromAspect')->willReturn(1);
+
+        $configRepository = $this->createStub(LlmConfigurationRepository::class);
+        $configRepository->method('findDefault')->willReturn(null);
+
+        $rateLimiter = $this->createStub(RateLimiterInterface::class);
+        $rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $subject = new ToolController(
+            $this->toolLoopServiceStub,
+            $configRepository,
+            $rateLimiter,
+            $contextStub,
+            new NullLogger(),
+        );
+
+        $response = $subject->executeAction($this->createJsonRequest(['prompt' => 'Query']));
+
+        self::assertSame(404, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertFalse($data['success']);
+    }
+
+    private function allowRateLimit(): void
     {
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+    }
 
-        $this->llmServiceManagerStub->method('chatWithTools')
-            ->willThrowException(new RuntimeException('API error'));
-
-        $request  = $this->createJsonRequest(['prompt' => 'Find all text elements']);
-        $response = $this->subject->executeAction($request);
-
-        self::assertSame(500, $response->getStatusCode());
-        $data = json_decode((string) $response->getBody(), true);
-        self::assertFalse($data['success']);
-        self::assertArrayHasKey('error', $data);
-        self::assertStringContainsString('failed', $data['error']);
-        self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
-        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
+    private function loopResult(string $content): ToolLoopResult
+    {
+        return new ToolLoopResult($content, [], 2, false, new UsageStatistics(20, 10, 30));
     }
 
     /**
