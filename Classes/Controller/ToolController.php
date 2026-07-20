@@ -9,12 +9,12 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
-use Netresearch\NrLlm\Domain\ValueObject\ToolSpec;
-use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
-use Netresearch\NrLlm\Service\Option\ToolOptions;
+use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\T3Cowriter\Domain\DTO\ToolRequest;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
-use Netresearch\T3Cowriter\Tools\ContentQueryTool;
+use Netresearch\T3Cowriter\Service\Tool\ToolLoopRunnerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -24,8 +24,9 @@ use TYPO3\CMS\Core\Context\Context;
 /**
  * AJAX controller for LLM tool calling via nr-llm.
  *
- * Enables structured function calling where the LLM can invoke
- * predefined tools (e.g., content queries) during conversations.
+ * Runs the model through nr-llm's bounded tool-calling loop so registered
+ * tools (e.g. the content query) are actually executed server-side, against a
+ * resolved LLM configuration.
  *
  * @internal
  */
@@ -34,7 +35,8 @@ final readonly class ToolController
     use RateLimitedControllerTrait;
 
     public function __construct(
-        private LlmServiceManagerInterface $llmServiceManager,
+        private ToolLoopRunnerInterface $toolLoopRunner,
+        private LlmConfigurationRepository $configurationRepository,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
@@ -78,24 +80,44 @@ final readonly class ToolController
         }
 
         try {
-            $tools = $this->resolveTools($toolRequest->enabledTools);
+            $configuration = $this->resolveConfiguration($toolRequest->configuration);
+        } catch (ConfigurationNotFoundException $e) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                ['success' => false, 'error' => $e->getMessage()],
+                $rateLimitResult,
+                400,
+            );
+        }
 
+        if (!$configuration instanceof LlmConfiguration) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                ['success' => false, 'error' => 'No LLM configuration available. Please configure the nr_llm extension.'],
+                $rateLimitResult,
+                404,
+            );
+        }
+
+        try {
             $messages = [
                 ['role' => 'user', 'content' => $toolRequest->prompt],
             ];
 
-            $options  = ToolOptions::auto();
-            $response = $this->llmServiceManager->chatWithTools($messages, $tools, $options);
+            // An empty request list means "all globally-enabled tools" (null);
+            // a non-empty list restricts to those names (intersected with the
+            // enabled set by the loop). Never pass [] — that offers no tools.
+            $allowedToolNames = $toolRequest->enabledTools !== [] ? $toolRequest->enabledTools : null;
+
+            $result = $this->toolLoopRunner->run($messages, $configuration, $allowedToolNames);
 
             return $this->jsonResponseWithRateLimitHeaders([
-                'success'      => true,
-                'content'      => $response->content,
-                'toolCalls'    => $response->toolCalls,
-                'finishReason' => $response->finishReason,
-                'usage'        => [
-                    'promptTokens'     => $response->usage->promptTokens,
-                    'completionTokens' => $response->usage->completionTokens,
-                    'totalTokens'      => $response->usage->totalTokens,
+                'success'    => true,
+                'content'    => $result->finalContent,
+                'iterations' => $result->iterations,
+                'truncated'  => $result->truncated,
+                'usage'      => [
+                    'promptTokens'     => $result->usage->promptTokens,
+                    'completionTokens' => $result->usage->completionTokens,
+                    'totalTokens'      => $result->usage->totalTokens,
                 ],
             ], $rateLimitResult);
         } catch (Throwable $e) {
@@ -112,31 +134,29 @@ final readonly class ToolController
     }
 
     /**
-     * Resolve enabled tools from request against the allow-list.
+     * Resolve the LLM configuration to run the tool loop against.
      *
-     * Falls back to all available tools when no valid tools are requested.
+     * A requested-but-unknown identifier is an error (surfaced to the user),
+     * never a silent fallback. When no identifier is requested the default
+     * configuration is used; null means none is configured at all.
      *
-     * @param list<string> $enabledTools
-     *
-     * @return list<ToolSpec>
+     * @throws ConfigurationNotFoundException when $identifier is given but no
+     *                                        matching configuration exists
      */
-    private function resolveTools(array $enabledTools): array
+    private function resolveConfiguration(?string $identifier): ?LlmConfiguration
     {
-        $allTools = [
-            'query_content' => ContentQueryTool::spec(),
-        ];
-
-        if ($enabledTools === []) {
-            return array_values($allTools);
+        if ($identifier === null || $identifier === '') {
+            return $this->configurationRepository->findDefault();
         }
 
-        $resolved = [];
-        foreach ($enabledTools as $toolName) {
-            if (isset($allTools[$toolName])) {
-                $resolved[] = $allTools[$toolName];
-            }
+        $configuration = $this->configurationRepository->findOneByIdentifier($identifier);
+        if (!$configuration instanceof LlmConfiguration) {
+            throw new ConfigurationNotFoundException(
+                sprintf('LLM configuration "%s" not found.', $identifier),
+                1784592000,
+            );
         }
 
-        return $resolved !== [] ? $resolved : array_values($allTools);
+        return $configuration;
     }
 }

@@ -24,6 +24,7 @@ final readonly class ToolRequest
     public function __construct(
         public string $prompt,
         public array $enabledTools = [],
+        public ?string $configuration = null,
     ) {}
 
     /**
@@ -31,7 +32,8 @@ final readonly class ToolRequest
      */
     public function isValid(): bool
     {
-        return mb_strlen($this->prompt) <= self::MAX_FIELD_LENGTH;
+        return mb_strlen($this->prompt) <= self::MAX_FIELD_LENGTH
+            && mb_strlen($this->configuration ?? '') <= self::MAX_FIELD_LENGTH;
     }
 
     /**
@@ -39,9 +41,12 @@ final readonly class ToolRequest
      */
     public static function fromRequestBody(array $body): self
     {
+        $configuration = trim(self::extractString($body, 'configuration'));
+
         return new self(
             prompt: trim(self::extractString($body, 'prompt')),
             enabledTools: self::extractStringList($body, 'tools'),
+            configuration: $configuration !== '' ? $configuration : null,
         );
     }
 

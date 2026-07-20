@@ -21,6 +21,9 @@ services:
   Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface:
     alias: Netresearch\T3Cowriter\Service\ContextAssemblyService
 
+  Netresearch\T3Cowriter\Service\Tool\ToolLoopRunnerInterface:
+    alias: Netresearch\T3Cowriter\Service\Tool\ToolLoopRunner
+
   Netresearch\T3Cowriter\Controller\AjaxController:
     public: true
 
