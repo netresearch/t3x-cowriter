@@ -64,13 +64,7 @@ trait RateLimitedControllerTrait
         RateLimitResult $rateLimitResult,
         int $statusCode = 200,
     ): JsonResponse {
-        $response = new JsonResponse($data, $statusCode);
-
-        foreach ($rateLimitResult->getHeaders() as $name => $value) {
-            $response = $response->withAddedHeader($name, $value);
-        }
-
-        return $response;
+        return $this->addRateLimitHeaders(new JsonResponse($data, $statusCode), $rateLimitResult);
     }
 
     /**
@@ -84,10 +78,19 @@ trait RateLimitedControllerTrait
             429,
         );
 
+        return $this->addRateLimitHeaders($response, $result)
+            ->withAddedHeader('Retry-After', (string) $result->getRetryAfter());
+    }
+
+    /**
+     * Copy the rate-limit headers from the result onto a response.
+     */
+    private function addRateLimitHeaders(JsonResponse $response, RateLimitResult $result): JsonResponse
+    {
         foreach ($result->getHeaders() as $name => $value) {
             $response = $response->withAddedHeader($name, $value);
         }
 
-        return $response->withAddedHeader('Retry-After', (string) $result->getRetryAfter());
+        return $response;
     }
 }
