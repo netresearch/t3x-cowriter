@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
-use JsonException;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
@@ -21,14 +20,12 @@ use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
-use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
-use TYPO3\CMS\Core\Http\JsonResponse;
 
 /**
  * AJAX controller for content translation via nr-llm TranslationService.
@@ -37,6 +34,8 @@ use TYPO3\CMS\Core\Http\JsonResponse;
  */
 final readonly class TranslationController
 {
+    use RateLimitedControllerTrait;
+
     public function __construct(
         private TranslationServiceInterface $translationService,
         private LlmConfigurationRepository $configurationRepository,
@@ -225,65 +224,5 @@ final readonly class TranslationController
     private function isConfigurationError(Throwable $exception): bool
     {
         return $this->errorClassifier->classify($exception) === LlmErrorKind::Configuration;
-    }
-
-    /**
-     * Parse JSON body from request, returning null on failure.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function parseJsonBody(ServerRequestInterface $request): ?array
-    {
-        $rawBody = (string) $request->getBody();
-        if ($rawBody === '') {
-            return [];
-        }
-
-        try {
-            /** @var mixed $decoded */
-            $decoded = json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            return null;
-        }
-
-        if (!is_array($decoded)) {
-            return null;
-        }
-
-        /** @var array<string, mixed> $decoded */
-        return $decoded;
-    }
-
-    /**
-     * Create JSON response with rate limit headers.
-     *
-     * @param array<string, mixed> $data
-     */
-    private function jsonResponseWithRateLimitHeaders(
-        array $data,
-        RateLimitResult $rateLimitResult,
-        int $statusCode = 200,
-    ): JsonResponse {
-        $response = new JsonResponse($data, $statusCode);
-
-        foreach ($rateLimitResult->getHeaders() as $name => $value) {
-            $response = $response->withAddedHeader($name, $value);
-        }
-
-        return $response;
-    }
-
-    private function rateLimitedResponse(RateLimitResult $result): JsonResponse
-    {
-        $response = new JsonResponse(
-            ['success' => false, 'error' => 'Rate limit exceeded. Please try again later.'],
-            429,
-        );
-
-        foreach ($result->getHeaders() as $name => $value) {
-            $response = $response->withAddedHeader($name, $value);
-        }
-
-        return $response->withAddedHeader('Retry-After', (string) $result->getRetryAfter());
     }
 }
