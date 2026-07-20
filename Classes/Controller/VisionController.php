@@ -9,18 +9,15 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
-use JsonException;
 use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Domain\DTO\VisionRequest;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
-use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
 use TYPO3\CMS\Core\Context\Context;
-use TYPO3\CMS\Core\Http\JsonResponse;
 
 /**
  * AJAX controller for image analysis via nr-llm VisionService.
@@ -29,6 +26,8 @@ use TYPO3\CMS\Core\Http\JsonResponse;
  */
 final readonly class VisionController
 {
+    use RateLimitedControllerTrait;
+
     public function __construct(
         private VisionServiceInterface $visionService,
         private RateLimiterInterface $rateLimiter,
@@ -74,7 +73,10 @@ final readonly class VisionController
         }
 
         try {
-            $options  = (new VisionOptions())->withBeUserUid((int) $userId);
+            // altText() preset (detail 'low', maxTokens 100, temperature 0.5)
+            // matches this alt-text endpoint; analyzeImageFull() still returns the
+            // model/confidence/usage metadata the response surfaces.
+            $options  = VisionOptions::altText()->withBeUserUid((int) $userId);
             $response = $this->visionService->analyzeImageFull(
                 $visionRequest->imageUrl,
                 $visionRequest->prompt,
@@ -104,65 +106,5 @@ final readonly class VisionController
                 500,
             );
         }
-    }
-
-    /**
-     * Parse JSON body from request, returning null on failure.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function parseJsonBody(ServerRequestInterface $request): ?array
-    {
-        $rawBody = (string) $request->getBody();
-        if ($rawBody === '') {
-            return [];
-        }
-
-        try {
-            /** @var mixed $decoded */
-            $decoded = json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            return null;
-        }
-
-        if (!is_array($decoded)) {
-            return null;
-        }
-
-        /** @var array<string, mixed> $decoded */
-        return $decoded;
-    }
-
-    /**
-     * Create JSON response with rate limit headers.
-     *
-     * @param array<string, mixed> $data
-     */
-    private function jsonResponseWithRateLimitHeaders(
-        array $data,
-        RateLimitResult $rateLimitResult,
-        int $statusCode = 200,
-    ): JsonResponse {
-        $response = new JsonResponse($data, $statusCode);
-
-        foreach ($rateLimitResult->getHeaders() as $name => $value) {
-            $response = $response->withAddedHeader($name, $value);
-        }
-
-        return $response;
-    }
-
-    private function rateLimitedResponse(RateLimitResult $result): JsonResponse
-    {
-        $response = new JsonResponse(
-            ['success' => false, 'error' => 'Rate limit exceeded. Please try again later.'],
-            429,
-        );
-
-        foreach ($result->getHeaders() as $name => $value) {
-            $response = $response->withAddedHeader($name, $value);
-        }
-
-        return $response->withAddedHeader('Retry-After', (string) $result->getRetryAfter());
     }
 }
