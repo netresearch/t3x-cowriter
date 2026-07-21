@@ -1,5 +1,29 @@
 # Unreleased
 
+# 3.3.0 (2026-07-21)
+
+## ADD
+
+- Tool calling now executes: the tool endpoint drives nr-llm's bounded tool loop (`ToolLoopService`) against a resolved LLM configuration, so the model's tool calls run server-side and their results feed back into the conversation. Previously a tool was declared to the model but never executed. Tools come from nr-llm's builtin registry — cowriter ships no tool code of its own.
+- Per-user budget attribution: chat, complete, task, stream, vision and translation calls pass the backend user id, so nr-llm's per-user `BudgetMiddleware` enforcement applies to cowriter traffic (previously it was skipped).
+
+## CHANGE
+
+- Require `netresearch/nr-llm ^0.23.0` (was `^0.22.0`) for the builtin tool catalog and the injectable `ToolLoopServiceInterface`.
+- The alt-text endpoint uses nr-llm's `VisionOptions::altText()` preset (low detail, tighter token budget) instead of the defaults.
+
+## FIX
+
+- Non-admin editors were denied all surrounding context: the page-access check fetched a `uid`-only page row, so TYPO3 `calcPerms()` returned no permissions for every non-admin and the context feature (element/page/ancestor scopes and reference pages) silently produced nothing. It now fetches the permission columns and reflects the editor's real rights.
+
+## DOCS
+
+- Correct API and agent-guide documentation drift after the nr-llm 0.22 upgrade (task-execute and SSE examples, output-sanitization wording, TYPO3 v14.3 constraint, and removed-API examples).
+
+## MIGRATION
+
+- Upgrade the nr-llm extension to `^0.23.0`.
+
 # 3.2.0 (2026-07-19)
 
 ## ADD
