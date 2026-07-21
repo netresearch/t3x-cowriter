@@ -14,7 +14,7 @@ return [
         'parent'         => 'tools',
         'position'       => ['after' => 'nrllm'],
         'access'         => 'admin',
-        'iconIdentifier' => 'content-widget-text',
+        'iconIdentifier' => 'cowriter-module',
         'labels'         => 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf',
         'routes'         => [
             '_default' => [
