@@ -19,8 +19,9 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 Resources/
 ├── Public/
 │   ├── Icons/
-│   │   ├── Extension.svg      # Extension icon
-│   │   └── Module.svg         # Module icon
+│   │   ├── Extension.svg          # Extension icon (branded teal tile)
+│   │   ├── ModuleIcon.svg         # Backend module icon, TYPO3 v14 (currentColor, dark-mode aware)
+│   │   └── ModuleIcon.legacy.svg  # Backend module icon, TYPO3 v13 (teal tile variant)
 │   └── JavaScript/
 │       └── Ckeditor/
 │           ├── AIService.js   # AJAX API client
