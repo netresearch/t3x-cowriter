@@ -13,6 +13,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\NrLlm\Service\Option\ToolOptions;
+use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
 use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Domain\DTO\ToolRequest;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -20,6 +21,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 
 /**
@@ -108,9 +110,20 @@ final readonly class ToolController
             // enabled set by the loop). Never pass [] — that offers no tools.
             $allowedToolNames = $toolRequest->enabledTools !== [] ? $toolRequest->enabledTools : null;
 
+            // The tool loop must run under an explicit actor identity (nr-llm
+            // ADR-083): tools authorise against it instead of the ambient
+            // $GLOBALS['BE_USER']. This is a backend-authenticated AJAX route,
+            // so derive the context from the live backend user; a missing user
+            // fails closed to a non-interactive context rather than a fatal.
+            $backendUser = $GLOBALS['BE_USER'] ?? null;
+            $context     = $backendUser instanceof BackendUserAuthentication
+                ? ToolExecutionContext::fromBackendUser($backendUser)
+                : ToolExecutionContext::none();
+
             $result = $this->toolLoopService->runLoop(
                 $messages,
                 $configuration,
+                $context,
                 $allowedToolNames,
                 ToolOptions::auto(),
             );

@@ -1,5 +1,14 @@
 # Unreleased
 
+## CHANGE
+
+- Require `netresearch/nr-llm ^0.25` (was `^0.23.0`). The tool loop now runs under an explicit actor identity: `ToolLoopServiceInterface::runLoop()` takes a required `ToolExecutionContext` (nr-llm ADR-083), which the tool endpoint derives from the live backend user (`ToolExecutionContext::fromBackendUser()`), falling back to a non-interactive context when no backend user is present. Tools authorise against this context instead of the ambient `$GLOBALS['BE_USER']`, so a queued run authorises identically to a synchronous one.
+
+## MIGRATION
+
+- Upgrade the nr-llm extension to `^0.25` and run `typo3 extension:setup` on the host install (nr-llm adds governance/lease schema).
+- Heads-up: nr-llm's tool data-class gate now defaults to `enforce` on **fresh** installs (ADR-115). Cowriter ships no tools of its own, but the tool loop runs nr-llm's builtin tools, so a builtin whose data class exceeds a configuration's trust zone is withheld under `enforce`. Upgraded installs are pinned to `observe` by nr-llm's `DataClassEnforcementDefaultUpdateWizard` until the operator opts in — run the upgrade wizard after updating.
+
 # 3.3.0 (2026-07-21)
 
 ## ADD

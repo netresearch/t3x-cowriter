@@ -7,8 +7,8 @@
 >
     <project
         title="AI Cowriter for TYPO3"
-        version="3.4"
-        release="3.4.1"
+        version="3.5"
+        release="3.5.0"
         copyright="since 2024 by Netresearch DTT GmbH"
     />
 
