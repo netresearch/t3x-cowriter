@@ -55,7 +55,7 @@
         "typo3/cms-core": "^13.4 || ^14.3",
         "typo3/cms-backend": "^13.4 || ^14.3",
         "typo3/cms-rte-ckeditor": "^13.4 || ^14.3",
-        "netresearch/nr-llm": "^0.23.0"
+        "netresearch/nr-llm": "^0.25"
     },
     "require-dev": {
         "netresearch/typo3-ci-workflows": "^1.3"

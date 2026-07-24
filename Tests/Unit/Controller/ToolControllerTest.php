@@ -13,6 +13,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
+use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
 use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Controller\ToolController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -114,7 +115,7 @@ final class ToolControllerTest extends TestCase
 
         $captured = 'unset';
         $this->toolLoopServiceStub->method('runLoop')
-            ->willReturnCallback(function (array $messages, LlmConfiguration $config, ?array $allowed) use (&$captured): ToolLoopResult {
+            ->willReturnCallback(function (array $messages, LlmConfiguration $config, ToolExecutionContext $context, ?array $allowed) use (&$captured): ToolLoopResult {
                 $captured = $allowed;
 
                 return $this->loopResult('ok');
@@ -135,7 +136,7 @@ final class ToolControllerTest extends TestCase
 
         $captured = 'unset';
         $this->toolLoopServiceStub->method('runLoop')
-            ->willReturnCallback(function (array $messages, LlmConfiguration $config, ?array $allowed) use (&$captured): ToolLoopResult {
+            ->willReturnCallback(function (array $messages, LlmConfiguration $config, ToolExecutionContext $context, ?array $allowed) use (&$captured): ToolLoopResult {
                 $captured = $allowed;
 
                 return $this->loopResult('ok');
@@ -144,6 +145,24 @@ final class ToolControllerTest extends TestCase
         $this->subject->executeAction($this->createJsonRequest(['prompt' => 'Query']));
 
         self::assertNull($captured);
+    }
+
+    #[Test]
+    public function executeActionPassesToolExecutionContextAsThirdArgument(): void
+    {
+        $this->allowRateLimit();
+
+        $captured = null;
+        $this->toolLoopServiceStub->method('runLoop')
+            ->willReturnCallback(function (array $messages, LlmConfiguration $config, ToolExecutionContext $context) use (&$captured): ToolLoopResult {
+                $captured = $context;
+
+                return $this->loopResult('ok');
+            });
+
+        $this->subject->executeAction($this->createJsonRequest(['prompt' => 'Query']));
+
+        self::assertInstanceOf(ToolExecutionContext::class, $captured);
     }
 
     #[Test]
