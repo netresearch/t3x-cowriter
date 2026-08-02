@@ -17,6 +17,8 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
+use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
+use Netresearch\NrLlm\Specialized\Translation\TranslatorResult;
 use Netresearch\T3Cowriter\Controller\TranslationController;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
@@ -458,6 +460,127 @@ final class TranslationControllerTest extends TestCase
         self::assertNull($sourceLang, 'sourceLanguage must be null, not the configuration value');
         self::assertInstanceOf(TranslationOptions::class, $options);
         self::assertSame('formal', $options->getFormality());
+    }
+
+    #[Test]
+    public function translateActionPrefersSpecializedTranslatorWhenAvailable(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $deeplTranslator = $this->createStub(TranslatorInterface::class);
+        $deeplTranslator->method('getIdentifier')->willReturn('deepl');
+
+        $translatorResult = new TranslatorResult(
+            translatedText: 'Hallo Welt',
+            sourceLanguage: 'en',
+            targetLanguage: 'de',
+            translator: 'deepl',
+            confidence: 0.95,
+        );
+
+        /** @var list<array{string, string, ?string, ?TranslationOptions}> */
+        $capturedArgs = [];
+
+        $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
+        $translationServiceMock->expects(self::never())->method('translateForConfiguration');
+        $translationServiceMock->expects(self::never())->method('translate');
+        $translationServiceMock->expects(self::once())
+            ->method('findBestTranslator')
+            ->with('auto', 'de')
+            ->willReturn($deeplTranslator);
+        $translationServiceMock->expects(self::once())
+            ->method('translateWithTranslator')
+            ->willReturnCallback(static function (
+                string $text,
+                string $targetLanguage,
+                ?string $sourceLanguage,
+                ?TranslationOptions $options,
+            ) use (&$capturedArgs, $translatorResult): TranslatorResult {
+                $capturedArgs[] = [$text, $targetLanguage, $sourceLanguage, $options];
+
+                return $translatorResult;
+            });
+
+        $contextStub = $this->createStub(Context::class);
+        $contextStub->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new TranslationController(
+            $translationServiceMock,
+            $this->configurationRepositoryStub,
+            $this->rateLimiterStub,
+            $contextStub,
+            new NullLogger(),
+            $this->backendUriBuilderStub,
+            $this->diagnosticServiceStub,
+        );
+
+        $request  = $this->createJsonRequest(['text' => 'Hello world', 'targetLanguage' => 'de']);
+        $response = $controller->translateAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertTrue($data['success']);
+        self::assertSame('Hallo Welt', $data['translation']);
+        self::assertSame('en', $data['sourceLanguage']);
+        self::assertSame(0.95, $data['confidence']);
+        self::assertSame('Deepl', $data['translator']);
+        self::assertArrayNotHasKey('usage', $data, 'TranslatorResult carries no token usage, unlike TranslationResult');
+
+        self::assertCount(1, $capturedArgs);
+        [$text, $targetLang, $sourceLang, $options] = $capturedArgs[0];
+        self::assertSame('Hello world', $text);
+        self::assertSame('de', $targetLang);
+        self::assertNull($sourceLang);
+        self::assertInstanceOf(TranslationOptions::class, $options);
+        self::assertSame('deepl', $options->getTranslator());
+    }
+
+    #[Test]
+    public function translateActionUsesPlainLlmPathWhenBestTranslatorIsTheLlmFallbackItself(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $llmTranslator = $this->createStub(TranslatorInterface::class);
+        $llmTranslator->method('getIdentifier')->willReturn('llm');
+
+        $translationResult = new TranslationResult(
+            translation: 'Hallo Welt',
+            sourceLanguage: 'en',
+            targetLanguage: 'de',
+            confidence: 0.9,
+            usage: new UsageStatistics(50, 30, 80),
+        );
+
+        $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
+        $translationServiceMock->method('findBestTranslator')->willReturn($llmTranslator);
+        $translationServiceMock->expects(self::never())->method('translateWithTranslator');
+        $translationServiceMock->expects(self::once())
+            ->method('translate')
+            ->willReturn($translationResult);
+
+        $contextStub = $this->createStub(Context::class);
+        $contextStub->method('getPropertyFromAspect')->willReturn(1);
+
+        $controller = new TranslationController(
+            $translationServiceMock,
+            $this->configurationRepositoryStub,
+            $this->rateLimiterStub,
+            $contextStub,
+            new NullLogger(),
+            $this->backendUriBuilderStub,
+            $this->diagnosticServiceStub,
+        );
+
+        $request  = $this->createJsonRequest(['text' => 'Hello world', 'targetLanguage' => 'de']);
+        $response = $controller->translateAction($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertTrue($data['success']);
+        self::assertSame('Hallo Welt', $data['translation']);
+        self::assertArrayHasKey('usage', $data);
     }
 
     #[Test]

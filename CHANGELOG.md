@@ -1,5 +1,17 @@
 # Unreleased
 
+## ADD
+
+- The quick "Translate" toolbar action now prefers a specialized translator
+  (e.g. DeepL) over the generic LLM chat path when one is available and
+  supports the requested language pair. Previously `translateAction()` used
+  `TranslationService::translate()` for the no-configuration case, which
+  never consults the translator registry at all — a configured specialized
+  translator was unreachable from this action unless an editor happened to
+  pin a saved `LlmConfiguration` whose own `translator` field was set.
+  Requires `netresearch/nr-llm`'s `TranslationOptions::withTranslator()`
+  (not yet in a tagged nr-llm release at the time of writing).
+
 ## CHANGE
 
 - Require `netresearch/nr-llm ^0.25` (was `^0.23.0`). The tool loop now runs under an explicit actor identity: `ToolLoopServiceInterface::runLoop()` takes a required `ToolExecutionContext` (nr-llm ADR-083), which the tool endpoint derives from the live backend user (`ToolExecutionContext::fromBackendUser()`), falling back to a non-interactive context when no backend user is present. Tools authorise against this context instead of the ambient `$GLOBALS['BE_USER']`, so a queued run authorises identically to a synchronous one.

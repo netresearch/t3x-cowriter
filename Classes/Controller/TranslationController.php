@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
+use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
@@ -94,24 +95,64 @@ final readonly class TranslationController
 
             // When an editor pins a stored configuration, route through the
             // per-configuration path (nr-llm 0.22, #428) so the configuration's
-            // persona/tone, model and provider apply; otherwise use the plain
-            // LLM translation path.
+            // persona/tone, model and provider apply.
             $configuration = $this->resolveConfiguration($translationRequest->configuration);
 
-            $result = $configuration instanceof LlmConfiguration
-                ? $this->translationService->translateForConfiguration(
+            if ($configuration instanceof LlmConfiguration) {
+                $result = $this->translationService->translateForConfiguration(
                     $translationRequest->text,
                     $translationRequest->targetLanguage,
                     $configuration,
                     null,
                     $options,
-                )
-                : $this->translationService->translate(
+                );
+
+                return $this->jsonResponseWithRateLimitHeaders([
+                    'success'        => true,
+                    'translation'    => $result->translation,
+                    'sourceLanguage' => $result->sourceLanguage,
+                    'confidence'     => $result->confidence,
+                    'usage'          => [
+                        'promptTokens'     => $result->usage->promptTokens,
+                        'completionTokens' => $result->usage->completionTokens,
+                        'totalTokens'      => $result->usage->totalTokens,
+                    ],
+                ], $rateLimitResult);
+            }
+
+            // No configuration pinned: prefer a specialized translator (e.g.
+            // DeepL) over the generic LLM path when one is available and
+            // supports this language pair. TranslationService::translate()
+            // never consults the translator registry at all, so a configured
+            // specialized translator was previously unreachable from this
+            // action unless an editor happened to pin a configuration whose
+            // own `translator` field was set — falls back to the plain LLM
+            // translation otherwise, unchanged from before.
+            $bestTranslator = $this->translationService->findBestTranslator('auto', $translationRequest->targetLanguage);
+
+            if ($bestTranslator instanceof TranslatorInterface && $bestTranslator->getIdentifier() !== 'llm') {
+                $specializedResult = $this->translationService->translateWithTranslator(
                     $translationRequest->text,
                     $translationRequest->targetLanguage,
                     null,
-                    $options,
+                    $options->withTranslator($bestTranslator->getIdentifier()),
                 );
+
+                return $this->jsonResponseWithRateLimitHeaders([
+                    'success'        => true,
+                    'translation'    => $specializedResult->translatedText,
+                    'sourceLanguage' => $specializedResult->sourceLanguage,
+                    'confidence'     => $specializedResult->confidence,
+                    'translator'     => $specializedResult->getTranslatorName(),
+                ], $rateLimitResult);
+            }
+
+            $result = $this->translationService->translate(
+                $translationRequest->text,
+                $translationRequest->targetLanguage,
+                null,
+                $options,
+            );
 
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'        => true,
