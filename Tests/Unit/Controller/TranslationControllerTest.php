@@ -17,6 +17,7 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
+use Netresearch\NrLlm\Specialized\Translation\LlmTranslator;
 use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
 use Netresearch\NrLlm\Specialized\Translation\TranslatorResult;
 use Netresearch\T3Cowriter\Controller\TranslationController;
@@ -543,7 +544,7 @@ final class TranslationControllerTest extends TestCase
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
         $llmTranslator = $this->createStub(TranslatorInterface::class);
-        $llmTranslator->method('getIdentifier')->willReturn('llm');
+        $llmTranslator->method('getIdentifier')->willReturn(LlmTranslator::IDENTIFIER);
 
         $translationResult = new TranslationResult(
             translation: 'Hallo Welt',

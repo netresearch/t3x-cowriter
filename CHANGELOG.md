@@ -10,7 +10,10 @@
   translator was unreachable from this action unless an editor happened to
   pin a saved `LlmConfiguration` whose own `translator` field was set.
   Requires `netresearch/nr-llm`'s `TranslationOptions::withTranslator()`
-  (not yet in a tagged nr-llm release at the time of writing).
+  and `LlmTranslator::IDENTIFIER`, and depends on a fix to
+  `DeepLTranslator::supportsLanguagePair()` so it accepts `'auto'` as a
+  source language — none yet in a tagged nr-llm release at the time of
+  writing (netresearch/t3x-nr-llm#571).
 
 ## CHANGE
 

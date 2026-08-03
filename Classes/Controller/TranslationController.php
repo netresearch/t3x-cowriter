@@ -10,10 +10,12 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
+use Netresearch\NrLlm\Specialized\Translation\LlmTranslator;
 use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
@@ -21,6 +23,7 @@ use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -107,17 +110,13 @@ final readonly class TranslationController
                     $options,
                 );
 
-                return $this->jsonResponseWithRateLimitHeaders([
-                    'success'        => true,
-                    'translation'    => $result->translation,
-                    'sourceLanguage' => $result->sourceLanguage,
-                    'confidence'     => $result->confidence,
-                    'usage'          => [
-                        'promptTokens'     => $result->usage->promptTokens,
-                        'completionTokens' => $result->usage->completionTokens,
-                        'totalTokens'      => $result->usage->totalTokens,
-                    ],
-                ], $rateLimitResult);
+                return $this->translationResponse(
+                    $result->translation,
+                    $result->sourceLanguage,
+                    $result->confidence,
+                    $rateLimitResult,
+                    usage: $result->usage,
+                );
             }
 
             // No configuration pinned: prefer a specialized translator (e.g.
@@ -130,7 +129,7 @@ final readonly class TranslationController
             // translation otherwise, unchanged from before.
             $bestTranslator = $this->translationService->findBestTranslator('auto', $translationRequest->targetLanguage);
 
-            if ($bestTranslator instanceof TranslatorInterface && $bestTranslator->getIdentifier() !== 'llm') {
+            if ($bestTranslator instanceof TranslatorInterface && $bestTranslator->getIdentifier() !== LlmTranslator::IDENTIFIER) {
                 $specializedResult = $this->translationService->translateWithTranslator(
                     $translationRequest->text,
                     $translationRequest->targetLanguage,
@@ -138,13 +137,13 @@ final readonly class TranslationController
                     $options->withTranslator($bestTranslator->getIdentifier()),
                 );
 
-                return $this->jsonResponseWithRateLimitHeaders([
-                    'success'        => true,
-                    'translation'    => $specializedResult->translatedText,
-                    'sourceLanguage' => $specializedResult->sourceLanguage,
-                    'confidence'     => $specializedResult->confidence,
-                    'translator'     => $specializedResult->getTranslatorName(),
-                ], $rateLimitResult);
+                return $this->translationResponse(
+                    $specializedResult->translatedText,
+                    $specializedResult->sourceLanguage,
+                    $specializedResult->confidence,
+                    $rateLimitResult,
+                    translatorName: $specializedResult->getTranslatorName(),
+                );
             }
 
             $result = $this->translationService->translate(
@@ -154,17 +153,13 @@ final readonly class TranslationController
                 $options,
             );
 
-            return $this->jsonResponseWithRateLimitHeaders([
-                'success'        => true,
-                'translation'    => $result->translation,
-                'sourceLanguage' => $result->sourceLanguage,
-                'confidence'     => $result->confidence,
-                'usage'          => [
-                    'promptTokens'     => $result->usage->promptTokens,
-                    'completionTokens' => $result->usage->completionTokens,
-                    'totalTokens'      => $result->usage->totalTokens,
-                ],
-            ], $rateLimitResult);
+            return $this->translationResponse(
+                $result->translation,
+                $result->sourceLanguage,
+                $result->confidence,
+                $rateLimitResult,
+                usage: $result->usage,
+            );
         } catch (Throwable $e) {
             $this->logger->error('Translation failed', [
                 'exception'      => $e->getMessage(),
@@ -190,6 +185,44 @@ final readonly class TranslationController
                 500,
             );
         }
+    }
+
+    /**
+     * The common shape of a successful translation response. `TranslatorResult`
+     * (specialized path) and `TranslationResult` (LLM path) differ beyond that
+     * common shape — token usage vs. none, translator display name vs. none —
+     * so those two extras are optional and mutually exclusive in practice
+     * (the specialized path never has usage, the LLM path never has a
+     * translator name).
+     */
+    private function translationResponse(
+        string $translation,
+        string $sourceLanguage,
+        ?float $confidence,
+        RateLimitResult $rateLimitResult,
+        ?UsageStatistics $usage = null,
+        ?string $translatorName = null,
+    ): ResponseInterface {
+        $payload = [
+            'success'        => true,
+            'translation'    => $translation,
+            'sourceLanguage' => $sourceLanguage,
+            'confidence'     => $confidence,
+        ];
+
+        if ($usage instanceof UsageStatistics) {
+            $payload['usage'] = [
+                'promptTokens'     => $usage->promptTokens,
+                'completionTokens' => $usage->completionTokens,
+                'totalTokens'      => $usage->totalTokens,
+            ];
+        }
+
+        if ($translatorName !== null) {
+            $payload['translator'] = $translatorName;
+        }
+
+        return $this->jsonResponseWithRateLimitHeaders($payload, $rateLimitResult);
     }
 
     /**
