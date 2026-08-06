@@ -1901,6 +1901,67 @@ describe('CowriterDialog', () => {
         });
     });
 
+    describe('_appendStatusLink URL scheme guard', () => {
+        let dialog;
+        let container;
+
+        beforeEach(() => {
+            dialog = new CowriterDialog(mockService);
+            container = document.createElement('div');
+            document.body.appendChild(container);
+        });
+
+        it.each([
+            ['javascript:alert(1)'],
+            ['data:text/html,<script>alert(1)</script>'],
+            ['vbscript:msgbox(1)'],
+        ])('should not link a %s URL', (hostileUrl) => {
+            dialog._appendStatusLink(container, hostileUrl);
+
+            expect(container.querySelector('a')).toBeNull();
+        });
+
+        it('should link an absolute https URL', () => {
+            dialog._appendStatusLink(container, 'https://example.org/status');
+
+            const link = container.querySelector('a');
+            expect(link).not.toBeNull();
+            expect(link.getAttribute('href')).toBe('https://example.org/status');
+            expect(link.getAttribute('target')).toBe('_blank');
+            expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+        });
+
+        it('should link a site-relative URL, which resolves against the page origin', () => {
+            dialog._appendStatusLink(container, '/typo3/module/cowriter/status');
+
+            expect(container.querySelector('a')?.getAttribute('href'))
+                .toBe('/typo3/module/cowriter/status');
+        });
+
+        it('should fall back to the status module route when no URL is passed', () => {
+            mockService._routes = { statusModule: '/typo3/module/cowriter/status' };
+
+            dialog._appendStatusLink(container, undefined);
+
+            expect(container.querySelector('a')?.getAttribute('href'))
+                .toBe('/typo3/module/cowriter/status');
+        });
+
+        it('should append nothing when neither a URL nor a route is available', () => {
+            dialog._appendStatusLink(container, '');
+
+            expect(container.querySelector('a')).toBeNull();
+        });
+
+        it('should reject a hostile scheme coming from the fallback route', () => {
+            mockService._routes = { statusModule: 'javascript:alert(1)' };
+
+            dialog._appendStatusLink(container, null);
+
+            expect(container.querySelector('a')).toBeNull();
+        });
+    });
+
     describe('modal hidden event (Escape/X close)', () => {
         it('should reject promise and abort requests when typo3-modal-hidden fires', async () => {
             const dialog = new CowriterDialog(mockService);
