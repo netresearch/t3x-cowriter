@@ -924,15 +924,6 @@ export class CowriterDialog {
     }
 
     /**
-     * Show collapsible debug details below the model info.
-     *
-     * @param {HTMLElement} container
-     * @param {object} result - The API response
-     * @param {string} inputText - The original input text sent
-     * @param {string} instructionSent - The instruction that was sent
-     * @private
-     */
-    /**
      * Only same-origin http(s) URLs become a link.
      *
      * One caller passes `error.statusUrl` out of a catch block, so the value can
@@ -970,6 +961,15 @@ export class CowriterDialog {
         container.appendChild(link);
     }
 
+    /**
+     * Show collapsible debug details below the model info.
+     *
+     * @param {HTMLElement} container
+     * @param {object} result - The API response
+     * @param {string} inputText - The original input text sent
+     * @param {string} instructionSent - The instruction that was sent
+     * @private
+     */
     _showDebugDetails(container, result, inputText, instructionSent) {
         // Remove existing debug section if re-executing
         container.querySelector('[data-role="debug-details"]')?.remove();
