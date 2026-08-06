@@ -933,19 +933,24 @@ export class CowriterDialog {
      * @private
      */
     /**
-     * Only http(s) URLs become a link.
+     * Only same-origin http(s) URLs become a link.
      *
      * One caller passes `error.statusUrl` out of a catch block, so the value can
      * originate in an API response rather than in our own code. Assigned to
      * `href` unchecked, a `javascript:` or `data:` scheme there executes on
-     * click — which is what CodeQL's js/xss-through-exception reports. The
-     * status module is an ordinary backend URL, so anything that is not http(s)
-     * is not a status link and the caller gets no link at all.
+     * click — which is what CodeQL's js/xss-through-exception reports.
+     *
+     * Checking the scheme alone leaves the host open, so a supplied
+     * `https://elsewhere.example/…` would still become a link the editor is
+     * invited to click. The status module is a TYPO3 backend route and is
+     * therefore always on our own origin; anything pointing elsewhere is not a
+     * status link, and the caller gets no link at all.
      */
-    _isHttpUrl(candidate) {
+    _isSameOriginHttpUrl(candidate) {
         try {
-            const { protocol } = new URL(candidate, globalThis.location.origin);
-            return protocol === 'http:' || protocol === 'https:';
+            const url = new URL(candidate, globalThis.location.origin);
+            return (url.protocol === 'http:' || url.protocol === 'https:')
+                && url.origin === globalThis.location.origin;
         } catch {
             return false;
         }
@@ -953,7 +958,7 @@ export class CowriterDialog {
 
     _appendStatusLink(container, statusUrl) {
         const url = statusUrl || this._service.getModuleUrl('statusModule');
-        if (!url || !this._isHttpUrl(url)) {
+        if (!url || !this._isSameOriginHttpUrl(url)) {
             return;
         }
         const link = document.createElement('a');
