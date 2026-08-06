@@ -932,9 +932,28 @@ export class CowriterDialog {
      * @param {string} instructionSent - The instruction that was sent
      * @private
      */
+    /**
+     * Only http(s) URLs become a link.
+     *
+     * One caller passes `error.statusUrl` out of a catch block, so the value can
+     * originate in an API response rather than in our own code. Assigned to
+     * `href` unchecked, a `javascript:` or `data:` scheme there executes on
+     * click — which is what CodeQL's js/xss-through-exception reports. The
+     * status module is an ordinary backend URL, so anything that is not http(s)
+     * is not a status link and the caller gets no link at all.
+     */
+    _isHttpUrl(candidate) {
+        try {
+            const { protocol } = new URL(candidate, globalThis.location.origin);
+            return protocol === 'http:' || protocol === 'https:';
+        } catch {
+            return false;
+        }
+    }
+
     _appendStatusLink(container, statusUrl) {
         const url = statusUrl || this._service.getModuleUrl('statusModule');
-        if (!url) {
+        if (!url || !this._isHttpUrl(url)) {
             return;
         }
         const link = document.createElement('a');
