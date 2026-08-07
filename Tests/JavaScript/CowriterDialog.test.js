@@ -1901,7 +1901,7 @@ describe('CowriterDialog', () => {
         });
     });
 
-    describe('_appendStatusLink URL scheme guard', () => {
+    describe('_appendStatusLink origin guard', () => {
         let dialog;
         let container;
 
@@ -1921,14 +1921,26 @@ describe('CowriterDialog', () => {
             expect(container.querySelector('a')).toBeNull();
         });
 
-        it('should link an absolute https URL', () => {
-            dialog._appendStatusLink(container, 'https://example.org/status');
+        it('should link an absolute URL on our own origin', () => {
+            const ownUrl = `${globalThis.location.origin}/typo3/module/cowriter/status`;
+
+            dialog._appendStatusLink(container, ownUrl);
 
             const link = container.querySelector('a');
             expect(link).not.toBeNull();
-            expect(link.getAttribute('href')).toBe('https://example.org/status');
+            expect(link.getAttribute('href')).toBe(ownUrl);
             expect(link.getAttribute('target')).toBe('_blank');
             expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+        });
+
+        it.each([
+            ['https://elsewhere.example/status'],
+            ['http://elsewhere.example/status'],
+            ['//elsewhere.example/status'],
+        ])('should not link %s, which is off our origin', (foreignUrl) => {
+            dialog._appendStatusLink(container, foreignUrl);
+
+            expect(container.querySelector('a')).toBeNull();
         });
 
         it('should link a site-relative URL, which resolves against the page origin', () => {
@@ -1955,6 +1967,14 @@ describe('CowriterDialog', () => {
 
         it('should reject a hostile scheme coming from the fallback route', () => {
             mockService._routes = { statusModule: 'javascript:alert(1)' };
+
+            dialog._appendStatusLink(container, null);
+
+            expect(container.querySelector('a')).toBeNull();
+        });
+
+        it('should reject a foreign host coming from the fallback route', () => {
+            mockService._routes = { statusModule: 'https://elsewhere.example/status' };
 
             dialog._appendStatusLink(container, null);
 
