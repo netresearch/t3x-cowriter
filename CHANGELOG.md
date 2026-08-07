@@ -1,5 +1,7 @@
 # Unreleased
 
+# 3.6.0 (2026-08-07)
+
 ## ADD
 
 - The quick "Translate" toolbar action now prefers a specialized translator
@@ -13,16 +15,48 @@
   and `LlmTranslator::IDENTIFIER`, and depends on a fix to
   `DeepLTranslator::supportsLanguagePair()` so it accepts `'auto'` as a
   source language. All three shipped in nr-llm 0.26.0
-  (netresearch/t3x-nr-llm#571).
+  (netresearch/t3x-nr-llm#571, #134).
 
 ## CHANGE
 
-- Require `netresearch/nr-llm ^0.26` (was `^0.23.0`). The tool loop now runs under an explicit actor identity: `ToolLoopServiceInterface::runLoop()` takes a required `ToolExecutionContext` (nr-llm ADR-083), which the tool endpoint derives from the live backend user (`ToolExecutionContext::fromBackendUser()`), falling back to a non-interactive context when no backend user is present. Tools authorise against this context instead of the ambient `$GLOBALS['BE_USER']`, so a queued run authorises identically to a synchronous one.
+- Require `netresearch/nr-llm ^0.26` (was `^0.25`) (#142).
+
+## FIX
+
+- The setup-status link is only built from `http(s)` URLs, and only when the
+  target is our own origin (#140, #141).
 
 ## MIGRATION
 
-- Upgrade the nr-llm extension to `^0.26` and run `typo3 extension:setup` on the host install (nr-llm adds governance/lease schema).
+- Upgrade the nr-llm extension to `^0.26`. nr-llm 0.26 requires nr-vault
+  `^0.14`, which replaces nr-vault's admin-only model with grantable
+  operation permissions: backend users who reach an API key through nr-llm
+  need `tx_nrvault:secret.use`, and `secret.create` to store one.
+
+# 3.5.0 (2026-07-24)
+
+## CHANGE
+
+- Require `netresearch/nr-llm ^0.25` (was `^0.23.0`). The tool loop now runs under an explicit actor identity: `ToolLoopServiceInterface::runLoop()` takes a required `ToolExecutionContext` (nr-llm ADR-083), which the tool endpoint derives from the live backend user (`ToolExecutionContext::fromBackendUser()`), falling back to a non-interactive context when no backend user is present. Tools authorise against this context instead of the ambient `$GLOBALS['BE_USER']`, so a queued run authorises identically to a synchronous one (#127).
+
+## MIGRATION
+
+- Upgrade the nr-llm extension to `^0.25` and run `typo3 extension:setup` on the host install (nr-llm adds governance/lease schema).
 - Heads-up: nr-llm's tool data-class gate now defaults to `enforce` on **fresh** installs (ADR-115). Cowriter ships no tools of its own, but the tool loop runs nr-llm's builtin tools, so a builtin whose data class exceeds a configuration's trust zone is withheld under `enforce`. Upgraded installs are pinned to `observe` by nr-llm's `DataClassEnforcementDefaultUpdateWizard` until the operator opts in — run the upgrade wizard after updating.
+
+# 3.4.1 (2026-07-22)
+
+## FIX
+
+- Repaired `Documentation/guides.xml` and added a docs-render CI job so a broken
+  docs build is caught before release (#126).
+
+# 3.4.0 (2026-07-21)
+
+## ADD
+
+- A dedicated dark-mode-aware backend module icon, and the brand icons cleaned
+  up alongside it (#124).
 
 # 3.3.0 (2026-07-21)
 
