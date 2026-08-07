@@ -9,14 +9,30 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
+use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
+use Netresearch\NrLlm\Provider\Middleware\MiddlewarePipeline;
+use Netresearch\NrLlm\Service\BudgetServiceInterface;
+use Netresearch\NrLlm\Service\Feature\TranslationPromptBuilder;
+use Netresearch\NrLlm\Service\Feature\TranslationService;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
+use Netresearch\NrLlm\Service\Guardrail\InputGuardrailScreener;
+use Netresearch\NrLlm\Service\LlmConfigurationServiceInterface;
+use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
+use Netresearch\NrLlm\Service\UsageTrackerServiceInterface;
+use Netresearch\NrLlm\Specialized\Pricing\SpecializedCostCalculatorInterface;
+use Netresearch\NrLlm\Specialized\Translation\DeepLTranslator;
+use Netresearch\NrLlm\Specialized\Translation\LlmTranslator;
+use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
+use Netresearch\NrLlm\Specialized\Translation\TranslatorRegistry;
+use Netresearch\NrLlm\Specialized\Translation\TranslatorResult;
+use Netresearch\NrVault\Service\VaultServiceInterface;
 use Netresearch\T3Cowriter\Controller\TranslationController;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
@@ -28,11 +44,18 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
 
 #[CoversClass(TranslationController::class)]
@@ -93,10 +116,7 @@ final class TranslationControllerTest extends TestCase
         $request  = $this->createJsonRequest(['text' => 'Hello world', 'targetLanguage' => 'de']);
         $response = $this->subject->translateAction($request);
 
-        self::assertSame(200, $response->getStatusCode());
-        $data = json_decode((string) $response->getBody(), true);
-        self::assertTrue($data['success']);
-        self::assertSame('Hallo Welt', $data['translation']);
+        $data = $this->assertSuccessfulTranslationResponse($response, 'Hallo Welt');
         self::assertSame('en', $data['sourceLanguage']);
         self::assertSame(0.9, $data['confidence']);
         self::assertArrayHasKey('usage', $data);
@@ -296,18 +316,7 @@ final class TranslationControllerTest extends TestCase
                 ),
             ]));
 
-        $contextStub = $this->createStub(Context::class);
-        $contextStub->method('getPropertyFromAspect')->willReturn(1);
-
-        $controller = new TranslationController(
-            $this->translationServiceStub,
-            $this->configurationRepositoryStub,
-            $this->rateLimiterStub,
-            $contextStub,
-            new NullLogger(),
-            $this->backendUriBuilderStub,
-            $diagnosticStub,
-        );
+        $controller = $this->createControllerWith($this->translationServiceStub, diagnosticService: $diagnosticStub);
 
         $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
         $response = $controller->translateAction($request);
@@ -363,18 +372,7 @@ final class TranslationControllerTest extends TestCase
                 return $translationResult;
             });
 
-        $contextStub = $this->createStub(Context::class);
-        $contextStub->method('getPropertyFromAspect')->willReturn(1);
-
-        $controller = new TranslationController(
-            $translationServiceMock,
-            $configurationRepositoryMock,
-            $this->rateLimiterStub,
-            $contextStub,
-            new NullLogger(),
-            $this->backendUriBuilderStub,
-            $this->diagnosticServiceStub,
-        );
+        $controller = $this->createControllerWith($translationServiceMock, $configurationRepositoryMock);
 
         $request = $this->createJsonRequest([
             'text'           => 'Hello world',
@@ -384,7 +382,7 @@ final class TranslationControllerTest extends TestCase
         ]);
         $response = $controller->translateAction($request);
 
-        self::assertSame(200, $response->getStatusCode());
+        $this->assertSuccessfulTranslationResponse($response, 'Hallo Welt');
         self::assertCount(1, $capturedArgs);
 
         [$text, $targetLang, $config, $sourceLang, $options] = $capturedArgs[0];
@@ -429,18 +427,7 @@ final class TranslationControllerTest extends TestCase
                 return $translationResult;
             });
 
-        $contextStub = $this->createStub(Context::class);
-        $contextStub->method('getPropertyFromAspect')->willReturn(1);
-
-        $controller = new TranslationController(
-            $translationServiceMock,
-            $this->configurationRepositoryStub,
-            $this->rateLimiterStub,
-            $contextStub,
-            new NullLogger(),
-            $this->backendUriBuilderStub,
-            $this->diagnosticServiceStub,
-        );
+        $controller = $this->createControllerWith($translationServiceMock);
 
         $request = $this->createJsonRequest([
             'text'           => 'Hello world',
@@ -449,7 +436,7 @@ final class TranslationControllerTest extends TestCase
         ]);
         $response = $controller->translateAction($request);
 
-        self::assertSame(200, $response->getStatusCode());
+        $this->assertSuccessfulTranslationResponse($response, 'Hallo Welt');
         self::assertCount(1, $capturedArgs);
 
         [$text, $targetLang, $sourceLang, $options] = $capturedArgs[0];
@@ -458,6 +445,136 @@ final class TranslationControllerTest extends TestCase
         self::assertNull($sourceLang, 'sourceLanguage must be null, not the configuration value');
         self::assertInstanceOf(TranslationOptions::class, $options);
         self::assertSame('formal', $options->getFormality());
+    }
+
+    #[Test]
+    public function translateActionPrefersSpecializedTranslatorWhenAvailable(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $deeplTranslator = $this->createStub(TranslatorInterface::class);
+        $deeplTranslator->method('getIdentifier')->willReturn('deepl');
+
+        $translatorResult = new TranslatorResult(
+            translatedText: 'Hallo Welt',
+            sourceLanguage: 'en',
+            targetLanguage: 'de',
+            translator: 'deepl',
+            confidence: 0.95,
+        );
+
+        /** @var list<array{string, string, ?string, ?TranslationOptions}> */
+        $capturedArgs = [];
+
+        $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
+        $translationServiceMock->expects(self::never())->method('translateForConfiguration');
+        $translationServiceMock->expects(self::never())->method('translate');
+        $translationServiceMock->expects(self::once())
+            ->method('findBestTranslator')
+            ->with('auto', 'de')
+            ->willReturn($deeplTranslator);
+        $translationServiceMock->expects(self::once())
+            ->method('translateWithTranslator')
+            ->willReturnCallback(static function (
+                string $text,
+                string $targetLanguage,
+                ?string $sourceLanguage,
+                ?TranslationOptions $options,
+            ) use (&$capturedArgs, $translatorResult): TranslatorResult {
+                $capturedArgs[] = [$text, $targetLanguage, $sourceLanguage, $options];
+
+                return $translatorResult;
+            });
+
+        $controller = $this->createControllerWith($translationServiceMock);
+
+        $request  = $this->createJsonRequest(['text' => 'Hello world', 'targetLanguage' => 'de']);
+        $response = $controller->translateAction($request);
+
+        $data = $this->assertSuccessfulTranslationResponse($response, 'Hallo Welt');
+        self::assertSame('en', $data['sourceLanguage']);
+        self::assertSame(0.95, $data['confidence']);
+        self::assertSame('Deepl', $data['translator']);
+        self::assertArrayNotHasKey('usage', $data, 'TranslatorResult carries no token usage, unlike TranslationResult');
+
+        self::assertCount(1, $capturedArgs);
+        [$text, $targetLang, $sourceLang, $options] = $capturedArgs[0];
+        self::assertSame('Hello world', $text);
+        self::assertSame('de', $targetLang);
+        self::assertNull($sourceLang);
+        self::assertInstanceOf(TranslationOptions::class, $options);
+        self::assertSame('deepl', $options->getTranslator());
+    }
+
+    #[Test]
+    public function translateActionUsesPlainLlmPathWhenBestTranslatorIsTheLlmFallbackItself(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $llmTranslator = $this->createStub(TranslatorInterface::class);
+        $llmTranslator->method('getIdentifier')->willReturn(LlmTranslator::IDENTIFIER);
+
+        $translationResult = new TranslationResult(
+            translation: 'Hallo Welt',
+            sourceLanguage: 'en',
+            targetLanguage: 'de',
+            confidence: 0.9,
+            usage: new UsageStatistics(50, 30, 80),
+        );
+
+        $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
+        $translationServiceMock->method('findBestTranslator')->willReturn($llmTranslator);
+        $translationServiceMock->expects(self::never())->method('translateWithTranslator');
+        $translationServiceMock->expects(self::once())
+            ->method('translate')
+            ->willReturn($translationResult);
+
+        $controller = $this->createControllerWith($translationServiceMock);
+
+        $request  = $this->createJsonRequest(['text' => 'Hello world', 'targetLanguage' => 'de']);
+        $response = $controller->translateAction($request);
+
+        $data = $this->assertSuccessfulTranslationResponse($response, 'Hallo Welt');
+        self::assertArrayHasKey('usage', $data);
+    }
+
+    /**
+     * Functional-lite: every other test in this class stubs
+     * TranslationServiceInterface directly, which only proves the
+     * controller reacts correctly to whatever TranslationService returns —
+     * it can never catch a regression in the actual selection chain
+     * (registry priority ordering, DeepLTranslator::supportsLanguagePair()).
+     * This wires the REAL TranslationService + TranslatorRegistry +
+     * DeepLTranslator + LlmTranslator; only the outermost HTTP transport is
+     * faked, via DeepLTranslator::setHttpClient() (the same test seam
+     * netresearch/t3x-nr-llm's own DeepLTranslatorTest uses).
+     */
+    #[Test]
+    public function translateActionRoutesThroughARealTranslatorRegistryToDeepL(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $translationService = $this->createRealTranslationServiceDispatchingDeeplTo(
+            $this->createJsonResponseMock(['translations' => [
+                ['text' => 'Hallo Welt', 'detected_source_language' => 'EN'],
+            ]]),
+        );
+
+        $controller = $this->createControllerWith($translationService);
+
+        $request  = $this->createJsonRequest(['text' => 'Hello world', 'targetLanguage' => 'de']);
+        $response = $controller->translateAction($request);
+
+        $data = $this->assertSuccessfulTranslationResponse($response, 'Hallo Welt');
+        self::assertSame(
+            'Deepl',
+            $data['translator'],
+            'the real TranslatorRegistry must select DeepLTranslator over the LlmTranslator fallback for an "auto"->"de" pair',
+        );
+        self::assertSame('en', $data['sourceLanguage']);
     }
 
     #[Test]
@@ -478,18 +595,7 @@ final class TranslationControllerTest extends TestCase
         $translationServiceMock->expects(self::never())->method('translateForConfiguration');
         $translationServiceMock->expects(self::never())->method('translate');
 
-        $contextStub = $this->createStub(Context::class);
-        $contextStub->method('getPropertyFromAspect')->willReturn(1);
-
-        $controller = new TranslationController(
-            $translationServiceMock,
-            $configurationRepositoryMock,
-            $this->rateLimiterStub,
-            $contextStub,
-            new NullLogger(),
-            $this->backendUriBuilderStub,
-            $this->diagnosticServiceStub,
-        );
+        $controller = $this->createControllerWith($translationServiceMock, $configurationRepositoryMock);
 
         $request = $this->createJsonRequest([
             'text'           => 'Hello world',
@@ -504,6 +610,166 @@ final class TranslationControllerTest extends TestCase
         self::assertNotSame('', $data['error']);
         // Classified as a configuration error, so the status-page link is offered.
         self::assertArrayHasKey('statusUrl', $data);
+    }
+
+    /**
+     * Build a TranslationController wired to a real (aspect-stubbed) Context
+     * and the shared rate-limiter/backend-URI-builder stubs, swapping in only
+     * the translation service (and, for the handful of tests that need it,
+     * the configuration repository / diagnostic service). Every action test
+     * needs this same wiring; only the service under observation differs.
+     */
+    private function createControllerWith(
+        TranslationServiceInterface $translationService,
+        ?LlmConfigurationRepository $configurationRepository = null,
+        ?DiagnosticService $diagnosticService = null,
+    ): TranslationController {
+        $contextStub = $this->createStub(Context::class);
+        $contextStub->method('getPropertyFromAspect')->willReturn(1);
+
+        return new TranslationController(
+            $translationService,
+            $configurationRepository ?? $this->configurationRepositoryStub,
+            $this->rateLimiterStub,
+            $contextStub,
+            new NullLogger(),
+            $this->backendUriBuilderStub,
+            $diagnosticService ?? $this->diagnosticServiceStub,
+        );
+    }
+
+    /**
+     * Assert the response-shape tail every success-path test starts with
+     * (HTTP 200, decoded JSON, success=true, the translated text), and hand
+     * back the decoded body so the caller can assert on the fields that
+     * actually differ between paths (sourceLanguage/confidence/usage/
+     * translator — TranslationResult and TranslatorResult don't carry the
+     * same shape, see translateActionPrefersSpecializedTranslatorWhenAvailable
+     * vs. translateActionReturnsTranslation).
+     *
+     * @return array<string, mixed>
+     */
+    private function assertSuccessfulTranslationResponse(ResponseInterface $response, string $expectedTranslation): array
+    {
+        self::assertSame(200, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertTrue($data['success']);
+        self::assertSame($expectedTranslation, $data['translation']);
+
+        return $data;
+    }
+
+    /**
+     * Build a real TranslationService wired to a real TranslatorRegistry
+     * containing a real DeepLTranslator (configured + available, HTTP
+     * transport replaced by a stub returning $deeplResponse) and a real
+     * LlmTranslator (available, but never reachable in these tests since
+     * DeepL's supportsLanguagePair('auto', 'de') wins the registry scan
+     * first — registry array order here mirrors DeepLTranslator's real
+     * getPriority()=90 sorting ahead of LlmTranslator's getPriority()=-1000).
+     */
+    private function createRealTranslationServiceDispatchingDeeplTo(ResponseInterface $deeplResponse): TranslationServiceInterface
+    {
+        $vaultStub = $this->createStub(VaultServiceInterface::class);
+        $vaultStub->method('retrieve')->willReturn('test-secret');
+        $vaultStub->method('exists')->willReturn(true);
+
+        $deeplHttpClientStub = $this->createStub(ClientInterface::class);
+        $deeplHttpClientStub->method('sendRequest')->willReturn($deeplResponse);
+
+        $extensionConfigurationStub = $this->createStub(ExtensionConfiguration::class);
+        $extensionConfigurationStub->method('get')->willReturn([
+            'translators' => [
+                'deepl' => ['apiKeyIdentifier' => 'deepl-test-key', 'timeout' => 30],
+            ],
+        ]);
+
+        $budgetServiceStub = $this->createStub(BudgetServiceInterface::class);
+        $budgetServiceStub->method('check')->willReturn(BudgetCheckResult::allowed());
+
+        $deeplTranslator = new DeepLTranslator(
+            $vaultStub,
+            $this->createBareRequestFactory(),
+            $this->createBareStreamFactory(),
+            $extensionConfigurationStub,
+            $this->createStub(UsageTrackerServiceInterface::class),
+            new NullLogger(),
+            $this->createStub(SpecializedCostCalculatorInterface::class),
+            $budgetServiceStub,
+            new MiddlewarePipeline([]),
+            new InputGuardrailScreener([]),
+        );
+        $deeplTranslator->setHttpClient($deeplHttpClientStub);
+
+        $llmManagerStub = $this->createStub(LlmServiceManagerInterface::class);
+        $llmManagerStub->method('hasAvailableProvider')->willReturn(true);
+        $llmTranslator = new LlmTranslator($llmManagerStub, $this->createStub(UsageTrackerServiceInterface::class));
+
+        $registry = new TranslatorRegistry([$deeplTranslator, $llmTranslator]);
+
+        return new TranslationService(
+            $llmManagerStub,
+            $registry,
+            $this->createStub(LlmConfigurationServiceInterface::class),
+            new TranslationPromptBuilder(),
+        );
+    }
+
+    private function createBareRequestFactory(): RequestFactoryInterface
+    {
+        $stub = $this->createStub(RequestFactoryInterface::class);
+        $stub->method('createRequest')->willReturnCallback(
+            fn (string $method, string $uri): RequestInterface => $this->createBareRequest($method, $uri),
+        );
+
+        return $stub;
+    }
+
+    private function createBareRequest(string $method, string $uri): RequestInterface
+    {
+        $uriStub = $this->createStub(UriInterface::class);
+        $uriStub->method('__toString')->willReturn($uri);
+
+        $request = $this->createStub(RequestInterface::class);
+        $request->method('withHeader')->willReturnCallback(fn (): RequestInterface => $request);
+        $request->method('withBody')->willReturnCallback(fn (): RequestInterface => $request);
+        $request->method('withoutHeader')->willReturnCallback(fn (): RequestInterface => $request);
+        $request->method('getMethod')->willReturn($method);
+        $request->method('getUri')->willReturn($uriStub);
+
+        return $request;
+    }
+
+    private function createBareStreamFactory(): StreamFactoryInterface
+    {
+        $stub = $this->createStub(StreamFactoryInterface::class);
+        $stub->method('createStream')->willReturnCallback(function (string $content): StreamInterface {
+            $stream = $this->createStub(StreamInterface::class);
+            $stream->method('__toString')->willReturn($content);
+            $stream->method('getContents')->willReturn($content);
+
+            return $stream;
+        });
+
+        return $stub;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function createJsonResponseMock(array $data, int $statusCode = 200): ResponseInterface
+    {
+        $body = json_encode($data, JSON_THROW_ON_ERROR);
+
+        $stream = $this->createStub(StreamInterface::class);
+        $stream->method('__toString')->willReturn($body);
+        $stream->method('getContents')->willReturn($body);
+
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn($statusCode);
+        $response->method('getBody')->willReturn($stream);
+
+        return $response;
     }
 
     /**
