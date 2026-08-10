@@ -1,5 +1,14 @@
 # Unreleased
 
+# 3.6.1 (2026-08-10)
+
+## CHANGE
+
+- Requires `netresearch/nr-llm` `^0.28`. The previous cap at `^0.26` did not
+  even admit 0.27 — the caret excludes the next minor on a 0.x version — and
+  held the whole dependency tree two minors back.
+
+
 # 3.6.0 (2026-08-07)
 
 ## ADD
