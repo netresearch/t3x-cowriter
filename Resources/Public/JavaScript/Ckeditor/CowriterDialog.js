@@ -924,18 +924,12 @@ export class CowriterDialog {
     }
 
     /**
-     * Only same-origin http(s) URLs become a link.
+     * Defence in depth on the locally injected route.
      *
-     * One caller passes `error.statusUrl` out of a catch block, so the value can
-     * originate in an API response rather than in our own code. Assigned to
-     * `href` unchecked, a `javascript:` or `data:` scheme there executes on
-     * click — which is what CodeQL's js/xss-through-exception reports.
-     *
-     * Checking the scheme alone leaves the host open, so a supplied
-     * `https://elsewhere.example/…` would still become a link the editor is
-     * invited to click. The status module is a TYPO3 backend route and is
-     * therefore always on our own origin; anything pointing elsewhere is not a
-     * status link, and the caller gets no link at all.
+     * The route comes from `TYPO3.settings.ajaxUrls`, so it is ours and this
+     * check should never reject it. It stays because a value that reaches
+     * `href` deserves a guard regardless of how trustworthy its source looks
+     * today, and because the cost is one comparison.
      */
     _isSameOriginHttpUrl(candidate) {
         try {
@@ -947,8 +941,32 @@ export class CowriterDialog {
         }
     }
 
-    _appendStatusLink(container, statusUrl) {
-        const url = statusUrl || this._service.getModuleUrl('statusModule');
+    /**
+     * Append the setup-status link.
+     *
+     * `hasStatus` is a SIGNAL, not a URL. Both callers read it off an API
+     * payload — one of them out of a catch block, i.e. from an exception — and
+     * a value from there must never reach `href`. Earlier revisions did exactly
+     * that and tried to make it safe by validating the scheme, then also the
+     * origin; CodeQL kept reporting js/xss-through-exception because the
+     * exception-derived value still flowed into the sink, guard or no guard.
+     *
+     * There is no need for it to. `TYPO3.settings.ajaxUrls.cowriter_status`
+     * puts the very same backend route on the page independently of any
+     * response, so the href is resolved locally and the payload only decides
+     * WHETHER a link is worth showing. The taint path is gone rather than
+     * fenced off, which is both the stronger property and the one a scanner
+     * can see.
+     *
+     * @param {HTMLElement} container
+     * @param {unknown} hasStatus truthy when the backend reported a status
+     *                            endpoint; its value is deliberately unused
+     */
+    _appendStatusLink(container, hasStatus) {
+        if (!hasStatus) {
+            return;
+        }
+        const url = this._service.getModuleUrl('statusModule');
         if (!url || !this._isSameOriginHttpUrl(url)) {
             return;
         }

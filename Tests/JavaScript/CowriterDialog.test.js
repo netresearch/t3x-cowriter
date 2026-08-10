@@ -1901,82 +1901,63 @@ describe('CowriterDialog', () => {
         });
     });
 
-    describe('_appendStatusLink origin guard', () => {
+    describe('_appendStatusLink: href comes from the local route, never the payload', () => {
+        const ROUTE = '/typo3/module/cowriter/status';
         let dialog;
         let container;
 
         beforeEach(() => {
             dialog = new CowriterDialog(mockService);
+            mockService._routes = { statusModule: ROUTE };
             container = document.createElement('div');
             document.body.appendChild(container);
         });
 
-        it.each([
-            ['javascript:alert(1)'],
-            ['data:text/html,<script>alert(1)</script>'],
-            ['vbscript:msgbox(1)'],
-        ])('should not link a %s URL', (hostileUrl) => {
-            dialog._appendStatusLink(container, hostileUrl);
-
-            expect(container.querySelector('a')).toBeNull();
-        });
-
-        it('should link an absolute URL on our own origin', () => {
-            const ownUrl = `${globalThis.location.origin}/typo3/module/cowriter/status`;
-
-            dialog._appendStatusLink(container, ownUrl);
+        it('should link the locally injected route when the backend signals a status endpoint', () => {
+            dialog._appendStatusLink(container, ROUTE);
 
             const link = container.querySelector('a');
             expect(link).not.toBeNull();
-            expect(link.getAttribute('href')).toBe(ownUrl);
+            expect(link.getAttribute('href')).toBe(ROUTE);
             expect(link.getAttribute('target')).toBe('_blank');
             expect(link.getAttribute('rel')).toBe('noopener noreferrer');
         });
 
+        // The whole point of the redesign: whatever the payload carries, it is a
+        // signal only. A hostile value must not reach href — and must not
+        // suppress the link either, because the href never came from it.
         it.each([
+            ['javascript:alert(1)'],
+            ['data:text/html,<script>alert(1)</script>'],
             ['https://elsewhere.example/status'],
-            ['http://elsewhere.example/status'],
             ['//elsewhere.example/status'],
-        ])('should not link %s, which is off our origin', (foreignUrl) => {
-            dialog._appendStatusLink(container, foreignUrl);
+        ])('should ignore the payload value %s and still link the local route', (payload) => {
+            dialog._appendStatusLink(container, payload);
 
-            expect(container.querySelector('a')).toBeNull();
+            expect(container.querySelector('a')?.getAttribute('href')).toBe(ROUTE);
         });
 
-        it('should link a site-relative URL, which resolves against the page origin', () => {
-            dialog._appendStatusLink(container, '/typo3/module/cowriter/status');
-
-            expect(container.querySelector('a')?.getAttribute('href'))
-                .toBe('/typo3/module/cowriter/status');
-        });
-
-        it('should fall back to the status module route when no URL is passed', () => {
-            mockService._routes = { statusModule: '/typo3/module/cowriter/status' };
-
+        it('should append nothing when the backend signalled no status endpoint', () => {
             dialog._appendStatusLink(container, undefined);
 
-            expect(container.querySelector('a')?.getAttribute('href'))
-                .toBe('/typo3/module/cowriter/status');
+            expect(container.querySelector('a')).toBeNull();
         });
 
-        it('should append nothing when neither a URL nor a route is available', () => {
-            dialog._appendStatusLink(container, '');
+        it('should append nothing when the route is not configured', () => {
+            mockService._routes = {};
+
+            dialog._appendStatusLink(container, ROUTE);
 
             expect(container.querySelector('a')).toBeNull();
         });
 
-        it('should reject a hostile scheme coming from the fallback route', () => {
-            mockService._routes = { statusModule: 'javascript:alert(1)' };
+        it.each([
+            ['javascript:alert(1)'],
+            ['https://elsewhere.example/status'],
+        ])('should reject a route of %s, so a mis-injected route cannot become a link', (badRoute) => {
+            mockService._routes = { statusModule: badRoute };
 
-            dialog._appendStatusLink(container, null);
-
-            expect(container.querySelector('a')).toBeNull();
-        });
-
-        it('should reject a foreign host coming from the fallback route', () => {
-            mockService._routes = { statusModule: 'https://elsewhere.example/status' };
-
-            dialog._appendStatusLink(container, null);
+            dialog._appendStatusLink(container, 'truthy-signal');
 
             expect(container.querySelector('a')).toBeNull();
         });
