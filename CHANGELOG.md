@@ -1,5 +1,21 @@
 # Unreleased
 
+# 3.6.2 (2026-08-13)
+
+## CHANGE
+
+- Accepts `netresearch/nr-llm` `^0.29` alongside `^0.28`, so this extension can
+  be installed next to one that needs 0.29. Nothing here touches the three
+  surfaces 0.29 broke: `ModelSelectionServiceInterface` is consumed, never
+  implemented, and neither `ContextFitResult` nor `InputSubmission` is
+  constructed.
+
+## FIX
+
+- `ext_emconf.php` demanded nr_llm `0.25.0-0.25.99`, which excluded the `^0.28`
+  composer.json has required since 3.6.1. The two constraints now say the same
+  thing.
+
 # 3.6.1 (2026-08-10)
 
 ## CHANGE
