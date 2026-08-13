@@ -42,14 +42,22 @@ RTE configuration
 
 There are two ways to configure the CKEditor integration:
 
-Option 1: Using static PageTSconfig
------------------------------------
+Option 1: Using the shipped preset
+----------------------------------
 
-If you don't have a custom RTE configuration, include the static PageTSconfig:
+If you don't have a custom RTE configuration, point the RTE at the preset
+this extension registers:
 
 1.  Go to your root page
-2.  Open :guilabel:`Page Properties` > :guilabel:`Resources`
-3.  Add the static PageTSconfig from :guilabel:`t3_cowriter`
+2.  Open :guilabel:`Page Properties` > :guilabel:`Page TSconfig`
+3.  Add this line:
+
+    ..  code-block:: typoscript
+
+        RTE.default.preset = cowriter
+
+The preset is inherited by every page below, and brings all four toolbar
+items with it.
 
 ..  figure:: /Images/pagetsconfig.png
     :alt: Page TSconfig configuration in TYPO3 v14
@@ -95,6 +103,14 @@ The four toolbar items are:
     You can include only the toolbar items you need. For example, if you
     only want the main dialog and translation, omit ``cowriterVision``
     and ``cowriterTemplates``.
+
+..  warning::
+
+    An explicit ``toolbar.items`` list REPLACES the toolbar, it does not add
+    to it. Importing the module and then listing only ``cowriter`` gives you
+    exactly one button — the other three are registered but have nowhere to
+    appear. If buttons are missing, check this list before suspecting the
+    extension.
 
 Task configuration
 ==================
