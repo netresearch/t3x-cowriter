@@ -52,9 +52,9 @@ this extension registers:
 2.  Open :guilabel:`Page Properties` > :guilabel:`Page TSconfig`
 3.  Add this line:
 
-..  code-block:: typoscript
+    ..  code-block:: typoscript
 
-    RTE.default.preset = cowriter
+        RTE.default.preset = cowriter
 
 The preset is inherited by every page below, and brings all four toolbar
 items with it.
