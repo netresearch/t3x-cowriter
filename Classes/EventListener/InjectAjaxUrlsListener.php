@@ -43,7 +43,7 @@ final readonly class InjectAjaxUrlsListener
             $event->getAssetCollector()->addInlineJavaScript(
                 'cowriter-ajax-urls-data',
                 $this->buildJsonData(),
-                ['type'     => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
+                ['type' => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
                 ['priority' => true],
             );
 
@@ -51,7 +51,7 @@ final readonly class InjectAjaxUrlsListener
             $event->getAssetCollector()->addJavaScript(
                 'cowriter-url-loader',
                 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/UrlLoader.js',
-                ['type'     => 'module'],
+                ['type' => 'module'],
                 ['priority' => true],
             );
         } catch (JsonException|RouteNotFoundException $e) {

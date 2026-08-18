@@ -69,7 +69,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
             ->with(
                 'cowriter-ajax-urls-data',
                 $this->isString(),
-                ['type'     => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
+                ['type' => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
                 ['priority' => true],
             );
 
@@ -79,7 +79,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
             ->with(
                 'cowriter-url-loader',
                 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/UrlLoader.js',
-                ['type'     => 'module'],
+                ['type' => 'module'],
                 ['priority' => true],
             );
 
