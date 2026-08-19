@@ -1,3 +1,5 @@
+<!-- Managed by agent: keep sections and order; edit content, not structure. Last updated: 2026-08-19 -->
+
 # Resources/AGENTS.md
 
 **Scope:** JavaScript/CKEditor 5 integration and frontend assets
@@ -11,6 +13,7 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 
 - **AIService.js** - API client for backend communication (chat, complete, stream)
 - **cowriter.js** - CKEditor 5 plugin integration
+- **CowriterDialog.js** - Task dialog UI (incl. status link on errors)
 - **UrlLoader.js** - CSP-compliant AJAX URL injection from data attributes
 
 ### File Structure
@@ -24,9 +27,30 @@ Resources/
 │   │   └── ModuleIcon.legacy.svg  # Backend module icon, TYPO3 v13 (teal tile variant)
 │   └── JavaScript/
 │       └── Ckeditor/
-│           ├── AIService.js   # AJAX API client
-│           ├── cowriter.js    # CKEditor plugin
-│           └── UrlLoader.js   # CSP-compliant URL loader
+│           ├── AIService.js       # AJAX API client
+│           ├── cowriter.js        # CKEditor plugin
+│           ├── CowriterDialog.js  # Task dialog UI
+│           └── UrlLoader.js       # CSP-compliant URL loader
+├── Private/
+│   ├── Language/locallang_mod_status.xlf   # Status module labels
+│   └── Templates/Backend/Status/Index.html # Status module Fluid template
+```
+
+## Setup
+
+```bash
+npm install          # Node dev-dependencies (ESLint, Vitest, Playwright)
+```
+
+No build step: the JavaScript ships as-is as native ES modules — edit the files under `Public/JavaScript/Ckeditor/` directly.
+
+## Build & Tests
+
+```bash
+npm run lint         # ESLint (flat config in ../eslint.config.js)
+npm run lint:fix     # ESLint auto-fix
+npm test             # Vitest unit tests (../Tests/JavaScript/)
+npm run test:e2e     # Playwright E2E specs (../Tests/E2E/)
 ```
 
 ## Architecture
