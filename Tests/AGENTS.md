@@ -1,7 +1,22 @@
+<!-- Managed by agent: keep sections and order; edit content, not structure. Last updated: 2026-08-19 -->
+
 # AGENTS.md - Tests
 
-**Scope:** Unit and functional tests for t3_cowriter
+**Scope:** Test suites for t3_cowriter
 **Parent:** [../AGENTS.md](../AGENTS.md)
+
+## Overview
+
+Multi-layer test suite: PHP unit, functional, integration, and E2E tests (PHPUnit via `../Build/Scripts/runTests.sh`, configs in `../Build/phpunit/`), JavaScript unit tests (Vitest, `JavaScript/`), and browser E2E specs (Playwright, `E2E/*.spec.ts`). CI runs the PHP suites across the PHP 8.2–8.5 × TYPO3 ^13.4/^14.3 matrix.
+
+## Setup
+
+```bash
+composer install     # PHP test stack (.Build/vendor, .Build/bin)
+npm install          # Vitest + Playwright
+```
+
+PHP suites run in Docker containers via `../Build/Scripts/runTests.sh` — Docker or Podman must be running.
 
 ## Coverage Targets
 
@@ -66,7 +81,7 @@
 | 16 | rateLimitedIncludesRetryAfter | Rate limit response |
 | 17 | jsonSerializeFormatsCorrectly | JSON output |
 
-## Test Execution Commands
+## Commands
 
 **CI is authoritative** - always verify fixes pass in GitHub Actions CI before merging.
 Run tests locally via composer (same commands as CI).
@@ -86,6 +101,10 @@ composer ci:test:all
 
 # Full CI suite (lint + static analysis + tests)
 composer ci:test && composer ci:test:all
+
+# JavaScript
+npm test             # Vitest (JavaScript/)
+npm run test:e2e     # Playwright (E2E/*.spec.ts)
 ```
 
 ## Test Structure
@@ -93,45 +112,22 @@ composer ci:test && composer ci:test:all
 ```
 Tests/
 ├── Unit/
-│   ├── Controller/
-│   │   ├── AjaxControllerTest.php
-│   │   ├── TranslationControllerTest.php
-│   │   ├── VisionControllerTest.php
-│   │   ├── TemplateControllerTest.php
-│   │   └── ToolControllerTest.php
-│   ├── Domain/DTO/
-│   │   ├── CompleteRequestTest.php
-│   │   ├── CompleteResponseTest.php
-│   │   ├── ExecuteTaskRequestTest.php
-│   │   ├── TranslationRequestTest.php
-│   │   ├── ToolRequestTest.php
-│   │   └── UsageDataTest.php
-│   ├── EventListener/
-│   │   └── InjectAjaxUrlsListenerTest.php
-│   └── Service/
-│       ├── ContextAssemblyServiceTest.php
-│       ├── DiagnosticServiceTest.php
-│       ├── RateLimiterServiceTest.php
-│       └── RateLimitResultTest.php
+│   ├── Controller/     # Ajax, Template, Tool, Translation, Vision controller tests
+│   ├── Domain/DTO/     # CompleteRequest (+ fuzz), CompleteResponse, ContextRequest,
+│   │                   # ExecuteTaskRequest, ToolRequest, TranslationRequest, UsageData, VisionRequest
+│   ├── EventListener/  # InjectAjaxUrlsListenerTest.php
+│   └── Service/        # ContextAssemblyService, DiagnosticService, LlmErrorClassifier,
+│                       # RateLimiterService, RateLimitResult tests
+├── Functional/         # Placeholder (.gitkeep) — suite wired in CI, no tests yet
 ├── Integration/
 │   ├── AbstractIntegrationTestCase.php
-│   └── Controller/
-│       ├── AjaxControllerIntegrationTest.php
-│       ├── Backend/
-│       │   └── StatusControllerIntegrationTest.php
-│       ├── TranslationControllerIntegrationTest.php
-│       └── VisionControllerIntegrationTest.php
+│   └── Controller/     # Ajax, Template, Translation, Vision + Backend/Status integration tests
 ├── E2E/
-│   ├── AbstractE2ETestCase.php
-│   ├── CowriterWorkflowTest.php
-│   └── NewFeatureWorkflowTest.php
-├── JavaScript/                           # Vitest tests for frontend
-│   ├── AIService.test.js
-│   ├── cowriter.test.js
-│   ├── CowriterDialog.test.js
-│   └── UrlLoader.test.js
-└── Support/
-    └── TestQueryResult.php
+│   ├── AbstractE2ETestCase.php, CowriterWorkflowTest.php, NewFeatureWorkflowTest.php  # PHP E2E
+│   ├── *.spec.ts       # Playwright specs (toolbar, dialog, tasks, translate, vision, context zoom)
+│   └── fixtures/       # Playwright auth fixture
+├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, UrlLoader (+ __mocks__/)
+└── Support/            # TestQueryResult.php, TaskStubTrait.php
 ```
 
 ## TYPO3 Final Class Workarounds
@@ -166,7 +162,7 @@ grep -rn "new TranslationController(" Tests/
 ```
 This includes Unit/, Integration/, AND E2E/ tests.
 
-## PHPUnit Attributes
+## Conventions (PHPUnit Attributes)
 
 Use PHPUnit 12 attribute syntax:
 
@@ -199,7 +195,12 @@ final class AjaxControllerTest extends TestCase
 }
 ```
 
-## Mocking nr-llm
+## Security
+
+- Verify output handling in tests: HTML escaping/sanitization test cases are mandatory for anything that renders LLM output
+- Never put real API keys or credentials in fixtures — mock `LlmServiceManagerInterface` (below); Playwright auth uses the local DDEV instance only
+
+## Examples: Mocking nr-llm
 
 ```php
 private LlmServiceManagerInterface&MockObject $llmManager;
@@ -235,6 +236,13 @@ public function testWithMockedResponse(): void
 4. **DataProviders:** For multiple input scenarios
 5. **Edge cases:** Empty, null, invalid inputs
 6. **Security tests:** HTML escaping verified
+
+## When Stuck
+
+- **Suite won't start:** `runTests.sh` needs a running Docker/Podman daemon
+- **Mock errors on final classes:** see "TYPO3 Final Class Workarounds" above
+- **Playwright failures:** run headed (`npm run test:e2e:headed`) against the DDEV instance (`make up`)
+- **Coverage attribution missing:** add `#[CoversClass]` for every exercised class
 
 ## Related
 

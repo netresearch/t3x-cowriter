@@ -1,29 +1,49 @@
+<!-- Managed by agent: keep sections and order; edit content, not structure. Last updated: 2026-08-19 -->
+
 # AGENTS.md - Classes (PHP Backend)
 
 **Scope:** PHP backend components for t3_cowriter TYPO3 extension
 **Parent:** [../AGENTS.md](../AGENTS.md)
 
-## Files to Create/Maintain
+## Overview
+
+PHP source of the extension, PSR-4 autoloaded under `Netresearch\T3Cowriter\`. Controllers answer the backend AJAX routes defined in `../Configuration/Backend/AjaxRoutes.php`, DTOs parse and validate request/response payloads, and services wrap diagnostics, context assembly, rate limiting, and LLM error classification. All LLM calls go through nr-llm's `LlmServiceManagerInterface`.
+
+## Setup
+
+```bash
+composer install     # Installs to .Build/vendor (bin-dir .Build/bin)
+```
+
+Dependency injection is configured in `../Configuration/Services.yaml`; new services are picked up automatically via autowiring, interfaces need an explicit alias there.
+
+## Key Files
 
 | File | Purpose |
 |------|---------|
 | Controller/AjaxController.php | AJAX handler for CKEditor integration |
 | Controller/Backend/StatusController.php | Setup status diagnostic page (admin only) |
+| Controller/RateLimitedControllerTrait.php | Shared rate-limit check for controllers |
 | Controller/TranslationController.php | Content translation endpoint |
 | Controller/VisionController.php | Image analysis (alt text) |
 | Controller/TemplateController.php | Prompt template listing |
 | Controller/ToolController.php | LLM function calling |
 | Domain/DTO/CompleteRequest.php | Request DTO with validation |
 | Domain/DTO/CompleteResponse.php | Response DTO with HTML escaping |
+| Domain/DTO/ContextRequest.php | Context preview request DTO |
 | Domain/DTO/ExecuteTaskRequest.php | Task execution request DTO |
+| Domain/DTO/PageSearchResult.php | Page search result DTO (tx_cowriter_page_search) |
+| Domain/DTO/ToolRequest.php | Tool/function calling request DTO |
 | Domain/DTO/TranslationRequest.php | Translation request DTO |
 | Domain/DTO/UsageData.php | Token usage statistics |
+| Domain/DTO/VisionRequest.php | Vision/alt-text request DTO |
 | EventListener/InjectAjaxUrlsListener.php | AJAX URL injection for frontend |
 | Service/DiagnosticService.php | 8-step LLM config chain checker |
 | Service/Dto/Severity.php | Check severity enum (Ok/Warning/Error) |
 | Service/Dto/DiagnosticCheck.php | Individual check result DTO |
 | Service/Dto/DiagnosticResult.php | Aggregate diagnostic result |
-| Service/ContextAssemblyService.php | Context assembly for task execution |
+| Service/ContextAssemblyService.php | Context assembly for task execution (`ContextAssemblyServiceInterface`) |
+| Service/LlmErrorClassifier.php | Classifies provider failures (`LlmErrorKind` enum) |
 | Service/RateLimiterInterface.php | Rate limiter abstraction for DI |
 | Service/RateLimiterService.php | Sliding window rate limiter implementation |
 | Service/RateLimitResult.php | Rate limit check result DTO |
@@ -97,14 +117,10 @@ if ($this->isConfigurationError($exception)) {
 ## Build & Tests
 
 ```bash
-# Unit tests (via make -> composer)
-make test-unit
-
-# With coverage
-make test-coverage
-
-# PHPStan level 10
-make phpstan
+composer ci:test:php:unit    # Unit tests
+composer ci:test:php:phpstan # PHPStan level 10
+composer ci:test             # Full quality suite (lint + phpstan + rector + cgl)
+make test-coverage           # Coverage report (unit + integration, needs DDEV)
 ```
 
 ## Code Style
@@ -201,6 +217,13 @@ public function completeAction($request)
     return new JsonResponse(['content' => $response->content]); // unhandled ProviderException, no rate limit
 }
 ```
+
+## When Stuck
+
+1. **AJAX routing:** Routes live in `../Configuration/Backend/AjaxRoutes.php`; a 403 usually means no backend login
+2. **DI failures:** Check `../Configuration/Services.yaml` (interface aliases are explicit)
+3. **LLM behavior:** Read the nr-llm extension (https://github.com/netresearch/t3x-nr-llm) — configuration chain is provider → model → configuration
+4. **Setup errors:** `DiagnosticService::runFirst()` mirrors the backend status module (`cowriter_status`) and names the first broken step
 
 ## Related
 
