@@ -1,5 +1,14 @@
 # Unreleased
 
+# 3.6.3 (2026-08-19)
+
+## CHANGE
+
+- Requires `netresearch/nr-llm` `^0.30` — a floor raise, not a widening: 0.28
+  and 0.29 are no longer accepted. 0.30 is additive (caller-source telemetry
+  attribution, ADR-177); nothing this extension consumes changed. The
+  `ext_emconf.php` constraint moves with it.
+
 # 3.6.2 (2026-08-13)
 
 ## CHANGE
