@@ -13,6 +13,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
+use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
 use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Controller\ToolController;
@@ -127,6 +128,32 @@ final class ToolControllerTest extends TestCase
         ]));
 
         self::assertSame(['query_content'], $captured);
+    }
+
+    #[Test]
+    public function executeActionNamesThisExtensionAndOperationAsCallerSource(): void
+    {
+        $this->allowRateLimit();
+
+        $captured = null;
+        $this->toolLoopServiceStub->method('runLoop')
+            ->willReturnCallback(function (
+                array $messages,
+                LlmConfiguration $config,
+                ToolExecutionContext $context,
+                ?array $allowed,
+                ?ToolOptions $options = null,
+            ) use (&$captured): ToolLoopResult {
+                $captured = $options;
+
+                return $this->loopResult('ok');
+            });
+
+        $this->subject->executeAction($this->createJsonRequest(['prompt' => 'Query']));
+
+        self::assertInstanceOf(ToolOptions::class, $captured);
+        self::assertSame('t3_cowriter', $captured->getCallerSourceExtension());
+        self::assertSame('toolCall', $captured->getCallerSourceOperation());
     }
 
     #[Test]

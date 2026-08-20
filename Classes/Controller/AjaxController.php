@@ -23,6 +23,7 @@ use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
 use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
+use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
@@ -165,7 +166,7 @@ final readonly class AjaxController
         }
 
         try {
-            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $this->budgetMetadata());
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $this->callMetadata('chat'));
 
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'      => true,
@@ -259,7 +260,7 @@ final readonly class AjaxController
                 ['role' => 'user', 'content' => $dto->prompt],
             ];
 
-            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $this->budgetMetadata());
+            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $this->callMetadata('complete'));
 
             return $this->jsonResponseWithRateLimitHeaders(
                 CompleteResponse::success($response)->jsonSerialize(),
@@ -338,7 +339,7 @@ final readonly class AjaxController
         // This implementation collects chunks and returns them in SSE format for compatibility
         try {
             $chunks    = [];
-            $generator = $this->llmServiceManager->streamChatWithConfiguration($messages, $configuration, [], $this->budgetMetadata());
+            $generator = $this->llmServiceManager->streamChatWithConfiguration($messages, $configuration, [], $this->callMetadata('streamComplete'));
 
             foreach ($generator as $chunk) {
                 $chunks[] = 'data: ' . json_encode(['content' => $chunk], JSON_THROW_ON_ERROR) . "\n\n";
@@ -635,7 +636,11 @@ final readonly class AjaxController
         }
 
         try {
-            $response = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $this->budgetMetadata());
+            $response = $this->llmServiceManager->chatWithConfiguration(
+                $messages,
+                $configuration,
+                $this->callMetadata($this->taskOperation($task)),
+            );
 
             // Post-process: convert markdown to HTML if the model ignored the formatting instruction
             $rawContent       = $response->content;
@@ -900,15 +905,39 @@ final readonly class AjaxController
     }
 
     /**
-     * nr-llm budget-attribution metadata for the current backend user, so
-     * per-user BudgetMiddleware enforcement applies to cowriter traffic.
-     * A uid of 0 (no session) is passed through and skipped by the middleware.
+     * nr-llm pipeline metadata for one call: budget attribution for the current
+     * backend user, so per-user BudgetMiddleware enforcement applies to cowriter
+     * traffic (a uid of 0 — no session — is passed through and skipped by the
+     * middleware), plus the caller identity so Analytics attributes the call to
+     * this extension instead of listing it as unattributed.
      *
-     * @return array<string, int>
+     * @param string $operation the editor action that triggered the call
+     *
+     * @return array<string, int|string>
      */
-    private function budgetMetadata(): array
+    private function callMetadata(string $operation): array
     {
-        return [BudgetMiddleware::METADATA_BE_USER_UID => $this->currentBackendUserId()];
+        return [BudgetMiddleware::METADATA_BE_USER_UID => $this->currentBackendUserId()]
+            + CallerSource::metadata($operation);
+    }
+
+    /**
+     * The caller-source operation for a task execution.
+     *
+     * Task identifiers are the editor-facing action names ("rewrite",
+     * "summarize", …), so they are the meaningful unit here. A task without an
+     * identifier falls back to the action name; taskUid 0 is the custom-
+     * instruction mode, which has no task at all.
+     */
+    private function taskOperation(?Task $task): string
+    {
+        if (!$task instanceof Task) {
+            return 'customInstruction';
+        }
+
+        $identifier = $task->getIdentifier();
+
+        return $identifier !== '' ? $identifier : 'executeTask';
     }
 
     /**

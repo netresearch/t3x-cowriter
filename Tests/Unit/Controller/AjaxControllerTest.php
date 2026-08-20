@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use Doctrine\DBAL\Result;
+use Generator;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Task;
@@ -19,6 +20,7 @@ use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
+use Netresearch\NrLlm\Provider\Middleware\TelemetryMiddleware;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
@@ -173,7 +175,153 @@ final class AjaxControllerTest extends TestCase
         $this->subject->chatAction($request);
 
         // contextMock->getPropertyFromAspect returns 1 for the backend user id.
-        self::assertSame([BudgetMiddleware::METADATA_BE_USER_UID => 1], $captured);
+        self::assertSame([
+            BudgetMiddleware::METADATA_BE_USER_UID         => 1,
+            TelemetryMiddleware::METADATA_SOURCE_EXTENSION => 't3_cowriter',
+            TelemetryMiddleware::METADATA_SOURCE_OPERATION => 'chat',
+        ], $captured);
+    }
+
+    /**
+     * The endpoints that reach nr-llm through `chatWithConfiguration()` differ
+     * only in the request they take and the operation they report, so they are
+     * one test over a table rather than one method each — which also keeps the
+     * next endpoint from being a copy-paste away.
+     *
+     * @param array<string, mixed> $body
+     */
+    #[Test]
+    #[DataProvider('callerSourceOperations')]
+    public function anActionNamesThisExtensionAndItsOperationAsCallerSource(
+        string $action,
+        array $body,
+        string $expectedOperation,
+    ): void {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $captured = $this->captureChatMetadata();
+
+        $this->subject->{$action}($this->createRequestWithJsonBody($body));
+
+        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
+        self::assertSame($expectedOperation, $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+    }
+
+    /**
+     * @return iterable<string, array{string, array<string, mixed>, string}>
+     */
+    public static function callerSourceOperations(): iterable
+    {
+        yield 'chat' => [
+            'chatAction',
+            ['messages' => [['role' => 'user', 'content' => 'Hello']]],
+            'chat',
+        ];
+
+        yield 'completion' => [
+            'completeAction',
+            ['prompt' => 'Write something'],
+            'complete',
+        ];
+
+        yield 'a task-less instruction' => [
+            'executeTaskAction',
+            ['taskUid' => 0, 'instruction' => 'Make it friendlier', 'context' => 'Some text', 'contextType' => 'selection'],
+            'customInstruction',
+        ];
+    }
+
+    #[Test]
+    public function streamActionNamesThisExtensionAndOperationAsCallerSource(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $captured           = new stdClass();
+        $captured->metadata = null;
+        $this->llmServiceManagerMock
+            ->method('streamChatWithConfiguration')
+            ->willReturnCallback(
+                function (array $m, $c, array $overrides = [], array $metadata = []) use ($captured): Generator {
+                    $captured->metadata = $metadata;
+
+                    yield 'chunk';
+                },
+            );
+
+        $this->subject->streamAction($this->createRequestWithJsonBody(['prompt' => 'Write something']));
+
+        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
+        self::assertSame('streamComplete', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+    }
+
+    /**
+     * A stored task reports its own identifier, and an identifier-less one
+     * falls back to the action name. Two cases of one rule, so one test —
+     * they differed only in the identifier the task mock returns.
+     */
+    #[Test]
+    #[DataProvider('taskOperations')]
+    public function executeTaskActionReportsTheTaskIdentifierAsCallerSourceOperation(
+        int $taskUid,
+        string $taskIdentifier,
+        string $expectedOperation,
+    ): void {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $task = $this->createMock(Task::class);
+        $task->method('isActive')->willReturn(true);
+        $task->method('getIdentifier')->willReturn($taskIdentifier);
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->with($taskUid)->willReturn($task);
+
+        $captured = $this->captureChatMetadata();
+
+        $this->subject->executeTaskAction($this->createRequestWithJsonBody([
+            'taskUid'     => $taskUid,
+            'instruction' => 'Shorten this',
+            'context'     => 'Some text',
+            'contextType' => 'selection',
+        ]));
+
+        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
+        self::assertSame($expectedOperation, $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+    }
+
+    /**
+     * @return iterable<string, array{int, string, string}>
+     */
+    public static function taskOperations(): iterable
+    {
+        yield 'a task with an identifier reports it' => [7, 'summarize', 'summarize'];
+        yield 'an identifier-less task falls back to the action name' => [9, '', 'executeTask'];
+    }
+
+    /**
+     * Capture the metadata array `chatWithConfiguration()` is called with.
+     *
+     * The holder is an object, not an array: the caller reads it after the
+     * action ran, and an array would be returned by value — a copy taken
+     * before the mock was ever invoked.
+     */
+    private function captureChatMetadata(): stdClass
+    {
+        $holder           = new stdClass();
+        $holder->metadata = null;
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(
+                function (array $m, $c, array $metadata = []) use ($holder): CompletionResponse {
+                    $holder->metadata = $metadata;
+
+                    return $this->createCompletionResponse('ok');
+                },
+            );
+
+        return $holder;
     }
 
     #[Test]

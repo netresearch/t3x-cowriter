@@ -1,5 +1,22 @@
 # Unreleased
 
+## CHANGE
+
+- Every LLM call names this extension (`t3_cowriter`) and the editor action
+  that triggered it as its caller source, so the nr-llm Analytics module
+  attributes usage and cost to cowriter instead of listing it as
+  "Unattributed". Operations: `chat`, `complete`, `streamComplete`, the task
+  identifier (or `customInstruction` when no task is selected) for task
+  execution, `altText`, `translate` and `toolCall`.
+- Alt text, translation and tool calling carry the identity on the options
+  object. nr-llm 0.31.1 discards it before dispatch — `VisionService` and
+  `TranslationService` rebuild their options without the field, and
+  `ToolLoopService` forwards only budget metadata — so those three endpoints
+  stay unattributed until nr-llm forwards it
+  ([nr-llm#845](https://github.com/netresearch/t3x-nr-llm/issues/845)). Chat,
+  completion, streaming and task execution use the metadata channel and are
+  attributed today.
+
 # 3.6.4 (2026-08-20)
 
 ## CHANGE

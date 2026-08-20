@@ -38,6 +38,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Domain/DTO/UsageData.php | Token usage statistics |
 | Domain/DTO/VisionRequest.php | Vision/alt-text request DTO |
 | EventListener/InjectAjaxUrlsListener.php | AJAX URL injection for frontend |
+| Service/CallerSource.php | Extension key + pipeline metadata naming this extension to nr-llm telemetry |
 | Service/DiagnosticService.php | 8-step LLM config chain checker |
 | Service/Dto/Severity.php | Check severity enum (Ok/Warning/Error) |
 | Service/Dto/DiagnosticCheck.php | Individual check result DTO |
@@ -77,11 +78,19 @@ content: $response->content,
 ```php
 // Use LlmServiceManagerInterface for all LLM operations. Resolve a configuration
 // and pass the backend user id as budget metadata so per-user nr-llm
-// BudgetMiddleware enforcement applies to the call.
+// BudgetMiddleware enforcement applies to the call, plus the caller identity so
+// the Analytics module attributes the call to this extension.
 $configuration = $this->configurationRepository->findDefault();
-$metadata      = [BudgetMiddleware::METADATA_BE_USER_UID => $beUserUid];
+$metadata      = [BudgetMiddleware::METADATA_BE_USER_UID => $beUserUid]
+    + CallerSource::metadata('chat');
 $response      = $this->llmServiceManager->chatWithConfiguration($messages, $configuration, $metadata);
 ```
+
+Calls that take an options object instead of a metadata array (vision,
+translation, tool loop) tag the identity with
+`AbstractOptions::withCallerSource(CallerSource::EXTENSION, '<operation>')`. The
+operation is the editor action, named per call site — never one constant for the
+whole extension.
 
 ### Response Handling
 
