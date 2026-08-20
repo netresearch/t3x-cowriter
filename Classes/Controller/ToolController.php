@@ -16,6 +16,7 @@ use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
 use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Domain\DTO\ToolRequest;
+use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -120,12 +121,17 @@ final readonly class ToolController
                 ? ToolExecutionContext::fromBackendUser($backendUser)
                 : ToolExecutionContext::none();
 
+            // withCallerSource() names this extension on the telemetry row so
+            // Analytics attributes tool calls to it (nr-llm ADR-177). nr-llm
+            // 0.31.1 does not deliver it yet: ToolLoopService forwards only
+            // budget metadata onto the chat calls it makes, so these calls stay
+            // unattributed until nr-llm#845 lands.
             $result = $this->toolLoopService->runLoop(
                 $messages,
                 $configuration,
                 $context,
                 $allowedToolNames,
-                ToolOptions::auto(),
+                ToolOptions::auto()->withCallerSource(CallerSource::EXTENSION, 'toolCall'),
             );
 
             return $this->jsonResponseWithRateLimitHeaders([

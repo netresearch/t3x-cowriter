@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use Doctrine\DBAL\Result;
+use Generator;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Task;
@@ -19,6 +20,7 @@ use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
+use Netresearch\NrLlm\Provider\Middleware\TelemetryMiddleware;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
@@ -173,7 +175,161 @@ final class AjaxControllerTest extends TestCase
         $this->subject->chatAction($request);
 
         // contextMock->getPropertyFromAspect returns 1 for the backend user id.
-        self::assertSame([BudgetMiddleware::METADATA_BE_USER_UID => 1], $captured);
+        self::assertSame([
+            BudgetMiddleware::METADATA_BE_USER_UID         => 1,
+            TelemetryMiddleware::METADATA_SOURCE_EXTENSION => 't3_cowriter',
+            TelemetryMiddleware::METADATA_SOURCE_OPERATION => 'chat',
+        ], $captured);
+    }
+
+    #[Test]
+    public function chatActionNamesThisExtensionAndOperationAsCallerSource(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $captured = $this->captureChatMetadata();
+
+        $this->subject->chatAction(
+            $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => 'Hello']]]),
+        );
+
+        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
+        self::assertSame('chat', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+    }
+
+    #[Test]
+    public function completeActionNamesThisExtensionAndOperationAsCallerSource(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $captured = $this->captureChatMetadata();
+
+        $this->subject->completeAction($this->createRequestWithJsonBody(['prompt' => 'Write something']));
+
+        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
+        self::assertSame('complete', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+    }
+
+    #[Test]
+    public function streamActionNamesThisExtensionAndOperationAsCallerSource(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $captured           = new stdClass();
+        $captured->metadata = null;
+        $this->llmServiceManagerMock
+            ->method('streamChatWithConfiguration')
+            ->willReturnCallback(
+                function (array $m, $c, array $overrides = [], array $metadata = []) use ($captured): Generator {
+                    $captured->metadata = $metadata;
+
+                    yield 'chunk';
+                },
+            );
+
+        $this->subject->streamAction($this->createRequestWithJsonBody(['prompt' => 'Write something']));
+
+        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
+        self::assertSame('streamComplete', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+    }
+
+    #[Test]
+    public function executeTaskActionReportsTheTaskIdentifierAsCallerSourceOperation(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $task = $this->createMock(Task::class);
+        $task->method('isActive')->willReturn(true);
+        $task->method('getIdentifier')->willReturn('summarize');
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->with(7)->willReturn($task);
+
+        $captured = $this->captureChatMetadata();
+
+        $this->subject->executeTaskAction($this->createRequestWithJsonBody([
+            'taskUid'     => 7,
+            'instruction' => 'Shorten this',
+            'context'     => 'Some text',
+            'contextType' => 'selection',
+        ]));
+
+        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
+        self::assertSame('summarize', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+    }
+
+    #[Test]
+    public function executeTaskActionReportsCustomInstructionWhenNoTaskIsSelected(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $captured = $this->captureChatMetadata();
+
+        $this->subject->executeTaskAction($this->createRequestWithJsonBody([
+            'taskUid'     => 0,
+            'instruction' => 'Make it friendlier',
+            'context'     => 'Some text',
+            'contextType' => 'selection',
+        ]));
+
+        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
+        self::assertSame(
+            'customInstruction',
+            $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null,
+        );
+    }
+
+    #[Test]
+    public function executeTaskActionFallsBackToTheActionNameForAnIdentifierlessTask(): void
+    {
+        $config = $this->createConfigurationMock();
+        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+
+        $task = $this->createMock(Task::class);
+        $task->method('isActive')->willReturn(true);
+        $task->method('getIdentifier')->willReturn('');
+        $task->method('getConfiguration')->willReturn(null);
+        $this->taskRepositoryMock->method('findByUid')->with(9)->willReturn($task);
+
+        $captured = $this->captureChatMetadata();
+
+        $this->subject->executeTaskAction($this->createRequestWithJsonBody([
+            'taskUid'     => 9,
+            'instruction' => 'Do the thing',
+            'context'     => 'Some text',
+            'contextType' => 'selection',
+        ]));
+
+        self::assertSame('executeTask', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+    }
+
+    /**
+     * Capture the metadata array `chatWithConfiguration()` is called with.
+     *
+     * The holder is an object, not an array: the caller reads it after the
+     * action ran, and an array would be returned by value — a copy taken
+     * before the mock was ever invoked.
+     */
+    private function captureChatMetadata(): stdClass
+    {
+        $holder           = new stdClass();
+        $holder->metadata = null;
+
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willReturnCallback(
+                function (array $m, $c, array $metadata = []) use ($holder): CompletionResponse {
+                    $holder->metadata = $metadata;
+
+                    return $this->createCompletionResponse('ok');
+                },
+            );
+
+        return $holder;
     }
 
     #[Test]

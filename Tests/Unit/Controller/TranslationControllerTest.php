@@ -54,6 +54,7 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
+use stdClass;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
@@ -125,6 +126,88 @@ final class TranslationControllerTest extends TestCase
         self::assertSame(80, $data['usage']['totalTokens']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
+    }
+
+    #[Test]
+    public function translateActionNamesThisExtensionAndOperationAsCallerSource(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $captured          = new stdClass();
+        $captured->options = null;
+
+        $this->translationServiceStub->method('translate')
+            ->willReturnCallback(
+                static function (
+                    string $text,
+                    string $targetLanguage,
+                    ?string $sourceLanguage = null,
+                    ?TranslationOptions $options = null,
+                ) use ($captured): TranslationResult {
+                    $captured->options = $options;
+
+                    return new TranslationResult(
+                        translation: 'Hallo Welt',
+                        sourceLanguage: 'en',
+                        targetLanguage: 'de',
+                        confidence: 0.9,
+                        usage: new UsageStatistics(1, 1, 2),
+                    );
+                },
+            );
+
+        $this->subject->translateAction(
+            $this->createJsonRequest(['text' => 'Hello world', 'targetLanguage' => 'de']),
+        );
+
+        self::assertInstanceOf(TranslationOptions::class, $captured->options);
+        self::assertSame('t3_cowriter', $captured->options->getCallerSourceExtension());
+        self::assertSame('translate', $captured->options->getCallerSourceOperation());
+    }
+
+    #[Test]
+    public function translateActionNamesTheCallerSourceOnThePinnedConfigurationPath(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $this->configurationRepositoryStub->method('findOneByIdentifier')
+            ->willReturn($this->createStub(LlmConfiguration::class));
+
+        $captured          = new stdClass();
+        $captured->options = null;
+
+        $this->translationServiceStub->method('translateForConfiguration')
+            ->willReturnCallback(
+                static function (
+                    string $text,
+                    string $targetLanguage,
+                    LlmConfiguration $configuration,
+                    ?string $sourceLanguage = null,
+                    ?TranslationOptions $options = null,
+                ) use ($captured): TranslationResult {
+                    $captured->options = $options;
+
+                    return new TranslationResult(
+                        translation: 'Hallo Welt',
+                        sourceLanguage: 'en',
+                        targetLanguage: 'de',
+                        confidence: 0.9,
+                        usage: new UsageStatistics(1, 1, 2),
+                    );
+                },
+            );
+
+        $this->subject->translateAction($this->createJsonRequest([
+            'text'           => 'Hello world',
+            'targetLanguage' => 'de',
+            'configuration'  => 'pinned',
+        ]));
+
+        self::assertInstanceOf(TranslationOptions::class, $captured->options);
+        self::assertSame('t3_cowriter', $captured->options->getCallerSourceExtension());
+        self::assertSame('translate', $captured->options->getCallerSourceOperation());
     }
 
     #[Test]

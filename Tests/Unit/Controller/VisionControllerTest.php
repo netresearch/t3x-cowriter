@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
 use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
+use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Controller\VisionController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
@@ -23,6 +24,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
+use stdClass;
 use TYPO3\CMS\Core\Context\Context;
 
 #[CoversClass(VisionController::class)]
@@ -80,6 +82,36 @@ final class VisionControllerTest extends TestCase
         self::assertSame(150, $data['usage']['totalTokens']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
+    }
+
+    #[Test]
+    public function analyzeActionNamesThisExtensionAndOperationAsCallerSource(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $captured          = new stdClass();
+        $captured->options = null;
+
+        $this->visionServiceStub->method('analyzeImageFull')
+            ->willReturnCallback(
+                static function (string $url, string $prompt, ?VisionOptions $options = null) use ($captured): VisionResponse {
+                    $captured->options = $options;
+
+                    return new VisionResponse(
+                        description: 'A cat',
+                        model: 'gpt-4o',
+                        usage: new UsageStatistics(1, 1, 2),
+                        confidence: 0.9,
+                    );
+                },
+            );
+
+        $this->subject->analyzeAction($this->createJsonRequest(['imageUrl' => 'https://example.com/cat.jpg']));
+
+        self::assertInstanceOf(VisionOptions::class, $captured->options);
+        self::assertSame('t3_cowriter', $captured->options->getCallerSourceExtension());
+        self::assertSame('altText', $captured->options->getCallerSourceOperation());
     }
 
     #[Test]

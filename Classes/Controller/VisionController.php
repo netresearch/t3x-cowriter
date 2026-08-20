@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Controller;
 use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Domain\DTO\VisionRequest;
+use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -76,7 +77,15 @@ final readonly class VisionController
             // altText() preset (detail 'low', maxTokens 100, temperature 0.5)
             // matches this alt-text endpoint; analyzeImageFull() still returns the
             // model/confidence/usage metadata the response surfaces.
-            $options  = VisionOptions::altText()->withBeUserUid((int) $userId);
+            // withCallerSource() names this extension on the telemetry row so
+            // Analytics attributes alt-text generation to it (nr-llm ADR-177).
+            // nr-llm 0.31.1 does not deliver it yet: analyzeImageFull() rebuilds
+            // the options object without the field, so these calls stay
+            // unattributed until nr-llm#845 lands.
+            $options = VisionOptions::altText()
+                ->withBeUserUid((int) $userId)
+                ->withCallerSource(CallerSource::EXTENSION, 'altText');
+
             $response = $this->visionService->analyzeImageFull(
                 $visionRequest->imageUrl,
                 $visionRequest->prompt,

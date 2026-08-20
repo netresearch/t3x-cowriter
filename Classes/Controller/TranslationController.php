@@ -18,6 +18,7 @@ use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\NrLlm\Specialized\Translation\LlmTranslator;
 use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
+use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
@@ -91,10 +92,17 @@ final readonly class TranslationController
         }
 
         try {
+            // withCallerSource() names this extension on the telemetry row so
+            // Analytics attributes translations to it (nr-llm ADR-177).
+            // nr-llm 0.31.1 does not deliver it yet: TranslationService drops
+            // the field on every path it offers, so these calls stay
+            // unattributed until nr-llm#845 lands.
             $options = (new TranslationOptions(
                 formality: $translationRequest->formality,
                 domain: $translationRequest->domain,
-            ))->withBeUserUid((int) $userId);
+            ))
+                ->withBeUserUid((int) $userId)
+                ->withCallerSource(CallerSource::EXTENSION, 'translate');
 
             // When an editor pins a stored configuration, route through the
             // per-configuration path (nr-llm 0.22, #428) so the configuration's
