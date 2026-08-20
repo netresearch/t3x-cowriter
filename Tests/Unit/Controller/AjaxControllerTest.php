@@ -256,53 +256,47 @@ final class AjaxControllerTest extends TestCase
         self::assertSame('streamComplete', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
     }
 
+    /**
+     * A stored task reports its own identifier, and an identifier-less one
+     * falls back to the action name. Two cases of one rule, so one test —
+     * they differed only in the identifier the task mock returns.
+     */
     #[Test]
-    public function executeTaskActionReportsTheTaskIdentifierAsCallerSourceOperation(): void
-    {
+    #[DataProvider('taskOperations')]
+    public function executeTaskActionReportsTheTaskIdentifierAsCallerSourceOperation(
+        int $taskUid,
+        string $taskIdentifier,
+        string $expectedOperation,
+    ): void {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
 
         $task = $this->createMock(Task::class);
         $task->method('isActive')->willReturn(true);
-        $task->method('getIdentifier')->willReturn('summarize');
+        $task->method('getIdentifier')->willReturn($taskIdentifier);
         $task->method('getConfiguration')->willReturn(null);
-        $this->taskRepositoryMock->method('findByUid')->with(7)->willReturn($task);
+        $this->taskRepositoryMock->method('findByUid')->with($taskUid)->willReturn($task);
 
         $captured = $this->captureChatMetadata();
 
         $this->subject->executeTaskAction($this->createRequestWithJsonBody([
-            'taskUid'     => 7,
+            'taskUid'     => $taskUid,
             'instruction' => 'Shorten this',
             'context'     => 'Some text',
             'contextType' => 'selection',
         ]));
 
         self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
-        self::assertSame('summarize', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+        self::assertSame($expectedOperation, $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
     }
 
-    #[Test]
-    public function executeTaskActionFallsBackToTheActionNameForAnIdentifierlessTask(): void
+    /**
+     * @return iterable<string, array{int, string, string}>
+     */
+    public static function taskOperations(): iterable
     {
-        $config = $this->createConfigurationMock();
-        $this->configRepositoryMock->method('findDefault')->willReturn($config);
-
-        $task = $this->createMock(Task::class);
-        $task->method('isActive')->willReturn(true);
-        $task->method('getIdentifier')->willReturn('');
-        $task->method('getConfiguration')->willReturn(null);
-        $this->taskRepositoryMock->method('findByUid')->with(9)->willReturn($task);
-
-        $captured = $this->captureChatMetadata();
-
-        $this->subject->executeTaskAction($this->createRequestWithJsonBody([
-            'taskUid'     => 9,
-            'instruction' => 'Do the thing',
-            'context'     => 'Some text',
-            'contextType' => 'selection',
-        ]));
-
-        self::assertSame('executeTask', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+        yield 'a task with an identifier reports it' => [7, 'summarize', 'summarize'];
+        yield 'an identifier-less task falls back to the action name' => [9, '', 'executeTask'];
     }
 
     /**
