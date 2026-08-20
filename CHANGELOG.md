@@ -1,5 +1,15 @@
 # Unreleased
 
+# 3.6.4 (2026-08-20)
+
+## CHANGE
+
+- Requires `netresearch/nr-llm` `^0.31` — a floor raise, not a widening: 0.30
+  is no longer accepted. 0.31.0 is additive (per-extension usage attribution
+  in analytics, ADR-178; explicit half of the per-call outcome, ADR-176) and
+  nothing this extension consumes changed. The `ext_emconf.php` constraint
+  moves with it.
+
 # 3.6.3 (2026-08-19)
 
 ## CHANGE
