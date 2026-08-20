@@ -182,34 +182,54 @@ final class AjaxControllerTest extends TestCase
         ], $captured);
     }
 
+    /**
+     * The endpoints that reach nr-llm through `chatWithConfiguration()` differ
+     * only in the request they take and the operation they report, so they are
+     * one test over a table rather than one method each — which also keeps the
+     * next endpoint from being a copy-paste away.
+     *
+     * @param array<string, mixed> $body
+     */
     #[Test]
-    public function chatActionNamesThisExtensionAndOperationAsCallerSource(): void
-    {
+    #[DataProvider('callerSourceOperations')]
+    public function anActionNamesThisExtensionAndItsOperationAsCallerSource(
+        string $action,
+        array $body,
+        string $expectedOperation,
+    ): void {
         $config = $this->createConfigurationMock();
         $this->configRepositoryMock->method('findDefault')->willReturn($config);
 
         $captured = $this->captureChatMetadata();
 
-        $this->subject->chatAction(
-            $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => 'Hello']]]),
-        );
+        $this->subject->{$action}($this->createRequestWithJsonBody($body));
 
         self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
-        self::assertSame('chat', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+        self::assertSame($expectedOperation, $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
     }
 
-    #[Test]
-    public function completeActionNamesThisExtensionAndOperationAsCallerSource(): void
+    /**
+     * @return iterable<string, array{string, array<string, mixed>, string}>
+     */
+    public static function callerSourceOperations(): iterable
     {
-        $config = $this->createConfigurationMock();
-        $this->configRepositoryMock->method('findDefault')->willReturn($config);
+        yield 'chat' => [
+            'chatAction',
+            ['messages' => [['role' => 'user', 'content' => 'Hello']]],
+            'chat',
+        ];
 
-        $captured = $this->captureChatMetadata();
+        yield 'completion' => [
+            'completeAction',
+            ['prompt' => 'Write something'],
+            'complete',
+        ];
 
-        $this->subject->completeAction($this->createRequestWithJsonBody(['prompt' => 'Write something']));
-
-        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
-        self::assertSame('complete', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
+        yield 'a task-less instruction' => [
+            'executeTaskAction',
+            ['taskUid' => 0, 'instruction' => 'Make it friendlier', 'context' => 'Some text', 'contextType' => 'selection'],
+            'customInstruction',
+        ];
     }
 
     #[Test]
@@ -259,28 +279,6 @@ final class AjaxControllerTest extends TestCase
 
         self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
         self::assertSame('summarize', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null);
-    }
-
-    #[Test]
-    public function executeTaskActionReportsCustomInstructionWhenNoTaskIsSelected(): void
-    {
-        $config = $this->createConfigurationMock();
-        $this->configRepositoryMock->method('findDefault')->willReturn($config);
-
-        $captured = $this->captureChatMetadata();
-
-        $this->subject->executeTaskAction($this->createRequestWithJsonBody([
-            'taskUid'     => 0,
-            'instruction' => 'Make it friendlier',
-            'context'     => 'Some text',
-            'contextType' => 'selection',
-        ]));
-
-        self::assertSame('t3_cowriter', $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_EXTENSION] ?? null);
-        self::assertSame(
-            'customInstruction',
-            $captured->metadata[TelemetryMiddleware::METADATA_SOURCE_OPERATION] ?? null,
-        );
     }
 
     #[Test]
