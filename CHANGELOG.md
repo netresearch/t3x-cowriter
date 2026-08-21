@@ -1,7 +1,13 @@
 # Unreleased
 
+# 3.6.5 (2026-08-21)
+
 ## CHANGE
 
+- Requires `netresearch/nr-llm` `^0.32`. The floor rises because 0.32.0 is what
+  carries the caller source through to dispatch, and it gives `vision()` and
+  `embed()` the default-configuration fallback `chat()` already had — a call
+  naming no provider now uses the installation's default instead of throwing.
 - Every LLM call names this extension (`t3_cowriter`) and the editor action
   that triggered it as its caller source, so the nr-llm Analytics module
   attributes usage and cost to cowriter instead of listing it as
@@ -9,13 +15,12 @@
   identifier (or `customInstruction` when no task is selected) for task
   execution, `altText`, `translate` and `toolCall`.
 - Alt text, translation and tool calling carry the identity on the options
-  object. nr-llm 0.31.1 discards it before dispatch — `VisionService` and
-  `TranslationService` rebuild their options without the field, and
-  `ToolLoopService` forwards only budget metadata — so those three endpoints
-  stay unattributed until nr-llm forwards it
-  ([nr-llm#845](https://github.com/netresearch/t3x-nr-llm/issues/845)). Chat,
-  completion, streaming and task execution use the metadata channel and are
-  attributed today.
+  object. nr-llm discarded it before dispatch up to 0.31.1 — `VisionService` and
+  `TranslationService` rebuilt their options without the field, and
+  `ToolLoopService` forwarded only budget metadata — so those three endpoints
+  were unattributed. 0.32.0 forwards it
+  ([nr-llm#845](https://github.com/netresearch/t3x-nr-llm/issues/845)), and with
+  the floor raised in this release all seven operations are attributed.
 
 # 3.6.4 (2026-08-20)
 
