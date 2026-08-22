@@ -58,7 +58,7 @@
         "netresearch/nr-llm": "^0.33"
     },
     "require-dev": {
-        "netresearch/typo3-ci-workflows": "^1.3"
+        "netresearch/typo3-ci-workflows": "^1.8.1"
     },
     "autoload": {
         "psr-4": {
@@ -102,28 +102,28 @@
         }
     },
     "scripts": {
-        "ci:cgl": "Build/Scripts/runTests.sh cgl:fix",
-        "ci:rector": "Build/Scripts/runTests.sh rector:fix",
+        "ci:cgl": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then php-cs-fixer fix --config Build/.php-cs-fixer.dist.php \"$@\"; else ./Build/Scripts/runTests.sh -s cgl \"$@\"; fi' --",
+        "ci:rector": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then rector process --config Build/rector.php \"$@\"; else ./Build/Scripts/runTests.sh -s rector \"$@\"; fi' --",
         "ci:security": "composer audit",
-        "ci:test:php:cgl": "Build/Scripts/runTests.sh cgl",
+        "ci:test:php:cgl": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then php-cs-fixer fix --config Build/.php-cs-fixer.dist.php --dry-run --diff \"$@\"; else ./Build/Scripts/runTests.sh -s cgl -n \"$@\"; fi' --",
         "ci:test:php:lint": [
             "phplint --configuration Build/.phplint.yml"
         ],
-        "ci:test:php:phpstan": "Build/Scripts/runTests.sh phpstan",
+        "ci:test:php:phpstan": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then phpstan analyse -c Build/phpstan.neon \"$@\"; else ./Build/Scripts/runTests.sh -s phpstan \"$@\"; fi' --",
         "ci:test:php:phpstan:baseline": [
             "phpstan analyze --configuration Build/phpstan.neon --memory-limit=-1 --generate-baseline Build/phpstan-baseline.neon --allow-empty-baseline"
         ],
-        "ci:test:php:rector": "Build/Scripts/runTests.sh rector",
+        "ci:test:php:rector": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then rector process --config Build/rector.php --dry-run \"$@\"; else ./Build/Scripts/runTests.sh -s rector -n \"$@\"; fi' --",
         "ci:test": [
             "@ci:test:php:lint",
             "@ci:test:php:phpstan",
             "@ci:test:php:rector",
             "@ci:test:php:cgl"
         ],
-        "ci:test:php:unit": "Build/Scripts/runTests.sh unit",
-        "ci:test:php:integration": "Build/Scripts/runTests.sh integration",
-        "ci:test:php:e2e": "Build/Scripts/runTests.sh e2e",
-        "ci:test:php:functional": "Build/Scripts/runTests.sh functional",
+        "ci:test:php:unit": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then phpunit -c Build/phpunit/UnitTests.xml \"$@\"; else ./Build/Scripts/runTests.sh -s unit \"$@\"; fi' --",
+        "ci:test:php:integration": "phpunit -c Build/phpunit/IntegrationTests.xml",
+        "ci:test:php:e2e": "phpunit -c Build/phpunit/E2ETests.xml",
+        "ci:test:php:functional": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then phpunit -c Build/phpunit/FunctionalTests.xml \"$@\"; else ./Build/Scripts/runTests.sh -s functional \"$@\"; fi' --",
         "ci:test:all": [
             "@ci:test:php:unit",
             "@ci:test:php:functional",
