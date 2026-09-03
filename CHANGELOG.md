@@ -1,9 +1,13 @@
 # Unreleased
 
+# 3.6.7 (2026-09-03)
+
 ## CHANGE
 
 - Requires `netresearch/nr-llm` `^0.34`, and `ext_emconf.php` with it, at `0.34.0-0.34.99` rather than the `0.33.0-0.33.99` it carried.
 - The `cowriter_status` module no longer declares `['after' => 'nrllm']`. nr-llm 0.34.0 moved its modules into a shared `AI` section (ADR-183) and left `nrllm` behind as an alias for `nrllm_overview`. `ModuleFactory` rewrites a `position` reference through that alias, so the anchor now resolves — to a module under `netresearch_ai`, while `cowriter_status` sits under `tools`. `ModuleRegistry::applySorting()` only honours an `after` whose target is a sibling, so the line had become a declaration that cannot take effect. The module keeps its place in Admin Tools by default ordering.
+- `ext_localconf.php`'s cache-configuration guard is a `??=` assignment rather than an `isset()` block. rector/rector 2.6.5 widened `IfToNullCoalescingAssignRector`, and because this repository commits no `composer.lock`, CI resolved the new release and the Rector gate went red on `main` without a line of ours moving — taking the required `ci / All CI checks` context with it. `??=` assigns exactly when `isset()` is false, so the rewrite is behaviour-preserving.
+- `step-security/harden-runner` is pinned to v2.21.1, matching `netresearch/.github`'s `typo3-extension` template.
 
 # 3.6.6 (2026-08-21)
 
