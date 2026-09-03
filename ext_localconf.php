@@ -28,13 +28,11 @@ $GLOBALS['TYPO3_CONF_VARS']['RTE']['Presets']['cowriter']
  * The cache is resolved via CacheManager in RateLimiterService (not via DI reference,
  * because extension caches are not available as DI services during container compilation).
  */
-if (!isset($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cowriter_ratelimit'])) {
-    $GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cowriter_ratelimit'] = [
-        'frontend' => VariableFrontend::class,
-        'backend'  => Typo3DatabaseBackend::class,
-        'options'  => [
-            'defaultLifetime' => 120,
-        ],
-        'groups' => ['system'],
-    ];
-}
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cowriter_ratelimit'] ??= [
+    'frontend' => VariableFrontend::class,
+    'backend'  => Typo3DatabaseBackend::class,
+    'options'  => [
+        'defaultLifetime' => 120,
+    ],
+    'groups' => ['system'],
+];
