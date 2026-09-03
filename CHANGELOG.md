@@ -1,5 +1,10 @@
 # Unreleased
 
+## CHANGE
+
+- Requires `netresearch/nr-llm` `^0.34`, and `ext_emconf.php` with it, at `0.34.0-0.34.99` rather than the `0.33.0-0.33.99` it carried.
+- The `cowriter_status` module no longer declares `['after' => 'nrllm']`. nr-llm 0.34.0 moved its modules into a shared `AI` section (ADR-183) and left `nrllm` behind as an alias for `nrllm_overview`. `ModuleFactory` rewrites a `position` reference through that alias, so the anchor now resolves — to a module under `netresearch_ai`, while `cowriter_status` sits under `tools`. `ModuleRegistry::applySorting()` only honours an `after` whose target is a sibling, so the line had become a declaration that cannot take effect. The module keeps its place in Admin Tools by default ordering.
+
 # 3.6.6 (2026-08-21)
 
 ## CHANGE
