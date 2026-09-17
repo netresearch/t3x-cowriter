@@ -1,5 +1,11 @@
 # Unreleased
 
+# 3.6.8 (2026-09-17)
+
+## CHANGE
+
+- Accepts `netresearch/nr-llm` at `^0.34 || ^0.35`, and `ext_emconf.php` with it, at `0.34.0-0.35.99`. nr-llm 0.35.0 is released and on a 0.x `^0.34` does not admit it, so 3.6.7 pinned every installation it is part of to nr-llm 0.34. Source compatibility was measured: of nr-llm 0.35's three breaking changes, `ToolResult::withWriteTarget()` affects only extensions that register tools, `ConversationService::startSession()` is not called here, and the `ModelResolution` added to `chatForConfiguration()`/`chatWithConfiguration()` is nullable and last, so existing call sites are unchanged.
+
 # 3.6.7 (2026-09-03)
 
 ## CHANGE
