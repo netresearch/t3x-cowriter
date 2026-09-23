@@ -11,7 +11,7 @@
   "license_location_status": "Met",
   "license_location_justification": "The licence file is in the repository root: https://github.com/netresearch/t3x-cowriter/blob/main/LICENSE",
   "release_notes_status": "Met",
-  "release_notes_justification": "Human-readable release notes per version are kept in https://github.com/netresearch/t3x-cowriter/blob/main/CHANGELOG.md; it covers the latest release, v3.6.8.",
+  "release_notes_justification": "Human-readable release notes per version are kept in https://github.com/netresearch/t3x-cowriter/blob/main/CHANGELOG.md; it covers the latest release, v3.6.9.",
   "repo_distributed_status": "Met",
   "repo_distributed_justification": "The repository uses git, hosted at https://github.com/netresearch/t3x-cowriter",
   "repo_public_status": "Met",
