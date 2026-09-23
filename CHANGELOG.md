@@ -1,5 +1,13 @@
 # Unreleased
 
+# 3.6.9 (2026-09-23)
+
+## CHANGE
+
+- Accepts `netresearch/nr-llm` at `^0.34 || ^0.35 || ^0.36`, and `ext_emconf.php` with it, at `0.34.0-0.36.99`. On a 0.x `^0.35` does not admit 0.36.0, so 3.6.8 would pin every installation it is part of to nr-llm 0.35 or older. Source compatibility was checked against nr-llm's API surface snapshot between v0.35.0 and the 0.36.0 release commit (`0c56cae4`): the only changes are additive (`WriteKind::DELETED`, `RecordCreatorInterface`), and the one its changelog marks as breaking — `WriteKind` gaining a case — affects only code that matches `WriteKind` exhaustively, which this extension does not reference.
+- CI workflows are synced with `netresearch/.github`'s `typo3-extension` template (#177, #178), and the documentation names the secret scan betterleaks, as CI now does (#179).
+- Adds `.bestpractices.json` with the evidence behind the OpenSSF Best Practices badge answers (#180, #181).
+
 # 3.6.8 (2026-09-17)
 
 ## CHANGE
