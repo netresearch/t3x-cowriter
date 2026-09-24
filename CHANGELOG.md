@@ -1,5 +1,11 @@
 # Unreleased
 
+# 3.6.10 (2026-09-24)
+
+## CHANGE
+
+- Accepts `netresearch/nr-llm` at `^0.34 || ^0.35 || ^0.36 || ^0.37`, and `ext_emconf.php` with it, at `0.34.0-0.37.99`. On a 0.x `^0.36` does not admit 0.37.0, so 3.6.9 would pin every installation it is part of to nr-llm 0.36.
+
 # 3.6.9 (2026-09-23)
 
 ## CHANGE
