@@ -246,7 +246,8 @@ class RecordContextReader
     {
         // @phpstan-ignore function.alreadyNarrowedType (always true when analysed against v14)
         if (method_exists($backendUser, 'checkRecordEditAccess')) {
-            // @phpstan-ignore method.notFound (absent when analysed against v13.4)
+            // The method, and the AccessCheckResult it returns, are absent when analysed against v13.4.
+            // @phpstan-ignore method.notFound, property.nonObject, return.type
             return $backendUser->checkRecordEditAccess($table, $record)->isAllowed;
         }
 
