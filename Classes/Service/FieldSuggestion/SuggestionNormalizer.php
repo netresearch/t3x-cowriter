@@ -60,7 +60,9 @@ final class SuggestionNormalizer
     {
         $text = trim((string) preg_replace('/\s+/u', ' ', $value));
 
-        return trim($text, " \"'`\u{201C}\u{201D}\u{201E}\u{2018}\u{2019}\u{00AB}\u{00BB}");
+        // trim() takes its character list byte by byte, so multi-byte quotes in
+        // it would also strip lead/trail bytes of Cyrillic, CJK or "€".
+        return preg_replace('/^[\s"\'`\x{201C}\x{201D}\x{201E}\x{2018}\x{2019}\x{00AB}\x{00BB}]+|[\s"\'`\x{201C}\x{201D}\x{201E}\x{2018}\x{2019}\x{00AB}\x{00BB}]+$/u', '', $text) ?? $text;
     }
 
     /**
@@ -82,7 +84,8 @@ final class SuggestionNormalizer
             }
         }
 
-        return rtrim($cut, " ,;:-\u{2013}\u{2014}");
+        // Unicode-aware for the same reason as clean(): rtrim() works on bytes.
+        return preg_replace('/[\s,;:\-\x{2013}\x{2014}]+$/u', '', $cut) ?? $cut;
     }
 
     /**

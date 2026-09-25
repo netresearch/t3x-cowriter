@@ -153,6 +153,56 @@ final class SuggestionNormalizerTest extends TestCase
         self::assertSame($expected, $this->subject->clean($input));
     }
 
+    /**
+     * Values whose first or last byte also occurs inside a stripped quote or
+     * dash character; a byte-wise trim() would cut them into invalid UTF-8.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function multibyteEdgeProvider(): iterable
+    {
+        yield 'Cyrillic' => ['Компьютер'];
+        yield 'CJK ending in 一' => ['统一'];
+        yield 'starting with €' => ['€ 5 Rabatt'];
+        yield 'ending in Ü' => ['GRÜNE WIESE Ü'];
+        yield 'ending in ©' => ['Netresearch ©'];
+    }
+
+    #[Test]
+    #[DataProvider('multibyteEdgeProvider')]
+    public function cleanKeepsMultibyteCharactersAtTheEdges(string $value): void
+    {
+        $result = $this->subject->clean($value);
+
+        self::assertSame($value, $result);
+        self::assertTrue(mb_check_encoding($result, 'UTF-8'));
+    }
+
+    #[Test]
+    #[DataProvider('multibyteEdgeProvider')]
+    public function truncateKeepsMultibyteCharactersAtTheEnd(string $value): void
+    {
+        $result = $this->subject->truncate($value . ' – more text', mb_strlen($value) + 2);
+
+        self::assertSame($value, $result);
+        self::assertTrue(mb_check_encoding($result, 'UTF-8'));
+    }
+
+    #[Test]
+    public function quotesAroundMultibyteTextAreStillStripped(): void
+    {
+        self::assertSame('Компьютер', $this->subject->clean("\u{201E}Компьютер\u{201C}"));
+        self::assertSame('统一', $this->subject->clean('"统一"'));
+        self::assertSame('€ 5', $this->subject->clean("\u{00AB}€ 5\u{00BB}"));
+    }
+
+    #[Test]
+    public function trailingDashesAfterMultibyteTextAreStillStripped(): void
+    {
+        self::assertSame('Größe', $this->subject->truncate("Größe \u{2014} und mehr", 8));
+        self::assertSame('Größe', $this->subject->truncate('Größe, und mehr', 7));
+    }
+
     #[Test]
     public function duplicatesAreDroppedCaseInsensitively(): void
     {
