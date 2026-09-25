@@ -1,5 +1,15 @@
 # Unreleased
 
+## FEATURE
+
+- AI suggestions for form fields outside the rich text editor: a "Suggest values with AI" button next to `pages.seo_title` (with EXT:seo), `pages.description`, `pages.keywords` and `pages.slug` asks the LLM for three alternative values and lists them below the field. Picking one fills the form field; nothing is saved until the editor saves the record. The button works with the keyboard (Enter/Space, arrow keys, Escape returns focus to the button) and announces loading, results and errors through a live region.
+- New AJAX route `tx_cowriter_suggestions` (`FieldSuggestionController::suggestAction`). It reads the record, its page and the page content on the server, and checks write access to the table, access to the field if it is an exclude field, and edit rights on the page (page creation rights for a new page) before calling the LLM. The answer is requested as JSON against a schema (nr-llm `completeStructuredForConfiguration()`), and the per-field length limits (60 characters for the SEO title, 160 for the description) are enforced in code. For the slug the model proposes only the last path segment; TYPO3's `SlugHelper` adds the parent path and sanitises it. Uniqueness is checked by TYPO3's slug element and by DataHandler on save, as it is for a slug that is typed in.
+- New extension configuration `fieldSuggestions.fields` (default `pages.seo_title,pages.description,pages.keywords,pages.slug`) and `fieldSuggestions.count` (default 3, 1 to 5). A configured field that does not exist in the TCA is skipped.
+
+## BUILD
+
+- `typo3/cms-seo` is a dev dependency, so the functional tests cover the SEO title both with and without EXT:seo installed.
+
 # 3.6.10 (2026-09-24)
 
 ## CHANGE

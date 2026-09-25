@@ -1,0 +1,19 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","perms_userid","perms_groupid","perms_user","perms_group","perms_everybody","keywords","description"
+,1,0,"Home","/",1,1,1,1,31,31,0,"",""
+,2,1,"Products","/products",0,1,1,1,31,31,0,"",""
+,3,2,"Office chairs","/products/office-chairs",0,1,1,1,31,31,0,"chairs","Stored description"
+,4,2,"Locked page","/products/locked",0,1,1,99,31,0,0,"",""
+"tt_content"
+,"uid","pid","header","bodytext","CType","sys_language_uid","sorting"
+,10,3,"Ergonomic chairs","<p>Adjustable seat height and lumbar support.</p>","text",0,256
+,11,3,"Warranty","Five years on every frame.","text",0,512
+"be_groups"
+,"uid","pid","title","tables_modify","tables_select","non_exclude_fields","db_mountpoints"
+,1,0,"Editors","pages,tt_content","pages,tt_content","pages:description,pages:keywords,pages:seo_title","1"
+,2,0,"Editors without SEO fields","pages,tt_content","pages,tt_content","","1"
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,1,0,"admin",1,"",0
+,2,0,"editor",0,"1",0
+,3,0,"restricted",0,"2",0

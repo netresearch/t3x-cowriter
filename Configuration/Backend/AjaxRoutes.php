@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Controller\FieldSuggestionController;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Controller\ToolController;
 use Netresearch\T3Cowriter\Controller\TranslationController;
@@ -70,5 +71,9 @@ return [
     'tx_cowriter_page_search' => [
         'path'   => '/cowriter/page-search',
         'target' => AjaxController::class . '::searchPagesAction',
+    ],
+    'tx_cowriter_suggestions' => [
+        'path'   => '/cowriter/suggestions',
+        'target' => FieldSuggestionController::class . '::suggestAction',
     ],
 ];

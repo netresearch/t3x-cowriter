@@ -14,12 +14,16 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | Task dialog | `Resources/Public/JavaScript/Ckeditor/CowriterDialog.js` | Task dialog UI, status link on errors |
 | API client | `Resources/Public/JavaScript/Ckeditor/AIService.js` | Fetch wrapper for all AJAX routes, `AIServiceError` |
 | URL loader | `Resources/Public/JavaScript/Ckeditor/UrlLoader.js` | CSP-compliant AJAX URL injection |
-| AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 12 route definitions (see table below) |
+| Field suggestions (JS) | `Resources/Public/JavaScript/FormEngine/FieldSuggestions.js` | FormEngine field control: suggestion list, pick fills the field |
+| AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 13 route definitions (see table below) |
 | Main controller | `Classes/Controller/AjaxController.php` | Chat, complete, stream (SSE), configurations, tasks, task execution, context, page search |
 | Vision controller | `Classes/Controller/VisionController.php` | Image analysis / alt-text generation |
 | Translation controller | `Classes/Controller/TranslationController.php` | Content translation |
 | Template controller | `Classes/Controller/TemplateController.php` | Prompt template listing |
 | Tool controller | `Classes/Controller/ToolController.php` | LLM tool/function calling |
+| Field suggestion controller | `Classes/Controller/FieldSuggestionController.php` | N suggestions for one form field (permission check, structured LLM call) |
+| Field suggestion services | `Classes/Service/FieldSuggestion/` | Record/page context with permission checks, prompt + JSON schema, length limits, slug building via `SlugHelper` |
+| Field control registration | `Classes/EventListener/RegisterFieldSuggestionControlsListener.php`, `Classes/Form/FieldControl/FieldSuggestionsControl.php` | Adds the control to the configured TCA fields (`AfterTcaCompilationEvent`, `ext_conf_template.txt`) and renders the button |
 | Status module | `Classes/Controller/Backend/StatusController.php`, `Configuration/Backend/Modules.php` | Setup diagnostics page (`cowriter_status`) |
 | Diagnostics | `Classes/Service/DiagnosticService.php` | 8-step config chain check (provider → model → configuration) |
 | Context assembly | `Classes/Service/ContextAssemblyService.php` | Builds page/content context for task execution |
@@ -44,6 +48,7 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | `tx_cowriter_translate` | `TranslationController::translateAction` |
 | `tx_cowriter_templates` | `TemplateController::listAction` |
 | `tx_cowriter_tools` | `ToolController::executeAction` |
+| `tx_cowriter_suggestions` | `FieldSuggestionController::suggestAction` |
 
 ## Data Flow
 
@@ -53,6 +58,8 @@ CKEditor Toolbar
   ├─ cowriterVision    → AIService.js ─────────────────→ VisionController
   ├─ cowriterTranslate → AIService.js ─────────────────→ TranslationController
   └─ cowriterTemplates → AIService.js ─────────────────→ TemplateController
+FormEngine field control
+  └─ FieldSuggestions.js → AjaxRequest ────────────────→ FieldSuggestionController
                                                                ↓
                                                     LlmServiceManagerInterface
                                                           (nr-llm)
@@ -67,4 +74,5 @@ Controllers rate-limit first (`RateLimitedControllerTrait`), parse the request i
 - **No frontend LLM access**: all provider credentials and calls live in nr-llm behind backend authentication (`Classes/AGENTS.md`, root `AGENTS.md` Security section).
 - **Rate-limit cache via CacheManager, not DI**: extension caches are not available as DI services during container compilation; see the comment in `ext_localconf.php`.
 - **Raw LLM output contract**: server returns unescaped content, frontend owns sanitization — documented in `Classes/AGENTS.md`.
+- **Field suggestions are registered after TCA compilation**: `AfterTcaCompilationEvent` sees fields of other extensions (`pages.seo_title` from EXT:seo) regardless of load order, and the TCA registration is the server's allow-list — a field without the control is never served. Extension configuration, not TSconfig, selects the fields, because the TCA is instance-wide.
 - **CI via shared reusables**: all workflows delegate to `netresearch/typo3-ci-workflows` / `netresearch/.github`; the per-repo matrix lives in `.github/workflows/ci.yml`.

@@ -58,7 +58,8 @@
         "netresearch/nr-llm": "^0.34 || ^0.35 || ^0.36 || ^0.37"
     },
     "require-dev": {
-        "netresearch/typo3-ci-workflows": "^1.8.1"
+        "netresearch/typo3-ci-workflows": "^1.8.1",
+        "typo3/cms-seo": "^13.4 || ^14.3"
     },
     "autoload": {
         "psr-4": {

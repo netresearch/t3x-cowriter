@@ -118,7 +118,7 @@ Tests/
 │   ├── EventListener/  # InjectAjaxUrlsListenerTest.php
 │   └── Service/        # ContextAssemblyService, DiagnosticService, LlmErrorClassifier,
 │                       # RateLimiterService, RateLimitResult tests
-├── Functional/         # Placeholder (.gitkeep) — suite wired in CI, no tests yet
+├── Functional/         # FieldSuggestion/: TCA registration and the suggestion endpoint against a real DB (sqlite in CI)
 ├── Integration/
 │   ├── AbstractIntegrationTestCase.php
 │   └── Controller/     # Ajax, Template, Translation, Vision + Backend/Status integration tests
@@ -126,7 +126,7 @@ Tests/
 │   ├── AbstractE2ETestCase.php, CowriterWorkflowTest.php, NewFeatureWorkflowTest.php  # PHP E2E
 │   ├── *.spec.ts       # Playwright specs (toolbar, dialog, tasks, translate, vision, context zoom)
 │   └── fixtures/       # Playwright auth fixture
-├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, UrlLoader (+ __mocks__/)
+├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, UrlLoader, FieldSuggestions (+ __mocks__/)
 └── Support/            # TestQueryResult.php, TaskStubTrait.php
 ```
 

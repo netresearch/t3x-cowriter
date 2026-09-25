@@ -1,0 +1,5 @@
+# cat=Field suggestions; type=string; label=Fields with the AI "Suggest" button: Comma-separated list of table.field. A field that does not exist in the TCA is skipped (pages.seo_title needs EXT:seo). Leave empty to switch the button off.
+fieldSuggestions.fields = pages.seo_title,pages.description,pages.keywords,pages.slug
+
+# cat=Field suggestions; type=int+; label=Number of suggestions: How many suggestions the button asks for (1 to 5).
+fieldSuggestions.count = 3
