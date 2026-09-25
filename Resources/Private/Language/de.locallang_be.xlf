@@ -1,61 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
-    <file source-language="en" datatype="plaintext" original="messages" date="2026-09-25T00:00:00Z" product-name="t3_cowriter">
+    <file source-language="en" target-language="de" datatype="plaintext" original="messages" date="2026-09-25T00:00:00Z" product-name="t3_cowriter">
         <header/>
         <body>
             <trans-unit id="fieldSuggestions.button" resname="fieldSuggestions.button">
                 <source>Suggest values with AI</source>
+                <target>Werte mit KI vorschlagen</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.heading" resname="fieldSuggestions.heading">
                 <source>AI suggestions</source>
+                <target>KI-Vorschläge</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.loading" resname="fieldSuggestions.loading">
                 <source>Generating suggestions…</source>
+                <target>Vorschläge werden erstellt…</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.loaded" resname="fieldSuggestions.loaded">
                 <source>%d suggestions available. Choose one to insert it into the field.</source>
+                <target>%d Vorschläge verfügbar. Wählen Sie einen aus, um ihn in das Feld einzufügen.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.empty" resname="fieldSuggestions.empty">
                 <source>No suggestions were returned.</source>
+                <target>Es wurden keine Vorschläge geliefert.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error" resname="fieldSuggestions.error">
                 <source>The suggestions could not be loaded.</source>
+                <target>Die Vorschläge konnten nicht geladen werden.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.inserted" resname="fieldSuggestions.inserted">
                 <source>Suggestion inserted. Save the record to keep it.</source>
+                <target>Vorschlag eingefügt. Speichern Sie den Datensatz, um ihn zu übernehmen.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.close" resname="fieldSuggestions.close">
                 <source>Close suggestions</source>
+                <target>Vorschläge schließen</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.notEnabled" resname="fieldSuggestions.error.notEnabled">
                 <source>Suggestions are not enabled for this field.</source>
+                <target>Für dieses Feld sind keine Vorschläge aktiviert.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.accessDenied" resname="fieldSuggestions.error.accessDenied">
                 <source>You are not allowed to edit this field.</source>
+                <target>Sie dürfen dieses Feld nicht bearbeiten.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.siteRootSlug" resname="fieldSuggestions.error.siteRootSlug">
                 <source>The root page of a site always has the slug "/".</source>
+                <target>Die Wurzelseite einer Site hat immer das URL-Segment „/“.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.noConfiguration" resname="fieldSuggestions.error.noConfiguration">
                 <source>No LLM configuration available. Please configure the nr_llm extension.</source>
+                <target>Keine LLM-Konfiguration verfügbar. Bitte konfigurieren Sie die Erweiterung nr_llm.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.noSuggestions" resname="fieldSuggestions.error.noSuggestions">
                 <source>The AI returned no usable suggestions. Please try again.</source>
+                <target>Die KI hat keine verwendbaren Vorschläge geliefert. Bitte versuchen Sie es erneut.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.invalidFormat" resname="fieldSuggestions.error.invalidFormat">
                 <source>The AI answer did not have the expected format. Please try again.</source>
+                <target>Die Antwort der KI hatte nicht das erwartete Format. Bitte versuchen Sie es erneut.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.configuration" resname="fieldSuggestions.error.configuration">
                 <source>LLM is not configured yet. Ask an administrator to check the Cowriter Setup Status page for details.</source>
+                <target>Das LLM ist noch nicht konfiguriert. Bitten Sie einen Administrator, die Details auf der Seite „Cowriter-Einrichtungsstatus“ zu prüfen.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.authentication" resname="fieldSuggestions.error.authentication">
                 <source>The LLM provider rejected the API key. Please ask an administrator to check the provider settings.</source>
+                <target>Der LLM-Anbieter hat den API-Schlüssel abgelehnt. Bitten Sie einen Administrator, die Anbietereinstellungen zu prüfen.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.rateLimit" resname="fieldSuggestions.error.rateLimit">
                 <source>The LLM provider rate limit was exceeded. Please wait a moment and try again.</source>
+                <target>Das Anfragelimit des LLM-Anbieters wurde überschritten. Bitte warten Sie einen Moment und versuchen Sie es erneut.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.unknown" resname="fieldSuggestions.error.unknown">
                 <source>The suggestions could not be generated. Please try again later.</source>
+                <target>Die Vorschläge konnten nicht erstellt werden. Bitte versuchen Sie es später erneut.</target>
             </trans-unit>
         </body>
     </file>

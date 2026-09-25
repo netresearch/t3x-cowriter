@@ -28,6 +28,8 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Localization\LanguageService;
+use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
 
 /**
  * AJAX endpoint behind the "Suggest" field control: N suggestions for one
@@ -45,6 +47,8 @@ final readonly class FieldSuggestionController
      */
     private const SCHEMA_MISMATCH_CODES = [1784500001, 1784500002];
 
+    private const LABEL_PREFIX = 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_be.xlf:';
+
     public function __construct(
         private RecordContextReader $recordContextReader,
         private FieldSuggestionService $fieldSuggestionService,
@@ -52,6 +56,7 @@ final readonly class FieldSuggestionController
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
+        private LanguageServiceFactory $languageServiceFactory,
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
     ) {}
 
@@ -91,6 +96,9 @@ final readonly class FieldSuggestionController
             );
         }
 
+        // Messages from here on are for the editor, in the editor's backend language.
+        $languageService = $this->languageServiceFactory->createFromUserPreferences($backendUser);
+
         try {
             $recordContext = $this->recordContextReader->read($dto, $backendUser);
 
@@ -98,11 +106,11 @@ final readonly class FieldSuggestionController
             $profile = FieldProfile::fromTca($dto->table, $dto->field, Tca::column($dto->table, $dto->field) ?? []);
 
             if ($profile->kind === FieldKind::Slug && $recordContext->isSiteRoot()) {
-                throw FieldSuggestionException::notApplicable('The root page of a site always has the slug "/".');
+                throw FieldSuggestionException::siteRootSlug();
             }
         } catch (FieldSuggestionException $e) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $e->getMessage()],
+                ['success' => false, 'error' => $this->label($languageService, $e->getLabelKey())],
                 $rateLimitResult,
                 $e->getHttpStatus(),
             );
@@ -111,7 +119,7 @@ final readonly class FieldSuggestionController
         $configuration = $this->configurationRepository->findDefault();
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'No LLM configuration available. Please configure the nr_llm extension.'],
+                ['success' => false, 'error' => $this->label($languageService, 'fieldSuggestions.error.noConfiguration')],
                 $rateLimitResult,
                 404,
             );
@@ -131,7 +139,7 @@ final readonly class FieldSuggestionController
             $this->logger->error('Field suggestion failed', ['exception' => $e->getMessage()]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->errorMessage($e)],
+                ['success' => false, 'error' => $this->label($languageService, $this->errorLabelKey($e))],
                 $rateLimitResult,
                 502,
             );
@@ -139,7 +147,7 @@ final readonly class FieldSuggestionController
 
         if ($suggestions === []) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'The AI returned no usable suggestions. Please try again.'],
+                ['success' => false, 'error' => $this->label($languageService, 'fieldSuggestions.error.noSuggestions')],
                 $rateLimitResult,
                 502,
             );
@@ -155,9 +163,9 @@ final readonly class FieldSuggestionController
     }
 
     /**
-     * An editor-facing message for a failed LLM call.
+     * The label key of the editor-facing message for a failed LLM call.
      */
-    private function errorMessage(Throwable $exception): string
+    private function errorLabelKey(Throwable $exception): string
     {
         $kind = $this->errorClassifier->classify($exception);
 
@@ -167,17 +175,19 @@ final readonly class FieldSuggestionController
         ) {
             // nr-llm's structured completion: the answer did not match the
             // schema even after its repair round-trip.
-            return 'The AI answer did not have the expected format. Please try again.';
+            return 'fieldSuggestions.error.invalidFormat';
         }
 
         return match ($kind) {
-            LlmErrorKind::Configuration => 'LLM is not configured yet.'
-                . ' Ask an administrator to check the Cowriter Setup Status page for details.',
-            LlmErrorKind::Authentication => 'The LLM provider rejected the API key.'
-                . ' Please ask an administrator to check the provider settings.',
-            LlmErrorKind::RateLimit => 'The LLM provider rate limit was exceeded.'
-                . ' Please wait a moment and try again.',
-            LlmErrorKind::Unknown => 'The suggestions could not be generated. Please try again later.',
+            LlmErrorKind::Configuration  => 'fieldSuggestions.error.configuration',
+            LlmErrorKind::Authentication => 'fieldSuggestions.error.authentication',
+            LlmErrorKind::RateLimit      => 'fieldSuggestions.error.rateLimit',
+            LlmErrorKind::Unknown        => 'fieldSuggestions.error.unknown',
         };
+    }
+
+    private function label(LanguageService $languageService, string $key): string
+    {
+        return $languageService->sL(self::LABEL_PREFIX . $key);
     }
 }

@@ -27,6 +27,7 @@ use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\ServerRequest;
 use TYPO3\CMS\Core\Http\StreamFactory;
+use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
 
@@ -71,6 +72,7 @@ final class FieldSuggestionControllerTest extends FunctionalTestCase
             $rateLimiter,
             GeneralUtility::makeInstance(Context::class),
             new NullLogger(),
+            GeneralUtility::makeInstance(LanguageServiceFactory::class),
         );
     }
 

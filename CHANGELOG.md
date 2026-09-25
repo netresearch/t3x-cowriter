@@ -1,3 +1,14 @@
+# Unreleased
+
+## FEATURE
+
+- German translations of both language files (`de.locallang_be.xlf`, `de.locallang_mod_status.xlf`). A backend user whose backend language is German sees the "Suggest values with AI" button, the suggestion list, its status messages and the `cowriter_status` module in German.
+- The texts of the `cowriter_status` module (heading, introduction, result callouts, table header, "Fix" button, closing note) and the editor-facing error messages of the field suggestion route `tx_cowriter_suggestions` now come from the language files; the route answers in the backend language of the user. The CKEditor toolbar actions, the Cowriter dialog, the rate-limit answer shared by all routes, the error messages of the other AJAX routes and the result texts of the individual checks in the status module are still English only.
+
+## DOCS
+
+- The field suggestions section shows a screenshot of the suggestion list below the SEO title field.
+
 # 3.7.0 (2026-09-25)
 
 ## FEATURE

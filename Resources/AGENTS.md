@@ -35,8 +35,9 @@ Resources/
 │       └── FormEngine/
 │           └── FieldSuggestions.js # "Suggest" field control
 ├── Private/
-│   ├── Language/locallang_be.xlf           # Field suggestion labels
+│   ├── Language/locallang_be.xlf           # Field suggestion labels and endpoint messages
 │   ├── Language/locallang_mod_status.xlf   # Status module labels
+│   ├── Language/de.*.xlf                   # German translations; same ids (GermanTranslationTest)
 │   └── Templates/Backend/Status/Index.html # Status module Fluid template
 ```
 

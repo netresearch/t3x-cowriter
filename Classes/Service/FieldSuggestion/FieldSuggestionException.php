@@ -12,34 +12,43 @@ namespace Netresearch\T3Cowriter\Service\FieldSuggestion;
 use RuntimeException;
 
 /**
- * A field suggestion request that cannot be served. The message is written for
- * the editor and is returned to the browser as is; it never carries provider
- * details.
+ * A field suggestion request that cannot be served. The label key names the
+ * editor-facing text in locallang_be.xlf, which the controller returns in the
+ * editor's backend language; the exception message is the English text. Neither
+ * carries provider details.
  */
 final class FieldSuggestionException extends RuntimeException
 {
-    private function __construct(string $message, private readonly int $httpStatus)
+    private function __construct(string $message, private readonly int $httpStatus, private readonly string $labelKey)
     {
         parent::__construct($message, $httpStatus);
     }
 
     public static function notEnabled(): self
     {
-        return new self('Suggestions are not enabled for this field.', 400);
+        return new self('Suggestions are not enabled for this field.', 400, 'fieldSuggestions.error.notEnabled');
     }
 
     public static function accessDenied(): self
     {
-        return new self('You are not allowed to edit this field.', 403);
+        return new self('You are not allowed to edit this field.', 403, 'fieldSuggestions.error.accessDenied');
     }
 
-    public static function notApplicable(string $reason): self
+    public static function siteRootSlug(): self
     {
-        return new self($reason, 422);
+        return new self('The root page of a site always has the slug "/".', 422, 'fieldSuggestions.error.siteRootSlug');
     }
 
     public function getHttpStatus(): int
     {
         return $this->httpStatus;
+    }
+
+    /**
+     * Id of the editor-facing text in locallang_be.xlf.
+     */
+    public function getLabelKey(): string
+    {
+        return $this->labelKey;
     }
 }
