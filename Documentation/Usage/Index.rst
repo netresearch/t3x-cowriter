@@ -186,6 +186,54 @@ LLM module, reload the page to see them in the dropdown.
     If no tasks with ``category = 'content'`` are configured, a
     notification guides you to the LLM module to create them.
 
+..  _usage-field-suggestions:
+
+Field suggestions
+=================
+
+Outside the rich text editor, the **Suggest values with AI** button
+(light bulb icon) next to a form field asks the LLM for alternative
+values. By default it sits next to these page properties:
+
+*   :guilabel:`SEO` > :guilabel:`Title for search engines`
+    (``pages.seo_title``, only with the system extension ``seo``)
+*   :guilabel:`SEO` > :guilabel:`Description` (``pages.description``)
+*   :guilabel:`SEO` > :guilabel:`Keywords` (``pages.keywords``)
+*   :guilabel:`General` > :guilabel:`URL Segment` (``pages.slug``)
+
+1.  Click the light bulb button next to the field (or focus it and press
+    :kbd:`Enter` or :kbd:`Space`)
+2.  The suggestions appear in a list below the field; by default there
+    are three
+3.  Click a suggestion (or move to it with the arrow keys and press
+    :kbd:`Enter`) to insert it into the field; the cursor moves into the
+    field
+4.  Save the record to keep the value
+
+Nothing is saved automatically: a picked suggestion only changes the form,
+exactly as if you had typed it, and :kbd:`Escape` closes the list without
+changing anything.
+
+The suggestions are generated from the page title, the current value of
+the field (including text you typed but have not saved yet) and the text
+of the content elements on the page. In a workspace, the page and its
+content elements are read as they look in your workspace; drafts of other
+workspaces are never used. They follow the length guidance of
+the field: at most 60 characters for the SEO title and 160 characters for
+the description; keywords are a comma-separated list. For the URL segment
+the AI only proposes the words of the last path segment. TYPO3 adds the
+parent page path and turns the words into a valid URL segment. It checks
+that the URL segment is unique the same way as for a segment you type in.
+
+The button only appears for fields you may edit, and the server checks
+your permissions again for every request: you need write access to the
+table, access to the field if it is an exclude field, and edit rights on
+the page (for a new page: the right to create pages below the parent
+page).
+
+Categories are not filled by the button. For tags, use the
+:guilabel:`Keywords` suggestions and copy the terms you want to use.
+
 Model override
 ==============
 

@@ -144,6 +144,40 @@ Adding custom tasks
     configuration assigned, the request's configuration or the default
     configuration is used as fallback.
 
+..  _configuration-field-suggestions:
+
+Field suggestions
+=================
+
+The fields that get the :ref:`Suggest values with AI <usage-field-suggestions>`
+button are set in the extension configuration
+(:guilabel:`Admin Tools` > :guilabel:`Settings` >
+:guilabel:`Extension Configuration` > ``t3_cowriter``):
+
+..  confval:: fieldSuggestions.fields
+    :name: t3-cowriter-fieldSuggestions-fields
+    :type: string
+    :default: ``pages.seo_title,pages.description,pages.keywords,pages.slug``
+
+    Comma-separated list of ``table.field``. Only single-line text fields,
+    plain-text areas (no rich text) and slug fields are supported. A field
+    that does not exist is skipped, so ``pages.seo_title`` only gets the
+    button when the system extension ``seo`` is installed. An empty value
+    switches the button off.
+
+..  confval:: fieldSuggestions.count
+    :name: t3-cowriter-fieldSuggestions-count
+    :type: int
+    :default: ``3``
+
+    How many suggestions the button asks for, from 1 to 5. The server
+    treats it as the upper bound: a request for more is answered with this
+    many.
+
+The list is extension configuration rather than page TSconfig because the
+button is added to the TCA, which is the same for the whole installation.
+After changing either setting, flush the caches so the TCA is rebuilt.
+
 Rate limiting
 =============
 

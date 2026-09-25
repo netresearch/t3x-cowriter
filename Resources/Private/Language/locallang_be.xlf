@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file source-language="en" datatype="plaintext" original="messages" date="2026-09-25T00:00:00Z" product-name="t3_cowriter">
+        <header/>
+        <body>
+            <trans-unit id="fieldSuggestions.button" resname="fieldSuggestions.button">
+                <source>Suggest values with AI</source>
+            </trans-unit>
+            <trans-unit id="fieldSuggestions.heading" resname="fieldSuggestions.heading">
+                <source>AI suggestions</source>
+            </trans-unit>
+            <trans-unit id="fieldSuggestions.loading" resname="fieldSuggestions.loading">
+                <source>Generating suggestions…</source>
+            </trans-unit>
+            <trans-unit id="fieldSuggestions.loaded" resname="fieldSuggestions.loaded">
+                <source>%d suggestions available. Choose one to insert it into the field.</source>
+            </trans-unit>
+            <trans-unit id="fieldSuggestions.empty" resname="fieldSuggestions.empty">
+                <source>No suggestions were returned.</source>
+            </trans-unit>
+            <trans-unit id="fieldSuggestions.error" resname="fieldSuggestions.error">
+                <source>The suggestions could not be loaded.</source>
+            </trans-unit>
+            <trans-unit id="fieldSuggestions.inserted" resname="fieldSuggestions.inserted">
+                <source>Suggestion inserted. Save the record to keep it.</source>
+            </trans-unit>
+            <trans-unit id="fieldSuggestions.close" resname="fieldSuggestions.close">
+                <source>Close suggestions</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

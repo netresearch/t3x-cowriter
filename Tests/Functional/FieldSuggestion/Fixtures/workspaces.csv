@@ -1,0 +1,19 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","perms_userid","perms_groupid","perms_user","perms_group","perms_everybody","description","t3ver_oid","t3ver_wsid","t3ver_state"
+,1,0,"Home","/",1,1,1,1,31,31,0,"",0,0,0
+,2,1,"Products","/products",0,1,1,1,31,31,0,"",0,0,0
+,3,2,"Office chairs","/products/office-chairs",0,1,1,1,31,31,0,"Stored description",0,0,0
+,30,2,"OTHER-WS-PAGE-TITLE","/products/office-chairs",0,1,1,1,31,31,0,"OTHER-WS-DESCRIPTION",3,2,0
+,31,2,"Office chairs (draft)","/products/office-chairs",0,1,1,1,31,31,0,"Draft description in my workspace",3,1,0
+,32,2,"NEW-PAGE-IN-OTHER-WS","/products/new-other",0,1,1,1,31,31,0,"",0,2,1
+"tt_content"
+,"uid","pid","header","bodytext","CType","sys_language_uid","sorting","t3ver_oid","t3ver_wsid","t3ver_state"
+,10,3,"Ergonomic chairs","<p>Adjustable seat height and lumbar support.</p>","text",0,256,0,0,0
+,11,3,"Warranty","Five years on every frame.","text",0,512,0,0,0
+,20,3,"SECRET-OTHER-WS-HEADER","SECRET-OTHER-WS-BODY","text",0,256,10,2,0
+,21,3,"Draft warranty in my workspace","Ten years on every frame.","text",0,512,11,1,0
+,22,3,"NEW-ELEMENT-IN-OTHER-WS","NEW-ELEMENT-IN-OTHER-WS-BODY","text",0,768,0,2,1
+,23,3,"Ergonomic chairs","","text",0,256,10,1,2
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,1,0,"admin",1,"",0

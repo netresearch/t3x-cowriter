@@ -8,7 +8,7 @@
 
 ## Project Overview
 
-AI-powered content writing assistant for the TYPO3 CKEditor 5 RTE. Adds toolbar actions for chat/completion, vision (image alt text), translation, prompt templates, and LLM tool calling. All LLM traffic goes through the PHP backend via `netresearch/nr-llm` — never directly from the browser.
+AI-powered content writing assistant for the TYPO3 CKEditor 5 RTE. Adds toolbar actions for chat/completion, vision (image alt text), translation, prompt templates, and LLM tool calling, plus a FormEngine field control that suggests values for plain form fields (SEO title, description, keywords, slug). All LLM traffic goes through the PHP backend via `netresearch/nr-llm` — never directly from the browser.
 
 - **Package**: `netresearch/t3-cowriter` (Composer) / `t3_cowriter` (TER extension key)
 - **Namespace**: `Netresearch\T3Cowriter\`
@@ -20,7 +20,7 @@ AI-powered content writing assistant for the TYPO3 CKEditor 5 RTE. Adds toolbar 
 
 Component map, AJAX route table, and data flow: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Short form: CKEditor plugin (`Resources/Public/JavaScript/Ckeditor/`) → 12 backend AJAX routes ([Configuration/Backend/AjaxRoutes.php](Configuration/Backend/AjaxRoutes.php)) → controllers in `Classes/Controller/` → `LlmServiceManagerInterface` (nr-llm) → provider API. A backend status module (`cowriter_status`) surfaces `DiagnosticService` results for setup troubleshooting.
+Short form: CKEditor plugin (`Resources/Public/JavaScript/Ckeditor/`) and the FormEngine field control (`Resources/Public/JavaScript/FormEngine/`) → 13 backend AJAX routes ([Configuration/Backend/AjaxRoutes.php](Configuration/Backend/AjaxRoutes.php)) → controllers in `Classes/Controller/` → nr-llm (`LlmServiceManagerInterface`, `CompletionServiceInterface`) → provider API. A backend status module (`cowriter_status`) surfaces `DiagnosticService` results for setup troubleshooting.
 
 ## Commands
 

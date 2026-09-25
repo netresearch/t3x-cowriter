@@ -28,6 +28,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Controller/VisionController.php | Image analysis (alt text) |
 | Controller/TemplateController.php | Prompt template listing |
 | Controller/ToolController.php | LLM function calling |
+| Controller/FieldSuggestionController.php | Field suggestions for FormEngine fields |
 | Domain/DTO/CompleteRequest.php | Request DTO with validation |
 | Domain/DTO/CompleteResponse.php | Response DTO with HTML escaping |
 | Domain/DTO/ContextRequest.php | Context preview request DTO |
@@ -38,6 +39,9 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Domain/DTO/UsageData.php | Token usage statistics |
 | Domain/DTO/VisionRequest.php | Vision/alt-text request DTO |
 | EventListener/InjectAjaxUrlsListener.php | AJAX URL injection for frontend |
+| EventListener/RegisterFieldSuggestionControlsListener.php | Adds the suggestion field control to configured TCA fields |
+| Form/FieldControl/FieldSuggestionsControl.php | FormEngine node rendering the "Suggest" button |
+| Service/FieldSuggestion/ | Field suggestions: permission-checked record context (`RecordContextReader`, `RecordFinder`), prompt + schema (`FieldSuggestionService`), limits (`SuggestionNormalizer`, `FieldProfile`), slugs (`SlugSuggestionBuilder`) |
 | Service/CallerSource.php | Extension key + pipeline metadata naming this extension to nr-llm telemetry |
 | Service/DiagnosticService.php | 8-step LLM config chain checker |
 | Service/Dto/Severity.php | Check severity enum (Ok/Warning/Error) |

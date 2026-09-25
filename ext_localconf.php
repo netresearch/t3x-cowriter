@@ -7,6 +7,8 @@
 
 declare(strict_types=1);
 
+use Netresearch\T3Cowriter\EventListener\RegisterFieldSuggestionControlsListener;
+use Netresearch\T3Cowriter\Form\FieldControl\FieldSuggestionsControl;
 use TYPO3\CMS\Core\Cache\Backend\Typo3DatabaseBackend;
 use TYPO3\CMS\Core\Cache\Frontend\VariableFrontend;
 
@@ -35,4 +37,15 @@ $GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cowriter_r
         'defaultLifetime' => 120,
     ],
     'groups' => ['system'],
+];
+
+/**
+ * FormEngine node of the "Suggest" field control. Which fields carry it is
+ * decided in RegisterFieldSuggestionControlsListener from the extension
+ * configuration (fieldSuggestions.fields).
+ */
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['formEngine']['nodeRegistry'][1790330001] = [
+    'nodeName' => RegisterFieldSuggestionControlsListener::NODE_NAME,
+    'priority' => 30,
+    'class'    => FieldSuggestionsControl::class,
 ];

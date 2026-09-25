@@ -24,6 +24,22 @@ export default defineConfig({
                 __dirname,
                 'Tests/JavaScript/__mocks__/typo3-backend-notification.js'
             ),
+            '@typo3/backend/form-engine.js': resolve(
+                __dirname,
+                'Tests/JavaScript/__mocks__/typo3-backend-form-engine.js'
+            ),
+            '@typo3/backend/form-engine-validation.js': resolve(
+                __dirname,
+                'Tests/JavaScript/__mocks__/typo3-backend-form-engine-validation.js'
+            ),
+            '@typo3/core/ajax/ajax-request.js': resolve(
+                __dirname,
+                'Tests/JavaScript/__mocks__/typo3-core-ajax-request.js'
+            ),
+            '@typo3/core/document-service.js': resolve(
+                __dirname,
+                'Tests/JavaScript/__mocks__/typo3-core-document-service.js'
+            ),
             '@netresearch/t3_cowriter/AIService': resolve(
                 __dirname,
                 'Resources/Public/JavaScript/Ckeditor/AIService.js'
