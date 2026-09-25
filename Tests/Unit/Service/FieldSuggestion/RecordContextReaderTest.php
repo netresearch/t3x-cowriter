@@ -477,7 +477,7 @@ final class RecordContextReaderTest extends TestCase
             static function (string $table, int $uid, int $workspaceId): array {
                 self::assertSame(4, $workspaceId);
 
-                return $uid === 40 ? self::CONTENT : self::PAGE;
+                return $table === 'tt_content' && $uid === 40 ? self::CONTENT : self::PAGE;
             },
         );
         $finder->expects(self::once())->method('findPageContent')->with(12, 0, 4)->willReturn([]);

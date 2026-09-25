@@ -62,7 +62,7 @@ final class SuggestionNormalizer
 
         // trim() takes its character list byte by byte, so multi-byte quotes in
         // it would also strip lead/trail bytes of Cyrillic, CJK or "€".
-        return preg_replace('/^[\s"\'`\x{201C}\x{201D}\x{201E}\x{2018}\x{2019}\x{00AB}\x{00BB}]+|[\s"\'`\x{201C}\x{201D}\x{201E}\x{2018}\x{2019}\x{00AB}\x{00BB}]+$/u', '', $text) ?? $text;
+        return preg_replace('/(?:^[\s"\'`\x{201C}\x{201D}\x{201E}\x{2018}\x{2019}\x{00AB}\x{00BB}]+)|(?:[\s"\'`\x{201C}\x{201D}\x{201E}\x{2018}\x{2019}\x{00AB}\x{00BB}]+$)/u', '', $text) ?? $text;
     }
 
     /**
