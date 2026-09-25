@@ -22,7 +22,7 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | Template controller | `Classes/Controller/TemplateController.php` | Prompt template listing |
 | Tool controller | `Classes/Controller/ToolController.php` | LLM tool/function calling |
 | Field suggestion controller | `Classes/Controller/FieldSuggestionController.php` | N suggestions for one form field (permission check, structured LLM call) |
-| Field suggestion services | `Classes/Service/FieldSuggestion/` | Record/page context with permission checks, prompt + JSON schema, length limits, slug building via `SlugHelper` |
+| Field suggestion services | `Classes/Service/FieldSuggestion/` | Record/page context with permission checks (workspace-restricted and overlaid), system prompt + fenced untrusted data (`UntrustedDataFence`) + JSON schema, length limits, slug building via `SlugHelper` |
 | Field control registration | `Classes/EventListener/RegisterFieldSuggestionControlsListener.php`, `Classes/Form/FieldControl/FieldSuggestionsControl.php` | Adds the control to the configured TCA fields (`AfterTcaCompilationEvent`, `ext_conf_template.txt`) and renders the button |
 | Status module | `Classes/Controller/Backend/StatusController.php`, `Configuration/Backend/Modules.php` | Setup diagnostics page (`cowriter_status`) |
 | Diagnostics | `Classes/Service/DiagnosticService.php` | 8-step config chain check (provider → model → configuration) |

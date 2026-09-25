@@ -95,10 +95,12 @@ final class FieldSuggestionWithSeoTest extends FunctionalTestCase
         );
 
         self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
-        /** @var array{suggestions: list<string>, maxLength: int} $data */
+        /** @var array{suggestions: list<string>} $data */
         $data = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertCount(3, $data['suggestions']);
-        self::assertSame(60, $data['maxLength']);
-        self::assertStringContainsString('SEO titles', $completion->completeStructuredForConfigurationCalls[0]['prompt']);
+        foreach ($data['suggestions'] as $suggestion) {
+            self::assertLessThanOrEqual(60, mb_strlen($suggestion));
+        }
+        self::assertStringContainsString('SEO titles', (string) $completion->completeStructuredForConfigurationCalls[0]['options']?->getSystemPrompt());
     }
 }

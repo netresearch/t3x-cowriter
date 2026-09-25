@@ -9,14 +9,17 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Service\FieldSuggestion;
 
+use Netresearch\T3Cowriter\Domain\DTO\FieldSuggestionRequest;
+
 /**
  * What the server read about the edited record, after the permission check.
  */
 final readonly class RecordContext
 {
     /**
-     * @param array<string, mixed> $record  the stored row, or the few known fields of a new record
-     * @param int                  $slugPid the pid TYPO3's SlugHelper derives the parent path from
+     * @param array<string, mixed> $record   the stored row, or the few known fields of a new record
+     * @param int                  $slugPid  the pid TYPO3's SlugHelper derives the parent path from
+     * @param int                  $maxCount the most suggestions the field control is configured for
      */
     public function __construct(
         public string $table,
@@ -26,6 +29,7 @@ final readonly class RecordContext
         public string $pageTitle,
         public string $pageContent,
         public int $slugPid,
+        public int $maxCount = FieldSuggestionRequest::MAX_COUNT,
     ) {}
 
     public function isSiteRoot(): bool

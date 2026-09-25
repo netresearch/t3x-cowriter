@@ -206,7 +206,8 @@ values. By default it sits next to these page properties:
 2.  The suggestions appear in a list below the field; by default there
     are three
 3.  Click a suggestion (or move to it with the arrow keys and press
-    :kbd:`Enter`) to insert it into the field
+    :kbd:`Enter`) to insert it into the field; the cursor moves into the
+    field
 4.  Save the record to keep the value
 
 Nothing is saved automatically: a picked suggestion only changes the form,
@@ -215,7 +216,9 @@ changing anything.
 
 The suggestions are generated from the page title, the current value of
 the field (including text you typed but have not saved yet) and the text
-of the content elements on the page. They follow the length guidance of
+of the content elements on the page. In a workspace, the page and its
+content elements are read as they look in your workspace; drafts of other
+workspaces are never used. They follow the length guidance of
 the field: at most 60 characters for the SEO title and 160 characters for
 the description; keywords are a comma-separated list. For the URL segment
 the AI only proposes the words of the last path segment. TYPO3 adds the
@@ -227,10 +230,6 @@ your permissions again for every request: you need write access to the
 table, access to the field if it is an exclude field, and edit rights on
 the page (for a new page: the right to create pages below the parent
 page).
-
-..  note::
-
-    A screenshot of the suggestion list is not included yet.
 
 Categories are not filled by the button. For tags, use the
 :guilabel:`Keywords` suggestions and copy the terms you want to use.

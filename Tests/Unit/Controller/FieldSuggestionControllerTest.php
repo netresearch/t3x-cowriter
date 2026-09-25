@@ -83,9 +83,9 @@ final class FieldSuggestionControllerTest extends TestCase
         ]]];
     }
 
-    private static function context(string $field, array $record = ['uid' => 12, 'pid' => 3], int $slugPid = 3): RecordContext
+    private static function context(string $field, array $record = ['uid' => 12, 'pid' => 3], int $slugPid = 3, int $maxCount = 5): RecordContext
     {
-        return new RecordContext('pages', $field, $record, '', 'Office chairs', 'Ergonomic chairs.', $slugPid);
+        return new RecordContext('pages', $field, $record, '', 'Office chairs', 'Ergonomic chairs.', $slugPid, $maxCount);
     }
 
     private function subject(): FieldSuggestionController
@@ -156,7 +156,7 @@ final class FieldSuggestionControllerTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame(
-            ['success' => true, 'suggestions' => ['Office chairs', 'Ergonomic office chairs', 'Chairs for your office'], 'maxLength' => 60],
+            ['success' => true, 'suggestions' => ['Office chairs', 'Ergonomic office chairs', 'Chairs for your office']],
             self::json($response),
         );
         self::assertSame(FieldSuggestionService::schema(3), $this->completion->completeStructuredForConfigurationCalls[0]['schema']);
@@ -172,6 +172,30 @@ final class FieldSuggestionControllerTest extends TestCase
 
         self::assertCount(5, self::json($response)['suggestions']);
         self::assertSame(FieldSuggestionService::schema(5), $this->completion->completeStructuredForConfigurationCalls[0]['schema']);
+    }
+
+    #[Test]
+    public function configuredCountCapsTheRequestedCount(): void
+    {
+        $this->reader = $this->createStub(RecordContextReader::class);
+        $this->reader->method('read')->willReturn(self::context('seo_title', maxCount: 2));
+        $this->completion->structuredResult = ['suggestions' => ['1', '2']];
+
+        $this->subject()->suggestAction($this->request(self::body(['count' => 4])));
+
+        self::assertSame(FieldSuggestionService::schema(2), $this->completion->completeStructuredForConfigurationCalls[0]['schema']);
+    }
+
+    #[Test]
+    public function fewerThanTheConfiguredCountMayBeRequested(): void
+    {
+        $this->reader = $this->createStub(RecordContextReader::class);
+        $this->reader->method('read')->willReturn(self::context('seo_title', maxCount: 4));
+        $this->completion->structuredResult = ['suggestions' => ['1', '2']];
+
+        $this->subject()->suggestAction($this->request(self::body(['count' => 2])));
+
+        self::assertSame(FieldSuggestionService::schema(2), $this->completion->completeStructuredForConfigurationCalls[0]['schema']);
     }
 
     #[Test]
@@ -291,6 +315,14 @@ final class FieldSuggestionControllerTest extends TestCase
         yield 'schema mismatch after repair' => [
             new InvalidArgumentException('Structured completion did not match the required schema after one repair attempt.', 1784500002),
             'The AI answer did not have the expected format. Please try again.',
+        ];
+        yield 'schema mismatch after repair, unconfigured variant' => [
+            new InvalidArgumentException('Structured completion did not match the required schema after one repair attempt.', 1784500001),
+            'The AI answer did not have the expected format. Please try again.',
+        ];
+        yield 'other invalid argument' => [
+            new InvalidArgumentException('The schema lies outside the supported strict subset (ADR-126).', 1784500003),
+            'The suggestions could not be generated. Please try again later.',
         ];
         yield 'rejected API key' => [
             new ProviderResponseException('Unauthorized: the API key was rejected by the upstream service', 401),

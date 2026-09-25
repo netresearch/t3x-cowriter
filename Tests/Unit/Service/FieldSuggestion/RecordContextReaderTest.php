@@ -77,7 +77,7 @@ final class RecordContextReaderTest extends TestCase
     {
         $finder = $mock ? $this->createMock(RecordFinder::class) : $this->createStub(RecordFinder::class);
         $finder->method('findRecord')->willReturnCallback(
-            static fn (string $table, int $uid): ?array => $records[$table . ':' . $uid] ?? null,
+            static fn (string $table, int $uid, int $workspaceId): ?array => $records[$table . ':' . $uid] ?? null,
         );
         $finder->method('findPageContent')->willReturn($content);
 
@@ -140,7 +140,7 @@ final class RecordContextReaderTest extends TestCase
             ['header' => 'Warranty', 'bodytext' => null],
         ], true);
         self::assertInstanceOf(MockObject::class, $finder);
-        $finder->expects(self::once())->method('findPageContent')->with(12, 0);
+        $finder->expects(self::once())->method('findPageContent')->with(12, 0, 0);
 
         $context = (new RecordContextReader($finder))->read(self::request([]), $this->editor());
 
@@ -203,7 +203,7 @@ final class RecordContextReaderTest extends TestCase
         $translation = ['uid' => 57, 'pid' => 3, 'l10n_parent' => 12, 'sys_language_uid' => 2, 'title' => 'Bürostühle', 'seo_title' => 'Alt'];
         $finder      = $this->finder(['pages:57' => $translation, 'pages:12' => self::PAGE], [], true);
         self::assertInstanceOf(MockObject::class, $finder);
-        $finder->expects(self::once())->method('findPageContent')->with(12, 2);
+        $finder->expects(self::once())->method('findPageContent')->with(12, 2, 0);
 
         $user = $this->createMock(BackendUserAuthentication::class);
         $user->method('check')->willReturn(true);
@@ -227,7 +227,7 @@ final class RecordContextReaderTest extends TestCase
         $translation = ['uid' => 57, 'pid' => 3, 'l10n_parent' => 99, 'sys_language_uid' => 2, 'title' => 'Orphan'];
         $finder      = $this->finder(['pages:57' => $translation], [], true);
         self::assertInstanceOf(MockObject::class, $finder);
-        $finder->expects(self::once())->method('findPageContent')->with(57, 2);
+        $finder->expects(self::once())->method('findPageContent')->with(57, 2, 0);
 
         self::assertSame('Orphan', (new RecordContextReader($finder))->read(self::request(['uid' => 57]), $this->editor())->pageTitle);
     }
@@ -263,11 +263,11 @@ final class RecordContextReaderTest extends TestCase
     }
 
     #[Test]
-    public function missingRecordIsReported(): void
+    public function missingRecordIsRefusedLikeADeniedOne(): void
     {
         $this->assertRefused(
-            'The record could not be found.',
-            404,
+            'You are not allowed to edit this field.',
+            403,
             fn () => (new RecordContextReader($this->finder()))->read(self::request([]), $this->editor()),
         );
     }
@@ -320,7 +320,7 @@ final class RecordContextReaderTest extends TestCase
     {
         $finder = $this->finder(['pages:12' => ['sys_language_uid' => 2] + self::PAGE], [], true);
         self::assertInstanceOf(MockObject::class, $finder);
-        $finder->expects(self::once())->method('findPageContent')->with(12, 2);
+        $finder->expects(self::once())->method('findPageContent')->with(12, 2, 0);
 
         (new RecordContextReader($finder))->read(self::request([]), $this->editor());
     }
@@ -343,7 +343,7 @@ final class RecordContextReaderTest extends TestCase
         unset($GLOBALS['TCA']['pages']['ctrl']['languageField']);
         $finder = $this->finder(['pages:12' => ['sys_language_uid' => 2] + self::PAGE], [], true);
         self::assertInstanceOf(MockObject::class, $finder);
-        $finder->expects(self::once())->method('findPageContent')->with(12, 0);
+        $finder->expects(self::once())->method('findPageContent')->with(12, 0, 0);
 
         (new RecordContextReader($finder))->read(self::request([]), $this->editor());
     }
@@ -353,7 +353,7 @@ final class RecordContextReaderTest extends TestCase
     {
         $finder = $this->finder(['pages:12' => ['sys_language_uid' => -1] + self::PAGE], [], true);
         self::assertInstanceOf(MockObject::class, $finder);
-        $finder->expects(self::once())->method('findPageContent')->with(12, 0);
+        $finder->expects(self::once())->method('findPageContent')->with(12, 0, 0);
 
         (new RecordContextReader($finder))->read(self::request([]), $this->editor());
     }
@@ -363,7 +363,7 @@ final class RecordContextReaderTest extends TestCase
     {
         $finder = $this->finder(['pages:3' => self::PARENT_PAGE], [], true);
         self::assertInstanceOf(MockObject::class, $finder);
-        $finder->expects(self::once())->method('findPageContent')->with(3, 0);
+        $finder->expects(self::once())->method('findPageContent')->with(3, 0, 0);
 
         (new RecordContextReader($finder))->read(self::request(['uid' => 'NEW1', 'pid' => 3]), $this->editor());
     }
@@ -447,11 +447,11 @@ final class RecordContextReaderTest extends TestCase
     }
 
     #[Test]
-    public function newRecordOnAMissingPageIsReported(): void
+    public function newRecordOnAMissingPageIsRefusedLikeADeniedOne(): void
     {
         $this->assertRefused(
-            'The record could not be found.',
-            404,
+            'You are not allowed to edit this field.',
+            403,
             fn () => (new RecordContextReader($this->finder()))->read(self::request(['uid' => 'NEW1', 'pid' => 99]), $this->editor()),
         );
     }
@@ -467,6 +467,60 @@ final class RecordContextReaderTest extends TestCase
         $context = $reader->read(self::request($body), $this->editor(admin: true));
         self::assertSame(0, $context->slugPid);
         self::assertTrue($context->isSiteRoot());
+    }
+
+    #[Test]
+    public function theUsersWorkspaceIsPassedToEveryRead(): void
+    {
+        $finder = $this->createMock(RecordFinder::class);
+        $finder->expects(self::exactly(2))->method('findRecord')->willReturnCallback(
+            static function (string $table, int $uid, int $workspaceId): array {
+                self::assertSame(4, $workspaceId);
+
+                return $uid === 40 ? self::CONTENT : self::PAGE;
+            },
+        );
+        $finder->expects(self::once())->method('findPageContent')->with(12, 0, 4)->willReturn([]);
+        $user            = $this->editor();
+        $user->workspace = 4;
+
+        (new RecordContextReader($finder))->read(self::request(['table' => 'tt_content', 'field' => 'header', 'uid' => 40]), $user);
+    }
+
+    #[Test]
+    public function uninitialisedWorkspaceCountsAsLive(): void
+    {
+        $finder = $this->finder(['pages:12' => self::PAGE], [], true);
+        self::assertInstanceOf(MockObject::class, $finder);
+        $finder->expects(self::once())->method('findPageContent')->with(12, 0, 0);
+        $user            = $this->editor();
+        $user->workspace = -99;
+
+        (new RecordContextReader($finder))->read(self::request([]), $user);
+    }
+
+    #[Test]
+    public function configuredCountIsTheUpperBound(): void
+    {
+        $GLOBALS['TCA']['pages']['columns']['seo_title']['config']['fieldControl'][RegisterFieldSuggestionControlsListener::CONTROL_NAME]['options'] = ['count' => 2];
+        $reader                                                                                                                                      = new RecordContextReader($this->finder(['pages:12' => self::PAGE, 'pages:3' => self::PARENT_PAGE]));
+
+        self::assertSame(2, $reader->read(self::request([]), $this->editor())->maxCount);
+        self::assertSame(2, $reader->read(self::request(['uid' => 'NEW1', 'pid' => 3]), $this->editor())->maxCount);
+
+        $GLOBALS['TCA']['pages']['columns']['seo_title']['config']['fieldControl'][RegisterFieldSuggestionControlsListener::CONTROL_NAME]['options'] = ['count' => 9];
+        self::assertSame(5, $reader->read(self::request([]), $this->editor())->maxCount);
+
+        $GLOBALS['TCA']['pages']['columns']['seo_title']['config']['fieldControl'][RegisterFieldSuggestionControlsListener::CONTROL_NAME]['options'] = ['count' => 0];
+        self::assertSame(1, $reader->read(self::request([]), $this->editor())->maxCount);
+    }
+
+    #[Test]
+    public function withoutConfiguredCountTheRequestLimitApplies(): void
+    {
+        $reader = new RecordContextReader($this->finder(['pages:12' => self::PAGE]));
+
+        self::assertSame(5, $reader->read(self::request([]), $this->editor())->maxCount);
     }
 
     #[Test]

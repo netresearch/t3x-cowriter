@@ -13,7 +13,8 @@
  *
  * Keyboard: the control opens and closes the list (Enter or Space), the
  * arrow keys, Home and End move between suggestions, Escape closes the list
- * and returns focus to the control. Loading, results and errors are
+ * and returns focus to the control, picking a suggestion moves focus to the
+ * filled field. Loading, results and errors are
  * announced through a polite live region.
  */
 import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
@@ -41,6 +42,9 @@ export class FieldSuggestions {
         this.list = null;
         this.status = null;
         this.request = null;
+        // Increases with every open and close: a request whose token is no
+        // longer current was superseded, and its result or error is ignored.
+        this.requestToken = 0;
         this.ready = DocumentService.ready().then(() => this.initialize(document.getElementById(controlId)));
     }
 
@@ -141,10 +145,11 @@ export class FieldSuggestions {
         this.list.replaceChildren();
         this.setStatus(this.labels.loading, false);
         this.control.setAttribute('aria-busy', 'true');
+        const token = ++this.requestToken;
 
         try {
             const suggestions = await this.fetchSuggestions();
-            if (!this.isOpen()) {
+            if (token !== this.requestToken) {
                 return;
             }
             if (suggestions.length === 0) {
@@ -155,21 +160,27 @@ export class FieldSuggestions {
             this.setStatus(this.labels.loaded.replace('%d', String(suggestions.length)), false);
             this.list.querySelector('button')?.focus();
         } catch (error) {
-            if (this.isOpen()) {
+            if (token === this.requestToken) {
                 this.setStatus(error instanceof Error && error.message !== '' ? error.message : this.labels.error, true);
             }
         } finally {
-            this.control.removeAttribute('aria-busy');
+            if (token === this.requestToken) {
+                this.control.removeAttribute('aria-busy');
+            }
         }
     }
 
-    close() {
+    /**
+     * @param {HTMLElement|null} focusTarget where focus goes; the control by default
+     */
+    close(focusTarget = null) {
+        this.requestToken++;
         this.request?.abort();
         this.request = null;
         this.panel.hidden = true;
         this.control.setAttribute('aria-expanded', 'false');
         this.control.removeAttribute('aria-busy');
-        this.control.focus();
+        (focusTarget || this.control).focus();
     }
 
     /**
@@ -273,7 +284,8 @@ export class FieldSuggestions {
         if (field) {
             this.applyValue(field, value);
         }
-        this.close();
+        // Focus goes to the filled field, where the editor continues.
+        this.close(field);
         this.setStatus(this.labels.inserted, false);
     }
 

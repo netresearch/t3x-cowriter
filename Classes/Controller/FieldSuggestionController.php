@@ -38,6 +38,13 @@ final readonly class FieldSuggestionController
 {
     use RateLimitedControllerTrait;
 
+    /**
+     * nr-llm's structured completion: the answer still did not match the
+     * schema after its repair round-trip (completeStructured() and the
+     * *ForConfiguration() variant).
+     */
+    private const SCHEMA_MISMATCH_CODES = [1784500001, 1784500002];
+
     public function __construct(
         private RecordContextReader $recordContextReader,
         private FieldSuggestionService $fieldSuggestionService,
@@ -115,7 +122,8 @@ final readonly class FieldSuggestionController
                 $recordContext,
                 $profile,
                 $dto->currentValue,
-                $dto->count,
+                // The field control's configured count is the upper bound.
+                min($dto->count, $recordContext->maxCount),
                 $configuration,
             );
         } catch (Throwable $e) {
@@ -141,7 +149,6 @@ final readonly class FieldSuggestionController
             [
                 'success'     => true,
                 'suggestions' => $suggestions,
-                'maxLength'   => $profile->maxLength,
             ],
             $rateLimitResult,
         );
@@ -154,7 +161,10 @@ final readonly class FieldSuggestionController
     {
         $kind = $this->errorClassifier->classify($exception);
 
-        if ($kind === LlmErrorKind::Unknown && $exception instanceof InvalidArgumentException) {
+        if ($kind === LlmErrorKind::Unknown
+            && $exception instanceof InvalidArgumentException
+            && in_array($exception->getCode(), self::SCHEMA_MISMATCH_CODES, true)
+        ) {
             // nr-llm's structured completion: the answer did not match the
             // schema even after its repair round-trip.
             return 'The AI answer did not have the expected format. Please try again.';

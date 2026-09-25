@@ -33,11 +33,6 @@ final class FieldSuggestionException extends RuntimeException
         return new self('You are not allowed to edit this field.', 403);
     }
 
-    public static function recordNotFound(): self
-    {
-        return new self('The record could not be found.', 404);
-    }
-
     public static function notApplicable(string $reason): self
     {
         return new self($reason, 422);

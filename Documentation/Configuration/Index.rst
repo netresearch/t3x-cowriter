@@ -170,7 +170,9 @@ button are set in the extension configuration
     :type: int
     :default: ``3``
 
-    How many suggestions the button asks for, from 1 to 5.
+    How many suggestions the button asks for, from 1 to 5. The server
+    treats it as the upper bound: a request for more is answered with this
+    many.
 
 The list is extension configuration rather than page TSconfig because the
 button is added to the TCA, which is the same for the whole installation.

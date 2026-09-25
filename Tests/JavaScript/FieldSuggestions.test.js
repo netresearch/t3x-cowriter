@@ -191,7 +191,8 @@ describe('FieldSuggestions', () => {
         expect(FormEngine.markFieldAsChanged).toHaveBeenCalledWith(field);
         expect(panel().hidden).toBe(true);
         expect(control.getAttribute('aria-expanded')).toBe('false');
-        expect(document.activeElement).toBe(control);
+        // The editor continues in the filled field.
+        expect(document.activeElement).toBe(field);
         expect(status().textContent).toBe('Suggestion inserted.');
     });
 
@@ -209,6 +210,7 @@ describe('FieldSuggestions', () => {
         expect(slugInput.classList.contains('hidden')).toBe(false);
         expect(readonly.classList.contains('hidden')).toBe(true);
         expect(inputEvents).toHaveLength(1);
+        expect(document.activeElement).toBe(slugInput);
         // The slug element validates and marks the field itself.
         expect(FormEngineValidation.validateField).not.toHaveBeenCalled();
         expect(FormEngine.markFieldAsChanged).not.toHaveBeenCalled();
@@ -321,6 +323,47 @@ describe('FieldSuggestions', () => {
 
         expect(status().classList.contains('text-danger')).toBe(false);
         expect(status().textContent).toBe('1 suggestions available.');
+    });
+
+    it('ignores the outcome of a request that a reopen superseded', async () => {
+        const { subject, control } = await setup();
+        const pending = [];
+        AjaxRequest.nextPost = () => new Promise((resolve, reject) => pending.push({ resolve, reject }));
+
+        const first = subject.open();
+        subject.close();
+        const second = subject.open();
+        expect(pending).toHaveLength(2);
+
+        // The aborted first request fails while the second one is loading.
+        pending[0].reject(jsonResponse({ error: 'The operation was aborted.' }));
+        await first;
+        expect(status().textContent).toBe('Generating suggestions…');
+        expect(status().classList.contains('text-danger')).toBe(false);
+        expect(control.getAttribute('aria-busy')).toBe('true');
+
+        pending[1].resolve(jsonResponse({ success: true, suggestions: ['Second'] }));
+        await second;
+        expect(suggestionButtons().map((button) => button.textContent)).toEqual(['Second']);
+        expect(control.hasAttribute('aria-busy')).toBe(false);
+    });
+
+    it('ignores a late answer of a superseded request', async () => {
+        const { subject } = await setup();
+        const pending = [];
+        AjaxRequest.nextPost = () => new Promise((resolve, reject) => pending.push({ resolve, reject }));
+
+        const first = subject.open();
+        subject.close();
+        const second = subject.open();
+
+        pending[0].resolve(jsonResponse({ success: true, suggestions: ['Stale'] }));
+        await first;
+        expect(suggestionButtons()).toHaveLength(0);
+
+        pending[1].resolve(jsonResponse({ success: true, suggestions: ['Fresh'] }));
+        await second;
+        expect(suggestionButtons().map((button) => button.textContent)).toEqual(['Fresh']);
     });
 
     it('aborts a pending request when the list is closed', async () => {

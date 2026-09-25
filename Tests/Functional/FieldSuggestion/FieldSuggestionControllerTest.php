@@ -113,7 +113,7 @@ final class FieldSuggestionControllerTest extends FunctionalTestCase
 
         $prompt = $this->completion->completeStructuredForConfigurationCalls[0]['prompt'];
         self::assertStringContainsString('Page title: Office chairs', $prompt);
-        self::assertStringContainsString('Current value of the field: Stored description', $prompt);
+        self::assertStringContainsString('Stored value of the field: Stored description', $prompt);
         self::assertStringContainsString("Ergonomic chairs\nAdjustable seat height and lumbar support.", $prompt);
         self::assertStringContainsString('Five years on every frame.', $prompt);
     }

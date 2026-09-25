@@ -34,6 +34,10 @@ class RecordContextReader
     ) {}
 
     /**
+     * A record that does not exist (or not in the user's workspace) is
+     * refused with the same answer as a record the user may not edit, so the
+     * endpoint does not tell which uids exist.
+     *
      * @throws FieldSuggestionException when the field has no suggestion
      *                                  control, the record does not exist or
      *                                  the user may not edit the field
@@ -57,9 +61,29 @@ class RecordContextReader
             throw FieldSuggestionException::accessDenied();
         }
 
+        $maxCount = $this->configuredCount($column);
+
         return $request->isNewRecord()
-            ? $this->readNewRecord($request, $backendUser)
-            : $this->readExistingRecord($request, $backendUser);
+            ? $this->readNewRecord($request, $backendUser, $maxCount)
+            : $this->readExistingRecord($request, $backendUser, $maxCount);
+    }
+
+    /**
+     * The count configured for the field control (fieldSuggestions.count); the
+     * request may ask for fewer suggestions, never for more.
+     *
+     * @param array<array-key, mixed> $column
+     */
+    private function configuredCount(array $column): int
+    {
+        $fieldControl = Tca::config($column)['fieldControl'] ?? null;
+        $control      = is_array($fieldControl) ? ($fieldControl[RegisterFieldSuggestionControlsListener::CONTROL_NAME] ?? null) : null;
+        $options      = is_array($control) && is_array($control['options'] ?? null) ? $control['options'] : [];
+        $count        = $options['count'] ?? null;
+
+        return is_numeric($count)
+            ? max(FieldSuggestionRequest::MIN_COUNT, min(FieldSuggestionRequest::MAX_COUNT, (int) $count))
+            : FieldSuggestionRequest::MAX_COUNT;
     }
 
     /**
@@ -86,12 +110,13 @@ class RecordContextReader
         return $column;
     }
 
-    private function readExistingRecord(FieldSuggestionRequest $request, BackendUserAuthentication $backendUser): RecordContext
+    private function readExistingRecord(FieldSuggestionRequest $request, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
     {
-        $table  = $request->table;
-        $record = $this->recordFinder->findRecord($table, $request->uid);
+        $table       = $request->table;
+        $workspaceId = $this->workspaceId($backendUser);
+        $record      = $this->recordFinder->findRecord($table, $request->uid, $workspaceId);
         if ($record === null) {
-            throw FieldSuggestionException::recordNotFound();
+            throw FieldSuggestionException::accessDenied();
         }
 
         $pid = $this->intValue($record['pid'] ?? 0);
@@ -99,14 +124,14 @@ class RecordContextReader
         if ($table === 'pages') {
             // A page translation has neither permissions nor content elements
             // of its own: both belong to the page in the default language.
-            $defaultPage = $this->defaultLanguagePage($record);
+            $defaultPage = $this->defaultLanguagePage($record, $workspaceId);
             if (!$backendUser->doesUserHaveAccess($defaultPage, Permission::PAGE_EDIT)) {
                 throw FieldSuggestionException::accessDenied();
             }
 
             $page = ['uid' => $defaultPage['uid'] ?? 0, 'title' => $record['title'] ?? ''];
         } else {
-            $page = $this->pageForContentEdit($pid, $backendUser);
+            $page = $this->pageForContentEdit($pid, $backendUser, $workspaceId);
         }
 
         // Language, editlock and explicit allow/deny of the record itself.
@@ -120,15 +145,17 @@ class RecordContextReader
             record: $record,
             storedValue: $this->stringValue($record[$request->field] ?? ''),
             pageTitle: $page === null ? '' : $this->stringValue($page['title'] ?? ''),
-            pageContent: $page === null ? '' : $this->pageContent($page, $this->languageId($table, $record), $backendUser),
+            pageContent: $page === null ? '' : $this->pageContent($page, $this->languageId($table, $record), $backendUser, $workspaceId),
             slugPid: $pid,
+            maxCount: $maxCount,
         );
     }
 
-    private function readNewRecord(FieldSuggestionRequest $request, BackendUserAuthentication $backendUser): RecordContext
+    private function readNewRecord(FieldSuggestionRequest $request, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
     {
-        $table = $request->table;
-        $pid   = $request->pid;
+        $table       = $request->table;
+        $pid         = $request->pid;
+        $workspaceId = $this->workspaceId($backendUser);
 
         if ($pid === 0) {
             // Records on the root level (pid 0) are an admin affair.
@@ -138,9 +165,9 @@ class RecordContextReader
 
             $page = null;
         } else {
-            $page = $this->recordFinder->findRecord('pages', $pid);
+            $page = $this->recordFinder->findRecord('pages', $pid, $workspaceId);
             if ($page === null) {
-                throw FieldSuggestionException::recordNotFound();
+                throw FieldSuggestionException::accessDenied();
             }
 
             $required = $table === 'pages' ? Permission::PAGE_NEW : Permission::CONTENT_EDIT;
@@ -156,8 +183,9 @@ class RecordContextReader
             storedValue: '',
             // A new page has no content yet: its parent page is the context.
             pageTitle: $page === null ? '' : $this->stringValue($page['title'] ?? ''),
-            pageContent: $page === null ? '' : $this->pageContent($page, 0, $backendUser),
+            pageContent: $page === null ? '' : $this->pageContent($page, 0, $backendUser, $workspaceId),
             slugPid: $pid,
+            maxCount: $maxCount,
         );
     }
 
@@ -169,7 +197,7 @@ class RecordContextReader
      *
      * @return array<string, mixed>
      */
-    private function defaultLanguagePage(array $page): array
+    private function defaultLanguagePage(array $page, int $workspaceId): array
     {
         $pointerField = Tca::transOrigPointerField('pages');
         $originalUid  = $pointerField === null ? 0 : $this->intValue($page[$pointerField] ?? 0);
@@ -177,7 +205,7 @@ class RecordContextReader
             return $page;
         }
 
-        return $this->recordFinder->findRecord('pages', $originalUid) ?? $page;
+        return $this->recordFinder->findRecord('pages', $originalUid, $workspaceId) ?? $page;
     }
 
     /**
@@ -185,7 +213,7 @@ class RecordContextReader
      *
      * @return array<string, mixed>|null
      */
-    private function pageForContentEdit(int $pid, BackendUserAuthentication $backendUser): ?array
+    private function pageForContentEdit(int $pid, BackendUserAuthentication $backendUser, int $workspaceId): ?array
     {
         if ($pid === 0) {
             if (!$backendUser->isAdmin()) {
@@ -195,7 +223,7 @@ class RecordContextReader
             return null;
         }
 
-        $page = $this->recordFinder->findRecord('pages', $pid);
+        $page = $this->recordFinder->findRecord('pages', $pid, $workspaceId);
         if ($page === null || !$backendUser->doesUserHaveAccess($page, Permission::CONTENT_EDIT)) {
             throw FieldSuggestionException::accessDenied();
         }
@@ -209,14 +237,14 @@ class RecordContextReader
      *
      * @param array<string, mixed> $page
      */
-    private function pageContent(array $page, int $languageId, BackendUserAuthentication $backendUser): string
+    private function pageContent(array $page, int $languageId, BackendUserAuthentication $backendUser, int $workspaceId): string
     {
         if (!Tca::hasTable('tt_content') || !$backendUser->check('tables_select', 'tt_content')) {
             return '';
         }
 
         $parts = [];
-        foreach ($this->recordFinder->findPageContent($this->intValue($page['uid'] ?? 0), $languageId) as $element) {
+        foreach ($this->recordFinder->findPageContent($this->intValue($page['uid'] ?? 0), $languageId, $workspaceId) as $element) {
             $text = trim($this->plainText($element['header'] ?? '') . "\n" . $this->plainText($element['bodytext'] ?? ''));
             if ($text !== '') {
                 $parts[] = $text;
@@ -224,6 +252,14 @@ class RecordContextReader
         }
 
         return mb_substr(implode("\n\n", $parts), 0, self::MAX_PAGE_CONTENT_LENGTH, 'UTF-8');
+    }
+
+    /**
+     * The workspace the user works in; 0 is live.
+     */
+    private function workspaceId(BackendUserAuthentication $backendUser): int
+    {
+        return max(0, $backendUser->workspace);
     }
 
     /**
