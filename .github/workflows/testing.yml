@@ -15,11 +15,6 @@ jobs:
     with:
       run-integration-tests: true
       run-e2e-tests: true
-      # Functional tests (with coverage) run in ci.yml, whose functional job
-      # configures the sqlite database. The reusable's functional coverage job
-      # sets no database, so every functional test fails there with
-      # "Database credentials for tests are neither set …".
-      run-functional-tests: false
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       INFECTION_DASHBOARD_API_KEY: ${{ secrets.INFECTION_DASHBOARD_API_KEY }}

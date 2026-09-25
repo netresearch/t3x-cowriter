@@ -63,7 +63,7 @@ All files in `.github/workflows/` are thin callers of `netresearch/typo3-ci-work
 |------|---------|
 | `ci.yml` | Test matrix PHP 8.2–8.5 × TYPO3 ^13.4/^14.3 incl. functional tests, coverage upload |
 | `checks.yml` | Security audit, betterleaks, zizmor, fuzz, license check |
-| `testing.yml` | Extended testing (shared extended-testing reusable): coverage, mutation, fuzz, JS; functional tests run in `ci.yml` only |
+| `testing.yml` | Extended testing (shared extended-testing reusable) |
 | `docs.yml` | TYPO3 documentation rendering |
 | `release.yml` | TYPO3 extension release + TER publish |
 | `harness-verify.yml` | Agent-harness consistency check (`Build/Scripts/verify-harness.sh`) |
