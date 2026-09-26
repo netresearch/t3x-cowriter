@@ -16,7 +16,9 @@ use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
+use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
+use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
@@ -124,6 +126,9 @@ final readonly class AjaxController
         // Optional so manual constructions without style choices keep working;
         // the container injects it.
         private ?StyleInstructionBuilder $styleInstructions = null,
+        // Optional for the same reason; without it a request for several
+        // versions is answered with one.
+        private ?CompletionServiceInterface $completionService = null,
     ) {}
 
     /**
@@ -541,6 +546,10 @@ final readonly class AjaxController
 
         ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords] = $prepared;
 
+        if ($dto->variants > 1 && $this->completionService instanceof CompletionServiceInterface) {
+            return $this->executeVariants($dto, $task, $messages, $configuration, $targetWords, $rateLimitResult);
+        }
+
         try {
             $response = $this->llmServiceManager->chatWithConfiguration(
                 $messages,
@@ -859,6 +868,113 @@ final readonly class AjaxController
         }
 
         return new NullResponse();
+    }
+
+    /**
+     * Several versions of the answer in one structured call: the system
+     * messages become the system prompt, the instruction stays the user
+     * message, and the schema demands exactly the requested number of
+     * versions. Each version gets the same markdown-to-HTML fallback as a
+     * single answer. The first version is also the `content`, so a client that
+     * knows nothing of versions still inserts a complete answer.
+     *
+     * @param list<array{role: string, content: string}> $messages
+     */
+    private function executeVariants(
+        ExecuteTaskRequest $dto,
+        ?Task $task,
+        array $messages,
+        LlmConfiguration $configuration,
+        ?int $targetWords,
+        RateLimitResult $rateLimitResult,
+    ): ResponseInterface {
+        $system = [];
+        $prompt = '';
+        foreach ($messages as $message) {
+            if ($message['role'] === 'system') {
+                $system[] = $message['content'];
+            } else {
+                $prompt = $message['content'];
+            }
+        }
+
+        $system[] = sprintf(
+            'Give exactly %d different versions of the result. Each version is complete on its own and uses the same HTML formatting rules.',
+            $dto->variants,
+        );
+
+        try {
+            $answer = $this->completionService?->completeStructuredForConfiguration(
+                $prompt,
+                $configuration,
+                $this->variantsSchema($dto->variants),
+                (new ChatOptions())
+                    ->withSystemPrompt(implode("\n\n", $system))
+                    ->withCallerSource(CallerSource::EXTENSION, $this->taskOperation($task)),
+            ) ?? [];
+
+            $variants = [];
+            foreach (is_array($answer['variants'] ?? null) ? $answer['variants'] : [] as $variant) {
+                if (is_string($variant) && trim($variant) !== '') {
+                    $variants[] = $this->convertMarkdownToHtml($variant);
+                }
+            }
+
+            $variants = array_slice($variants, 0, $dto->variants);
+            if ($variants === []) {
+                return $this->jsonResponseWithRateLimitHeaders(
+                    CompleteResponse::error($this->labels->get('error.unexpected'))->jsonSerialize(),
+                    $rateLimitResult,
+                    500,
+                );
+            }
+
+            $data = [
+                'success'  => true,
+                'content'  => $variants[0],
+                'variants' => $variants,
+                'model'    => $configuration->getModelId(),
+            ];
+            if ($targetWords !== null) {
+                $data['targetWords'] = $targetWords;
+            }
+
+            return $this->jsonResponseWithRateLimitHeaders($data, $rateLimitResult);
+        } catch (Throwable $e) {
+            $this->logger->error('Task variants error', [
+                'taskUid'   => $dto->taskUid,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $this->jsonResponseWithRateLimitHeaders(
+                $this->buildErrorResponse($this->labels->get('error.unexpected'), $e),
+                $rateLimitResult,
+                500,
+            );
+        }
+    }
+
+    /**
+     * An object holding exactly $count non-empty strings: JSON mode forbids a
+     * top-level array.
+     *
+     * @return array<string, mixed>
+     */
+    private function variantsSchema(int $count): array
+    {
+        return [
+            'type'       => 'object',
+            'properties' => [
+                'variants' => [
+                    'type'     => 'array',
+                    'items'    => ['type' => 'string', 'minLength' => 1],
+                    'minItems' => $count,
+                    'maxItems' => $count,
+                ],
+            ],
+            'required'             => ['variants'],
+            'additionalProperties' => false,
+        ];
     }
 
     /**

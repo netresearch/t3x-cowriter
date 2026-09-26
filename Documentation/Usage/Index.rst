@@ -60,6 +60,11 @@ The Cowriter dialog lets you choose what to do with your content:
     result shows the word count next to it
     (:ref:`configuration-style`).
 
+**Versions**
+    Ask for one, two or three versions. With more than one, a choice above
+    the result switches between them, and :guilabel:`Insert` takes the one
+    shown. Several versions arrive together, not while they are written.
+
 **Context scope**
     Control how much context the AI receives:
 

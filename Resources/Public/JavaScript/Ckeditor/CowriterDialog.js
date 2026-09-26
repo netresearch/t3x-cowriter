@@ -195,7 +195,7 @@ export class CowriterDialog {
             group.appendChild(select);
 
             const col = document.createElement('div');
-            col.className = 'col-md-4';
+            col.className = 'col-md-3';
             col.dataset.role = `${role}-col`;
             col.hidden = true;
             col.appendChild(group);
@@ -223,11 +223,69 @@ export class CowriterDialog {
         lengthSelect.value = '0';
         lengthGroup.appendChild(lengthSelect);
         const lengthCol = document.createElement('div');
-        lengthCol.className = 'col-md-4';
+        lengthCol.className = 'col-md-3';
         lengthCol.appendChild(lengthGroup);
         row.appendChild(lengthCol);
 
+        const variantsId = `${idPrefix}-variants`;
+        const variantsGroup = this._createFormGroup(t('ckeditor.dialog.variants', 'Versions'), variantsId);
+        const variantsSelect = document.createElement('select');
+        variantsSelect.className = 'form-select';
+        variantsSelect.id = variantsId;
+        variantsSelect.dataset.role = 'variants-select';
+        for (const count of ['1', '2', '3']) {
+            const option = document.createElement('option');
+            option.value = count;
+            option.textContent = count;
+            variantsSelect.appendChild(option);
+        }
+        variantsGroup.appendChild(variantsSelect);
+        const variantsCol = document.createElement('div');
+        variantsCol.className = 'col-md-3';
+        variantsCol.appendChild(variantsGroup);
+        row.appendChild(variantsCol);
+
         return row;
+    }
+
+    /**
+     * A radio group choosing which version the preview shows and Insert takes.
+     *
+     * @param {number} count
+     * @param {function(number): void} onSelect - Called with the chosen index
+     * @returns {HTMLFieldSetElement}
+     * @private
+     */
+    _buildVariantPicker(count, onSelect) {
+        const fieldset = document.createElement('fieldset');
+        fieldset.className = 'mb-2';
+        fieldset.dataset.role = 'variant-picker';
+        const legend = document.createElement('legend');
+        legend.className = 'form-label fw-bold fs-6';
+        legend.textContent = t('ckeditor.dialog.variants', 'Versions');
+        fieldset.appendChild(legend);
+
+        const name = `cowriter-variant-${++formIdCounter}`;
+        for (let index = 0; index < count; index++) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'form-check form-check-inline';
+            const input = document.createElement('input');
+            input.type = 'radio';
+            input.className = 'form-check-input';
+            input.name = name;
+            input.id = `${name}-${index}`;
+            input.value = String(index);
+            input.checked = index === 0;
+            input.addEventListener('change', () => onSelect(index));
+            const label = document.createElement('label');
+            label.className = 'form-check-label';
+            label.htmlFor = input.id;
+            label.textContent = t('ckeditor.dialog.variant', 'Version %s', index + 1);
+            wrapper.append(input, label);
+            fieldset.appendChild(wrapper);
+        }
+
+        return fieldset;
     }
 
     /**
@@ -258,12 +316,14 @@ export class CowriterDialog {
      * The style choices as numbers; 0 means "no preference".
      *
      * @param {HTMLElement} container
-     * @returns {{audience: number, tone: number, length: number}}
+     * @returns {{audience: number, tone: number, length: number, variants: number}}
      * @private
      */
     _readStyle(container) {
         const read = (role) => parseInt(container.querySelector(`[data-role="${role}-select"]`)?.value ?? '0', 10) || 0;
-        return { audience: read('audience'), tone: read('tone'), length: read('length') };
+        return {
+            audience: read('audience'), tone: read('tone'), length: read('length'), variants: Math.max(1, read('variants')),
+        };
     }
 
     /**
@@ -496,6 +556,7 @@ export class CowriterDialog {
 
                 container.querySelector('[data-role="model-info"]').style.display = 'none';
                 container.querySelector('[data-role="debug-details"]')?.remove();
+                container.querySelector('[data-role="variant-picker"]')?.remove();
 
                 this._updateButtonVisibility(modal, 'idle');
             };
@@ -544,7 +605,7 @@ export class CowriterDialog {
 
                     const inputText = currentContext;
                     activeRequest = new AbortController();
-                    const result = this._canStream()
+                    const result = this._canStream() && style.variants === 1
                         ? await this._streamTask(preview, {
                             taskUid, context: currentContext, contextType, instruction, editorCapabilities,
                             contextScope, recordContext, referencePages, configuration, ...style,
@@ -578,6 +639,17 @@ export class CowriterDialog {
                             const wordsText = t('ckeditor.dialog.wordsTarget', 'About %s words (target %s)', words, result.targetWords);
                             modelInfo.textContent = modelInfo.textContent ? `${modelInfo.textContent} | ${wordsText}` : wordsText;
                             modelInfo.style.display = 'block';
+                        }
+
+                        container.querySelector('[data-role="variant-picker"]')?.remove();
+                        if (Array.isArray(result.variants) && result.variants.length > 1) {
+                            preview.before(this._buildVariantPicker(result.variants.length, (index) => {
+                                const chosen = this._sanitizeHtml(result.variants[index]);
+                                const html = chosen.innerHTML;
+                                preview.replaceChildren(...Array.from(chosen.childNodes));
+                                resultContent = html;
+                                currentContext = html;
+                            }));
                         }
 
                         this._showDebugDetails(container, result, inputText, instruction);
