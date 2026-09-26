@@ -75,6 +75,18 @@ The Cowriter dialog lets you choose what to do with your content:
     the result switches between them, and :guilabel:`Insert` takes the one
     shown. Several versions arrive together, not while they are written.
 
+**Tools** (off by default)
+    With :guilabel:`Let the AI look up content with tools that change
+    nothing`, the model may call the nr-llm tools that run without an
+    approval, for example to search the site's content, before it answers.
+    A tool of the site that changes content needs an approval in nr-llm,
+    and the dialog has no step to give one, so it is not offered. A tool
+    from a remote MCP server is judged by what its operator declares: only
+    one declared as needing approval is left out. Which tools a
+    backend user may use is set in nr-llm; with none left, the task runs
+    without tools. The answer is not streamed and comes as one version;
+    the result line names the number of tool steps.
+
 **Context scope**
     Control how much context the AI receives:
 

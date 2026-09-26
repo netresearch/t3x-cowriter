@@ -70,8 +70,8 @@ class AIServiceError extends Error {
 /**
  * The style choices that differ from "no preference", as request fields.
  *
- * @param {{audience?: number, tone?: number, length?: number, variants?: number}} style
- * @returns {Record<string, number>}
+ * @param {{audience?: number, tone?: number, length?: number, variants?: number, useTools?: boolean}} style
+ * @returns {Record<string, number|boolean>}
  */
 function styleFields(style) {
     const fields = {};
@@ -85,6 +85,10 @@ function styleFields(style) {
     const variants = Number(style?.variants ?? 1);
     if (Number.isInteger(variants) && variants > 1) {
         fields.variants = variants;
+    }
+    // Tools are off by default; only a request for them is sent.
+    if (style?.useTools === true) {
+        fields.useTools = true;
     }
     return fields;
 }

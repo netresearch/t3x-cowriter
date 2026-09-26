@@ -1,3 +1,9 @@
+# Unreleased
+
+## FEATURE
+
+- Tools in the Cowriter dialog, off by default: with the switch on, `tx_cowriter_task_execute` (`useTools`) runs the task through nr-llm's tool loop with the tools the tool policy offers this user and configuration, narrowed to those that need no approval (`UnattendedToolFilterInterface`, nr-llm ADR-210). Without such a tool the task runs as before. A tool that asks for an approval all the same ends the task with 409. The answer is not streamed, comes as one version, and reports `toolIterations`. Requires nr-llm 0.38.
+
 # 3.9.0 (2026-09-27)
 
 ## FEATURE
