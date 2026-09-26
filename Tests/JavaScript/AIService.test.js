@@ -693,6 +693,22 @@ describe('AIService', () => {
         });
     });
 
+    describe('useTools field', () => {
+        it('should send useTools only when tools are asked for', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true, content: 'x' }) });
+            const service = new module.AIService();
+
+            await service.executeTask(1, 'text', 'selection', 'Improve', '', '', null, [], undefined, '', { useTools: true });
+            await service.executeTask(1, 'text', 'selection', 'Improve', '', '', null, [], undefined, '', { useTools: false });
+
+            expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body).useTools).toBe(true);
+            expect(JSON.parse(globalThis.fetch.mock.calls[1][1].body)).not.toHaveProperty('useTools');
+        });
+    });
+
     describe('saved prompts', () => {
         async function service() {
             Object.assign(globalThis.TYPO3.settings.ajaxUrls, {

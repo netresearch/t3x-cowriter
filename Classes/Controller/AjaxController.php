@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
+use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
 use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
@@ -38,6 +39,8 @@ use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Service\Style\StyleInstruction;
 use Netresearch\T3Cowriter\Service\Style\StyleInstructionBuilder;
+use Netresearch\T3Cowriter\Service\Tool\ToolNeedsApprovalException;
+use Netresearch\T3Cowriter\Service\Tool\UnattendedToolRunner;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -129,6 +132,9 @@ final readonly class AjaxController
         // Optional for the same reason; without it a request for several
         // versions is answered with one.
         private ?CompletionServiceInterface $completionService = null,
+        // Optional for the same reason; without it a request with tools is
+        // answered without them.
+        private ?UnattendedToolRunner $toolRunner = null,
     ) {}
 
     /**
@@ -551,11 +557,7 @@ final readonly class AjaxController
         }
 
         try {
-            $response = $this->llmServiceManager->chatWithConfiguration(
-                $messages,
-                $configuration,
-                $this->callMetadata($this->taskOperation($task)),
-            );
+            ['response' => $response, 'toolIterations' => $toolIterations] = $this->answerTask($dto, $task, $messages, $configuration);
 
             // Post-process: convert markdown to HTML if the model ignored the formatting instruction
             $rawContent       = $response->content;
@@ -578,6 +580,10 @@ final readonly class AjaxController
                 $responseData['targetWords'] = $targetWords;
             }
 
+            if ($toolIterations !== null) {
+                $responseData['toolIterations'] = $toolIterations;
+            }
+
             // Only expose raw LLM messages in TYPO3 development mode
             /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
             $typo3ConfVars = $GLOBALS['TYPO3_CONF_VARS'] ?? [];
@@ -588,6 +594,17 @@ final readonly class AjaxController
             return $this->jsonResponseWithRateLimitHeaders(
                 $responseData,
                 $rateLimitResult,
+            );
+        } catch (ToolNeedsApprovalException $e) {
+            $this->logger->warning('Task tool asked for an approval', [
+                'taskUid'   => $dto->taskUid,
+                'exception' => $e->getPrevious()?->getMessage() ?? $e->getMessage(),
+            ]);
+
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error($this->labels->get('error.toolNeedsApproval'))->jsonSerialize(),
+                $rateLimitResult,
+                409,
             );
         } catch (ProviderException $e) {
             $this->logger->error('Task execution provider error', [
@@ -613,6 +630,46 @@ final readonly class AjaxController
                 500,
             );
         }
+    }
+
+    /**
+     * The model's answer to a task: through the tool loop when the editor
+     * asked for tools and one is offerable, else as one chat call.
+     * toolIterations is null when no tool loop ran.
+     *
+     * @param list<array{role: string, content: string}> $messages
+     *
+     * @return array{response: CompletionResponse, toolIterations: int|null}
+     *
+     * @throws ToolNeedsApprovalException
+     */
+    private function answerTask(ExecuteTaskRequest $dto, ?Task $task, array $messages, LlmConfiguration $configuration): array
+    {
+        $backendUser = $GLOBALS['BE_USER'] ?? null;
+        if ($dto->useTools && $this->toolRunner instanceof UnattendedToolRunner && $backendUser instanceof BackendUserAuthentication) {
+            $result = $this->toolRunner->run($messages, $configuration, $backendUser);
+            if ($result instanceof ToolLoopResult) {
+                return [
+                    'response' => new CompletionResponse(
+                        content: $result->finalContent,
+                        model: $configuration->getModelId(),
+                        usage: $result->usage,
+                        finishReason: $result->truncated ? 'length' : 'stop',
+                        provider: '',
+                    ),
+                    'toolIterations' => $result->iterations,
+                ];
+            }
+        }
+
+        return [
+            'response' => $this->llmServiceManager->chatWithConfiguration(
+                $messages,
+                $configuration,
+                $this->callMetadata($this->taskOperation($task)),
+            ),
+            'toolIterations' => null,
+        ];
     }
 
     /**

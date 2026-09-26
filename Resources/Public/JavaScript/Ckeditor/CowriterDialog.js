@@ -274,6 +274,30 @@ export class CowriterDialog {
         variantsCol.appendChild(variantsGroup);
         row.appendChild(variantsCol);
 
+        // Tools: off by default. The model may then look things up with the
+        // tools that need no approval; the answer is not streamed and comes
+        // as one version.
+        const toolsId = `${idPrefix}-tools`;
+        const toolsWrap = document.createElement('div');
+        toolsWrap.className = 'col-12 form-check ms-2';
+        const toolsInput = document.createElement('input');
+        toolsInput.type = 'checkbox';
+        toolsInput.className = 'form-check-input';
+        toolsInput.id = toolsId;
+        toolsInput.dataset.role = 'tools-toggle';
+        const toolsLabel = document.createElement('label');
+        toolsLabel.className = 'form-check-label';
+        toolsLabel.htmlFor = toolsId;
+        toolsLabel.textContent = t('ckeditor.dialog.tools', 'Let the AI look up content with tools that change nothing');
+        toolsInput.addEventListener('change', () => {
+            if (toolsInput.checked) {
+                variantsSelect.value = '1';
+            }
+            variantsSelect.disabled = toolsInput.checked;
+        });
+        toolsWrap.append(toolsInput, toolsLabel);
+        row.appendChild(toolsWrap);
+
         return row;
     }
 
@@ -352,6 +376,7 @@ export class CowriterDialog {
         const read = (role) => parseInt(container.querySelector(`[data-role="${role}-select"]`)?.value ?? '0', 10) || 0;
         return {
             audience: read('audience'), tone: read('tone'), length: read('length'), variants: Math.max(1, read('variants')),
+            useTools: container.querySelector('[data-role="tools-toggle"]')?.checked === true,
         };
     }
 
@@ -824,7 +849,7 @@ export class CowriterDialog {
 
                     const inputText = currentContext;
                     activeRequest = new AbortController();
-                    const result = this._canStream() && style.variants === 1
+                    const result = this._canStream() && style.variants === 1 && !style.useTools
                         ? await this._streamTask(preview, {
                             taskUid, context: currentContext, contextType, instruction, editorCapabilities,
                             contextScope, recordContext, referencePages, configuration, ...style,
@@ -850,6 +875,11 @@ export class CowriterDialog {
                                 infoText += ' | ' + t('ckeditor.dialog.tokens', '%s tokens', result.usage.totalTokens);
                             }
                             modelInfo.textContent = infoText;
+                            modelInfo.style.display = 'block';
+                        }
+                        if (result.toolIterations) {
+                            const toolsText = t('ckeditor.dialog.toolIterations', 'Tool steps: %s', result.toolIterations);
+                            modelInfo.textContent = modelInfo.textContent ? `${modelInfo.textContent} | ${toolsText}` : toolsText;
                             modelInfo.style.display = 'block';
                         }
                         if (result.targetWords) {
