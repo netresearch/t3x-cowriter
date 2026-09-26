@@ -24,6 +24,9 @@ services:
   Netresearch\T3Cowriter\Service\EventStream\EventStreamEmitterInterface:
     alias: Netresearch\T3Cowriter\Service\EventStream\ServerSentEventEmitter
 
+  Netresearch\T3Cowriter\Service\Style\TargetLengthResolverInterface:
+    alias: Netresearch\T3Cowriter\Service\Style\TargetLengthResolver
+
   Netresearch\T3Cowriter\Controller\AjaxController:
     public: true
 

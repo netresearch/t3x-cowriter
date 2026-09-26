@@ -15,14 +15,18 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Domain\Repository\PromptSnippetRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
+use Netresearch\NrLlm\Service\Prompt\PromptSnippetComposer;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Style\StyleInstructionBuilder;
+use Netresearch\T3Cowriter\Service\Style\TargetLengthResolverInterface;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\RecordingEventStream;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
@@ -121,6 +125,55 @@ final class AjaxControllerStreamTest extends TestCase
     }
 
     #[Test]
+    public function theStyleInstructionIsTheLastSystemMessageAndTheTargetIsReported(): void
+    {
+        $this->streamChunks(['x']);
+        $this->llm->method('chatWithConfiguration')->willReturnCallback(function (array $messages): CompletionResponse {
+            $this->sentMessages[] = $messages;
+
+            return new CompletionResponse('x', 'gpt-test', new UsageStatistics(1, 1, 2), 'stop', 'test');
+        });
+        $subject = $this->subject(targetWords: 120);
+
+        $json = $subject->executeTaskAction($this->request(['length' => 1]));
+        $subject->executeTaskStreamAction($this->request(['length' => 1]));
+
+        foreach ($this->sentMessages as $messages) {
+            $count = count($messages);
+            self::assertSame(['role' => 'user', 'content' => 'Improve this'], $messages[$count - 1]);
+            self::assertSame(['role' => 'system', 'content' => "For this request:\n\nAim for about 150 words."], $messages[$count - 2]);
+        }
+        self::assertCount(2, $this->sentMessages);
+        $data = json_decode((string) $json->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($data);
+        self::assertSame(120, $data['targetWords']);
+        self::assertSame(120, $this->stream->events[array_key_last($this->stream->events)]['targetWords']);
+    }
+
+    #[Test]
+    public function withoutStyleChoicesNoStyleMessageIsSent(): void
+    {
+        $this->streamChunks(['x']);
+
+        $this->subject(targetWords: null)->executeTaskStreamAction($this->request());
+
+        self::assertCount(1, $this->sentMessages);
+        foreach ($this->sentMessages[0] as $message) {
+            self::assertStringNotContainsString('For this request', (string) $message['content']);
+        }
+        self::assertArrayNotHasKey('targetWords', $this->stream->events[array_key_last($this->stream->events)]);
+    }
+
+    #[Test]
+    public function anOutOfRangeLengthIsAnInvalidRequest(): void
+    {
+        $response = $this->subject()->executeTaskStreamAction($this->request(['length' => 3]));
+
+        self::assertSame(400, $response->getStatusCode());
+        self::assertNull($this->stream->openedWith);
+    }
+
+    #[Test]
     public function aRefusedConfigurationIsAJsonAnswerAndOpensNoStream(): void
     {
         $response = $this->subject(['default'])->executeTaskStreamAction($this->request());
@@ -201,7 +254,7 @@ final class AjaxControllerStreamTest extends TestCase
     /**
      * @param list<string> $deniedIdentifiers
      */
-    private function subject(array $deniedIdentifiers = []): AjaxController
+    private function subject(array $deniedIdentifiers = [], ?int $targetWords = null): AjaxController
     {
         $rateLimiter = $this->createStub(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
@@ -220,10 +273,25 @@ final class AjaxControllerStreamTest extends TestCase
             $this->createStub(BackendUriBuilder::class),
             $this->createStub(DiagnosticService::class),
             eventStream: $this->stream,
+            styleInstructions: new StyleInstructionBuilder(
+                $this->createStub(PromptSnippetRepository::class),
+                new PromptSnippetComposer(),
+                new class ($targetWords) implements TargetLengthResolverInterface {
+                    public function __construct(private readonly ?int $words) {}
+
+                    public function targetWords(?array $recordContext): ?int
+                    {
+                        return $this->words;
+                    }
+                },
+            ),
         );
     }
 
-    private function request(): ServerRequestInterface
+    /**
+     * @param array<string, int> $style
+     */
+    private function request(array $style = []): ServerRequestInterface
     {
         return (new ServerRequest('https://example.com/typo3/ajax/cowriter/task-stream', 'POST'))
             ->withParsedBody([
@@ -231,6 +299,7 @@ final class AjaxControllerStreamTest extends TestCase
                 'context'     => '<p>Some text</p>',
                 'contextType' => 'selection',
                 'instruction' => 'Improve this',
+                ...$style,
             ]);
     }
 }

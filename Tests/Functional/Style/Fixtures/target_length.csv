@@ -1,0 +1,12 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","perms_userid","perms_groupid","perms_user","perms_group","perms_everybody","TSconfig"
+,1,0,"Home","/",1,1,1,1,31,31,0,"tx_cowriter.targetLength.text = 150"
+,2,1,"Products","/products",0,1,1,1,31,31,0,""
+"tt_content"
+,"uid","pid","header","CType","sys_language_uid","sorting"
+,10,1,"Intro","text",0,256
+,11,1,"Picture","textmedia",0,512
+,20,2,"Inherited","text",0,256
+"be_users"
+,"uid","pid","username","password","admin","tstamp","crdate","disable","deleted"
+,1,0,"admin","$2y$12$RJxT/2Y6d3oRm5d5ohJi9.CmZlVW.7N4vMHXiQ/D6xJBPfqfNMpBm",1,1703347200,1703347200,0,0

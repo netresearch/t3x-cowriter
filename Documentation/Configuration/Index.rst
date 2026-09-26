@@ -178,6 +178,38 @@ The list is extension configuration rather than page TSconfig because the
 button is added to the TCA, which is the same for the whole installation.
 After changing either setting, flush the caches so the TCA is rebuilt.
 
+..  _configuration-style:
+
+Audience, tone and target length
+================================
+
+The :guilabel:`Audience` and :guilabel:`Tone of voice` selectors in the
+Cowriter dialog list the active nr-llm prompt snippets tagged ``audience``
+and ``tone_of_voice``. Maintain them in the nr-llm backend module, prompt
+snippets; the same snippets steer nr_repurpose. A selector without snippets
+is not shown.
+
+The length step is relative to the input, or to a target length per content
+type set in page TSconfig:
+
+..  code-block:: typoscript
+    :caption: Page TSconfig
+
+    tx_cowriter.targetLength {
+        text = 150
+        textmedia = 120
+    }
+
+..  confval:: tx_cowriter.targetLength.<CType>
+    :name: t3-cowriter-tsconfig-targetLength
+    :type: int (words)
+    :default: none
+
+    The number of words a content element of this type should have. The
+    page of the element decides, so subpages inherit it. With a target,
+    the length steps ask for 50, 75, 100, 125 or 150 per cent of it, and the
+    dialog shows the word count of the answer next to the target.
+
 Rate limiting
 =============
 

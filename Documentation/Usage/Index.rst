@@ -51,6 +51,15 @@ The Cowriter dialog lets you choose what to do with your content:
     nor accepted. The picker appears once the list has loaded and stays
     hidden when there is nothing to choose.
 
+**Audience, tone of voice and length** (optional)
+    Pick an audience and a tone of voice from the prompt snippets the
+    administrator maintains in nr-llm, and a length step from
+    :guilabel:`Much shorter` to :guilabel:`Much longer`. They apply to this
+    request only. When the page TSconfig sets a target length for the
+    content element's type, the length step scales that target, and the
+    result shows the word count next to it
+    (:ref:`configuration-style`).
+
 **Context scope**
     Control how much context the AI receives:
 

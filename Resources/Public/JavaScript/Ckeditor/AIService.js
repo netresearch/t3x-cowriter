@@ -67,6 +67,23 @@ class AIServiceError extends Error {
     }
 }
 
+/**
+ * The style choices that differ from "no preference", as request fields.
+ *
+ * @param {{audience?: number, tone?: number, length?: number}} style
+ * @returns {Record<string, number>}
+ */
+function styleFields(style) {
+    const fields = {};
+    for (const key of ['audience', 'tone', 'length']) {
+        const value = Number(style?.[key] ?? 0);
+        if (Number.isInteger(value) && value !== 0) {
+            fields[key] = value;
+        }
+    }
+    return fields;
+}
+
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
@@ -78,6 +95,7 @@ export class AIService {
         complete: null,
         stream: null,
         configurations: null,
+        styleOptions: null,
         tasks: null,
         taskExecute: null,
         taskStream: null,
@@ -99,6 +117,7 @@ export class AIService {
             this._routes.complete = TYPO3.settings.ajaxUrls.tx_cowriter_complete || null;
             this._routes.stream = TYPO3.settings.ajaxUrls.tx_cowriter_stream || null;
             this._routes.configurations = TYPO3.settings.ajaxUrls.tx_cowriter_configurations || null;
+            this._routes.styleOptions = TYPO3.settings.ajaxUrls.tx_cowriter_style_options || null;
             this._routes.tasks = TYPO3.settings.ajaxUrls.tx_cowriter_tasks || null;
             this._routes.taskExecute = TYPO3.settings.ajaxUrls.tx_cowriter_task_execute || null;
             this._routes.taskStream = TYPO3.settings.ajaxUrls.tx_cowriter_task_stream || null;
@@ -341,6 +360,30 @@ export class AIService {
     }
 
     /**
+     * Fetch the audience and tone-of-voice prompt snippets the dialog offers.
+     *
+     * @returns {Promise<{success: boolean, audiences: Array<{uid: number, name: string}>,
+     *     tones: Array<{uid: number, name: string}>}>}
+     */
+    async getStyleOptions() {
+        if (!this._routes.styleOptions) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
+
+        const response = await fetch(this._routes.styleOptions, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            await this._throwResponseError(response);
+        }
+
+        return response.json();
+    }
+
+    /**
      * Fetch available cowriter tasks.
      *
      * @returns {Promise<{success: boolean, tasks: Array<{uid: number, identifier: string, name: string, description: string, promptTemplate: string}>}>}
@@ -407,13 +450,14 @@ export class AIService {
      * @param {Array<{pid: number, relation: string}>} [referencePages=[]]
      * @param {AbortSignal} [signal] - Optional AbortSignal to cancel the request
      * @param {string} [configuration=''] - Identifier of the LLM configuration the editor chose; '' for the task's own
+     * @param {{audience?: number, tone?: number, length?: number}} [style={}] - The editor's style choices
      * @returns {Promise<CompleteResponse>}
      */
     async executeTask(
         taskUid, context, contextType,
         instruction = '', editorCapabilities = '',
         contextScope = '', recordContext = null, referencePages = [],
-        signal = undefined, configuration = '',
+        signal = undefined, configuration = '', style = {},
     ) {
         if (!this._routes.taskExecute) {
             throw new Error(
@@ -430,6 +474,7 @@ export class AIService {
                 taskUid, context, contextType, instruction, editorCapabilities,
                 contextScope, recordContext, referencePages,
                 ...(configuration ? { configuration } : {}),
+                ...styleFields(style),
             }),
             signal,
         });
@@ -464,13 +509,17 @@ export class AIService {
             );
         }
 
-        const { configuration = '', ...fields } = request;
+        const { configuration = '', audience = 0, tone = 0, length = 0, ...fields } = request;
         const response = await fetch(this._routes.taskStream, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ ...fields, ...(configuration ? { configuration } : {}) }),
+            body: JSON.stringify({
+                ...fields,
+                ...(configuration ? { configuration } : {}),
+                ...styleFields({ audience, tone, length }),
+            }),
             signal,
         });
 
