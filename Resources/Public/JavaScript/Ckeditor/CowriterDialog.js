@@ -142,6 +142,44 @@ export class CowriterDialog {
     }
 
     /**
+     * Whether the answer can be streamed: the service offers it and the page
+     * knows the stream route.
+     *
+     * @returns {boolean}
+     * @private
+     */
+    _canStream() {
+        return typeof this._service.executeTaskStream === 'function'
+            && Boolean(this._service.getModuleUrl?.('taskStream'));
+    }
+
+    /**
+     * Run the task as a stream and show the answer in the preview while it is
+     * written. The preview is marked busy meanwhile, so a screen reader
+     * announces the finished answer once rather than every piece of it.
+     *
+     * @param {HTMLElement} preview
+     * @param {object} request - The executeTask fields
+     * @param {AbortSignal} signal
+     * @returns {Promise<{success: boolean, content: string, model?: string}>}
+     * @private
+     */
+    async _streamTask(preview, request, signal) {
+        let streamed = '';
+        preview.setAttribute('aria-busy', 'true');
+        try {
+            const final = await this._service.executeTaskStream(request, (chunk) => {
+                streamed += chunk;
+                preview.replaceChildren(...Array.from(this._sanitizeHtml(streamed).childNodes));
+            }, signal);
+
+            return { success: true, content: final.content ?? streamed, model: final.model };
+        } finally {
+            preview.removeAttribute('aria-busy');
+        }
+    }
+
+    /**
      * Fill the configuration picker and show it. Leaves it hidden when there is
      * nothing to choose from, so the dialog looks as it did without the list.
      *
@@ -379,10 +417,15 @@ export class CowriterDialog {
 
                     const inputText = currentContext;
                     activeRequest = new AbortController();
-                    const result = await this._service.executeTask(
-                        taskUid, currentContext, contextType, instruction, editorCapabilities,
-                        contextScope, recordContext, referencePages, activeRequest.signal, configuration,
-                    );
+                    const result = this._canStream()
+                        ? await this._streamTask(preview, {
+                            taskUid, context: currentContext, contextType, instruction, editorCapabilities,
+                            contextScope, recordContext, referencePages, configuration,
+                        }, activeRequest.signal)
+                        : await this._service.executeTask(
+                            taskUid, currentContext, contextType, instruction, editorCapabilities,
+                            contextScope, recordContext, referencePages, activeRequest.signal, configuration,
+                        );
                     activeRequest = null;
 
                     if (result.success && result.content && result.content.trim()) {
