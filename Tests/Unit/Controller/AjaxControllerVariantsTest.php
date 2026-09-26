@@ -86,6 +86,15 @@ final class AjaxControllerVariantsTest extends TestCase
     }
 
     #[Test]
+    public function zeroVersionsIsAnInvalidRequest(): void
+    {
+        $response = $this->subject()->executeTaskAction($this->request(0));
+
+        self::assertSame(400, $response->getStatusCode());
+        self::assertSame([], $this->structuredCalls);
+    }
+
+    #[Test]
     public function withoutTheCompletionServiceOneAnswerIsReturned(): void
     {
         $this->llm->method('chatWithConfiguration')->willReturn(

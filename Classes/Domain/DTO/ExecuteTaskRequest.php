@@ -153,7 +153,8 @@ final readonly class ExecuteTaskRequest
             audience: self::extractInt($data, 'audience'),
             tone: self::extractInt($data, 'tone'),
             length: self::extractInt($data, 'length'),
-            variants: max(1, self::extractInt($data, 'variants')),
+            // One version when the field is missing; a sent 0 or negative count stays invalid.
+            variants: array_key_exists('variants', $data) ? self::extractInt($data, 'variants') : 1,
         );
     }
 
