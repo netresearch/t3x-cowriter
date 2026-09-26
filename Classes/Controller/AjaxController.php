@@ -594,57 +594,90 @@ final readonly class AjaxController
      */
     private function prepareTaskCall(ServerRequestInterface $request, RateLimitResult $rateLimitResult): array|ResponseInterface
     {
-        $dto = ExecuteTaskRequest::fromRequest($request);
+        try {
+            $dto = ExecuteTaskRequest::fromRequest($request);
+            if (!$dto->isValid()) {
+                throw new TaskCallRefusedException('Invalid task execution request.', 400);
+            }
 
-        if (!$dto->isValid()) {
+            $task     = $this->findTask($dto->taskUid);
+            $messages = $this->buildTaskMessages($dto, $this->surroundingContext($dto));
+
+            // The configuration the editor chose wins over the task's own, which
+            // wins over the default. Each must be one the editor may use.
+            $selection     = $this->configurationSelector->trySelect($dto->configuration, $task?->getConfiguration());
+            $configuration = $selection->configuration;
+            if (!$configuration instanceof LlmConfiguration) {
+                throw new TaskCallRefusedException($this->labels->get($selection->errorLabel), $selection->status);
+            }
+        } catch (TaskCallRefusedException $e) {
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('Invalid task execution request.')->jsonSerialize(),
+                CompleteResponse::error($e->getMessage())->jsonSerialize(),
                 $rateLimitResult,
-                400,
+                $e->getCode(),
             );
         }
 
-        // Resolve task (optional — taskUid=0 is custom mode)
-        $task = null;
-        if ($dto->taskUid > 0) {
-            $task = $this->taskRepository->findByUid($dto->taskUid);
-            if (!$task instanceof Task || !$task->isActive()) {
-                return $this->jsonResponseWithRateLimitHeaders(
-                    CompleteResponse::error($this->labels->get('error.taskNotFound'))->jsonSerialize(),
-                    $rateLimitResult,
-                    404,
-                );
-            }
+        return ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration];
+    }
+
+    /**
+     * The active task, or null in custom mode (taskUid 0).
+     *
+     * @throws TaskCallRefusedException when the task does not exist or is inactive
+     */
+    private function findTask(int $taskUid): ?Task
+    {
+        if ($taskUid === 0) {
+            return null;
         }
 
-        $surroundingContext = '';
-
-        // For extended scopes, assemble surrounding context as reference
-        if (!in_array($dto->contextScope, ['', 'selection', 'text'], true)
-            && $dto->recordContext !== null
-        ) {
-            try {
-                $surroundingContext = $this->contextAssemblyService->assembleContext(
-                    $dto->recordContext['table'],
-                    $dto->recordContext['uid'],
-                    $dto->recordContext['field'],
-                    $dto->contextScope,
-                    $dto->referencePages,
-                );
-            } catch (Throwable $e) {
-                $this->logger->error('Context assembly error', [
-                    'exception' => $e->getMessage(),
-                ]);
-
-                return $this->jsonResponseWithRateLimitHeaders(
-                    CompleteResponse::error($this->labels->get('error.contextAssembly'))->jsonSerialize(),
-                    $rateLimitResult,
-                    500,
-                );
-            }
+        $task = $this->taskRepository->findByUid($taskUid);
+        if (!$task instanceof Task || !$task->isActive()) {
+            throw new TaskCallRefusedException($this->labels->get('error.taskNotFound'), 404);
         }
 
-        // Build messages
+        return $task;
+    }
+
+    /**
+     * The surrounding content of the record for the extended scopes; empty
+     * for the selection and the editor text.
+     *
+     * @throws TaskCallRefusedException when the content cannot be assembled
+     */
+    private function surroundingContext(ExecuteTaskRequest $dto): string
+    {
+        if (in_array($dto->contextScope, ['', 'selection', 'text'], true) || $dto->recordContext === null) {
+            return '';
+        }
+
+        try {
+            return $this->contextAssemblyService->assembleContext(
+                $dto->recordContext['table'],
+                $dto->recordContext['uid'],
+                $dto->recordContext['field'],
+                $dto->contextScope,
+                $dto->referencePages,
+            );
+        } catch (Throwable $e) {
+            $this->logger->error('Context assembly error', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            throw new TaskCallRefusedException($this->labels->get('error.contextAssembly'), 500, $e);
+        }
+    }
+
+    /**
+     * The messages of a task call: the formatting rules, the scope, the
+     * editor content, the surrounding content, the editor capabilities, and
+     * the instruction last as the user message.
+     *
+     * @return list<array{role: string, content: string}>
+     */
+    private function buildTaskMessages(ExecuteTaskRequest $dto, string $surroundingContext): array
+    {
         $messages = [];
 
         // Core formatting instruction — must be first system message for reliable adherence
@@ -704,19 +737,7 @@ final readonly class AjaxController
         // Instruction is the user message — it IS the full prompt
         $messages[] = ['role' => 'user', 'content' => $dto->instruction];
 
-        // The configuration the editor chose wins over the task's own, which
-        // wins over the default. Each must be one the editor may use.
-        $selection     = $this->configurationSelector->trySelect($dto->configuration, $task?->getConfiguration());
-        $configuration = $selection->configuration;
-        if (!$configuration instanceof LlmConfiguration) {
-            return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error($this->labels->get($selection->errorLabel))->jsonSerialize(),
-                $rateLimitResult,
-                $selection->status,
-            );
-        }
-
-        return ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration];
+        return $messages;
     }
 
     /**

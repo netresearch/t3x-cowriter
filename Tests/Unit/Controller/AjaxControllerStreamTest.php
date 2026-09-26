@@ -32,13 +32,13 @@ use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\NullLogger;
-use RuntimeException;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\JsonResponse;
 use TYPO3\CMS\Core\Http\NullResponse;
 use TYPO3\CMS\Core\Http\ServerRequest;
+use UnexpectedValueException;
 
 #[CoversClass(AjaxController::class)]
 final class AjaxControllerStreamTest extends TestCase
@@ -160,8 +160,9 @@ final class AjaxControllerStreamTest extends TestCase
     public function anUnexpectedFailureDuringTheStreamIsAnErrorEvent(): void
     {
         $this->llm->method('streamChatWithConfiguration')->willReturnCallback(static function (): Generator {
-            throw new RuntimeException('boom');
-            yield 'never';
+            yield from [];
+
+            throw new UnexpectedValueException('boom');
         });
 
         $this->subject()->executeTaskStreamAction($this->request());
