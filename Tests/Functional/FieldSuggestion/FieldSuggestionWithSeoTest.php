@@ -21,6 +21,7 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\RecordFinder;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\SlugSuggestionBuilder;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\NullLogger;
@@ -83,7 +84,7 @@ final class FieldSuggestionWithSeoTest extends FunctionalTestCase
         $subject = new FieldSuggestionController(
             new RecordContextReader(new RecordFinder(GeneralUtility::makeInstance(ConnectionPool::class))),
             new FieldSuggestionService($completion, new SlugSuggestionBuilder()),
-            $configurationRepository,
+            ConfigurationAccessDouble::selector($configurationRepository),
             $rateLimiter,
             GeneralUtility::makeInstance(Context::class),
             new NullLogger(),

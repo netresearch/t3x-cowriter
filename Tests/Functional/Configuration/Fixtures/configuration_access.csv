@@ -1,0 +1,15 @@
+"be_groups"
+,"uid","pid","title"
+,20,0,"AI pilots"
+,21,0,"Editors"
+"be_users"
+,"uid","pid","username","password","admin","usergroup","tstamp","crdate","disable","deleted"
+,3,0,"pilot","$2y$12$RJxT/2Y6d3oRm5d5ohJi9.CmZlVW.7N4vMHXiQ/D6xJBPfqfNMpBm",0,"20",1703347200,1703347200,0,0
+,4,0,"outsider","$2y$12$RJxT/2Y6d3oRm5d5ohJi9.CmZlVW.7N4vMHXiQ/D6xJBPfqfNMpBm",0,"21",1703347200,1703347200,0,0
+"tx_nrllm_configuration"
+,"uid","pid","identifier","name","is_active","is_default","allowed_groups","tstamp","crdate","deleted","hidden","sorting"
+,200,0,"restricted","Restricted",1,0,1,1703347200,1703347200,0,0,1
+,201,0,"open","Open",1,1,0,1703347200,1703347200,0,0,2
+"tx_nrllm_configuration_begroups_mm"
+,"uid_local","uid_foreign","sorting","sorting_foreign"
+,200,20,1,0

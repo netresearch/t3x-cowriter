@@ -477,7 +477,8 @@ describe('CowriterDialog', () => {
             expect(configRow).toBeTruthy();
             expect(configRow.classList.contains('row')).toBe(true);
 
-            const cols = configRow.querySelectorAll(':scope > [class*="col-md-"]');
+            // The service offers no configurations, so the picker column stays hidden.
+            const cols = configRow.querySelectorAll(':scope > [class*="col-md-"]:not([hidden])');
             expect(cols.length).toBe(2);
             expect(cols[0].classList.contains('col-md-8')).toBe(true);
             expect(cols[1].classList.contains('col-md-4')).toBe(true);
@@ -511,6 +512,90 @@ describe('CowriterDialog', () => {
         });
     });
 
+    describe('configuration picker', () => {
+        const configurations = [
+            { identifier: 'editorial', name: 'Editorial', isDefault: true },
+            { identifier: 'creative', name: 'Creative', isDefault: false },
+        ];
+        const tasksWithConfiguration = [
+            {
+                uid: 1, identifier: 'improve', name: 'Improve Text', description: 'd', promptTemplate: 'Improve: {{input}}',
+                configuration: { identifier: 'editorial', name: 'Editorial' },
+            },
+            { uid: 2, identifier: 'summarize', name: 'Summarize', description: 'd', promptTemplate: 'Summarize: {{input}}' },
+        ];
+
+        function pickerColumn() {
+            return document.querySelector('[data-role="configuration-col"]');
+        }
+
+        it('should offer the configurations once they arrive', async () => {
+            mockService.getTasks.mockResolvedValue({ success: true, tasks: tasksWithConfiguration });
+            mockService.getConfigurations = vi.fn().mockResolvedValue({ success: true, configurations });
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+
+            await vi.waitFor(() => expect(pickerColumn()?.hidden).toBe(false));
+
+            const options = [...document.querySelectorAll('[data-role="configuration-select"] option')];
+            expect(options.map((o) => [o.value, o.textContent])).toEqual([
+                ['', 'Task setting (Editorial)'],
+                ['editorial', 'Editorial (default)'],
+                ['creative', 'Creative'],
+            ]);
+            const cols = document.querySelectorAll('[data-role="config-row"] > [class*="col-md-"]:not([hidden])');
+            expect([...cols].map((c) => c.className)).toEqual(['col-md-5', 'col-md-4', 'col-md-3']);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should name the default configuration for a task without one of its own', async () => {
+            mockService.getTasks.mockResolvedValue({ success: true, tasks: tasksWithConfiguration });
+            mockService.getConfigurations = vi.fn().mockResolvedValue({ success: true, configurations });
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            await vi.waitFor(() => expect(pickerColumn()?.hidden).toBe(false));
+
+            const taskSelect = document.querySelector('[data-role="task-select"]');
+            taskSelect.value = '2';
+            taskSelect.dispatchEvent(new Event('change'));
+
+            expect(document.querySelector('[data-role="configuration-task-setting"]').textContent)
+                .toBe('Default configuration');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should send the chosen configuration with the task', async () => {
+            mockService.getConfigurations = vi.fn().mockResolvedValue({ success: true, configurations });
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(pickerColumn()?.hidden).toBe(false));
+
+            document.querySelector('[data-role="configuration-select"]').value = 'creative';
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            expect(mockService.executeTask.mock.calls[0][9]).toBe('creative');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should keep the picker hidden when the configurations cannot be loaded', async () => {
+            mockService.getConfigurations = vi.fn().mockRejectedValue(new Error('403'));
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            await vi.waitFor(() => expect(mockService.getConfigurations).toHaveBeenCalled());
+            await vi.waitFor(() => expect(document.querySelector('[data-name="cancel"]')).not.toBeNull());
+            await Promise.resolve();
+
+            expect(pickerColumn().hidden).toBe(true);
+            expect(document.querySelector('[data-role="configuration-select"]').value).toBe('');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
     describe('execute flow', () => {
         it('should call executeTask with instruction from textarea', async () => {
             const dialog = new CowriterDialog(mockService);
@@ -530,7 +615,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'my selected text', 'selection', 'Improve:', '',
-                    'selection', null, [], expect.any(AbortSignal),
+                    'selection', null, [], expect.any(AbortSignal), '',
                 );
             });
 
@@ -563,7 +648,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'full editor content here', 'content_element',
                     'Improve:', '',
-                    'text', null, [], expect.any(AbortSignal),
+                    'text', null, [], expect.any(AbortSignal), '',
                 );
             });
 
@@ -598,7 +683,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     0, 'text', 'selection', 'Make it more formal', '',
-                    'selection', null, [], expect.any(AbortSignal),
+                    'selection', null, [], expect.any(AbortSignal), '',
                 );
             });
 
@@ -981,7 +1066,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Improve:', '',
-                    'page', recordContext, [], expect.any(AbortSignal),
+                    'page', recordContext, [], expect.any(AbortSignal), '',
                 );
             });
 
@@ -1105,7 +1190,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Improve:', '',
                     'selection', rc,
-                    [{ pid: 5, relation: 'style guide' }], expect.any(AbortSignal),
+                    [{ pid: 5, relation: 'style guide' }], expect.any(AbortSignal), '',
                 );
             });
 
@@ -1175,7 +1260,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Improve:', '',
                     'selection', rc,
-                    [{ pid: 5, relation: 'ref' }], expect.any(AbortSignal),
+                    [{ pid: 5, relation: 'ref' }], expect.any(AbortSignal), '',
                 );
             });
 

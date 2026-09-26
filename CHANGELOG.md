@@ -1,3 +1,13 @@
+# Unreleased
+
+## FEATURE
+
+- The Cowriter dialog offers the LLM configurations the editor may use. The first option runs the task on its own configuration, or on the default one; its label names that configuration. A chosen configuration now wins over the task's own. The dialog opens without waiting for the list and shows the picker once it arrives; without a list it looks as before.
+
+## FIX
+
+- Every route checks that the backend user may use the configuration it runs on: the one the editor chose, the task's own and the default one. nr-llm restricts a configuration to backend groups, but cowriter did not ask, so any editor could run a restricted configuration by sending its identifier, and the configuration list showed every active configuration. A refused configuration answers HTTP 403 with "You are not allowed to use this LLM configuration."; an unknown or inactive chosen one answers 404, and is no longer replaced by the default. The tool route used to answer an unknown configuration with HTTP 400 and the English exception text, and the translation route with HTTP 500.
+
 # 3.8.0 (2026-09-26)
 
 ## FEATURE

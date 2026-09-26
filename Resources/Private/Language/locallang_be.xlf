@@ -54,6 +54,12 @@
             <trans-unit id="error.noConfiguration" resname="error.noConfiguration">
                 <source>No LLM configuration available. Please configure the nr_llm extension.</source>
             </trans-unit>
+            <trans-unit id="error.configurationNotFound" resname="error.configurationNotFound">
+                <source>The selected LLM configuration does not exist or is inactive.</source>
+            </trans-unit>
+            <trans-unit id="error.configurationDenied" resname="error.configurationDenied">
+                <source>You are not allowed to use this LLM configuration.</source>
+            </trans-unit>
             <trans-unit id="error.notConfigured" resname="error.notConfigured">
                 <source>LLM is not configured yet.</source>
             </trans-unit>
@@ -320,6 +326,18 @@
             </trans-unit>
             <trans-unit id="ckeditor.dialog.editTasks.title" resname="ckeditor.dialog.editTasks.title">
                 <source>Manage tasks in LLM module</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.configuration" resname="ckeditor.dialog.configuration">
+                <source>LLM configuration</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.configuration.task" resname="ckeditor.dialog.configuration.task">
+                <source>Task setting (%s)</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.configuration.default" resname="ckeditor.dialog.configuration.default">
+                <source>Default configuration</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.configuration.defaultMarker" resname="ckeditor.dialog.configuration.defaultMarker">
+                <source>%s (default)</source>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.contextScope" resname="ckeditor.dialog.contextScope">
                 <source>Context scope</source>

@@ -622,6 +622,30 @@ describe('AIService', () => {
         });
     });
 
+    describe('getConfigurations', () => {
+        it('should throw when the configurations route is not configured', async () => {
+            const service = new AIService();
+            expect(service._routes.configurations).toBeNull();
+            await expect(service.getConfigurations()).rejects.toThrow('TYPO3 AJAX routes not configured');
+        });
+
+        it('should fetch the configurations the user may use', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_configurations = '/typo3/ajax/tx_cowriter_configurations';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const mockResponse = {
+                success: true,
+                configurations: [{ identifier: 'editorial', name: 'Editorial', isDefault: true }],
+            };
+            globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
+
+            const result = await new module.AIService().getConfigurations();
+
+            expect(globalThis.fetch).toHaveBeenCalledWith('/typo3/ajax/tx_cowriter_configurations', { method: 'GET' });
+            expect(result).toEqual(mockResponse);
+        });
+    });
+
     describe('getTasks', () => {
         it('should throw when tasks route is not configured', async () => {
             const service = new AIService();
@@ -824,6 +848,35 @@ describe('AIService', () => {
 
             const service = new ServiceClass();
             await expect(service.executeTask(999, 'text', 'selection')).rejects.toThrow('Task not found');
+        });
+    });
+
+    describe('executeTask configuration', () => {
+        async function serviceWithFetch() {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ success: true, content: 'result' }),
+            });
+            return new module.AIService();
+        }
+
+        it('should send the chosen configuration', async () => {
+            const service = await serviceWithFetch();
+
+            await service.executeTask(1, 'text', 'selection', '', '', '', null, [], undefined, 'editorial');
+
+            expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body).configuration).toBe('editorial');
+        });
+
+        it('should leave the configuration out when none was chosen', async () => {
+            const service = await serviceWithFetch();
+
+            await service.executeTask(1, 'text', 'selection');
+
+            expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body)).not.toHaveProperty('configuration');
         });
     });
 

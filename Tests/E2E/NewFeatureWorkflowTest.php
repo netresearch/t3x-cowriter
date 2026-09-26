@@ -23,6 +23,7 @@ use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\TaskStubTrait;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -120,7 +121,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $controller = new TranslationController(
             $translationService,
-            $this->createMock(LlmConfigurationRepository::class),
+            ConfigurationAccessDouble::selector($this->createMock(LlmConfigurationRepository::class)),
             $rateLimiter,
             $context,
             $this->logger,
@@ -388,7 +389,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $controller = new TranslationController(
             $stack['translationService'],
-            $this->createMock(LlmConfigurationRepository::class),
+            ConfigurationAccessDouble::selector($this->createMock(LlmConfigurationRepository::class)),
             $stack['rateLimiter'],
             $stack['context'],
             $this->logger,

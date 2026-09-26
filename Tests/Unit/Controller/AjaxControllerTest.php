@@ -23,11 +23,13 @@ use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
 use Netresearch\NrLlm\Provider\Middleware\TelemetryMiddleware;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -109,7 +111,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
-            $this->configRepositoryMock,
+            ConfigurationAccessDouble::selector($this->configRepositoryMock),
             $this->taskRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
@@ -930,14 +932,8 @@ final class AjaxControllerTest extends TestCase
         $config1 = $this->createConfigurationMock('config-1', 'Config 1', true);
         $config2 = $this->createConfigurationMock('config-2', 'Config 2', false);
 
-        $queryResult = $this->createQueryResultMock([$config1, $config2]);
-
-        $this->configRepositoryMock
-            ->method('findActive')
-            ->willReturn($queryResult);
-
         $request  = $this->createRequestWithJsonBody([]);
-        $response = $this->subject->getConfigurationsAction($request);
+        $response = $this->subjectWithAccess([$config1, $config2])->getConfigurationsAction($request);
 
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
@@ -951,14 +947,8 @@ final class AjaxControllerTest extends TestCase
     #[Test]
     public function getConfigurationsActionReturnsEmptyListWhenNoConfigurations(): void
     {
-        $queryResult = $this->createQueryResultMock([]);
-
-        $this->configRepositoryMock
-            ->method('findActive')
-            ->willReturn($queryResult);
-
         $request  = $this->createRequestWithJsonBody([]);
-        $response = $this->subject->getConfigurationsAction($request);
+        $response = $this->subjectWithAccess([])->getConfigurationsAction($request);
 
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
@@ -966,28 +956,18 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
-    public function getConfigurationsActionFiltersNonLlmConfigurationObjects(): void
+    public function getConfigurationsActionLeavesOutInactiveConfigurations(): void
     {
-        $validConfig = $this->createConfigurationMock('valid-config', 'Valid Config', true);
-
-        // Create a mixed result that includes non-LlmConfiguration objects
-        $queryResult = $this->createQueryResultMockWithMixedTypes([
-            $validConfig,
-            new stdClass(),  // Should be filtered out
-            'not an object',  // Should be filtered out
-        ]);
-
-        $this->configRepositoryMock
-            ->method('findActive')
-            ->willReturn($queryResult);
+        $first    = $this->createConfigurationMock('first', 'First', true);
+        $inactive = $this->createConfigurationMock('inactive', 'Inactive', false, false);
+        $second   = $this->createConfigurationMock('second', 'Second', false);
 
         $request  = $this->createRequestWithJsonBody([]);
-        $response = $this->subject->getConfigurationsAction($request);
+        $response = $this->subjectWithAccess([$first, $inactive, $second])->getConfigurationsAction($request);
 
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
-        $this->assertCount(1, $data['configurations']);
-        $this->assertSame('valid-config', $data['configurations'][0]['identifier']);
+        $this->assertSame(['first', 'second'], array_column($data['configurations'], 'identifier'));
     }
 
     // ===========================================
@@ -1050,7 +1030,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
-            $this->configRepositoryMock,
+            ConfigurationAccessDouble::selector($this->configRepositoryMock),
             $this->taskRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
@@ -1302,7 +1282,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
-            $this->configRepositoryMock,
+            ConfigurationAccessDouble::selector($this->configRepositoryMock),
             $this->taskRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
@@ -1341,7 +1321,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
-            $this->configRepositoryMock,
+            ConfigurationAccessDouble::selector($this->configRepositoryMock),
             $this->taskRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
@@ -1535,14 +1515,8 @@ final class AjaxControllerTest extends TestCase
             true,
         );
 
-        $queryResult = $this->createQueryResultMock([$config]);
-
-        $this->configRepositoryMock
-            ->method('findActive')
-            ->willReturn($queryResult);
-
         $request  = $this->createRequestWithJsonBody([]);
-        $response = $this->subject->getConfigurationsAction($request);
+        $response = $this->subjectWithAccess([$config])->getConfigurationsAction($request);
 
         $data = $this->decodeJsonResponse($response);
         $this->assertTrue($data['success']);
@@ -1550,36 +1524,6 @@ final class AjaxControllerTest extends TestCase
         // Raw values preserved — no HTML encoding in JSON responses
         $this->assertSame('config-with-<special>', $data['configurations'][0]['identifier']);
         $this->assertSame('Config & Name', $data['configurations'][0]['name']);
-    }
-
-    #[Test]
-    public function getConfigurationsActionFiltersContinueCorrectly(): void
-    {
-        // Tests that 'continue' in the foreach works correctly:
-        // With non-LlmConfiguration objects, valid configs AFTER them should still be included
-        $config1 = $this->createConfigurationMock('first', 'First', true);
-        $config2 = $this->createConfigurationMock('second', 'Second', false);
-
-        // Mixed array with a non-LlmConfiguration in the middle
-        $queryResult = $this->createQueryResultMockWithMixedTypes([
-            $config1,
-            new stdClass(),  // Should be skipped by 'continue'
-            $config2,        // Should still be included after the continue
-        ]);
-
-        $this->configRepositoryMock
-            ->method('findActive')
-            ->willReturn($queryResult);
-
-        $request  = $this->createRequestWithJsonBody([]);
-        $response = $this->subject->getConfigurationsAction($request);
-
-        $data = $this->decodeJsonResponse($response);
-        $this->assertTrue($data['success']);
-        // Both valid configs should be present (stdClass filtered by continue)
-        $this->assertCount(2, $data['configurations']);
-        $this->assertSame('first', $data['configurations'][0]['identifier']);
-        $this->assertSame('second', $data['configurations'][1]['identifier']);
     }
 
     // ===========================================
@@ -1786,6 +1730,21 @@ final class AjaxControllerTest extends TestCase
         self::assertSame('Enhance readability', $data['tasks'][0]['description']);
         self::assertSame('Improve this: {{input}}', $data['tasks'][0]['promptTemplate']);
         self::assertSame('Summarize: {{input}}', $data['tasks'][1]['promptTemplate']);
+    }
+
+    #[Test]
+    public function getTasksActionNamesEachTasksConfiguration(): void
+    {
+        $withConfig = $this->createTaskMock(1, 'improve', 'Improve Text', 'desc', true);
+        $withConfig->method('getConfiguration')->willReturn($this->createConfigurationMock('editorial', 'Editorial tone', false));
+        $withoutConfig = $this->createTaskMock(2, 'summarize', 'Summarize', 'desc', true);
+
+        $this->taskRepositoryMock->method('findByCategory')->willReturn(new TestQueryResult([$withConfig, $withoutConfig]));
+
+        $data = $this->decodeJsonResponse($this->subject->getTasksAction($this->createMock(ServerRequestInterface::class)));
+
+        self::assertSame(['identifier' => 'editorial', 'name' => 'Editorial tone'], $data['tasks'][0]['configuration']);
+        self::assertNull($data['tasks'][1]['configuration']);
     }
 
     #[Test]
@@ -2135,6 +2094,68 @@ final class AjaxControllerTest extends TestCase
     }
 
     #[Test]
+    public function executeTaskActionPrefersTheConfigurationTheEditorChose(): void
+    {
+        $taskConfig   = $this->createConfigurationMock('task-config', 'Task Config', false);
+        $chosenConfig = $this->createConfigurationMock('chosen', 'Chosen', false);
+
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn($taskConfig);
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+        $this->configRepositoryMock->method('findOneByIdentifier')->willReturnMap([['chosen', $chosenConfig]]);
+
+        $this->llmServiceManagerMock
+            ->expects($this->once())
+            ->method('chatWithConfiguration')
+            ->with($this->anything(), $this->identicalTo($chosenConfig))
+            ->willReturn($this->createCompletionResponse('Result'));
+
+        $response = $this->subject->executeTaskAction($this->createRequestWithJsonBody([
+            'taskUid'       => 1,
+            'context'       => 'text',
+            'contextType'   => 'selection',
+            'instruction'   => 'Improve this',
+            'configuration' => 'chosen',
+        ]));
+
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function executeTaskActionRefusesATaskConfigurationTheEditorMayNotUse(): void
+    {
+        $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
+        $task->method('getConfiguration')->willReturn($this->createConfigurationMock('task-config', 'Task Config', false));
+        $this->taskRepositoryMock->method('findByUid')->willReturn($task);
+
+        $this->llmServiceManagerMock->expects($this->never())->method('chatWithConfiguration');
+
+        $response = $this->subjectWithAccess([], ['task-config'])->executeTaskAction($this->createRequestWithJsonBody([
+            'taskUid'     => 1,
+            'context'     => 'text',
+            'contextType' => 'selection',
+            'instruction' => 'Improve this',
+        ]));
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame('You are not allowed to use this LLM configuration.', $this->decodeJsonResponse($response)['error']);
+    }
+
+    #[Test]
+    public function chatActionRefusesAChosenConfigurationTheEditorMayNotUse(): void
+    {
+        $this->configRepositoryMock->method('findOneByIdentifier')->willReturn($this->createConfigurationMock('restricted'));
+        $this->llmServiceManagerMock->expects($this->never())->method('chatWithConfiguration');
+
+        $response = $this->subjectWithAccess([], ['restricted'])->chatAction($this->createRequestWithJsonBody([
+            'messages'      => [['role' => 'user', 'content' => 'Hello']],
+            'configuration' => 'restricted',
+        ]));
+
+        self::assertSame(403, $response->getStatusCode());
+    }
+
+    #[Test]
     public function executeTaskActionReturnsErrorOnProviderException(): void
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
@@ -2229,7 +2250,7 @@ final class AjaxControllerTest extends TestCase
 
         $this->subject = new AjaxController(
             $this->llmServiceManagerMock,
-            $this->configRepositoryMock,
+            ConfigurationAccessDouble::selector($this->configRepositoryMock),
             $this->taskRepositoryMock,
             $this->rateLimiterMock,
             $this->contextMock,
@@ -3843,14 +3864,39 @@ final class AjaxControllerTest extends TestCase
         string $identifier = 'default',
         string $name = 'Default Config',
         bool $isDefault = true,
+        bool $active = true,
     ): LlmConfiguration&MockObject {
         $mock = $this->createMock(LlmConfiguration::class);
         $mock->method('getIdentifier')->willReturn($identifier);
         $mock->method('getName')->willReturn($name);
         $mock->method('isDefault')->willReturn($isDefault);
+        $mock->method('isActive')->willReturn($active);
         $mock->method('getModelId')->willReturn('');
 
         return $mock;
+    }
+
+    /**
+     * The subject over a selector whose access rule offers $accessible and
+     * refuses $deniedIdentifiers.
+     *
+     * @param list<LlmConfiguration> $accessible
+     * @param list<string>           $deniedIdentifiers
+     */
+    private function subjectWithAccess(array $accessible, array $deniedIdentifiers = []): AjaxController
+    {
+        return new AjaxController(
+            $this->llmServiceManagerMock,
+            new ConfigurationSelector($this->configRepositoryMock, new ConfigurationAccessDouble($deniedIdentifiers, $accessible)),
+            $this->taskRepositoryMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
+            $this->loggerMock,
+            $this->contextAssemblyMock,
+            $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
+            $this->diagnosticServiceMock,
+        );
     }
 
     /**

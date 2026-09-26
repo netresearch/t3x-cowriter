@@ -10,14 +10,13 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
-use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
-use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
 use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Domain\DTO\ToolRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\CallerSource;
+use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -41,7 +40,7 @@ final readonly class ToolController
 
     public function __construct(
         private ToolLoopServiceInterface $toolLoopService,
-        private LlmConfigurationRepository $configurationRepository,
+        private ConfigurationSelector $configurationSelector,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
@@ -85,21 +84,13 @@ final readonly class ToolController
             );
         }
 
-        try {
-            $configuration = $this->resolveConfiguration($toolRequest->configuration);
-        } catch (ConfigurationNotFoundException $e) {
-            return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $e->getMessage()],
-                $rateLimitResult,
-                400,
-            );
-        }
-
+        $selection     = $this->configurationSelector->trySelect($toolRequest->configuration);
+        $configuration = $selection->configuration;
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->labels->get('error.noConfiguration')],
+                ['success' => false, 'error' => $this->labels->get($selection->errorLabel)],
                 $rateLimitResult,
-                404,
+                $selection->status,
             );
         }
 
@@ -158,32 +149,5 @@ final readonly class ToolController
                 500,
             );
         }
-    }
-
-    /**
-     * Resolve the LLM configuration to run the tool loop against.
-     *
-     * A requested-but-unknown identifier is an error (surfaced to the user),
-     * never a silent fallback. When no identifier is requested the default
-     * configuration is used; null means none is configured at all.
-     *
-     * @throws ConfigurationNotFoundException when $identifier is given but no
-     *                                        matching configuration exists
-     */
-    private function resolveConfiguration(?string $identifier): ?LlmConfiguration
-    {
-        if ($identifier === null || $identifier === '') {
-            return $this->configurationRepository->findDefault();
-        }
-
-        $configuration = $this->configurationRepository->findOneByIdentifier($identifier);
-        if (!$configuration instanceof LlmConfiguration) {
-            throw new ConfigurationNotFoundException(
-                sprintf('LLM configuration "%s" not found.', $identifier),
-                1784592000,
-            );
-        }
-
-        return $configuration;
     }
 }

@@ -11,9 +11,9 @@ namespace Netresearch\T3Cowriter\Controller;
 
 use InvalidArgumentException;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
-use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\T3Cowriter\Domain\DTO\FieldSuggestionRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
+use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldKind;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldProfile;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldSuggestionException;
@@ -49,7 +49,7 @@ final readonly class FieldSuggestionController
     public function __construct(
         private RecordContextReader $recordContextReader,
         private FieldSuggestionService $fieldSuggestionService,
-        private LlmConfigurationRepository $configurationRepository,
+        private ConfigurationSelector $configurationSelector,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
@@ -110,12 +110,13 @@ final readonly class FieldSuggestionController
             );
         }
 
-        $configuration = $this->configurationRepository->findDefault();
+        $selection     = $this->configurationSelector->trySelect(null);
+        $configuration = $selection->configuration;
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->labels->get('error.noConfiguration')],
+                ['success' => false, 'error' => $this->labels->get($selection->errorLabel)],
                 $rateLimitResult,
-                404,
+                $selection->status,
             );
         }
 

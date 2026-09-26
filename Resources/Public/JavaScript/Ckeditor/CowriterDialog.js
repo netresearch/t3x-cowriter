@@ -26,6 +26,14 @@ import { t } from '@netresearch/t3_cowriter/Labels';
  * @property {string} name
  * @property {string} description
  * @property {string} [promptTemplate]
+ * @property {{identifier: string, name: string}|null} [configuration] - The task's own configuration, if it has one
+ */
+
+/**
+ * @typedef {object} ConfigurationItem
+ * @property {string} identifier
+ * @property {string} name
+ * @property {boolean} isDefault
  */
 
 /**
@@ -89,6 +97,10 @@ export class CowriterDialog {
      * @returns {Promise<DialogResult>} Resolves with content to insert, rejects on cancel
      */
     async show(selectedText, fullContent, editorCapabilities = '', recordContext = null, preSelectedTaskUid = null) {
+        // The configuration picker is optional and does not hold up the
+        // dialog: it appears once the list arrives. Without a list, every task
+        // runs on its own configuration, as before.
+        const configurationsRequest = this._loadConfigurations();
         let tasks;
         try {
             const response = await this._service.getTasks();
@@ -104,7 +116,72 @@ export class CowriterDialog {
             return this._showNoTasksModal();
         }
 
-        return this._showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid);
+        return this._showModal(
+            tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid,
+            configurationsRequest,
+        );
+    }
+
+    /**
+     * The configurations the editor may choose from; empty when the list is
+     * unavailable.
+     *
+     * @returns {Promise<ConfigurationItem[]>}
+     * @private
+     */
+    async _loadConfigurations() {
+        if (typeof this._service.getConfigurations !== 'function') {
+            return [];
+        }
+        try {
+            const response = await this._service.getConfigurations();
+            return Array.isArray(response?.configurations) ? response.configurations : [];
+        } catch {
+            return [];
+        }
+    }
+
+    /**
+     * Fill the configuration picker and show it. Leaves it hidden when there is
+     * nothing to choose from, so the dialog looks as it did without the list.
+     *
+     * @param {HTMLElement} container
+     * @param {ConfigurationItem[]} configurations
+     * @private
+     */
+    _offerConfigurations(container, configurations) {
+        const select = container.querySelector('[data-role="configuration-select"]');
+        const column = container.querySelector('[data-role="configuration-col"]');
+        if (!select || !column || configurations.length === 0) {
+            return;
+        }
+
+        for (const configuration of configurations) {
+            const option = document.createElement('option');
+            option.value = configuration.identifier;
+            option.textContent = configuration.isDefault
+                ? t('ckeditor.dialog.configuration.defaultMarker', '%s (default)', configuration.name)
+                : configuration.name;
+            select.appendChild(option);
+        }
+
+        column.hidden = false;
+        container.querySelector('[data-role="task-col"]')?.classList.replace('col-md-8', 'col-md-5');
+        container.querySelector('[data-role="scope-col"]')?.classList.replace('col-md-4', 'col-md-3');
+    }
+
+    /**
+     * Label of the picker's first option: what runs when the editor chooses
+     * nothing, which is the task's own configuration or else the default.
+     *
+     * @param {string} taskConfigurationName
+     * @returns {string}
+     * @private
+     */
+    _taskSettingLabel(taskConfigurationName) {
+        return taskConfigurationName
+            ? t('ckeditor.dialog.configuration.task', 'Task setting (%s)', taskConfigurationName)
+            : t('ckeditor.dialog.configuration.default', 'Default configuration');
     }
 
     /**
@@ -209,10 +286,16 @@ export class CowriterDialog {
      * @returns {Promise<DialogResult>}
      * @private
      */
-    _showModal(tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid = null) {
+    _showModal(
+        tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid = null,
+        configurationsRequest = Promise.resolve([]),
+    ) {
         /** @type {Set<AbortController>} Track reference row listeners for cleanup */
         const referenceAbortControllers = new Set();
-        const container = this._buildDialogContent(tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid);
+        const container = this._buildDialogContent(
+            tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid,
+        );
+        configurationsRequest.then((configurations) => this._offerConfigurations(container, configurations));
         /** @type {'idle'|'loading'|'result'} */
         let state = 'idle';
         let resultContent = '';
@@ -292,11 +375,13 @@ export class CowriterDialog {
                         }
                     }
 
+                    const configuration = container.querySelector('[data-role="configuration-select"]')?.value || '';
+
                     const inputText = currentContext;
                     activeRequest = new AbortController();
                     const result = await this._service.executeTask(
                         taskUid, currentContext, contextType, instruction, editorCapabilities,
-                        contextScope, recordContext, referencePages, activeRequest.signal,
+                        contextScope, recordContext, referencePages, activeRequest.signal, configuration,
                     );
                     activeRequest = null;
 
@@ -405,10 +490,14 @@ export class CowriterDialog {
      * @param {string} selectedText
      * @param {string} fullContent
      * @param {{table: string, uid: number, field: string}|null} recordContext
+     * @param {Set<AbortController>} referenceAbortControllers
+     * @param {number|null} [preSelectedTaskUid=null]
      * @returns {HTMLElement}
      * @private
      */
-    _buildDialogContent(tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid = null) {
+    _buildDialogContent(
+        tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid = null,
+    ) {
         injectStyles();
         const container = document.createElement('div');
         container.className = 'cowriter-dialog';
@@ -439,6 +528,7 @@ export class CowriterDialog {
             option.textContent = task.name;
             option.dataset.description = task.description || '';
             option.dataset.promptTemplate = task.promptTemplate || '';
+            option.dataset.configurationName = task.configuration?.name || '';
             taskSelect.appendChild(option);
         }
 
@@ -498,20 +588,47 @@ export class CowriterDialog {
         scopeSelect.value = hasSelection ? 'selection' : 'text';
         contextGroup.appendChild(scopeSelect);
 
-        // Config row: task + scope side by side
+        // LLM configuration picker, hidden until _offerConfigurations() fills
+        // it. The first option runs the task on its own configuration (or the
+        // default); the others override it.
+        const configurationId = `${idPrefix}-configuration`;
+        const configurationGroup = this._createFormGroup(
+            t('ckeditor.dialog.configuration', 'LLM configuration'), configurationId,
+        );
+        const configurationSelect = document.createElement('select');
+        configurationSelect.className = 'form-select';
+        configurationSelect.id = configurationId;
+        configurationSelect.dataset.role = 'configuration-select';
+
+        const taskSettingOption = document.createElement('option');
+        taskSettingOption.value = '';
+        taskSettingOption.dataset.role = 'configuration-task-setting';
+        taskSettingOption.textContent = this._taskSettingLabel(selectedOption?.dataset.configurationName || '');
+        configurationSelect.appendChild(taskSettingOption);
+        configurationGroup.appendChild(configurationSelect);
+
+        // Config row: task, configuration and scope side by side
         const configRow = document.createElement('div');
         configRow.className = 'row mb-3';
         configRow.dataset.role = 'config-row';
 
         const taskCol = document.createElement('div');
         taskCol.className = 'col-md-8';
+        taskCol.dataset.role = 'task-col';
         taskCol.appendChild(taskGroup);
+        configRow.appendChild(taskCol);
+
+        const configurationCol = document.createElement('div');
+        configurationCol.className = 'col-md-4';
+        configurationCol.dataset.role = 'configuration-col';
+        configurationCol.hidden = true;
+        configurationCol.appendChild(configurationGroup);
+        configRow.appendChild(configurationCol);
 
         const scopeCol = document.createElement('div');
         scopeCol.className = 'col-md-4';
+        scopeCol.dataset.role = 'scope-col';
         scopeCol.appendChild(contextGroup);
-
-        configRow.appendChild(taskCol);
         configRow.appendChild(scopeCol);
         container.appendChild(configRow);
 
@@ -574,6 +691,7 @@ export class CowriterDialog {
         taskSelect.addEventListener('change', () => {
             const selected = taskSelect.options[taskSelect.selectedIndex];
             taskDesc.textContent = selected?.dataset.description || '';
+            taskSettingOption.textContent = this._taskSettingLabel(selected?.dataset.configurationName || '');
             const template = selected?.dataset.promptTemplate || '';
             instructionInput.value = template
                 ? this._resolveTemplate(template)

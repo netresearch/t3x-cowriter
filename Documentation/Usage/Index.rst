@@ -42,6 +42,15 @@ The Cowriter dialog lets you choose what to do with your content:
     Each task has a description shown below the dropdown. You can also
     select "Custom instruction" to write a freeform prompt.
 
+**LLM configuration**
+    Choose which :ref:`LLM configuration <nrllm:configuration-llm>` runs
+    the task. The first option, "Task setting", keeps the configuration
+    the task names, or the default configuration when the task names
+    none. The list shows only the configurations your backend groups may
+    use; a configuration restricted to other groups is neither listed
+    nor accepted. The picker appears once the list has loaded and stays
+    hidden when there is nothing to choose.
+
 **Context scope**
     Control how much context the AI receives:
 
