@@ -90,6 +90,17 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.dialog.customInstruction.description',
         'ckeditor.dialog.editTasks',
         'ckeditor.dialog.editTasks.title',
+        'ckeditor.dialog.prompts.own',
+        'ckeditor.dialog.prompts.shared',
+        'ckeditor.dialog.prompts.awaitingApproval',
+        'ckeditor.dialog.prompts.save',
+        'ckeditor.dialog.prompts.title',
+        'ckeditor.dialog.prompts.share',
+        'ckeditor.dialog.prompts.saved',
+        'ckeditor.dialog.prompts.savedForApproval',
+        'ckeditor.dialog.prompts.delete',
+        'ckeditor.dialog.prompts.deleted',
+        'ckeditor.dialog.prompts.failed',
         'ckeditor.dialog.configuration',
         'ckeditor.dialog.configuration.task',
         'ckeditor.dialog.configuration.default',
@@ -219,6 +230,12 @@ final readonly class InjectAjaxUrlsListener
                 ->buildUriFromRoute('ajax_tx_cowriter_translate'),
             'tx_cowriter_templates' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_templates'),
+            'tx_cowriter_prompts' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_prompts'),
+            'tx_cowriter_prompt_save' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_prompt_save'),
+            'tx_cowriter_prompt_delete' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_prompt_delete'),
             'tx_cowriter_tools' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_tools'),
             'tx_cowriter_page_search' => (string) $this->backendUriBuilder

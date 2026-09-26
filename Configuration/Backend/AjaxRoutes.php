@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Controller\FieldSuggestionController;
+use Netresearch\T3Cowriter\Controller\SavedPromptController;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Controller\ToolController;
 use Netresearch\T3Cowriter\Controller\TranslationController;
@@ -71,6 +72,20 @@ return [
     'tx_cowriter_templates' => [
         'path'   => '/cowriter/templates',
         'target' => TemplateController::class . '::listAction',
+    ],
+    'tx_cowriter_prompts' => [
+        'path'   => '/cowriter/prompts',
+        'target' => SavedPromptController::class . '::listAction',
+    ],
+    'tx_cowriter_prompt_save' => [
+        'path'    => '/cowriter/prompt-save',
+        'target'  => SavedPromptController::class . '::saveAction',
+        'methods' => ['POST'],
+    ],
+    'tx_cowriter_prompt_delete' => [
+        'path'    => '/cowriter/prompt-delete',
+        'target'  => SavedPromptController::class . '::deleteAction',
+        'methods' => ['POST'],
     ],
     'tx_cowriter_tools' => [
         'path'   => '/cowriter/tools',

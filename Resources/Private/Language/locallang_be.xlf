@@ -96,6 +96,18 @@
             <trans-unit id="error.templates" resname="error.templates">
                 <source>Failed to load templates.</source>
             </trans-unit>
+            <trans-unit id="error.prompts" resname="error.prompts">
+                <source>The saved prompts could not be loaded or changed.</source>
+            </trans-unit>
+            <trans-unit id="error.promptInvalid" resname="error.promptInvalid">
+                <source>A prompt needs a title (up to 255 characters) and an instruction.</source>
+            </trans-unit>
+            <trans-unit id="error.promptLimit" resname="error.promptLimit">
+                <source>You have saved 100 prompts. Delete one before you save another.</source>
+            </trans-unit>
+            <trans-unit id="error.promptNotFound" resname="error.promptNotFound">
+                <source>You have no saved prompt with this number.</source>
+            </trans-unit>
             <trans-unit id="error.tool" resname="error.tool">
                 <source>Tool execution failed. Please try again.</source>
             </trans-unit>
@@ -330,6 +342,39 @@
             <trans-unit id="ckeditor.dialog.editTasks.title" resname="ckeditor.dialog.editTasks.title">
                 <source>Manage tasks in LLM module</source>
             </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.own" resname="ckeditor.dialog.prompts.own">
+                <source>My prompts</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.shared" resname="ckeditor.dialog.prompts.shared">
+                <source>Shared prompts</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.awaitingApproval" resname="ckeditor.dialog.prompts.awaitingApproval">
+                <source>%s (awaiting approval)</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.save" resname="ckeditor.dialog.prompts.save">
+                <source>Save as prompt</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.title" resname="ckeditor.dialog.prompts.title">
+                <source>Prompt title</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.share" resname="ckeditor.dialog.prompts.share">
+                <source>Share with other editors</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.saved" resname="ckeditor.dialog.prompts.saved">
+                <source>Prompt saved.</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.savedForApproval" resname="ckeditor.dialog.prompts.savedForApproval">
+                <source>Prompt saved. Other editors see it once an administrator approves it.</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.delete" resname="ckeditor.dialog.prompts.delete">
+                <source>Delete prompt</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.deleted" resname="ckeditor.dialog.prompts.deleted">
+                <source>Prompt deleted.</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.prompts.failed" resname="ckeditor.dialog.prompts.failed">
+                <source>The prompt could not be saved or deleted.</source>
+            </trans-unit>
             <trans-unit id="ckeditor.dialog.configuration" resname="ckeditor.dialog.configuration">
                 <source>LLM configuration</source>
             </trans-unit>
@@ -479,6 +524,30 @@
             </trans-unit>
             <trans-unit id="ckeditor.dialog.copied" resname="ckeditor.dialog.copied">
                 <source>Copied!</source>
+            </trans-unit>
+            <trans-unit id="tx_cowriter_prompt" resname="tx_cowriter_prompt">
+                <source>Cowriter prompt</source>
+            </trans-unit>
+            <trans-unit id="tx_cowriter_prompt.title" resname="tx_cowriter_prompt.title">
+                <source>Title</source>
+            </trans-unit>
+            <trans-unit id="tx_cowriter_prompt.instruction" resname="tx_cowriter_prompt.instruction">
+                <source>Instruction</source>
+            </trans-unit>
+            <trans-unit id="tx_cowriter_prompt.shared" resname="tx_cowriter_prompt.shared">
+                <source>Shared with other editors</source>
+            </trans-unit>
+            <trans-unit id="tx_cowriter_prompt.approved" resname="tx_cowriter_prompt.approved">
+                <source>Approved for other editors</source>
+            </trans-unit>
+            <trans-unit id="tx_cowriter_prompt.hidden" resname="tx_cowriter_prompt.hidden">
+                <source>Hidden</source>
+            </trans-unit>
+            <trans-unit id="tx_cowriter_prompt.be_user" resname="tx_cowriter_prompt.be_user">
+                <source>Saved by</source>
+            </trans-unit>
+            <trans-unit id="tx_cowriter_prompt.tab.access" resname="tx_cowriter_prompt.tab.access">
+                <source>Access</source>
             </trans-unit>
         </body>
     </file>

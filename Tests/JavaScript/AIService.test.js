@@ -693,6 +693,46 @@ describe('AIService', () => {
         });
     });
 
+    describe('saved prompts', () => {
+        async function service() {
+            Object.assign(globalThis.TYPO3.settings.ajaxUrls, {
+                tx_cowriter_prompts: '/typo3/ajax/cowriter/prompts',
+                tx_cowriter_prompt_save: '/typo3/ajax/cowriter/prompt-save',
+                tx_cowriter_prompt_delete: '/typo3/ajax/cowriter/prompt-delete',
+            });
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
+            return new module.AIService();
+        }
+
+        it('should list, save and delete through the three routes', async () => {
+            const aiService = await service();
+
+            await aiService.getSavedPrompts();
+            await aiService.savePrompt({ title: 'T', instruction: 'I', shared: 'yes' });
+            await aiService.deletePrompt(7);
+
+            expect(globalThis.fetch.mock.calls.map((call) => [call[0], call[1].method])).toEqual([
+                ['/typo3/ajax/cowriter/prompts', 'GET'],
+                ['/typo3/ajax/cowriter/prompt-save', 'POST'],
+                ['/typo3/ajax/cowriter/prompt-delete', 'POST'],
+            ]);
+            expect(JSON.parse(globalThis.fetch.mock.calls[1][1].body)).toEqual({ title: 'T', instruction: 'I', shared: false });
+            expect(JSON.parse(globalThis.fetch.mock.calls[2][1].body)).toEqual({ uid: 7 });
+        });
+
+        it('should throw the server error of a refused save', async () => {
+            const aiService = await service();
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false, status: 409, json: () => Promise.resolve({ success: false, error: 'You have saved 100 prompts.' }),
+            });
+
+            await expect(aiService.savePrompt({ title: 'T', instruction: 'I', shared: false }))
+                .rejects.toThrow('You have saved 100 prompts.');
+        });
+    });
+
     describe('getTasks', () => {
         it('should throw when tasks route is not configured', async () => {
             const service = new AIService();
