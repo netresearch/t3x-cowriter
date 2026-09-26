@@ -238,6 +238,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $config->method('getIdentifier')->willReturn($identifier);
         $config->method('getName')->willReturn($name);
         $config->method('isDefault')->willReturn($isDefault);
+        $config->method('isActive')->willReturn(true);
         $config->method('getModelId')->willReturn($model);
         $config->method('toChatOptions')->willReturn($chatOptions);
 

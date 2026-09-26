@@ -17,18 +17,21 @@ use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 
 /**
  * nr-llm's configuration access rule for tests: every configuration is usable
- * except the identifiers listed as denied, and the accessible list is the one
- * passed in. The management methods are not used by cowriter and throw.
+ * except the identifiers listed as denied. The accessible list is the one
+ * passed in, or else what the repository's findActive() returns minus the
+ * denied ones, which is what nr-llm answers an administrator. The management
+ * methods are not used by cowriter and throw.
  */
 final class ConfigurationAccessDouble implements LlmConfigurationServiceInterface
 {
     /**
-     * @param list<string>           $deniedIdentifiers
-     * @param list<LlmConfiguration> $accessible
+     * @param list<string>                $deniedIdentifiers
+     * @param list<LlmConfiguration>|null $accessible        null: derive from $repository
      */
     public function __construct(
         private readonly array $deniedIdentifiers = [],
-        private readonly array $accessible = [],
+        private readonly ?array $accessible = null,
+        private readonly ?LlmConfigurationRepository $repository = null,
     ) {}
 
     /**
@@ -39,12 +42,23 @@ final class ConfigurationAccessDouble implements LlmConfigurationServiceInterfac
      */
     public static function selector(LlmConfigurationRepository $repository, array $deniedIdentifiers = []): ConfigurationSelector
     {
-        return new ConfigurationSelector($repository, new self($deniedIdentifiers));
+        return new ConfigurationSelector($repository, new self($deniedIdentifiers, null, $repository));
     }
 
     public function getAccessibleConfigurations(): array
     {
-        return $this->accessible;
+        if ($this->accessible !== null) {
+            return $this->accessible;
+        }
+
+        $accessible = [];
+        foreach ($this->repository?->findActive() ?? [] as $configuration) {
+            if ($configuration instanceof LlmConfiguration && $this->hasAccess($configuration)) {
+                $accessible[] = $configuration;
+            }
+        }
+
+        return $accessible;
     }
 
     public function hasAccess(LlmConfiguration $configuration): bool
