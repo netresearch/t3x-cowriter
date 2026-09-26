@@ -13,6 +13,7 @@ use InvalidArgumentException;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\T3Cowriter\Domain\DTO\FieldSuggestionRequest;
+use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldKind;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldProfile;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldSuggestionException;
@@ -28,8 +29,6 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
-use TYPO3\CMS\Core\Localization\LanguageService;
-use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
 
 /**
  * AJAX endpoint behind the "Suggest" field control: N suggestions for one
@@ -47,8 +46,6 @@ final readonly class FieldSuggestionController
      */
     private const SCHEMA_MISMATCH_CODES = [1784500001, 1784500002];
 
-    private const LABEL_PREFIX = 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_be.xlf:';
-
     public function __construct(
         private RecordContextReader $recordContextReader,
         private FieldSuggestionService $fieldSuggestionService,
@@ -56,8 +53,8 @@ final readonly class FieldSuggestionController
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
-        private LanguageServiceFactory $languageServiceFactory,
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
+        private BackendLabels $labels = new BackendLabels(),
     ) {}
 
     public function suggestAction(ServerRequestInterface $request): ResponseInterface
@@ -96,9 +93,6 @@ final readonly class FieldSuggestionController
             );
         }
 
-        // Messages from here on are for the editor, in the editor's backend language.
-        $languageService = $this->languageServiceFactory->createFromUserPreferences($backendUser);
-
         try {
             $recordContext = $this->recordContextReader->read($dto, $backendUser);
 
@@ -110,7 +104,7 @@ final readonly class FieldSuggestionController
             }
         } catch (FieldSuggestionException $e) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->label($languageService, $e->getLabelKey())],
+                ['success' => false, 'error' => $this->labels->get($e->getLabelKey())],
                 $rateLimitResult,
                 $e->getHttpStatus(),
             );
@@ -119,7 +113,7 @@ final readonly class FieldSuggestionController
         $configuration = $this->configurationRepository->findDefault();
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->label($languageService, 'fieldSuggestions.error.noConfiguration')],
+                ['success' => false, 'error' => $this->labels->get('error.noConfiguration')],
                 $rateLimitResult,
                 404,
             );
@@ -139,7 +133,7 @@ final readonly class FieldSuggestionController
             $this->logger->error('Field suggestion failed', ['exception' => $e->getMessage()]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->label($languageService, $this->errorLabelKey($e))],
+                ['success' => false, 'error' => $this->errorMessage($e)],
                 $rateLimitResult,
                 502,
             );
@@ -147,7 +141,7 @@ final readonly class FieldSuggestionController
 
         if ($suggestions === []) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->label($languageService, 'fieldSuggestions.error.noSuggestions')],
+                ['success' => false, 'error' => $this->labels->get('fieldSuggestions.error.noSuggestions')],
                 $rateLimitResult,
                 502,
             );
@@ -163,9 +157,9 @@ final readonly class FieldSuggestionController
     }
 
     /**
-     * The label key of the editor-facing message for a failed LLM call.
+     * The editor-facing message for a failed LLM call.
      */
-    private function errorLabelKey(Throwable $exception): string
+    private function errorMessage(Throwable $exception): string
     {
         $kind = $this->errorClassifier->classify($exception);
 
@@ -175,19 +169,14 @@ final readonly class FieldSuggestionController
         ) {
             // nr-llm's structured completion: the answer did not match the
             // schema even after its repair round-trip.
-            return 'fieldSuggestions.error.invalidFormat';
+            return $this->labels->get('fieldSuggestions.error.invalidFormat');
         }
 
         return match ($kind) {
-            LlmErrorKind::Configuration  => 'fieldSuggestions.error.configuration',
-            LlmErrorKind::Authentication => 'fieldSuggestions.error.authentication',
-            LlmErrorKind::RateLimit      => 'fieldSuggestions.error.rateLimit',
-            LlmErrorKind::Unknown        => 'fieldSuggestions.error.unknown',
+            LlmErrorKind::Configuration  => $this->labels->get('error.checkSetupStatus', $this->labels->get('error.notConfigured')),
+            LlmErrorKind::Authentication => $this->labels->get('error.providerAuthentication'),
+            LlmErrorKind::RateLimit      => $this->labels->get('error.providerRateLimit'),
+            LlmErrorKind::Unknown        => $this->labels->get('fieldSuggestions.error.unknown'),
         };
-    }
-
-    private function label(LanguageService $languageService, string $key): string
-    {
-        return $languageService->sL(self::LABEL_PREFIX . $key);
     }
 }

@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Controller;
 use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Domain\DTO\VisionRequest;
+use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -34,6 +35,7 @@ final readonly class VisionController
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
+        private BackendLabels $labels = new BackendLabels(),
     ) {}
 
     public function analyzeAction(ServerRequestInterface $request): ResponseInterface
@@ -110,7 +112,7 @@ final readonly class VisionController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'Image analysis failed. Please try again.'],
+                ['success' => false, 'error' => $this->labels->get('error.vision')],
                 $rateLimitResult,
                 500,
             );

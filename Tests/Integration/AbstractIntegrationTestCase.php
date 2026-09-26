@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +31,14 @@ use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 #[AllowMockObjectsWithoutExpectations]
 abstract class AbstractIntegrationTestCase extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->useXliffLanguageService();
+    }
+
     /**
      * Create a mock ServerRequest with JSON body.
      *

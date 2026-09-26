@@ -39,6 +39,30 @@
             <trans-unit id="status.footer" resname="status.footer">
                 <source>The Cowriter extension requires a working LLM configuration from the NR LLM extension. Use the "Fix" buttons to resolve any issues.</source>
             </trans-unit>
+            <trans-unit id="status.check.provider_exists" resname="status.check.provider_exists">
+                <source>Provider exists</source>
+            </trans-unit>
+            <trans-unit id="status.check.provider_active" resname="status.check.provider_active">
+                <source>Provider active</source>
+            </trans-unit>
+            <trans-unit id="status.check.provider_has_api_key" resname="status.check.provider_has_api_key">
+                <source>Provider has an API key</source>
+            </trans-unit>
+            <trans-unit id="status.check.model_exists" resname="status.check.model_exists">
+                <source>Model exists</source>
+            </trans-unit>
+            <trans-unit id="status.check.model_active" resname="status.check.model_active">
+                <source>Model active</source>
+            </trans-unit>
+            <trans-unit id="status.check.configuration_exists" resname="status.check.configuration_exists">
+                <source>Configuration exists</source>
+            </trans-unit>
+            <trans-unit id="status.check.configuration_active" resname="status.check.configuration_active">
+                <source>Configuration active</source>
+            </trans-unit>
+            <trans-unit id="status.check.configuration_default" resname="status.check.configuration_default">
+                <source>Default configuration set</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

@@ -29,7 +29,7 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
-use Netresearch\T3Cowriter\Tests\Support\XliffFile;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -44,8 +44,6 @@ use Stringable;
 use Throwable;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
-use TYPO3\CMS\Core\Localization\LanguageService;
-use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
 
 #[CoversClass(FieldSuggestionController::class)]
 #[CoversClass(FieldSuggestionRequest::class)]
@@ -58,12 +56,13 @@ use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
 #[CoversClass(Tca::class)]
 final class FieldSuggestionControllerTest extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
     private FakeCompletionService $completion;
     private RecordContextReader&Stub $reader;
     private LlmConfigurationRepository&Stub $configurationRepository;
     private RateLimiterInterface&Stub $rateLimiter;
     private SlugSuggestionBuilder&Stub $slugBuilder;
-    private LanguageServiceFactory $languageServiceFactory;
 
     /** @var list<string> */
     private array $logged = [];
@@ -79,7 +78,7 @@ final class FieldSuggestionControllerTest extends TestCase
         $this->rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
         $this->configurationRepository->method('findDefault')->willReturn(new LlmConfiguration());
         $this->reader->method('read')->willReturn(self::context('seo_title'));
-        $this->languageServiceFactory = $this->languageServiceFactoryFor('en');
+        $this->useXliffLanguageService();
 
         $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
         $GLOBALS['TCA']     = ['pages' => ['columns' => [
@@ -115,25 +114,8 @@ final class FieldSuggestionControllerTest extends TestCase
             $this->rateLimiter,
             $context,
             $logger,
-            $this->languageServiceFactory,
             new LlmErrorClassifier(),
         );
-    }
-
-    /**
-     * A factory whose LanguageService resolves the extension's labels from
-     * the language files, in English or German.
-     */
-    private function languageServiceFactoryFor(string $language): LanguageServiceFactory&Stub
-    {
-        $languageService = $this->createStub(LanguageService::class);
-        $languageService->method('sL')->willReturnCallback(
-            static fn (string $reference): string => XliffFile::label($reference, $language),
-        );
-        $factory = $this->createStub(LanguageServiceFactory::class);
-        $factory->method('createFromUserPreferences')->willReturn($languageService);
-
-        return $factory;
     }
 
     /**
@@ -393,15 +375,7 @@ final class FieldSuggestionControllerTest extends TestCase
     #[Test]
     public function messagesAreInTheLanguageOfTheBackendUser(): void
     {
-        $languageService = $this->createStub(LanguageService::class);
-        $languageService->method('sL')->willReturnCallback(
-            static fn (string $reference): string => XliffFile::label($reference, 'de'),
-        );
-        $factory = $this->createMock(LanguageServiceFactory::class);
-        $factory->expects(self::exactly(2))->method('createFromUserPreferences')
-            ->with(self::identicalTo($GLOBALS['BE_USER']))
-            ->willReturn($languageService);
-        $this->languageServiceFactory = $factory;
+        $this->useXliffLanguageService('de');
 
         $this->completion->throwable = new ProviderResponseException('Too many requests', 429);
         $response                    = $this->subject()->suggestAction($this->request(self::body()));

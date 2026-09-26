@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\EventListener;
 
 use Netresearch\T3Cowriter\EventListener\InjectAjaxUrlsListener;
+use Netresearch\T3Cowriter\Tests\Support\XliffFile;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -19,6 +21,7 @@ use Psr\Http\Message\UriInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Http\Uri;
+use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Page\AssetCollector;
 use TYPO3\CMS\Core\Page\Event\BeforeJavaScriptsRenderingEvent;
 
@@ -26,6 +29,8 @@ use TYPO3\CMS\Core\Page\Event\BeforeJavaScriptsRenderingEvent;
 #[CoversClass(InjectAjaxUrlsListener::class)]
 final class InjectAjaxUrlsListenerTest extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
     private InjectAjaxUrlsListener $subject;
     private BackendUriBuilder&MockObject $backendUriBuilderMock;
     private LoggerInterface&MockObject $loggerMock;
@@ -33,6 +38,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->useXliffLanguageService();
 
         $this->backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
         $this->loggerMock            = $this->createMock(LoggerInterface::class);
@@ -62,16 +68,16 @@ final class InjectAjaxUrlsListenerTest extends TestCase
             ->method('buildUriFromRoute')
             ->willReturnCallback(fn (string $route) => new Uri('/typo3/ajax/' . $route));
 
+        $inlineCalls    = [];
         $assetCollector = $this->createMock(AssetCollector::class);
         $assetCollector
-            ->expects($this->once())
+            ->expects($this->exactly(2))
             ->method('addInlineJavaScript')
-            ->with(
-                'cowriter-ajax-urls-data',
-                $this->isString(),
-                ['type' => 'application/json', 'id' => 'cowriter-ajax-urls-data'],
-                ['priority' => true],
-            );
+            ->willReturnCallback(function (string $identifier, string $source, array $attributes, array $options) use (&$inlineCalls, $assetCollector): AssetCollector {
+                $inlineCalls[$identifier] = [$attributes, $options];
+
+                return $assetCollector;
+            });
 
         $assetCollector
             ->expects($this->once())
@@ -90,6 +96,73 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         );
 
         ($this->subject)($event);
+
+        $this->assertSame([
+            'cowriter-ajax-urls-data' => [['type' => 'application/json', 'id' => 'cowriter-ajax-urls-data'], ['priority' => true]],
+            'cowriter-labels-data'    => [['type' => 'application/json', 'id' => 'cowriter-labels-data'], ['priority' => true]],
+        ], $inlineCalls);
+    }
+
+    /**
+     * @return array<string, string> the JSON of each inline element, by identifier
+     */
+    private function inlineJson(): array
+    {
+        $this->backendUriBuilderMock
+            ->method('buildUriFromRoute')
+            ->willReturnCallback(fn (string $route) => new Uri('/typo3/ajax/' . $route));
+
+        $captured       = [];
+        $assetCollector = $this->createMock(AssetCollector::class);
+        $assetCollector
+            ->method('addInlineJavaScript')
+            ->willReturnCallback(function (string $identifier, string $json) use (&$captured, $assetCollector): AssetCollector {
+                $captured[$identifier] = $json;
+
+                return $assetCollector;
+            });
+        $assetCollector->method('addJavaScript');
+
+        ($this->subject)(new BeforeJavaScriptsRenderingEvent(assetCollector: $assetCollector, isInline: true, priority: false));
+
+        return $captured;
+    }
+
+    #[Test]
+    public function labelDataHoldsEveryPluginLabelInTheBackendLanguage(): void
+    {
+        $this->useXliffLanguageService('de');
+
+        $labels = json_decode($this->inlineJson()['cowriter-labels-data'], true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertIsArray($labels);
+        $this->assertSame(InjectAjaxUrlsListener::LABEL_KEYS, array_keys($labels));
+        $this->assertSame('Cowriter - Übersetzen', $labels['ckeditor.button.translate']);
+        $this->assertSame('Abbrechen', $labels['ckeditor.dialog.button.cancel']);
+    }
+
+    #[Test]
+    public function labelDataCannotCloseItsScriptElement(): void
+    {
+        $languageService = $this->createStub(LanguageService::class);
+        $languageService->method('sL')->willReturn('</script><script>alert(1)</script>');
+        $GLOBALS['LANG'] = $languageService;
+
+        $json = $this->inlineJson()['cowriter-labels-data'];
+
+        $this->assertStringNotContainsString('</script>', $json);
+        $this->assertSame('</script><script>alert(1)</script>', json_decode($json, true)['ckeditor.button.tasks']);
+    }
+
+    #[Test]
+    public function labelKeysAreExactlyThePluginUnitsOfTheLanguageFile(): void
+    {
+        $ckeditorIds = array_values(array_filter(
+            array_keys(XliffFile::units(XliffFile::LANGUAGE_DIRECTORY . '/locallang_be.xlf')),
+            static fn (string $id): bool => str_starts_with($id, 'ckeditor.'),
+        ));
+
+        $this->assertSame($ckeditorIds, InjectAjaxUrlsListener::LABEL_KEYS);
     }
 
     #[Test]
@@ -104,7 +177,9 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $assetCollector
             ->method('addInlineJavaScript')
             ->willReturnCallback(function (string $identifier, string $json) use (&$capturedJson, $assetCollector): AssetCollector {
-                $capturedJson = $json;
+                if ($identifier === 'cowriter-ajax-urls-data') {
+                    $capturedJson = $json;
+                }
 
                 return $assetCollector;
             });
@@ -219,7 +294,9 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $assetCollector
             ->method('addInlineJavaScript')
             ->willReturnCallback(function (string $identifier, string $json) use (&$capturedJson, $assetCollector): AssetCollector {
-                $capturedJson = $json;
+                if ($identifier === 'cowriter-ajax-urls-data') {
+                    $capturedJson = $json;
+                }
 
                 return $assetCollector;
             });

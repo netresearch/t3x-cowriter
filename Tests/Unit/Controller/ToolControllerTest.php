@@ -19,6 +19,7 @@ use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Controller\ToolController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
@@ -31,6 +32,8 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(ToolController::class)]
 final class ToolControllerTest extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
     private ToolLoopServiceInterface&Stub $toolLoopServiceStub;
     private LlmConfigurationRepository&Stub $configRepositoryStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
@@ -38,6 +41,7 @@ final class ToolControllerTest extends TestCase
 
     protected function setUp(): void
     {
+        $this->useXliffLanguageService();
         $this->toolLoopServiceStub  = $this->createStub(ToolLoopServiceInterface::class);
         $this->configRepositoryStub = $this->createStub(LlmConfigurationRepository::class);
         $this->rateLimiterStub      = $this->createStub(RateLimiterInterface::class);

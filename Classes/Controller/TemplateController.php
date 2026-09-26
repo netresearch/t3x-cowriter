@@ -11,6 +11,7 @@ namespace Netresearch\T3Cowriter\Controller;
 
 use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
+use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -34,6 +35,7 @@ final readonly class TemplateController
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
+        private BackendLabels $labels = new BackendLabels(),
     ) {}
 
     public function listAction(ServerRequestInterface $request): ResponseInterface
@@ -73,7 +75,7 @@ final readonly class TemplateController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'Failed to load templates.'],
+                ['success' => false, 'error' => $this->labels->get('error.templates')],
                 $rateLimitResult,
                 500,
             );

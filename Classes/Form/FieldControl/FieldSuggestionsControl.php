@@ -31,7 +31,7 @@ final class FieldSuggestionsControl extends AbstractNode
     /**
      * Labels the JavaScript module shows, passed as data attributes.
      */
-    private const JS_LABELS = ['heading', 'loading', 'loaded', 'empty', 'error', 'inserted', 'close'];
+    private const JS_LABELS = ['heading', 'loading', 'loaded', 'loadedSingular', 'empty', 'error', 'inserted', 'close'];
 
     public function __construct(
         private readonly UriBuilder $uriBuilder,
@@ -75,7 +75,9 @@ final class FieldSuggestionsControl extends AbstractNode
 
         $languageService = $this->getLanguageService();
         foreach (self::JS_LABELS as $label) {
-            $linkAttributes['data-label-' . $label] = $languageService->sL(self::LABEL_PREFIX . $label);
+            // data-label-loaded-singular reaches the module as dataset.labelLoadedSingular.
+            $attribute                  = 'data-label-' . strtolower((string) preg_replace('/[A-Z]/', '-$0', $label));
+            $linkAttributes[$attribute] = $languageService->sL(self::LABEL_PREFIX . $label);
         }
 
         return [

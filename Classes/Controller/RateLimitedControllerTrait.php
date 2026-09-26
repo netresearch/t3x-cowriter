@@ -23,6 +23,9 @@ use TYPO3\CMS\Core\Http\JsonResponse;
  * A controller that needs a different rate-limited body (e.g. AjaxController,
  * which serialises a CompleteResponse) simply declares its own
  * {@see self::rateLimitedResponse()} — a class method overrides the trait's.
+ *
+ * Every using class has a `BackendLabels $labels` property; the 429 message
+ * is in the backend user's language.
  */
 trait RateLimitedControllerTrait
 {
@@ -74,7 +77,7 @@ trait RateLimitedControllerTrait
     private function rateLimitedResponse(RateLimitResult $result): JsonResponse
     {
         $response = new JsonResponse(
-            ['success' => false, 'error' => 'Rate limit exceeded. Please try again later.'],
+            ['success' => false, 'error' => $this->labels->get('error.rateLimitExceeded')],
             429,
         );
 

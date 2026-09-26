@@ -18,6 +18,7 @@ use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\NrLlm\Specialized\Translation\LlmTranslator;
 use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
+use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
@@ -52,6 +53,7 @@ final readonly class TranslationController
         // Stateless; defaulted so manual constructors need no extra argument while
         // the Symfony container still autowires the shared service.
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
+        private BackendLabels $labels = new BackendLabels(),
     ) {}
 
     public function translateAction(ServerRequestInterface $request): ResponseInterface
@@ -269,13 +271,9 @@ final readonly class TranslationController
     {
         return match ($this->errorClassifier->classify($e)) {
             LlmErrorKind::Configuration  => $this->configurationErrorMessage(),
-            LlmErrorKind::Authentication => 'The LLM provider rejected the API key.'
-                . ' An administrator should check the provider'
-                . ' configuration in the LLM module.',
-            LlmErrorKind::RateLimit => 'The LLM provider rate limit was exceeded.'
-                . ' Please wait a moment and try again.',
-            LlmErrorKind::Unknown => 'Translation failed.'
-                . ' Check the TYPO3 system log for details.',
+            LlmErrorKind::Authentication => $this->labels->get('error.translation.authentication'),
+            LlmErrorKind::RateLimit      => $this->labels->get('error.providerRateLimit'),
+            LlmErrorKind::Unknown        => $this->labels->get('error.translation.failed'),
         };
     }
 
@@ -291,13 +289,10 @@ final readonly class TranslationController
             $failure = null;
         }
 
-        if ($failure instanceof DiagnosticCheck) {
-            return $failure->message
-                . ' Ask an administrator to check the Cowriter Setup Status page for details.';
-        }
-
-        return 'Translation is not configured yet.'
-            . ' Ask an administrator to check the Cowriter Setup Status page for details.';
+        return $this->labels->get(
+            'error.checkSetupStatus',
+            $failure instanceof DiagnosticCheck ? $failure->message : $this->labels->get('error.translation.notConfigured'),
+        );
     }
 
     /**

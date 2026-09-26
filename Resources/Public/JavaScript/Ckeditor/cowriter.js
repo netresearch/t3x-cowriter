@@ -6,10 +6,12 @@ import { ButtonView, createDropdown, addListToDropdown, ViewModel } from "@ckedi
 import { Collection } from "@ckeditor/ckeditor5-utils";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
+import { t } from "@netresearch/t3_cowriter/Labels";
 import Notification from "@typo3/backend/notification.js";
 
 /**
- * Target languages for translation dropdown.
+ * Target languages for translation dropdown. The label is the English
+ * fallback of the "ckeditor.language.<code>" label.
  * @type {ReadonlyArray<{code: string, label: string}>}
  */
 const TRANSLATION_LANGUAGES = [
@@ -38,28 +40,33 @@ function buildModuleAction(label, url) {
 }
 
 /**
- * Build error notification actions based on the error message content.
+ * Build error notification actions based on the error.
  * Returns appropriate "Open LLM Settings" links depending on the error type.
+ *
+ * The backend message is in the editor's language, so a rate limit is
+ * recognised by the HTTP status (429) as well as by the English wording.
  *
  * @param {string} errorMessage - The error message from the backend
  * @param {AIService} service - The AIService instance (for route access)
+ * @param {number|null} [status=null] - HTTP status of the failed request, if known
  * @returns {Array<{label: string, action: {execute: function}}>}
  */
-function errorActions(errorMessage, service) {
+function errorActions(errorMessage, service, status = null) {
     const msg = (errorMessage || '').toLowerCase();
     const llmModuleUrl = service.getModuleUrl?.('llmModule') ?? null;
+    const settingsLabel = t('ckeditor.action.openLlmSettings', 'Open LLM Settings');
 
     if (msg.includes('not configured') || msg.includes('no llm provider') || msg.includes('no default')
         || msg.includes('api key') || msg.includes('unauthorized') || msg.includes('401')) {
-        return buildModuleAction('Open LLM Settings', llmModuleUrl);
+        return buildModuleAction(settingsLabel, llmModuleUrl);
     }
 
-    if (msg.includes('rate limit') || msg.includes('429')) {
+    if (status === 429 || msg.includes('rate limit') || msg.includes('429')) {
         return []; // No action needed — just wait
     }
 
     // Generic errors: offer the LLM module as a starting point
-    return buildModuleAction('Open LLM Settings', llmModuleUrl);
+    return buildModuleAction(settingsLabel, llmModuleUrl);
 }
 
 /**
@@ -207,7 +214,7 @@ export class Cowriter extends Plugin {
             const button = new ButtonView();
 
             button.set({
-                label: 'Cowriter - AI text completion',
+                label: t('ckeditor.button.complete', 'Cowriter - AI text completion'),
                 tooltip: true,
                 icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M19,10H7V6h2c1.654,0,3-1.346,3-3s-1.346-3-3-3H3C1.346,0,0,1.346,0,3s1.346,3,3,3h2v4c-2.757,0-5,2.243-5,5v3H24v-3c0-2.757-2.243-5-5-5ZM6,15c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1Zm4,0c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1Zm4,0c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1Zm4,0c-.552,0-1-.448-1-1s.448-1,1-1,1,.448,1,1-.448,1-1,1ZM.101,20H23.899c-.465,2.279-2.485,4-4.899,4H5c-2.414,0-4.435-1.721-4.899-4Z"/></svg>'
             });
@@ -267,7 +274,7 @@ export class Cowriter extends Plugin {
             const button = new ButtonView();
 
             button.set({
-                label: 'Cowriter - Generate alt text',
+                label: t('ckeditor.button.vision', 'Cowriter - Generate alt text'),
                 tooltip: true,
                 icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5-7l-3 3.72L9 13l-3 4h12l-4-5z"/></svg>',
             });
@@ -300,11 +307,19 @@ export class Cowriter extends Plugin {
                     }
 
                     if (!imageUrl) {
-                        Notification.warning('No image selected', 'Click on an image in the editor first.', 5);
+                        Notification.warning(
+                            t('ckeditor.vision.noImage.title', 'No image selected'),
+                            t('ckeditor.vision.noImage.message', 'Click on an image in the editor first.'),
+                            5,
+                        );
                         return;
                     }
 
-                    Notification.info('Analyzing image...', 'Generating alt text', 15);
+                    Notification.info(
+                        t('ckeditor.vision.analyzing.title', 'Analyzing image...'),
+                        t('ckeditor.vision.analyzing.message', 'Generating alt text'),
+                        15,
+                    );
 
                     const result = await this._service.analyzeImage(imageUrl);
                     if (result?.success && result.altText) {
@@ -316,14 +331,19 @@ export class Cowriter extends Plugin {
                                 writer.insertText(result.altText, editor.model.document.selection.getFirstPosition());
                             }
                         });
-                        Notification.success('Alt text generated', result.altText.substring(0, 80), 3);
+                        Notification.success(t('ckeditor.vision.done', 'Alt text generated'), result.altText.substring(0, 80), 3);
                     } else {
-                        const msg = result?.error || 'Unknown error';
-                        Notification.error('Alt text generation failed', msg, 0, errorActions(msg, this._service));
+                        const msg = result?.error || t('ckeditor.unknownError', 'Unknown error');
+                        Notification.error(t('ckeditor.vision.failed', 'Alt text generation failed'), msg, 0, errorActions(msg, this._service));
                     }
                 } catch (error) {
-                    const msg = error?.message || 'Unknown error';
-                    Notification.error('Alt text generation failed', msg, 0, errorActions(msg, this._service));
+                    const msg = error?.message || t('ckeditor.unknownError', 'Unknown error');
+                    Notification.error(
+                        t('ckeditor.vision.failed', 'Alt text generation failed'),
+                        msg,
+                        0,
+                        errorActions(msg, this._service, error?.status ?? null),
+                    );
                     console.error('[Cowriter Vision]', error);
                 } finally {
                     this._isProcessing = false;
@@ -340,7 +360,7 @@ export class Cowriter extends Plugin {
 
             for (const lang of TRANSLATION_LANGUAGES) {
                 const itemModel = new ViewModel({
-                    label: lang.label,
+                    label: t(`ckeditor.language.${lang.code}`, lang.label),
                     languageCode: lang.code,
                     withText: true,
                 });
@@ -350,7 +370,7 @@ export class Cowriter extends Plugin {
             addListToDropdown(dropdown, items);
 
             dropdown.buttonView.set({
-                label: 'Cowriter - Translate',
+                label: t('ckeditor.button.translate', 'Cowriter - Translate'),
                 tooltip: true,
                 withText: false,
                 icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>',
@@ -373,11 +393,19 @@ export class Cowriter extends Plugin {
                     }
 
                     if (!selectedText) {
-                        Notification.warning('No text selected', 'Please select text in the editor before translating.', 5);
+                        Notification.warning(
+                            t('ckeditor.translate.noText.title', 'No text selected'),
+                            t('ckeditor.translate.noText.message', 'Please select text in the editor before translating.'),
+                            5,
+                        );
                         return;
                     }
 
-                    Notification.info('Translating...', `Translating to ${langLabel}`, 15);
+                    Notification.info(
+                        t('ckeditor.translate.running.title', 'Translating...'),
+                        t('ckeditor.translate.running.message', 'Translating to %s', langLabel),
+                        15,
+                    );
 
                     const result = await this._service.translate(selectedText, langCode);
                     if (result?.success && result.translation) {
@@ -389,14 +417,23 @@ export class Cowriter extends Plugin {
                             editor.model.insertContent(modelFragment);
                         });
 
-                        Notification.success('Translation complete', `Translated to ${langLabel}`, 3);
+                        Notification.success(
+                            t('ckeditor.translate.done.title', 'Translation complete'),
+                            t('ckeditor.translate.done.message', 'Translated to %s', langLabel),
+                            3,
+                        );
                     } else {
-                        const msg = result?.error || 'Unknown error';
-                        Notification.error('Translation failed', msg, 0, errorActions(msg, this._service));
+                        const msg = result?.error || t('ckeditor.unknownError', 'Unknown error');
+                        Notification.error(t('ckeditor.translate.failed', 'Translation failed'), msg, 0, errorActions(msg, this._service));
                     }
                 } catch (error) {
-                    const msg = error?.message || 'Unknown error';
-                    Notification.error('Translation failed', msg, 0, errorActions(msg, this._service));
+                    const msg = error?.message || t('ckeditor.unknownError', 'Unknown error');
+                    Notification.error(
+                        t('ckeditor.translate.failed', 'Translation failed'),
+                        msg,
+                        0,
+                        errorActions(msg, this._service, error?.status ?? null),
+                    );
                     console.error('[Cowriter Translate]', error);
                 } finally {
                     this._isProcessing = false;
@@ -413,7 +450,7 @@ export class Cowriter extends Plugin {
             let tasksLoading = false;
 
             dropdown.buttonView.set({
-                label: 'Cowriter - Tasks',
+                label: t('ckeditor.button.tasks', 'Cowriter - Tasks'),
                 tooltip: true,
                 withText: false,
                 icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM6 20V4h5v5h5v11H6z"/></svg>',
@@ -427,7 +464,11 @@ export class Cowriter extends Plugin {
                 try {
                     const result = await this._service.getTasks();
                     if (!result?.success || !result.tasks?.length) {
-                        Notification.info('No tasks configured', 'Create tasks in the LLM module first.', 5);
+                        Notification.info(
+                            t('ckeditor.tasks.none.title', 'No tasks configured'),
+                            t('ckeditor.tasks.none.message', 'Create tasks in the LLM module first.'),
+                            5,
+                        );
                         return;
                     }
 
@@ -444,8 +485,13 @@ export class Cowriter extends Plugin {
                     addListToDropdown(dropdown, items);
                     tasksLoaded = true;
                 } catch (error) {
-                    const msg = error?.message || 'Unknown error';
-                    Notification.error('Failed to load tasks', msg, 0, errorActions(msg, this._service));
+                    const msg = error?.message || t('ckeditor.unknownError', 'Unknown error');
+                    Notification.error(
+                        t('ckeditor.tasks.loadFailed', 'Failed to load tasks'),
+                        msg,
+                        0,
+                        errorActions(msg, this._service, error?.status ?? null),
+                    );
                     console.error('[Cowriter Tasks]', error);
                 } finally {
                     tasksLoading = false;
@@ -488,8 +534,13 @@ export class Cowriter extends Plugin {
                     }
                 } catch (error) {
                     if (error?.message && error.message !== 'User cancelled') {
-                        const msg = error?.message || 'Unknown error';
-                        Notification.error('Task failed', msg, 0, errorActions(msg, this._service));
+                        const msg = error?.message || t('ckeditor.unknownError', 'Unknown error');
+                        Notification.error(
+                            t('ckeditor.tasks.failed', 'Task failed'),
+                            msg,
+                            0,
+                            errorActions(msg, this._service, error?.status ?? null),
+                        );
                         console.error('[Cowriter Tasks]', error);
                     }
                 } finally {

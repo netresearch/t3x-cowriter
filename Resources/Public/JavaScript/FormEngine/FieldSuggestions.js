@@ -26,6 +26,7 @@ const DEFAULT_LABELS = {
     heading: 'AI suggestions',
     loading: 'Generating suggestions…',
     loaded: '%d suggestions available. Choose one to insert it into the field.',
+    loadedSingular: '1 suggestion available. Choose it to insert it into the field.',
     empty: 'No suggestions were returned.',
     error: 'The suggestions could not be loaded.',
     inserted: 'Suggestion inserted. Save the record to keep it.',
@@ -157,7 +158,7 @@ export class FieldSuggestions {
                 return;
             }
             this.renderSuggestions(suggestions);
-            this.setStatus(this.labels.loaded.replace('%d', String(suggestions.length)), false);
+            this.setStatus(this.loadedMessage(suggestions.length), false);
             this.list.querySelector('button')?.focus();
         } catch (error) {
             if (token === this.requestToken) {
@@ -319,6 +320,17 @@ export class FieldSuggestions {
         field.dispatchEvent(new Event('change', { bubbles: true }));
         FormEngineValidation.validateField(field);
         FormEngine.markFieldAsChanged(field);
+    }
+
+    /**
+     * The announcement for a result list: its own text for one suggestion, the
+     * plural text with the count otherwise.
+     *
+     * @param {number} count
+     * @returns {string}
+     */
+    loadedMessage(count) {
+        return count === 1 ? this.labels.loadedSingular : this.labels.loaded.replace('%d', String(count));
     }
 
     setStatus(message, isError) {

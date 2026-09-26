@@ -11,6 +11,8 @@
  * @module AIService
  */
 
+import { t } from '@netresearch/t3_cowriter/Labels';
+
 /**
  * @typedef {object} ChatMessage
  * @property {string} role - The role (user, assistant, system)
@@ -42,20 +44,26 @@
  */
 
 /**
- * Error with optional status URL for configuration issues.
+ * Error with optional status URL for configuration issues and the HTTP status
+ * of the failed response.
  */
 class AIServiceError extends Error {
     /** @type {string|null} */
     statusUrl = null;
 
+    /** @type {number|null} */
+    status = null;
+
     /**
      * @param {string} message
      * @param {string|null} [statusUrl]
+     * @param {number|null} [status]
      */
-    constructor(message, statusUrl = null) {
+    constructor(message, statusUrl = null, status = null) {
         super(message);
         this.name = 'AIServiceError';
         this.statusUrl = statusUrl;
+        this.status = status;
     }
 }
 
@@ -130,10 +138,11 @@ export class AIService {
      * @private
      */
     async _throwResponseError(response) {
-        const body = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const body = await response.json().catch(() => ({ error: t('ckeditor.unknownError', 'Unknown error') }));
         throw new AIServiceError(
             body.error || `HTTP ${response.status}`,
             body.statusUrl || null,
+            response.status,
         );
     }
 

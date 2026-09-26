@@ -25,6 +25,7 @@ use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
@@ -51,11 +52,14 @@ use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 #[AllowMockObjectsWithoutExpectations]
 abstract class AbstractE2ETestCase extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
     protected NullLogger $logger;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->useXliffLanguageService();
         $this->logger = new NullLogger();
     }
 

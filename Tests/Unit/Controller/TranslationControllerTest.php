@@ -40,6 +40,7 @@ use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\Dto\Severity;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
@@ -62,6 +63,8 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(TranslationController::class)]
 final class TranslationControllerTest extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
     private TranslationServiceInterface&Stub $translationServiceStub;
     private LlmConfigurationRepository&Stub $configurationRepositoryStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
@@ -71,6 +74,7 @@ final class TranslationControllerTest extends TestCase
 
     protected function setUp(): void
     {
+        $this->useXliffLanguageService();
         $this->translationServiceStub      = $this->createStub(TranslationServiceInterface::class);
         $this->configurationRepositoryStub = $this->createStub(LlmConfigurationRepository::class);
         $this->rateLimiterStub             = $this->createStub(RateLimiterInterface::class);
