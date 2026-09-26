@@ -116,9 +116,11 @@ Tests/
 │   ├── Domain/DTO/     # CompleteRequest (+ fuzz), CompleteResponse, ContextRequest,
 │   │                   # ExecuteTaskRequest, ToolRequest, TranslationRequest, UsageData, VisionRequest
 │   ├── EventListener/  # InjectAjaxUrlsListenerTest.php
+│   ├── Localization/   # GermanTranslationTest: every xlf has a de. file with the same ids and placeholders
 │   └── Service/        # ContextAssemblyService, DiagnosticService, LlmErrorClassifier,
 │                       # RateLimiterService, RateLimitResult tests
 ├── Functional/         # FieldSuggestion/: TCA registration and the suggestion endpoint against a real DB (sqlite in CI)
+│                       # Localization/: TYPO3 resolves the de. language files
 ├── Integration/
 │   ├── AbstractIntegrationTestCase.php
 │   └── Controller/     # Ajax, Template, Translation, Vision + Backend/Status integration tests
@@ -127,7 +129,7 @@ Tests/
 │   ├── *.spec.ts       # Playwright specs (toolbar, dialog, tasks, translate, vision, context zoom)
 │   └── fixtures/       # Playwright auth fixture
 ├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, UrlLoader, FieldSuggestions (+ __mocks__/)
-└── Support/            # TestQueryResult.php, TaskStubTrait.php
+└── Support/            # TestQueryResult.php, TaskStubTrait.php, XliffFile.php (reads the language files)
 ```
 
 ## TYPO3 Final Class Workarounds

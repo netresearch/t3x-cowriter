@@ -120,7 +120,7 @@ final readonly class CompleteResponse implements JsonSerializable
      * Used by AjaxController on the 429 path when the cowriter RateLimiterService
      * (20 requests/minute per backend user) denies a request.
      */
-    public static function rateLimited(int $retryAfter): self
+    public static function rateLimited(int $retryAfter, string $error = 'Rate limit exceeded. Please try again later.'): self
     {
         return new self(
             success: false,
@@ -130,7 +130,7 @@ final readonly class CompleteResponse implements JsonSerializable
             usage: null,
             wasTruncated: false,
             wasFiltered: false,
-            error: 'Rate limit exceeded. Please try again later.',
+            error: $error,
             retryAfter: $retryAfter,
         );
     }

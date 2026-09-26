@@ -23,6 +23,7 @@ use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
 use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
+use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
@@ -107,6 +108,7 @@ final readonly class AjaxController
         // Stateless; defaulted so manual constructors need no extra argument while
         // the Symfony container still autowires the shared service.
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
+        private BackendLabels $labels = new BackendLabels(),
     ) {}
 
     /**
@@ -159,7 +161,7 @@ final readonly class AjaxController
         $configuration    = $this->resolveConfiguration($configIdentifier);
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'No LLM configuration available. Please configure the nr_llm extension.'],
+                ['success' => false, 'error' => $this->labels->get('error.noConfiguration')],
                 $rateLimitResult,
                 404,
             );
@@ -178,7 +180,7 @@ final readonly class AjaxController
             $this->logger->error('Chat provider error', ['exception' => $e->getMessage()]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                $this->buildErrorResponse('LLM provider error occurred. Please try again later.', $e),
+                $this->buildErrorResponse($this->labels->get('error.provider'), $e),
                 $rateLimitResult,
                 500,
             );
@@ -189,7 +191,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                $this->buildErrorResponse('An unexpected error occurred.', $e),
+                $this->buildErrorResponse($this->labels->get('error.unexpected'), $e),
                 $rateLimitResult,
                 500,
             );
@@ -232,9 +234,7 @@ final readonly class AjaxController
         $configuration = $this->resolveConfiguration($dto->configuration);
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error(
-                    'No LLM configuration available. Please configure the nr_llm extension.',
-                )->jsonSerialize(),
+                CompleteResponse::error($this->labels->get('error.noConfiguration'))->jsonSerialize(),
                 $rateLimitResult,
                 404,
             );
@@ -272,7 +272,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                $this->buildErrorResponse('LLM provider error occurred. Please try again later.', $e),
+                $this->buildErrorResponse($this->labels->get('error.provider'), $e),
                 $rateLimitResult,
                 500,
             );
@@ -283,7 +283,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                $this->buildErrorResponse('An unexpected error occurred.', $e),
+                $this->buildErrorResponse($this->labels->get('error.unexpected'), $e),
                 $rateLimitResult,
                 500,
             );
@@ -322,10 +322,7 @@ final readonly class AjaxController
         // Resolve configuration (from identifier or default)
         $configuration = $this->resolveConfiguration($dto->configuration);
         if (!$configuration instanceof LlmConfiguration) {
-            return $this->sseErrorResponse(
-                'No LLM configuration available. Please configure the nr_llm extension.',
-                404,
-            );
+            return $this->sseErrorResponse($this->labels->get('error.noConfiguration'), 404);
         }
 
         // Build the streaming response using a generator
@@ -373,14 +370,14 @@ final readonly class AjaxController
                 'exception' => $e->getMessage(),
             ]);
 
-            return $this->sseErrorResponse('LLM provider error occurred. Please try again later.', 500);
+            return $this->sseErrorResponse($this->labels->get('error.provider'), 500);
         } catch (Throwable $e) {
             $this->logger->error('Cowriter streaming unexpected error', [
                 'exception' => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
             ]);
 
-            return $this->sseErrorResponse('An unexpected error occurred.', 500);
+            return $this->sseErrorResponse($this->labels->get('error.unexpected'), 500);
         }
     }
 
@@ -486,7 +483,7 @@ final readonly class AjaxController
             ]);
 
             return new JsonResponse(
-                ['success' => false, 'error' => 'Failed to fetch context preview.'],
+                ['success' => false, 'error' => $this->labels->get('error.contextPreview')],
                 500,
             );
         }
@@ -525,7 +522,7 @@ final readonly class AjaxController
             $task = $this->taskRepository->findByUid($dto->taskUid);
             if (!$task instanceof Task || !$task->isActive()) {
                 return $this->jsonResponseWithRateLimitHeaders(
-                    CompleteResponse::error('Task not found or inactive.')->jsonSerialize(),
+                    CompleteResponse::error($this->labels->get('error.taskNotFound'))->jsonSerialize(),
                     $rateLimitResult,
                     404,
                 );
@@ -552,7 +549,7 @@ final readonly class AjaxController
                 ]);
 
                 return $this->jsonResponseWithRateLimitHeaders(
-                    CompleteResponse::error('Failed to assemble context.')->jsonSerialize(),
+                    CompleteResponse::error($this->labels->get('error.contextAssembly'))->jsonSerialize(),
                     $rateLimitResult,
                     500,
                 );
@@ -627,9 +624,7 @@ final readonly class AjaxController
 
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error(
-                    'No LLM configuration available. Please configure the nr_llm extension.',
-                )->jsonSerialize(),
+                CompleteResponse::error($this->labels->get('error.noConfiguration'))->jsonSerialize(),
                 $rateLimitResult,
                 404,
             );
@@ -678,7 +673,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                $this->buildErrorResponse('LLM provider error occurred. Please try again later.', $e),
+                $this->buildErrorResponse($this->labels->get('error.provider'), $e),
                 $rateLimitResult,
                 500,
             );
@@ -690,7 +685,7 @@ final readonly class AjaxController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                $this->buildErrorResponse('An unexpected error occurred.', $e),
+                $this->buildErrorResponse($this->labels->get('error.unexpected'), $e),
                 $rateLimitResult,
                 500,
             );
@@ -750,7 +745,7 @@ final readonly class AjaxController
             $this->logger->error('Page search failed', ['exception' => $e->getMessage()]);
 
             return new JsonResponse(
-                ['success' => false, 'error' => 'Failed to search pages.'],
+                ['success' => false, 'error' => $this->labels->get('error.pageSearch')],
                 500,
             );
         }
@@ -791,12 +786,9 @@ final readonly class AjaxController
     {
         return match ($this->errorClassifier->classify($exception)) {
             LlmErrorKind::Configuration  => $this->configurationErrorMessage(),
-            LlmErrorKind::Authentication => 'The LLM provider rejected the API key.'
-                . ' Please ask an administrator to check'
-                . ' the provider settings.',
-            LlmErrorKind::RateLimit => 'The LLM provider rate limit was exceeded.'
-                . ' Please wait a moment and try again.',
-            LlmErrorKind::Unknown => $fallback,
+            LlmErrorKind::Authentication => $this->labels->get('error.providerAuthentication'),
+            LlmErrorKind::RateLimit      => $this->labels->get('error.providerRateLimit'),
+            LlmErrorKind::Unknown        => $fallback,
         };
     }
 
@@ -812,15 +804,10 @@ final readonly class AjaxController
             $failure = null;
         }
 
-        if ($failure instanceof DiagnosticCheck) {
-            return $failure->message
-                . ' Ask an administrator to check the Cowriter Setup Status page'
-                . ' for details.';
-        }
-
-        return 'LLM is not configured yet.'
-            . ' Ask an administrator to check the Cowriter Setup Status page'
-            . ' for details.';
+        return $this->labels->get(
+            'error.checkSetupStatus',
+            $failure instanceof DiagnosticCheck ? $failure->message : $this->labels->get('error.notConfigured'),
+        );
     }
 
     /**
@@ -946,7 +933,7 @@ final readonly class AjaxController
     private function rateLimitedResponse(RateLimitResult $result): JsonResponse
     {
         $response = new JsonResponse(
-            CompleteResponse::rateLimited($result->getRetryAfter())->jsonSerialize(),
+            CompleteResponse::rateLimited($result->getRetryAfter(), $this->labels->get('error.rateLimitExceeded'))->jsonSerialize(),
             429,
         );
 

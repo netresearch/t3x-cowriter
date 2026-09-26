@@ -19,7 +19,8 @@ function controlAnchor(itemName, field) {
         data-url="/typo3/ajax/cowriter/suggestions?token=dummy" data-item-name="${itemName}"
         data-table="pages" data-field="${field}" data-uid="12" data-pid="12" data-count="3"
         data-label-heading="AI suggestions" data-label-loading="Generating suggestions…"
-        data-label-loaded="%d suggestions available." data-label-empty="No suggestions were returned."
+        data-label-loaded="%d suggestions available." data-label-loaded-singular="1 suggestion available."
+        data-label-empty="No suggestions were returned."
         data-label-error="The suggestions could not be loaded." data-label-inserted="Suggestion inserted."
         data-label-close="Close suggestions" class="btn btn-default" href="#"><span class="icon"></span></a>`;
 }
@@ -322,7 +323,21 @@ describe('FieldSuggestions', () => {
         await openWith(subject, { success: true, suggestions: ['A'] });
 
         expect(status().classList.contains('text-danger')).toBe(false);
-        expect(status().textContent).toBe('1 suggestions available.');
+        expect(status().textContent).toBe('1 suggestion available.');
+    });
+
+    it('announces one suggestion with the singular label and several with the plural label', async () => {
+        const { subject, control } = await setup();
+        control.dataset.labelLoaded = '%d Vorschläge verfügbar.';
+        control.dataset.labelLoadedSingular = '1 Vorschlag verfügbar.';
+        subject.labels = subject.readLabels(control.dataset);
+
+        await openWith(subject, { success: true, suggestions: ['A'] });
+        expect(status().textContent).toBe('1 Vorschlag verfügbar.');
+
+        subject.close();
+        await openWith(subject, { success: true, suggestions: ['A', 'B', 'C'] });
+        expect(status().textContent).toBe('3 Vorschläge verfügbar.');
     });
 
     it('ignores the outcome of a request that a reopen superseded', async () => {
@@ -399,5 +414,7 @@ describe('FieldSuggestions', () => {
 
         expect(document.getElementById(CONTROL_ID + '-heading').textContent).toBe('AI suggestions');
         expect(document.querySelector('.cowriter-suggestions-close').getAttribute('aria-label')).toBe('Close suggestions');
+        expect(subject.loadedMessage(1)).toBe('1 suggestion available. Choose it to insert it into the field.');
+        expect(subject.loadedMessage(3)).toBe('3 suggestions available. Choose one to insert it into the field.');
     });
 });

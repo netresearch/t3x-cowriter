@@ -17,6 +17,7 @@ use Netresearch\NrLlm\Domain\Repository\ProviderRepository;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\Severity;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
@@ -29,12 +30,15 @@ use stdClass;
 #[CoversClass(Severity::class)]
 final class DiagnosticServiceTest extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
     private ProviderRepository&Stub $providerRepoStub;
     private ModelRepository&Stub $modelRepoStub;
     private LlmConfigurationRepository&Stub $configRepoStub;
 
     protected function setUp(): void
     {
+        $this->useXliffLanguageService();
         $this->providerRepoStub = $this->createStub(ProviderRepository::class);
         $this->modelRepoStub    = $this->createStub(ModelRepository::class);
         $this->configRepoStub   = $this->createStub(LlmConfigurationRepository::class);

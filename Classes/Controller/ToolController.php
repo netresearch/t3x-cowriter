@@ -16,6 +16,7 @@ use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
 use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Domain\DTO\ToolRequest;
+use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -44,6 +45,7 @@ final readonly class ToolController
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
+        private BackendLabels $labels = new BackendLabels(),
     ) {}
 
     public function executeAction(ServerRequestInterface $request): ResponseInterface
@@ -95,7 +97,7 @@ final readonly class ToolController
 
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'No LLM configuration available. Please configure the nr_llm extension.'],
+                ['success' => false, 'error' => $this->labels->get('error.noConfiguration')],
                 $rateLimitResult,
                 404,
             );
@@ -151,7 +153,7 @@ final readonly class ToolController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'Tool execution failed. Please try again.'],
+                ['success' => false, 'error' => $this->labels->get('error.tool')],
                 $rateLimitResult,
                 500,
             );

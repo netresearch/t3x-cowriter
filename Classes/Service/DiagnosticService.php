@@ -19,7 +19,8 @@ use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\Dto\Severity;
 
 /**
- * Checks the LLM configuration chain and reports specific failures.
+ * Checks the LLM configuration chain and reports specific failures. The
+ * messages are in the backend user's language (locallang_be.xlf, diagnostic.*).
  */
 readonly class DiagnosticService
 {
@@ -27,6 +28,7 @@ readonly class DiagnosticService
         private ProviderRepository $providerRepository,
         private ModelRepository $modelRepository,
         private LlmConfigurationRepository $configurationRepository,
+        private BackendLabels $labels = new BackendLabels(),
     ) {}
 
     /**
@@ -90,8 +92,8 @@ readonly class DiagnosticService
             key: 'provider_exists',
             passed: $count > 0,
             message: $count > 0
-                ? sprintf('%d provider(s) configured.', $count)
-                : 'No LLM provider configured. Create a provider in Admin Tools > LLM > Providers.',
+                ? $this->labels->get('diagnostic.provider_exists.passed', $count)
+                : $this->labels->get('diagnostic.provider_exists.failed'),
             severity: $count > 0 ? Severity::Ok : Severity::Error,
             fixRoute: $count > 0 ? null : 'nrllm_providers',
         );
@@ -105,8 +107,8 @@ readonly class DiagnosticService
             key: 'provider_active',
             passed: $activeCount > 0,
             message: $activeCount > 0
-                ? sprintf('%d active provider(s).', $activeCount)
-                : 'No active provider. Activate a provider in Admin Tools > LLM > Providers.',
+                ? $this->labels->get('diagnostic.provider_active.passed', $activeCount)
+                : $this->labels->get('diagnostic.provider_active.failed'),
             severity: $activeCount > 0 ? Severity::Ok : Severity::Error,
             fixRoute: $activeCount > 0 ? null : 'nrllm_providers',
         );
@@ -130,7 +132,7 @@ readonly class DiagnosticService
             return new DiagnosticCheck(
                 key: 'provider_has_api_key',
                 passed: false,
-                message: 'No active provider has an API key. Add one in Admin Tools > LLM > Providers.',
+                message: $this->labels->get('diagnostic.provider_has_api_key.none'),
                 severity: Severity::Error,
                 fixRoute: 'nrllm_providers',
             );
@@ -142,8 +144,8 @@ readonly class DiagnosticService
             key: 'provider_has_api_key',
             passed: $passed,
             message: $passed
-                ? sprintf('%d provider(s) with API key.', $withKey)
-                : sprintf('Provider "%s" has no API key. Add one in Admin Tools > LLM > Providers.', $withoutKey),
+                ? $this->labels->get('diagnostic.provider_has_api_key.passed', $withKey)
+                : $this->labels->get('diagnostic.provider_has_api_key.failed', $withoutKey),
             severity: $passed ? Severity::Ok : Severity::Error,
             fixRoute: $passed ? null : 'nrllm_providers',
         );
@@ -157,8 +159,8 @@ readonly class DiagnosticService
             key: 'model_exists',
             passed: $count > 0,
             message: $count > 0
-                ? sprintf('%d model(s) configured.', $count)
-                : 'No LLM model configured. Create a model in Admin Tools > LLM > Models.',
+                ? $this->labels->get('diagnostic.model_exists.passed', $count)
+                : $this->labels->get('diagnostic.model_exists.failed'),
             severity: $count > 0 ? Severity::Ok : Severity::Error,
             fixRoute: $count > 0 ? null : 'nrllm_models',
         );
@@ -172,8 +174,8 @@ readonly class DiagnosticService
             key: 'model_active',
             passed: $activeCount > 0,
             message: $activeCount > 0
-                ? sprintf('%d active model(s).', $activeCount)
-                : 'No active model. Activate a model in Admin Tools > LLM > Models.',
+                ? $this->labels->get('diagnostic.model_active.passed', $activeCount)
+                : $this->labels->get('diagnostic.model_active.failed'),
             severity: $activeCount > 0 ? Severity::Ok : Severity::Error,
             fixRoute: $activeCount > 0 ? null : 'nrllm_models',
         );
@@ -187,8 +189,8 @@ readonly class DiagnosticService
             key: 'configuration_exists',
             passed: $count > 0,
             message: $count > 0
-                ? sprintf('%d LLM configuration(s) created.', $count)
-                : 'No LLM configuration created. Create one in Admin Tools > LLM > Configurations.',
+                ? $this->labels->get('diagnostic.configuration_exists.passed', $count)
+                : $this->labels->get('diagnostic.configuration_exists.failed'),
             severity: $count > 0 ? Severity::Ok : Severity::Error,
             fixRoute: $count > 0 ? null : 'nrllm_configurations',
         );
@@ -202,8 +204,8 @@ readonly class DiagnosticService
             key: 'configuration_active',
             passed: $activeCount > 0,
             message: $activeCount > 0
-                ? sprintf('%d active configuration(s).', $activeCount)
-                : 'No active LLM configuration. Activate one in Admin Tools > LLM > Configurations.',
+                ? $this->labels->get('diagnostic.configuration_active.passed', $activeCount)
+                : $this->labels->get('diagnostic.configuration_active.failed'),
             severity: $activeCount > 0 ? Severity::Ok : Severity::Error,
             fixRoute: $activeCount > 0 ? null : 'nrllm_configurations',
         );
@@ -217,8 +219,8 @@ readonly class DiagnosticService
             key: 'configuration_default',
             passed: $default instanceof LlmConfiguration,
             message: $default instanceof LlmConfiguration
-                ? sprintf('Default configuration: "%s".', $default->getName())
-                : 'No default LLM configuration. Mark one as default in Admin Tools > LLM > Configurations.',
+                ? $this->labels->get('diagnostic.configuration_default.passed', $default->getName())
+                : $this->labels->get('diagnostic.configuration_default.failed'),
             severity: $default instanceof LlmConfiguration ? Severity::Ok : Severity::Error,
             fixRoute: $default instanceof LlmConfiguration ? null : 'nrllm_configurations',
         );

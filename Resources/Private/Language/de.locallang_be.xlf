@@ -1,427 +1,567 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
-    <file source-language="en" datatype="plaintext" original="messages" date="2026-09-25T00:00:00Z" product-name="t3_cowriter">
+    <file source-language="en" target-language="de" datatype="plaintext" original="messages" date="2026-09-25T00:00:00Z" product-name="t3_cowriter">
         <header/>
         <body>
             <trans-unit id="fieldSuggestions.button" resname="fieldSuggestions.button">
                 <source>Suggest values with AI</source>
+                <target>Werte mit KI vorschlagen</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.heading" resname="fieldSuggestions.heading">
                 <source>AI suggestions</source>
+                <target>KI-Vorschläge</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.loading" resname="fieldSuggestions.loading">
                 <source>Generating suggestions…</source>
+                <target>Vorschläge werden erstellt…</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.loaded" resname="fieldSuggestions.loaded">
                 <source>%d suggestions available. Choose one to insert it into the field.</source>
+                <target>%d Vorschläge verfügbar. Wählen Sie einen aus, um ihn in das Feld einzufügen.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.loadedSingular" resname="fieldSuggestions.loadedSingular">
                 <source>1 suggestion available. Choose it to insert it into the field.</source>
+                <target>1 Vorschlag verfügbar. Wählen Sie ihn aus, um ihn in das Feld einzufügen.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.empty" resname="fieldSuggestions.empty">
                 <source>No suggestions were returned.</source>
+                <target>Es wurden keine Vorschläge geliefert.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error" resname="fieldSuggestions.error">
                 <source>The suggestions could not be loaded.</source>
+                <target>Die Vorschläge konnten nicht geladen werden.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.inserted" resname="fieldSuggestions.inserted">
                 <source>Suggestion inserted. Save the record to keep it.</source>
+                <target>Vorschlag eingefügt. Speichern Sie den Datensatz, um ihn zu übernehmen.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.close" resname="fieldSuggestions.close">
                 <source>Close suggestions</source>
+                <target>Vorschläge schließen</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.notEnabled" resname="fieldSuggestions.error.notEnabled">
                 <source>Suggestions are not enabled for this field.</source>
+                <target>Für dieses Feld sind keine Vorschläge aktiviert.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.accessDenied" resname="fieldSuggestions.error.accessDenied">
                 <source>You are not allowed to edit this field.</source>
+                <target>Sie dürfen dieses Feld nicht bearbeiten.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.siteRootSlug" resname="fieldSuggestions.error.siteRootSlug">
                 <source>The root page of a site always has the slug "/".</source>
+                <target>Die Wurzelseite einer Site hat immer das URL-Segment „/“.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.noSuggestions" resname="fieldSuggestions.error.noSuggestions">
                 <source>The AI returned no usable suggestions. Please try again.</source>
+                <target>Die KI hat keine verwendbaren Vorschläge geliefert. Bitte versuchen Sie es erneut.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.invalidFormat" resname="fieldSuggestions.error.invalidFormat">
                 <source>The AI answer did not have the expected format. Please try again.</source>
+                <target>Die Antwort der KI hatte nicht das erwartete Format. Bitte versuchen Sie es erneut.</target>
             </trans-unit>
             <trans-unit id="fieldSuggestions.error.unknown" resname="fieldSuggestions.error.unknown">
                 <source>The suggestions could not be generated. Please try again later.</source>
+                <target>Die Vorschläge konnten nicht erstellt werden. Bitte versuchen Sie es später erneut.</target>
             </trans-unit>
             <trans-unit id="error.rateLimitExceeded" resname="error.rateLimitExceeded">
                 <source>Rate limit exceeded. Please try again later.</source>
+                <target>Zu viele Anfragen. Bitte versuchen Sie es später erneut.</target>
             </trans-unit>
             <trans-unit id="error.noConfiguration" resname="error.noConfiguration">
                 <source>No LLM configuration available. Please configure the nr_llm extension.</source>
+                <target>Keine LLM-Konfiguration verfügbar. Bitte konfigurieren Sie die Erweiterung nr_llm.</target>
             </trans-unit>
             <trans-unit id="error.notConfigured" resname="error.notConfigured">
                 <source>LLM is not configured yet.</source>
+                <target>Das LLM ist noch nicht konfiguriert.</target>
             </trans-unit>
             <trans-unit id="error.checkSetupStatus" resname="error.checkSetupStatus">
                 <source>%s Ask an administrator to check the Cowriter Setup Status page for details.</source>
+                <target>%s Bitten Sie einen Administrator, die Details auf der Seite „Cowriter-Einrichtungsstatus“ zu prüfen.</target>
             </trans-unit>
             <trans-unit id="error.providerAuthentication" resname="error.providerAuthentication">
                 <source>The LLM provider rejected the API key. Please ask an administrator to check the provider settings.</source>
+                <target>Der LLM-Anbieter hat den API-Schlüssel abgelehnt. Bitten Sie einen Administrator, die Anbietereinstellungen zu prüfen.</target>
             </trans-unit>
             <trans-unit id="error.providerRateLimit" resname="error.providerRateLimit">
                 <source>The LLM provider rate limit was exceeded. Please wait a moment and try again.</source>
+                <target>Das Anfragelimit des LLM-Anbieters wurde überschritten. Bitte warten Sie einen Moment und versuchen Sie es erneut.</target>
             </trans-unit>
             <trans-unit id="error.provider" resname="error.provider">
                 <source>LLM provider error occurred. Please try again later.</source>
+                <target>Beim LLM-Anbieter ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.</target>
             </trans-unit>
             <trans-unit id="error.unexpected" resname="error.unexpected">
                 <source>An unexpected error occurred.</source>
+                <target>Ein unerwarteter Fehler ist aufgetreten.</target>
             </trans-unit>
             <trans-unit id="error.taskNotFound" resname="error.taskNotFound">
                 <source>Task not found or inactive.</source>
+                <target>Die Aufgabe wurde nicht gefunden oder ist inaktiv.</target>
             </trans-unit>
             <trans-unit id="error.contextAssembly" resname="error.contextAssembly">
                 <source>Failed to assemble context.</source>
+                <target>Der Kontext konnte nicht zusammengestellt werden.</target>
             </trans-unit>
             <trans-unit id="error.contextPreview" resname="error.contextPreview">
                 <source>Failed to fetch context preview.</source>
+                <target>Die Kontextvorschau konnte nicht geladen werden.</target>
             </trans-unit>
             <trans-unit id="error.pageSearch" resname="error.pageSearch">
                 <source>Failed to search pages.</source>
+                <target>Die Seitensuche ist fehlgeschlagen.</target>
             </trans-unit>
             <trans-unit id="error.templates" resname="error.templates">
                 <source>Failed to load templates.</source>
+                <target>Die Vorlagen konnten nicht geladen werden.</target>
             </trans-unit>
             <trans-unit id="error.tool" resname="error.tool">
                 <source>Tool execution failed. Please try again.</source>
+                <target>Die Werkzeugausführung ist fehlgeschlagen. Bitte versuchen Sie es erneut.</target>
             </trans-unit>
             <trans-unit id="error.vision" resname="error.vision">
                 <source>Image analysis failed. Please try again.</source>
+                <target>Die Bildanalyse ist fehlgeschlagen. Bitte versuchen Sie es erneut.</target>
             </trans-unit>
             <trans-unit id="error.translation.notConfigured" resname="error.translation.notConfigured">
                 <source>Translation is not configured yet.</source>
+                <target>Die Übersetzung ist noch nicht konfiguriert.</target>
             </trans-unit>
             <trans-unit id="error.translation.authentication" resname="error.translation.authentication">
                 <source>The LLM provider rejected the API key. An administrator should check the provider configuration in the LLM module.</source>
+                <target>Der LLM-Anbieter hat den API-Schlüssel abgelehnt. Ein Administrator sollte die Anbieterkonfiguration im LLM-Modul prüfen.</target>
             </trans-unit>
             <trans-unit id="error.translation.failed" resname="error.translation.failed">
                 <source>Translation failed. Check the TYPO3 system log for details.</source>
+                <target>Die Übersetzung ist fehlgeschlagen. Details stehen im TYPO3-Systemprotokoll.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_exists.passed" resname="diagnostic.provider_exists.passed">
                 <source>%d provider(s) configured.</source>
+                <target>%d Anbieter konfiguriert.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_exists.failed" resname="diagnostic.provider_exists.failed">
                 <source>No LLM provider configured. Create a provider in Admin Tools &gt; LLM &gt; Providers.</source>
+                <target>Kein LLM-Anbieter konfiguriert. Legen Sie einen Anbieter unter Admin-Werkzeuge &gt; LLM &gt; Anbieter an.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_active.passed" resname="diagnostic.provider_active.passed">
                 <source>%d active provider(s).</source>
+                <target>%d aktive(r) Anbieter.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_active.failed" resname="diagnostic.provider_active.failed">
                 <source>No active provider. Activate a provider in Admin Tools &gt; LLM &gt; Providers.</source>
+                <target>Kein aktiver Anbieter. Aktivieren Sie einen Anbieter unter Admin-Werkzeuge &gt; LLM &gt; Anbieter.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_has_api_key.passed" resname="diagnostic.provider_has_api_key.passed">
                 <source>%d provider(s) with API key.</source>
+                <target>%d Anbieter mit API-Schlüssel.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_has_api_key.failed" resname="diagnostic.provider_has_api_key.failed">
                 <source>Provider "%s" has no API key. Add one in Admin Tools &gt; LLM &gt; Providers.</source>
+                <target>Der Anbieter „%s“ hat keinen API-Schlüssel. Hinterlegen Sie einen unter Admin-Werkzeuge &gt; LLM &gt; Anbieter.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_has_api_key.none" resname="diagnostic.provider_has_api_key.none">
                 <source>No active provider has an API key. Add one in Admin Tools &gt; LLM &gt; Providers.</source>
+                <target>Kein aktiver Anbieter hat einen API-Schlüssel. Hinterlegen Sie einen unter Admin-Werkzeuge &gt; LLM &gt; Anbieter.</target>
             </trans-unit>
             <trans-unit id="diagnostic.model_exists.passed" resname="diagnostic.model_exists.passed">
                 <source>%d model(s) configured.</source>
+                <target>%d Modell(e) konfiguriert.</target>
             </trans-unit>
             <trans-unit id="diagnostic.model_exists.failed" resname="diagnostic.model_exists.failed">
                 <source>No LLM model configured. Create a model in Admin Tools &gt; LLM &gt; Models.</source>
+                <target>Kein LLM-Modell konfiguriert. Legen Sie ein Modell unter Admin-Werkzeuge &gt; LLM &gt; Modelle an.</target>
             </trans-unit>
             <trans-unit id="diagnostic.model_active.passed" resname="diagnostic.model_active.passed">
                 <source>%d active model(s).</source>
+                <target>%d aktive(s) Modell(e).</target>
             </trans-unit>
             <trans-unit id="diagnostic.model_active.failed" resname="diagnostic.model_active.failed">
                 <source>No active model. Activate a model in Admin Tools &gt; LLM &gt; Models.</source>
+                <target>Kein aktives Modell. Aktivieren Sie ein Modell unter Admin-Werkzeuge &gt; LLM &gt; Modelle.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_exists.passed" resname="diagnostic.configuration_exists.passed">
                 <source>%d LLM configuration(s) created.</source>
+                <target>%d LLM-Konfiguration(en) angelegt.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_exists.failed" resname="diagnostic.configuration_exists.failed">
                 <source>No LLM configuration created. Create one in Admin Tools &gt; LLM &gt; Configurations.</source>
+                <target>Keine LLM-Konfiguration angelegt. Legen Sie eine unter Admin-Werkzeuge &gt; LLM &gt; Konfigurationen an.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_active.passed" resname="diagnostic.configuration_active.passed">
                 <source>%d active configuration(s).</source>
+                <target>%d aktive Konfiguration(en).</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_active.failed" resname="diagnostic.configuration_active.failed">
                 <source>No active LLM configuration. Activate one in Admin Tools &gt; LLM &gt; Configurations.</source>
+                <target>Keine aktive LLM-Konfiguration. Aktivieren Sie eine unter Admin-Werkzeuge &gt; LLM &gt; Konfigurationen.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_default.passed" resname="diagnostic.configuration_default.passed">
                 <source>Default configuration: "%s".</source>
+                <target>Standardkonfiguration: „%s“.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_default.failed" resname="diagnostic.configuration_default.failed">
                 <source>No default LLM configuration. Mark one as default in Admin Tools &gt; LLM &gt; Configurations.</source>
+                <target>Keine Standard-LLM-Konfiguration. Markieren Sie eine unter Admin-Werkzeuge &gt; LLM &gt; Konfigurationen als Standard.</target>
             </trans-unit>
             <trans-unit id="ckeditor.button.complete" resname="ckeditor.button.complete">
                 <source>Cowriter - AI text completion</source>
+                <target>Cowriter - KI-Textvervollständigung</target>
             </trans-unit>
             <trans-unit id="ckeditor.button.vision" resname="ckeditor.button.vision">
                 <source>Cowriter - Generate alt text</source>
+                <target>Cowriter - Alternativtext erzeugen</target>
             </trans-unit>
             <trans-unit id="ckeditor.button.translate" resname="ckeditor.button.translate">
                 <source>Cowriter - Translate</source>
+                <target>Cowriter - Übersetzen</target>
             </trans-unit>
             <trans-unit id="ckeditor.button.tasks" resname="ckeditor.button.tasks">
                 <source>Cowriter - Tasks</source>
+                <target>Cowriter - Aufgaben</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.de" resname="ckeditor.language.de">
                 <source>German</source>
+                <target>Deutsch</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.en" resname="ckeditor.language.en">
                 <source>English</source>
+                <target>Englisch</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.fr" resname="ckeditor.language.fr">
                 <source>French</source>
+                <target>Französisch</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.es" resname="ckeditor.language.es">
                 <source>Spanish</source>
+                <target>Spanisch</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.it" resname="ckeditor.language.it">
                 <source>Italian</source>
+                <target>Italienisch</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.nl" resname="ckeditor.language.nl">
                 <source>Dutch</source>
+                <target>Niederländisch</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.pt" resname="ckeditor.language.pt">
                 <source>Portuguese</source>
+                <target>Portugiesisch</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.pl" resname="ckeditor.language.pl">
                 <source>Polish</source>
+                <target>Polnisch</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.ja" resname="ckeditor.language.ja">
                 <source>Japanese</source>
+                <target>Japanisch</target>
             </trans-unit>
             <trans-unit id="ckeditor.language.zh" resname="ckeditor.language.zh">
                 <source>Chinese</source>
+                <target>Chinesisch</target>
             </trans-unit>
             <trans-unit id="ckeditor.action.openLlmSettings" resname="ckeditor.action.openLlmSettings">
                 <source>Open LLM Settings</source>
+                <target>LLM-Einstellungen öffnen</target>
             </trans-unit>
             <trans-unit id="ckeditor.unknownError" resname="ckeditor.unknownError">
                 <source>Unknown error</source>
+                <target>Unbekannter Fehler</target>
             </trans-unit>
             <trans-unit id="ckeditor.vision.noImage.title" resname="ckeditor.vision.noImage.title">
                 <source>No image selected</source>
+                <target>Kein Bild ausgewählt</target>
             </trans-unit>
             <trans-unit id="ckeditor.vision.noImage.message" resname="ckeditor.vision.noImage.message">
                 <source>Click on an image in the editor first.</source>
+                <target>Klicken Sie zuerst im Editor auf ein Bild.</target>
             </trans-unit>
             <trans-unit id="ckeditor.vision.analyzing.title" resname="ckeditor.vision.analyzing.title">
                 <source>Analyzing image...</source>
+                <target>Bild wird analysiert...</target>
             </trans-unit>
             <trans-unit id="ckeditor.vision.analyzing.message" resname="ckeditor.vision.analyzing.message">
                 <source>Generating alt text</source>
+                <target>Alternativtext wird erzeugt</target>
             </trans-unit>
             <trans-unit id="ckeditor.vision.done" resname="ckeditor.vision.done">
                 <source>Alt text generated</source>
+                <target>Alternativtext erzeugt</target>
             </trans-unit>
             <trans-unit id="ckeditor.vision.failed" resname="ckeditor.vision.failed">
                 <source>Alt text generation failed</source>
+                <target>Alternativtext konnte nicht erzeugt werden</target>
             </trans-unit>
             <trans-unit id="ckeditor.translate.noText.title" resname="ckeditor.translate.noText.title">
                 <source>No text selected</source>
+                <target>Kein Text ausgewählt</target>
             </trans-unit>
             <trans-unit id="ckeditor.translate.noText.message" resname="ckeditor.translate.noText.message">
                 <source>Please select text in the editor before translating.</source>
+                <target>Bitte wählen Sie vor dem Übersetzen Text im Editor aus.</target>
             </trans-unit>
             <trans-unit id="ckeditor.translate.running.title" resname="ckeditor.translate.running.title">
                 <source>Translating...</source>
+                <target>Wird übersetzt...</target>
             </trans-unit>
             <trans-unit id="ckeditor.translate.running.message" resname="ckeditor.translate.running.message">
                 <source>Translating to %s</source>
+                <target>Zielsprache: %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.translate.done.title" resname="ckeditor.translate.done.title">
                 <source>Translation complete</source>
+                <target>Übersetzung abgeschlossen</target>
             </trans-unit>
             <trans-unit id="ckeditor.translate.done.message" resname="ckeditor.translate.done.message">
                 <source>Translated to %s</source>
+                <target>Übersetzt, Zielsprache: %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.translate.failed" resname="ckeditor.translate.failed">
                 <source>Translation failed</source>
+                <target>Übersetzung fehlgeschlagen</target>
             </trans-unit>
             <trans-unit id="ckeditor.tasks.none.title" resname="ckeditor.tasks.none.title">
                 <source>No tasks configured</source>
+                <target>Keine Aufgaben konfiguriert</target>
             </trans-unit>
             <trans-unit id="ckeditor.tasks.none.message" resname="ckeditor.tasks.none.message">
                 <source>Create tasks in the LLM module first.</source>
+                <target>Legen Sie zuerst Aufgaben im LLM-Modul an.</target>
             </trans-unit>
             <trans-unit id="ckeditor.tasks.loadFailed" resname="ckeditor.tasks.loadFailed">
                 <source>Failed to load tasks</source>
+                <target>Aufgaben konnten nicht geladen werden</target>
             </trans-unit>
             <trans-unit id="ckeditor.tasks.loadFailedWithReason" resname="ckeditor.tasks.loadFailedWithReason">
                 <source>Failed to load tasks: %s</source>
+                <target>Aufgaben konnten nicht geladen werden: %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.tasks.failed" resname="ckeditor.tasks.failed">
                 <source>Task failed</source>
+                <target>Aufgabe fehlgeschlagen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.description" resname="ckeditor.dialog.noTasks.description">
                 <source>The Cowriter needs at least one active task with category "content" to work. Tasks define what the AI should do with your text (e.g., improve, summarize, translate).</source>
+                <target>Der Cowriter benötigt mindestens eine aktive Aufgabe der Kategorie „content“. Aufgaben legen fest, was die KI mit Ihrem Text tun soll (z. B. verbessern, zusammenfassen, übersetzen).</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.steps" resname="ckeditor.dialog.noTasks.steps">
                 <source>To set up tasks:</source>
+                <target>So richten Sie Aufgaben ein:</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.step1" resname="ckeditor.dialog.noTasks.step1">
                 <source>1. Go to %s</source>
+                <target>1. Öffnen Sie %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.step1.path" resname="ckeditor.dialog.noTasks.step1.path">
                 <source>Admin Tools → LLM → Tasks</source>
+                <target>Admin-Werkzeuge → LLM → Aufgaben</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.step2" resname="ckeditor.dialog.noTasks.step2">
                 <source>2. Create tasks with category %s</source>
+                <target>2. Legen Sie Aufgaben der Kategorie %s an</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.step3" resname="ckeditor.dialog.noTasks.step3">
                 <source>3. Make sure they are %s</source>
+                <target>3. Stellen Sie sicher, dass sie %s sind</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.step3.active" resname="ckeditor.dialog.noTasks.step3.active">
                 <source>active</source>
+                <target>aktiv</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.button.close" resname="ckeditor.dialog.button.close">
                 <source>Close</source>
+                <target>Schließen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.button.cancel" resname="ckeditor.dialog.button.cancel">
                 <source>Cancel</source>
+                <target>Abbrechen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.button.reset" resname="ckeditor.dialog.button.reset">
                 <source>Reset</source>
+                <target>Zurücksetzen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.button.execute" resname="ckeditor.dialog.button.execute">
                 <source>Execute</source>
+                <target>Ausführen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.button.insert" resname="ckeditor.dialog.button.insert">
                 <source>Insert</source>
+                <target>Einfügen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.generating" resname="ckeditor.dialog.generating">
                 <source>Generating…</source>
+                <target>Wird erzeugt…</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.model" resname="ckeditor.dialog.model">
                 <source>Model: %s</source>
+                <target>Modell: %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.tokens" resname="ckeditor.dialog.tokens">
                 <source>%s tokens</source>
+                <target>%s Tokens</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noContent" resname="ckeditor.dialog.noContent">
                 <source>No content returned</source>
+                <target>Kein Inhalt zurückgegeben</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.error" resname="ckeditor.dialog.error">
                 <source>Error: %s</source>
+                <target>Fehler: %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.task" resname="ckeditor.dialog.task">
                 <source>Task</source>
+                <target>Aufgabe</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.customInstruction" resname="ckeditor.dialog.customInstruction">
                 <source>Custom instruction</source>
+                <target>Eigene Anweisung</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.customInstruction.description" resname="ckeditor.dialog.customInstruction.description">
                 <source>Write your own instruction for the AI</source>
+                <target>Schreiben Sie eine eigene Anweisung für die KI</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.editTasks" resname="ckeditor.dialog.editTasks">
                 <source>Edit tasks ↗</source>
+                <target>Aufgaben bearbeiten ↗</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.editTasks.title" resname="ckeditor.dialog.editTasks.title">
                 <source>Manage tasks in LLM module</source>
+                <target>Aufgaben im LLM-Modul verwalten</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.contextScope" resname="ckeditor.dialog.contextScope">
                 <source>Context scope</source>
+                <target>Kontextumfang</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.scope.selection" resname="ckeditor.dialog.scope.selection">
                 <source>Selection</source>
+                <target>Auswahl</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.scope.text" resname="ckeditor.dialog.scope.text">
                 <source>Full content</source>
+                <target>Gesamter Inhalt</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.scope.element" resname="ckeditor.dialog.scope.element">
                 <source>Content element</source>
+                <target>Inhaltselement</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.scope.page" resname="ckeditor.dialog.scope.page">
                 <source>Page content</source>
+                <target>Seiteninhalt</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.scope.ancestors_1" resname="ckeditor.dialog.scope.ancestors_1">
                 <source>Parent page</source>
+                <target>Übergeordnete Seite</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.scope.ancestors_2" resname="ckeditor.dialog.scope.ancestors_2">
                 <source>Grandparent page</source>
+                <target>Übergeordnete Seite, zwei Ebenen höher</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.referencePages" resname="ckeditor.dialog.referencePages">
                 <source>Reference pages (optional)</source>
+                <target>Referenzseiten (optional)</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.addReference" resname="ckeditor.dialog.addReference">
                 <source>Add reference page</source>
+                <target>Referenzseite hinzufügen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.relationPreset.referenceMaterial" resname="ckeditor.dialog.relationPreset.referenceMaterial">
                 <source>reference material</source>
+                <target>Referenzmaterial</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.relationPreset.parentTopic" resname="ckeditor.dialog.relationPreset.parentTopic">
                 <source>parent topic</source>
+                <target>übergeordnetes Thema</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.relationPreset.styleGuide" resname="ckeditor.dialog.relationPreset.styleGuide">
                 <source>style guide</source>
+                <target>Styleguide</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.relationPreset.similarContent" resname="ckeditor.dialog.relationPreset.similarContent">
                 <source>similar content</source>
+                <target>ähnlicher Inhalt</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.instruction" resname="ckeditor.dialog.instruction">
                 <source>Instruction</source>
+                <target>Anweisung</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.instruction.placeholder" resname="ckeditor.dialog.instruction.placeholder">
                 <source>Describe what the AI should do…</source>
+                <target>Beschreiben Sie, was die KI tun soll…</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.result" resname="ckeditor.dialog.result">
                 <source>Result</source>
+                <target>Ergebnis</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.pageSearch.placeholder" resname="ckeditor.dialog.pageSearch.placeholder">
                 <source>Search pages by title or ID...</source>
+                <target>Seiten nach Titel oder ID suchen...</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.pageSearch.label" resname="ckeditor.dialog.pageSearch.label">
                 <source>Search pages by title or ID</source>
+                <target>Seiten nach Titel oder ID suchen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.relation.placeholder" resname="ckeditor.dialog.relation.placeholder">
                 <source>Relation (e.g., style guide)</source>
+                <target>Beziehung (z. B. Styleguide)</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.relation.label" resname="ckeditor.dialog.relation.label">
                 <source>Relation to reference page</source>
+                <target>Beziehung zur Referenzseite</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.removeReference" resname="ckeditor.dialog.removeReference">
                 <source>Remove reference page</source>
+                <target>Referenzseite entfernen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noPagesFound" resname="ckeditor.dialog.noPagesFound">
                 <source>No pages found</source>
+                <target>Keine Seiten gefunden</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.openSetupStatus" resname="ckeditor.dialog.openSetupStatus">
                 <source>Open Setup Status</source>
+                <target>Einrichtungsstatus öffnen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.summary" resname="ckeditor.dialog.debug.summary">
                 <source>Debug info</source>
+                <target>Debug-Informationen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.providerError" resname="ckeditor.dialog.debug.providerError">
                 <source>Provider error: %s</source>
+                <target>Anbieterfehler: %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.unknown" resname="ckeditor.dialog.debug.unknown">
                 <source>unknown</source>
+                <target>unbekannt</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.finishReason" resname="ckeditor.dialog.debug.finishReason">
                 <source>Finish reason: %s</source>
+                <target>Beendigungsgrund: %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.tokens" resname="ckeditor.dialog.debug.tokens">
                 <source>Tokens: %s prompt + %s completion = %s total</source>
+                <target>Tokens: %s Prompt + %s Antwort = %s gesamt</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.inputText" resname="ckeditor.dialog.debug.inputText">
                 <source>Input text</source>
+                <target>Eingabetext</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.instructionSent" resname="ckeditor.dialog.debug.instructionSent">
                 <source>Instruction sent</source>
+                <target>Gesendete Anweisung</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.thinking" resname="ckeditor.dialog.debug.thinking">
                 <source>Thinking</source>
+                <target>Denkprozess</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.contentReturned" resname="ckeditor.dialog.debug.contentReturned">
                 <source>Content returned</source>
+                <target>Zurückgegebener Inhalt</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.copy" resname="ckeditor.dialog.copy">
                 <source>Copy to clipboard</source>
+                <target>In die Zwischenablage kopieren</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.copied" resname="ckeditor.dialog.copied">
                 <source>Copied!</source>
+                <target>Kopiert!</target>
             </trans-unit>
         </body>
     </file>

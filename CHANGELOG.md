@@ -1,3 +1,14 @@
+# Unreleased
+
+## FEATURE
+
+- German translations of both language files (`de.locallang_be.xlf`, `de.locallang_mod_status.xlf`). A backend user whose backend language is German sees the "Suggest values with AI" button, the suggestion list, its status messages and the `cowriter_status` module in German.
+- Every user-facing text now comes from the language files and follows the backend language of the user: the `cowriter_status` module (heading, introduction, result callouts, table header, "Fix" button, closing note and the result text of each check), the CKEditor toolbar actions, notifications and language names, the Cowriter dialog, the rate-limit answer shared by all AJAX routes, and the error messages of the AJAX routes. The plugin's labels are resolved on the server and passed to the page the same way as the AJAX URLs; the JavaScript keeps its English texts as fallback. The suggestion list has its own text for a single suggestion. Log messages stay English, and so do the errors `AIService.js` throws when a route is not configured, which point at a broken installation rather than at something an editor can act on.
+
+## DOCS
+
+- The field suggestions section shows a screenshot of the suggestion list below the SEO title field.
+
 # 3.7.0 (2026-09-25)
 
 ## FEATURE

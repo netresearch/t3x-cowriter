@@ -1,67 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
-    <file source-language="en" datatype="plaintext" original="messages" date="2026-09-25T00:00:00Z" product-name="t3_cowriter">
+    <file source-language="en" target-language="de" datatype="plaintext" original="messages" date="2026-09-25T00:00:00Z" product-name="t3_cowriter">
         <header/>
         <body>
             <trans-unit id="mlang_tabs_tab" resname="mlang_tabs_tab">
                 <source>Cowriter Status</source>
+                <target>Cowriter-Status</target>
             </trans-unit>
             <trans-unit id="mlang_labels_tabdescr" resname="mlang_labels_tabdescr">
                 <source>Check LLM configuration status for the Cowriter extension.</source>
+                <target>LLM-Konfiguration der Erweiterung Cowriter prüfen.</target>
             </trans-unit>
             <trans-unit id="mlang_labels_tablabel" resname="mlang_labels_tablabel">
                 <source>Cowriter Setup Status</source>
+                <target>Cowriter-Einrichtungsstatus</target>
             </trans-unit>
             <trans-unit id="status.intro" resname="status.intro">
                 <source>This page checks whether the LLM configuration required by the Cowriter extension is complete.</source>
+                <target>Diese Seite prüft, ob die LLM-Konfiguration, die die Erweiterung Cowriter benötigt, vollständig ist.</target>
             </trans-unit>
             <trans-unit id="status.ok.title" resname="status.ok.title">
                 <source>Everything is configured correctly</source>
+                <target>Alles ist korrekt konfiguriert</target>
             </trans-unit>
             <trans-unit id="status.ok.message" resname="status.ok.message">
                 <source>All required LLM components are set up. The Cowriter is ready to use.</source>
+                <target>Alle erforderlichen LLM-Komponenten sind eingerichtet. Der Cowriter ist einsatzbereit.</target>
             </trans-unit>
             <trans-unit id="status.incomplete.title" resname="status.incomplete.title">
                 <source>Configuration incomplete</source>
+                <target>Konfiguration unvollständig</target>
             </trans-unit>
             <trans-unit id="status.incomplete.message" resname="status.incomplete.message">
                 <source>One or more required configuration steps are missing. See the details below.</source>
+                <target>Mindestens ein erforderlicher Konfigurationsschritt fehlt. Die Details stehen unten.</target>
             </trans-unit>
             <trans-unit id="status.column.check" resname="status.column.check">
                 <source>Check</source>
+                <target>Prüfung</target>
             </trans-unit>
             <trans-unit id="status.column.status" resname="status.column.status">
                 <source>Status</source>
+                <target>Status</target>
             </trans-unit>
             <trans-unit id="status.fix" resname="status.fix">
                 <source>Fix</source>
+                <target>Beheben</target>
             </trans-unit>
             <trans-unit id="status.footer" resname="status.footer">
                 <source>The Cowriter extension requires a working LLM configuration from the NR LLM extension. Use the "Fix" buttons to resolve any issues.</source>
+                <target>Die Erweiterung Cowriter benötigt eine funktionierende LLM-Konfiguration aus der Erweiterung NR LLM. Probleme lassen sich über die Schaltflächen „Beheben“ lösen.</target>
             </trans-unit>
             <trans-unit id="status.check.provider_exists" resname="status.check.provider_exists">
                 <source>Provider exists</source>
+                <target>Anbieter vorhanden</target>
             </trans-unit>
             <trans-unit id="status.check.provider_active" resname="status.check.provider_active">
                 <source>Provider active</source>
+                <target>Anbieter aktiv</target>
             </trans-unit>
             <trans-unit id="status.check.provider_has_api_key" resname="status.check.provider_has_api_key">
                 <source>Provider has an API key</source>
+                <target>Anbieter hat einen API-Schlüssel</target>
             </trans-unit>
             <trans-unit id="status.check.model_exists" resname="status.check.model_exists">
                 <source>Model exists</source>
+                <target>Modell vorhanden</target>
             </trans-unit>
             <trans-unit id="status.check.model_active" resname="status.check.model_active">
                 <source>Model active</source>
+                <target>Modell aktiv</target>
             </trans-unit>
             <trans-unit id="status.check.configuration_exists" resname="status.check.configuration_exists">
                 <source>Configuration exists</source>
+                <target>Konfiguration vorhanden</target>
             </trans-unit>
             <trans-unit id="status.check.configuration_active" resname="status.check.configuration_active">
                 <source>Configuration active</source>
+                <target>Konfiguration aktiv</target>
             </trans-unit>
             <trans-unit id="status.check.configuration_default" resname="status.check.configuration_default">
                 <source>Default configuration set</source>
+                <target>Standardkonfiguration festgelegt</target>
             </trans-unit>
         </body>
     </file>

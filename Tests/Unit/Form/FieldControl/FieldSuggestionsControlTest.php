@@ -82,6 +82,7 @@ final class FieldSuggestionsControlTest extends TestCase
         foreach (['heading', 'loading', 'loaded', 'empty', 'error', 'inserted', 'close'] as $label) {
             self::assertSame('translated:' . $label, $attributes['data-label-' . $label]);
         }
+        self::assertSame('translated:loadedSingular', $attributes['data-label-loaded-singular']);
     }
 
     #[Test]

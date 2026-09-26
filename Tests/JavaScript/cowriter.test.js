@@ -915,6 +915,66 @@ describe('Cowriter Plugin', () => {
 
             expect(Notification.info).toHaveBeenCalledWith('Translating...', 'Translating to de', 15);
         });
+
+        it('offers no settings action for a 429 whose message is not English', async () => {
+            const rateLimited = Object.assign(new Error('Zu viele Anfragen. Bitte versuchen Sie es später erneut.'), { status: 429 });
+            mockTranslate.mockRejectedValue(rateLimited);
+            plugin._service._routes = { llmModule: '/typo3/module/nrllm/overview' };
+
+            const dropdown = componentCallbacks['cowriterTranslate']();
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'Deutsch' } });
+
+            expect(Notification.error.mock.calls[0][3]).toHaveLength(0);
+        });
+
+        describe('with labels injected by the backend', () => {
+            beforeEach(async () => {
+                const element = document.createElement('script');
+                element.type = 'application/json';
+                element.id = 'cowriter-labels-data';
+                element.textContent = JSON.stringify({
+                    'ckeditor.button.translate': 'Cowriter - Übersetzen',
+                    'ckeditor.language.de': 'Deutsch',
+                    'ckeditor.language.fr': 'Französisch',
+                    'ckeditor.translate.running.title': 'Wird übersetzt...',
+                    'ckeditor.translate.running.message': 'Zielsprache: %s',
+                    'ckeditor.translate.done.title': 'Übersetzung abgeschlossen',
+                    'ckeditor.translate.done.message': 'Übersetzt, Zielsprache: %s',
+                    'ckeditor.translate.failed': 'Übersetzung fehlgeschlagen',
+                    'ckeditor.action.openLlmSettings': 'LLM-Einstellungen öffnen',
+                });
+                document.head.appendChild(element);
+            });
+
+            afterEach(async () => {
+                document.getElementById('cowriter-labels-data')?.remove();
+                (await import('@netresearch/t3_cowriter/Labels')).resetLabels();
+            });
+
+            it('labels the button, the languages and the notifications with them', async () => {
+                const dropdown = componentCallbacks['cowriterTranslate']();
+                const languages = [...dropdown._items].map((item) => item.model.label);
+
+                expect(dropdown.buttonView.label).toBe('Cowriter - Übersetzen');
+                expect(languages.slice(0, 3)).toEqual(['Deutsch', 'English', 'Französisch']);
+
+                await dropdown.fire('execute', { source: { languageCode: 'de', label: 'Deutsch' } });
+
+                expect(Notification.info).toHaveBeenCalledWith('Wird übersetzt...', 'Zielsprache: Deutsch', 15);
+                expect(Notification.success).toHaveBeenCalledWith('Übersetzung abgeschlossen', 'Übersetzt, Zielsprache: Deutsch', 3);
+            });
+
+            it('labels the error notification and its settings action with them', async () => {
+                mockTranslate.mockRejectedValue(new Error('Translation is not configured yet'));
+                plugin._service._routes = { llmModule: '/typo3/module/nrllm/overview' };
+
+                const dropdown = componentCallbacks['cowriterTranslate']();
+                await dropdown.fire('execute', { source: { languageCode: 'de', label: 'Deutsch' } });
+
+                expect(Notification.error.mock.calls[0][0]).toBe('Übersetzung fehlgeschlagen');
+                expect(Notification.error.mock.calls[0][3][0].label).toBe('LLM-Einstellungen öffnen');
+            });
+        });
     });
 
     describe('cowriterTemplates dropdown', () => {

@@ -13,6 +13,7 @@ use InvalidArgumentException;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\T3Cowriter\Domain\DTO\FieldSuggestionRequest;
+use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldKind;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldProfile;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldSuggestionException;
@@ -53,6 +54,7 @@ final readonly class FieldSuggestionController
         private Context $context,
         private LoggerInterface $logger,
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
+        private BackendLabels $labels = new BackendLabels(),
     ) {}
 
     public function suggestAction(ServerRequestInterface $request): ResponseInterface
@@ -98,11 +100,11 @@ final readonly class FieldSuggestionController
             $profile = FieldProfile::fromTca($dto->table, $dto->field, Tca::column($dto->table, $dto->field) ?? []);
 
             if ($profile->kind === FieldKind::Slug && $recordContext->isSiteRoot()) {
-                throw FieldSuggestionException::notApplicable('The root page of a site always has the slug "/".');
+                throw FieldSuggestionException::siteRootSlug();
             }
         } catch (FieldSuggestionException $e) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $e->getMessage()],
+                ['success' => false, 'error' => $this->labels->get($e->getLabelKey())],
                 $rateLimitResult,
                 $e->getHttpStatus(),
             );
@@ -111,7 +113,7 @@ final readonly class FieldSuggestionController
         $configuration = $this->configurationRepository->findDefault();
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'No LLM configuration available. Please configure the nr_llm extension.'],
+                ['success' => false, 'error' => $this->labels->get('error.noConfiguration')],
                 $rateLimitResult,
                 404,
             );
@@ -139,7 +141,7 @@ final readonly class FieldSuggestionController
 
         if ($suggestions === []) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => 'The AI returned no usable suggestions. Please try again.'],
+                ['success' => false, 'error' => $this->labels->get('fieldSuggestions.error.noSuggestions')],
                 $rateLimitResult,
                 502,
             );
@@ -155,7 +157,7 @@ final readonly class FieldSuggestionController
     }
 
     /**
-     * An editor-facing message for a failed LLM call.
+     * The editor-facing message for a failed LLM call.
      */
     private function errorMessage(Throwable $exception): string
     {
@@ -167,17 +169,14 @@ final readonly class FieldSuggestionController
         ) {
             // nr-llm's structured completion: the answer did not match the
             // schema even after its repair round-trip.
-            return 'The AI answer did not have the expected format. Please try again.';
+            return $this->labels->get('fieldSuggestions.error.invalidFormat');
         }
 
         return match ($kind) {
-            LlmErrorKind::Configuration => 'LLM is not configured yet.'
-                . ' Ask an administrator to check the Cowriter Setup Status page for details.',
-            LlmErrorKind::Authentication => 'The LLM provider rejected the API key.'
-                . ' Please ask an administrator to check the provider settings.',
-            LlmErrorKind::RateLimit => 'The LLM provider rate limit was exceeded.'
-                . ' Please wait a moment and try again.',
-            LlmErrorKind::Unknown => 'The suggestions could not be generated. Please try again later.',
+            LlmErrorKind::Configuration  => $this->labels->get('error.checkSetupStatus', $this->labels->get('error.notConfigured')),
+            LlmErrorKind::Authentication => $this->labels->get('error.providerAuthentication'),
+            LlmErrorKind::RateLimit      => $this->labels->get('error.providerRateLimit'),
+            LlmErrorKind::Unknown        => $this->labels->get('fieldSuggestions.error.unknown'),
         };
     }
 }

@@ -16,6 +16,7 @@ use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\TaskStubTrait;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
@@ -29,6 +30,7 @@ use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 #[CoversClass(TemplateController::class)]
 final class TemplateControllerTest extends TestCase
 {
+    use XliffLanguageServiceTrait;
     use TaskStubTrait;
 
     private TaskRepository&Stub $templateRepositoryStub;
@@ -37,6 +39,7 @@ final class TemplateControllerTest extends TestCase
 
     protected function setUp(): void
     {
+        $this->useXliffLanguageService();
         $this->templateRepositoryStub = $this->createStub(TaskRepository::class);
         $this->rateLimiterStub        = $this->createStub(RateLimiterInterface::class);
         $contextStub                  = $this->createStub(Context::class);

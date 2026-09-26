@@ -6,27 +6,24 @@
 <f:layout name="Module" />
 
 <f:section name="Content">
-    <h1>Cowriter Setup Status</h1>
+    <h1><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:mlang_labels_tablabel" /></h1>
 
-    <p class="mb-4">
-        This page checks whether the LLM configuration required by the
-        Cowriter extension is complete.
-    </p>
+    <p class="mb-4"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.intro" /></p>
 
     <f:if condition="{result.ok}">
         <f:then>
             <div class="callout callout-success">
                 <div class="callout-body">
-                    <h4 class="callout-title">Everything is configured correctly</h4>
-                    <p>All required LLM components are set up. The Cowriter is ready to use.</p>
+                    <h4 class="callout-title"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.ok.title" /></h4>
+                    <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.ok.message" /></p>
                 </div>
             </div>
         </f:then>
         <f:else>
             <div class="callout callout-danger">
                 <div class="callout-body">
-                    <h4 class="callout-title">Configuration incomplete</h4>
-                    <p>One or more required configuration steps are missing. See the details below.</p>
+                    <h4 class="callout-title"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.incomplete.title" /></h4>
+                    <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.incomplete.message" /></p>
                 </div>
             </div>
         </f:else>
@@ -37,8 +34,8 @@
             <thead>
                 <tr>
                     <th style="width: 40px;"></th>
-                    <th>Check</th>
-                    <th>Status</th>
+                    <th><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.column.check" /></th>
+                    <th><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.column.status" /></th>
                     <th style="width: 120px;"></th>
                 </tr>
             </thead>
@@ -60,7 +57,7 @@
                             </f:if>
                         </td>
                         <td>
-                            <strong>{check.key}</strong>
+                            <strong><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.check.{check.key}" default="{check.key}" /></strong>
                         </td>
                         <td>
                             {check.message}
@@ -70,7 +67,7 @@
                                 <f:if condition="{fixUrls.{check.fixRoute}}">
                                     <a href="{fixUrls.{check.fixRoute}}"
                                        class="btn btn-default btn-sm">
-                                        Fix
+                                        <f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.fix" />
                                     </a>
                                 </f:if>
                             </f:if>
@@ -82,11 +79,7 @@
     </div>
 
     <div class="mt-4">
-        <p class="text-body-secondary">
-            The Cowriter extension requires a working LLM configuration
-            from the NR LLM extension. Use the "Fix" buttons to resolve
-            any issues.
-        </p>
+        <p class="text-body-secondary"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:status.footer" /></p>
     </div>
 </f:section>
 

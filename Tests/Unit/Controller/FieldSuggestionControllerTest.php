@@ -29,6 +29,7 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -55,6 +56,8 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(Tca::class)]
 final class FieldSuggestionControllerTest extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
     private FakeCompletionService $completion;
     private RecordContextReader&Stub $reader;
     private LlmConfigurationRepository&Stub $configurationRepository;
@@ -75,6 +78,7 @@ final class FieldSuggestionControllerTest extends TestCase
         $this->rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
         $this->configurationRepository->method('findDefault')->willReturn(new LlmConfiguration());
         $this->reader->method('read')->willReturn(self::context('seo_title'));
+        $this->useXliffLanguageService();
 
         $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
         $GLOBALS['TCA']     = ['pages' => ['columns' => [
@@ -366,6 +370,24 @@ final class FieldSuggestionControllerTest extends TestCase
 
         self::assertSame(502, $response->getStatusCode());
         self::assertSame(['success' => false, 'error' => 'The AI returned no usable suggestions. Please try again.'], self::json($response));
+    }
+
+    #[Test]
+    public function messagesAreInTheLanguageOfTheBackendUser(): void
+    {
+        $this->useXliffLanguageService('de');
+
+        $this->completion->throwable = new ProviderResponseException('Too many requests', 429);
+        $response                    = $this->subject()->suggestAction($this->request(self::body()));
+        self::assertSame(
+            'Das Anfragelimit des LLM-Anbieters wurde überschritten. Bitte warten Sie einen Moment und versuchen Sie es erneut.',
+            self::json($response)['error'],
+        );
+
+        $this->reader = $this->createStub(RecordContextReader::class);
+        $this->reader->method('read')->willThrowException(FieldSuggestionException::accessDenied());
+        $response = $this->subject()->suggestAction($this->request(self::body()));
+        self::assertSame('Sie dürfen dieses Feld nicht bearbeiten.', self::json($response)['error']);
     }
 
     #[Test]

@@ -210,6 +210,15 @@ values. By default it sits next to these page properties:
     field
 4.  Save the record to keep the value
 
+..  figure:: /Images/Usage/FieldSuggestionsSeoTitle.png
+    :alt: Page properties, SEO tab: three AI suggestions listed below the
+          Title for search engines field, with a close button and a status
+          line under the list
+    :class: with-border with-shadow
+
+    The suggestion list below :guilabel:`Title for search engines`: three
+    suggestions to pick from and the status line that announces them.
+
 Nothing is saved automatically: a picked suggestion only changes the form,
 exactly as if you had typed it, and :kbd:`Escape` closes the list without
 changing anything.

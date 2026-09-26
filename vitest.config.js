@@ -48,6 +48,10 @@ export default defineConfig({
                 __dirname,
                 'Resources/Public/JavaScript/Ckeditor/CowriterDialog.js'
             ),
+            '@netresearch/t3_cowriter/Labels': resolve(
+                __dirname,
+                'Resources/Public/JavaScript/Ckeditor/Labels.js'
+            ),
         },
     },
     test: {

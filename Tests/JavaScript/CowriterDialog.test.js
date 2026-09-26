@@ -65,6 +65,94 @@ describe('CowriterDialog', () => {
         vi.resetModules();
     });
 
+    describe('labels', () => {
+        function injectLabels(labels) {
+            const element = document.createElement('script');
+            element.type = 'application/json';
+            element.id = 'cowriter-labels-data';
+            element.textContent = JSON.stringify(labels);
+            document.head.appendChild(element);
+        }
+
+        afterEach(() => {
+            document.getElementById('cowriter-labels-data')?.remove();
+        });
+
+        it('uses the English texts when the backend injected no labels', async () => {
+            mockService.getTasks.mockResolvedValue({ success: true, tasks: [] });
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('.alert-info')).not.toBeNull());
+
+            const bold = [...document.querySelectorAll('.alert-info strong')].map((el) => el.textContent);
+            expect(bold).toEqual(['Admin Tools \u2192 LLM \u2192 Tasks', '"content"', 'active']);
+            expect(document.querySelector('.alert-info p.mb-0').textContent).toContain('3. Make sure they are active');
+            expect(document.querySelector('[data-name="close"]').textContent).toBe('Close');
+
+            document.querySelector('[data-name="close"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('uses the injected labels for the setup guidance', async () => {
+            injectLabels({
+                'ckeditor.tasks.none.title': 'Keine Aufgaben konfiguriert',
+                'ckeditor.dialog.noTasks.step1': '1. Öffnen Sie %s',
+                'ckeditor.dialog.noTasks.step1.path': 'Admin-Werkzeuge \u2192 LLM \u2192 Aufgaben',
+                'ckeditor.dialog.noTasks.step3': '3. Stellen Sie sicher, dass sie %s sind',
+                'ckeditor.dialog.noTasks.step3.active': 'aktiv',
+                'ckeditor.dialog.button.close': 'Schließen',
+            });
+            mockService.getTasks.mockResolvedValue({ success: true, tasks: [] });
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('.alert-info')).not.toBeNull());
+
+            const alert = document.querySelector('.alert-info');
+            expect(alert.querySelector('h4').textContent).toBe('Keine Aufgaben konfiguriert');
+            const bold = [...alert.querySelectorAll('strong')].map((el) => el.textContent);
+            expect(bold).toEqual(['Admin-Werkzeuge \u2192 LLM \u2192 Aufgaben', '"content"', 'aktiv']);
+            expect(alert.querySelector('p.mb-0').textContent).toContain('3. Stellen Sie sicher, dass sie aktiv sind');
+            expect(document.querySelector('[data-name="close"]').textContent).toBe('Schließen');
+
+            document.querySelector('[data-name="close"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('uses the injected labels for the task dialog', async () => {
+            injectLabels({
+                'ckeditor.dialog.button.cancel': 'Abbrechen',
+                'ckeditor.dialog.button.execute': 'Ausführen',
+                'ckeditor.dialog.task': 'Aufgabe',
+                'ckeditor.dialog.customInstruction': 'Eigene Anweisung',
+                'ckeditor.dialog.scope.selection': 'Auswahl',
+                'ckeditor.dialog.addReference': 'Referenzseite hinzufügen',
+                'ckeditor.dialog.instruction.placeholder': 'Beschreiben Sie, was die KI tun soll\u2026',
+            });
+            const showPromise = new CowriterDialog(mockService).show('selected', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-name="cancel"]')).not.toBeNull());
+
+            expect(document.querySelector('[data-name="cancel"]').textContent).toBe('Abbrechen');
+            expect(document.querySelector('[data-name="execute"]').textContent).toBe('Ausführen');
+            // Not injected: the English text stays.
+            expect(document.querySelector('[data-name="insert"]').textContent).toBe('Insert');
+            expect(document.querySelector('label[for$="-task"]').textContent).toBe('Aufgabe');
+            expect(document.querySelector('[data-role="task-select"] option[value="0"]').textContent).toBe('Eigene Anweisung');
+            expect(document.querySelector('[data-role="scope-select"] option[value="selection"]').textContent).toBe('Auswahl');
+            expect(document.querySelector('[data-role="add-reference"]').textContent.trim()).toBe('Referenzseite hinzufügen');
+            expect(document.querySelector('[data-role="add-reference"] typo3-backend-icon')).not.toBeNull();
+            expect(document.querySelector('[data-role="instruction"]').placeholder).toBe('Beschreiben Sie, was die KI tun soll\u2026');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('fills the placeholder of an injected error label', async () => {
+            injectLabels({ 'ckeditor.tasks.loadFailedWithReason': 'Aufgaben konnten nicht geladen werden: %s' });
+            mockService.getTasks.mockRejectedValue(new Error('Netzwerkfehler'));
+
+            await expect(new CowriterDialog(mockService).show('text', 'full'))
+                .rejects.toThrow('Aufgaben konnten nicht geladen werden: Netzwerkfehler');
+        });
+    });
+
     describe('constructor', () => {
         it('should store service reference', () => {
             const dialog = new CowriterDialog(mockService);

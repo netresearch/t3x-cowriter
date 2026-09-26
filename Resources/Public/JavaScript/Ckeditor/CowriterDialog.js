@@ -12,6 +12,7 @@
  */
 
 import Modal from '@typo3/backend/modal.js';
+import { t } from '@netresearch/t3_cowriter/Labels';
 
 /**
  * @typedef {object} DialogResult
@@ -34,7 +35,7 @@ import Modal from '@typo3/backend/modal.js';
 const SCOPE_IDS = ['selection', 'text', 'element', 'page', 'ancestors_1', 'ancestors_2'];
 
 /**
- * Human-readable scope labels for the dropdown UI.
+ * English fallbacks of the scope labels ("ckeditor.dialog.scope.<id>").
  * @type {readonly string[]}
  */
 const SCOPE_LABELS = ['Selection', 'Full content', 'Content element', 'Page content', 'Parent page', 'Grandparent page'];
@@ -93,7 +94,10 @@ export class CowriterDialog {
             const response = await this._service.getTasks();
             tasks = response.tasks || [];
         } catch (error) {
-            throw new Error(`Failed to load tasks: ${error.message}`);
+            throw new Error(
+                t('ckeditor.tasks.loadFailedWithReason', 'Failed to load tasks: %s', error.message),
+                { cause: error },
+            );
         }
 
         if (tasks.length === 0) {
@@ -122,37 +126,45 @@ export class CowriterDialog {
 
             const heading = document.createElement('h4');
             heading.className = 'alert-heading';
-            heading.textContent = 'No tasks configured';
+            heading.textContent = t('ckeditor.tasks.none.title', 'No tasks configured');
             alert.appendChild(heading);
 
             const desc = document.createElement('p');
-            desc.textContent = 'The Cowriter needs at least one active task with '
+            desc.textContent = t(
+                'ckeditor.dialog.noTasks.description',
+                'The Cowriter needs at least one active task with '
                 + 'category "content" to work. Tasks define what the AI should '
-                + 'do with your text (e.g., improve, summarize, translate).';
+                + 'do with your text (e.g., improve, summarize, translate).',
+            );
             alert.appendChild(desc);
 
             alert.appendChild(document.createElement('hr'));
 
             const steps = document.createElement('p');
             steps.className = 'mb-0';
+            // Each step is a sentence with one bold part, which fills its %s.
             const stepsLines = [
-                'To set up tasks:',
-                '1. Go to Admin Tools \u2192 LLM \u2192 Tasks',
-                '2. Create tasks with category "content"',
-                '3. Make sure they are active',
+                [t('ckeditor.dialog.noTasks.steps', 'To set up tasks:'), null],
+                [
+                    t('ckeditor.dialog.noTasks.step1', '1. Go to %s'),
+                    t('ckeditor.dialog.noTasks.step1.path', 'Admin Tools \u2192 LLM \u2192 Tasks'),
+                ],
+                [t('ckeditor.dialog.noTasks.step2', '2. Create tasks with category %s'), '"content"'],
+                [
+                    t('ckeditor.dialog.noTasks.step3', '3. Make sure they are %s'),
+                    t('ckeditor.dialog.noTasks.step3.active', 'active'),
+                ],
             ];
-            stepsLines.forEach((line, i) => {
+            stepsLines.forEach(([line, bold], i) => {
                 if (i > 0) steps.appendChild(document.createElement('br'));
-                const bold = (i === 1) ? 'Admin Tools \u2192 LLM \u2192 Tasks'
-                    : (i === 2) ? '"content"'
-                        : (i === 3) ? 'active' : null;
-                if (bold) {
-                    const text = line.split(bold);
-                    steps.appendChild(document.createTextNode(text[0]));
+                if (bold !== null && line.includes('%s')) {
+                    const [before, ...rest] = line.split('%s');
+                    steps.appendChild(document.createTextNode(before));
                     const strong = document.createElement('strong');
                     strong.textContent = bold;
                     steps.appendChild(strong);
-                    if (text[1]) steps.appendChild(document.createTextNode(text[1]));
+                    const after = rest.join('%s');
+                    if (after) steps.appendChild(document.createTextNode(after));
                 } else {
                     steps.appendChild(document.createTextNode(line));
                 }
@@ -167,7 +179,7 @@ export class CowriterDialog {
                 size: Modal.sizes.small,
                 buttons: [
                     {
-                        text: 'Close',
+                        text: t('ckeditor.dialog.button.close', 'Close'),
                         btnClass: 'btn-default',
                         name: 'close',
                         icon: 'actions-close',
@@ -256,7 +268,7 @@ export class CowriterDialog {
                 spinner.setAttribute('role', 'status');
                 spinner.setAttribute('aria-hidden', 'true');
                 preview.appendChild(spinner);
-                preview.appendChild(document.createTextNode('Generating\u2026'));
+                preview.appendChild(document.createTextNode(t('ckeditor.dialog.generating', 'Generating\u2026')));
                 preview.classList.remove('cowriter-result--empty');
                 modelInfo.style.display = 'none';
 
@@ -298,9 +310,9 @@ export class CowriterDialog {
                         preview.classList.remove('cowriter-result--empty');
 
                         if (result.model) {
-                            let infoText = `Model: ${result.model}`;
+                            let infoText = t('ckeditor.dialog.model', 'Model: %s', result.model);
                             if (result.usage && result.usage.totalTokens) {
-                                infoText += ` | ${result.usage.totalTokens} tokens`;
+                                infoText += ' | ' + t('ckeditor.dialog.tokens', '%s tokens', result.usage.totalTokens);
                             }
                             modelInfo.textContent = infoText;
                             modelInfo.style.display = 'block';
@@ -309,7 +321,7 @@ export class CowriterDialog {
                         this._showDebugDetails(container, result, inputText, instruction);
                         this._updateButtonVisibility(modal, 'result');
                     } else {
-                        preview.textContent = result.error || 'No content returned';
+                        preview.textContent = result.error || t('ckeditor.dialog.noContent', 'No content returned');
                         if (result.statusUrl) {
                             this._appendStatusLink(preview, result.statusUrl);
                         }
@@ -327,7 +339,7 @@ export class CowriterDialog {
                         this._setButtonsDisabled(modal, false);
                         return;
                     }
-                    preview.textContent = `Error: ${error.message}`;
+                    preview.textContent = t('ckeditor.dialog.error', 'Error: %s', error.message);
                     if (error.statusUrl) {
                         this._appendStatusLink(preview, error.statusUrl);
                     }
@@ -353,10 +365,22 @@ export class CowriterDialog {
                 content: container,
                 size: Modal.sizes.large,
                 buttons: [
-                    { text: 'Cancel', btnClass: 'btn-default', name: 'cancel', icon: 'actions-close', trigger: cancelTrigger },
-                    { text: 'Reset', btnClass: 'btn-default', name: 'reset', icon: 'actions-undo', trigger: resetTrigger },
-                    { text: 'Execute', btnClass: 'btn-default', name: 'execute', icon: 'actions-play', trigger: executeTrigger },
-                    { text: 'Insert', btnClass: 'btn-primary', name: 'insert', icon: 'actions-insert', trigger: insertTrigger },
+                    {
+                        text: t('ckeditor.dialog.button.cancel', 'Cancel'),
+                        btnClass: 'btn-default', name: 'cancel', icon: 'actions-close', trigger: cancelTrigger,
+                    },
+                    {
+                        text: t('ckeditor.dialog.button.reset', 'Reset'),
+                        btnClass: 'btn-default', name: 'reset', icon: 'actions-undo', trigger: resetTrigger,
+                    },
+                    {
+                        text: t('ckeditor.dialog.button.execute', 'Execute'),
+                        btnClass: 'btn-default', name: 'execute', icon: 'actions-play', trigger: executeTrigger,
+                    },
+                    {
+                        text: t('ckeditor.dialog.button.insert', 'Insert'),
+                        btnClass: 'btn-primary', name: 'insert', icon: 'actions-insert', trigger: insertTrigger,
+                    },
                 ],
             });
 
@@ -392,7 +416,7 @@ export class CowriterDialog {
 
         // Task selector
         const taskSelectId = `${idPrefix}-task`;
-        const taskGroup = this._createFormGroup('Task', taskSelectId);
+        const taskGroup = this._createFormGroup(t('ckeditor.dialog.task', 'Task'), taskSelectId);
         const taskSelect = document.createElement('select');
         taskSelect.className = 'form-select';
         taskSelect.id = taskSelectId;
@@ -401,8 +425,11 @@ export class CowriterDialog {
         // "Custom instruction" option first
         const customOption = document.createElement('option');
         customOption.value = '0';
-        customOption.textContent = 'Custom instruction';
-        customOption.dataset.description = 'Write your own instruction for the AI';
+        customOption.textContent = t('ckeditor.dialog.customInstruction', 'Custom instruction');
+        customOption.dataset.description = t(
+            'ckeditor.dialog.customInstruction.description',
+            'Write your own instruction for the AI',
+        );
         customOption.dataset.promptTemplate = '';
         taskSelect.appendChild(customOption);
 
@@ -439,15 +466,15 @@ export class CowriterDialog {
             editLink.target = '_blank';
             editLink.rel = 'noopener noreferrer';
             editLink.className = 'form-text text-body-secondary text-nowrap ms-2';
-            editLink.textContent = 'Edit tasks \u2197';
-            editLink.title = 'Manage tasks in LLM module';
+            editLink.textContent = t('ckeditor.dialog.editTasks', 'Edit tasks \u2197');
+            editLink.title = t('ckeditor.dialog.editTasks.title', 'Manage tasks in LLM module');
             taskDescRow.appendChild(editLink);
         }
         taskGroup.appendChild(taskDescRow);
 
         // Context scope dropdown
         const scopeId = `${idPrefix}-scope`;
-        const contextGroup = this._createFormGroup('Context scope', scopeId);
+        const contextGroup = this._createFormGroup(t('ckeditor.dialog.contextScope', 'Context scope'), scopeId);
         const hasSelection = Boolean(selectedText && selectedText.trim().length > 0);
 
         const scopeSelect = document.createElement('select');
@@ -458,7 +485,7 @@ export class CowriterDialog {
         for (let i = 0; i < SCOPE_IDS.length; i++) {
             const opt = document.createElement('option');
             opt.value = SCOPE_IDS[i];
-            opt.textContent = SCOPE_LABELS[i];
+            opt.textContent = t(`ckeditor.dialog.scope.${SCOPE_IDS[i]}`, SCOPE_LABELS[i]);
             if (i === 0 && !hasSelection) {
                 opt.disabled = true;
             }
@@ -489,7 +516,7 @@ export class CowriterDialog {
         container.appendChild(configRow);
 
         // Reference pages section
-        const refGroup = this._createFormGroup('Reference pages (optional)');
+        const refGroup = this._createFormGroup(t('ckeditor.dialog.referencePages', 'Reference pages (optional)'));
 
         const refContainer = document.createElement('div');
         refContainer.dataset.role = 'reference-list';
@@ -499,7 +526,8 @@ export class CowriterDialog {
         addRefBtn.type = 'button';
         addRefBtn.className = 'btn btn-sm btn-outline-secondary mt-1';
         addRefBtn.dataset.role = 'add-reference';
-        addRefBtn.innerHTML = '<typo3-backend-icon identifier="actions-plus" size="small"></typo3-backend-icon> Add reference page';
+        addRefBtn.innerHTML = '<typo3-backend-icon identifier="actions-plus" size="small"></typo3-backend-icon>';
+        addRefBtn.append(' ' + t('ckeditor.dialog.addReference', 'Add reference page'));
         addRefBtn.addEventListener('click', () => {
             refContainer.appendChild(this._createReferenceRow(referenceAbortControllers));
         });
@@ -511,7 +539,13 @@ export class CowriterDialog {
         if (!document.getElementById('cowriter-relation-presets')) {
             const datalist = document.createElement('datalist');
             datalist.id = 'cowriter-relation-presets';
-            for (const preset of ['reference material', 'parent topic', 'style guide', 'similar content']) {
+            const presets = [
+                t('ckeditor.dialog.relationPreset.referenceMaterial', 'reference material'),
+                t('ckeditor.dialog.relationPreset.parentTopic', 'parent topic'),
+                t('ckeditor.dialog.relationPreset.styleGuide', 'style guide'),
+                t('ckeditor.dialog.relationPreset.similarContent', 'similar content'),
+            ];
+            for (const preset of presets) {
                 const option = document.createElement('option');
                 option.value = preset;
                 datalist.appendChild(option);
@@ -521,13 +555,13 @@ export class CowriterDialog {
 
         // Instruction textarea (primary input)
         const instructionId = `${idPrefix}-instruction`;
-        const instructionGroup = this._createFormGroup('Instruction', instructionId);
+        const instructionGroup = this._createFormGroup(t('ckeditor.dialog.instruction', 'Instruction'), instructionId);
         const instructionInput = document.createElement('textarea');
         instructionInput.className = 'form-control';
         instructionInput.id = instructionId;
         instructionInput.dataset.role = 'instruction';
         instructionInput.rows = 10;
-        instructionInput.placeholder = 'Describe what the AI should do\u2026';
+        instructionInput.placeholder = t('ckeditor.dialog.instruction.placeholder', 'Describe what the AI should do\u2026');
 
         // Prefill with resolved template from the initially selected task
         const initialTemplate = selectedOption?.dataset.promptTemplate || '';
@@ -547,7 +581,7 @@ export class CowriterDialog {
         });
 
         // Result preview
-        const resultGroup = this._createFormGroup('Result');
+        const resultGroup = this._createFormGroup(t('ckeditor.dialog.result', 'Result'));
         const preview = document.createElement('div');
         preview.className = 'cowriter-result cowriter-result--empty';
         preview.dataset.role = 'result-preview';
@@ -623,8 +657,8 @@ export class CowriterDialog {
         searchInput.type = 'text';
         searchInput.className = 'form-control form-control-sm';
         searchInput.dataset.role = 'ref-search';
-        searchInput.placeholder = 'Search pages by title or ID...';
-        searchInput.setAttribute('aria-label', 'Search pages by title or ID');
+        searchInput.placeholder = t('ckeditor.dialog.pageSearch.placeholder', 'Search pages by title or ID...');
+        searchInput.setAttribute('aria-label', t('ckeditor.dialog.pageSearch.label', 'Search pages by title or ID'));
         searchInput.setAttribute('role', 'combobox');
         searchInput.setAttribute('aria-expanded', 'false');
         searchInput.setAttribute('aria-controls', dropdownId);
@@ -669,7 +703,7 @@ export class CowriterDialog {
                     const result = await this._service.searchPages(query);
                     if (searchId !== currentSearchId) return; // discard stale response
                     this._renderPageDropdown(dropdown, result.pages, searchInput, hiddenPid);
-                } catch (e) {
+                } catch {
                     if (searchId === currentSearchId) {
                         dropdown.style.display = 'none';
                         searchInput.setAttribute('aria-expanded', 'false');
@@ -730,8 +764,8 @@ export class CowriterDialog {
         relationInput.type = 'text';
         relationInput.className = 'form-control form-control-sm';
         relationInput.dataset.role = 'ref-relation';
-        relationInput.placeholder = 'Relation (e.g., style guide)';
-        relationInput.setAttribute('aria-label', 'Relation to reference page');
+        relationInput.placeholder = t('ckeditor.dialog.relation.placeholder', 'Relation (e.g., style guide)');
+        relationInput.setAttribute('aria-label', t('ckeditor.dialog.relation.label', 'Relation to reference page'));
         relationInput.setAttribute('list', 'cowriter-relation-presets');
         row.appendChild(relationInput);
 
@@ -740,7 +774,7 @@ export class CowriterDialog {
         removeBtn.className = 'btn btn-sm btn-outline-danger';
         removeBtn.dataset.role = 'remove-reference';
         removeBtn.innerHTML = '<typo3-backend-icon identifier="actions-delete" size="small"></typo3-backend-icon>';
-        removeBtn.setAttribute('aria-label', 'Remove reference page');
+        removeBtn.setAttribute('aria-label', t('ckeditor.dialog.removeReference', 'Remove reference page'));
         removeBtn.addEventListener('click', () => {
             clearTimeout(debounceTimer);
             controller.abort();
@@ -768,7 +802,7 @@ export class CowriterDialog {
             dropdown.setAttribute('role', 'listbox');
             const item = document.createElement('div');
             item.className = 'list-group-item list-group-item-light text-muted small';
-            item.textContent = 'No pages found';
+            item.textContent = t('ckeditor.dialog.noPagesFound', 'No pages found');
             item.setAttribute('role', 'status');
             dropdown.appendChild(item);
             dropdown.style.display = 'block';
@@ -821,7 +855,7 @@ export class CowriterDialog {
     _decodeEntities(escaped) {
         // Safe: textarea.innerHTML decodes entities but never executes scripts
         const textarea = document.createElement('textarea');
-        textarea.innerHTML = escaped; // eslint-disable-line no-unsanitized/property -- textarea never executes scripts
+        textarea.innerHTML = escaped;
         return textarea.value;
     }
 
@@ -873,6 +907,8 @@ export class CowriterDialog {
                     }
                     // URI scheme validation on href and src
                     if (attr.name === 'href' || attr.name === 'src') {
+                        // Control characters are exactly what an obfuscated scheme hides behind.
+                        // eslint-disable-next-line no-control-regex
                         const normalized = attr.value.replace(/[\s\x00-\x1F\x7F-\x9F]/g, '').toLowerCase();
                         if (normalized.startsWith('javascript:')
                             || normalized.startsWith('vbscript:')
@@ -972,7 +1008,7 @@ export class CowriterDialog {
         }
         const link = document.createElement('a');
         link.href = url;
-        link.textContent = ' Open Setup Status';
+        link.textContent = ' ' + t('ckeditor.dialog.openSetupStatus', 'Open Setup Status');
         link.className = 'ms-1';
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
@@ -1000,7 +1036,7 @@ export class CowriterDialog {
         summary.className = 'text-body-secondary';
         summary.style.cursor = 'pointer';
         summary.style.fontSize = '0.85rem';
-        summary.textContent = 'Debug info';
+        summary.textContent = t('ckeditor.dialog.debug.summary', 'Debug info');
         details.appendChild(summary);
 
         const content = document.createElement('div');
@@ -1010,19 +1046,25 @@ export class CowriterDialog {
         content.style.whiteSpace = 'pre-wrap';
         content.style.wordBreak = 'break-word';
 
+        const unknown = t('ckeditor.dialog.debug.unknown', 'unknown');
+        const heading = (key, fallback) => `--- ${t(key, fallback)} ---`;
         const lines = [];
         if (result.error) {
-            lines.push(`Error: ${result.error}`);
+            lines.push(t('ckeditor.dialog.error', 'Error: %s', result.error));
         }
         if (result.debugError) {
-            lines.push(`Provider error: ${result.debugError}`);
+            lines.push(t('ckeditor.dialog.debug.providerError', 'Provider error: %s', result.debugError));
         }
-        lines.push(`Model: ${result.model || 'unknown'}`);
-        lines.push(`Finish reason: ${result.finishReason || 'unknown'}`);
+        lines.push(t('ckeditor.dialog.model', 'Model: %s', result.model || unknown));
+        lines.push(t('ckeditor.dialog.debug.finishReason', 'Finish reason: %s', result.finishReason || unknown));
         if (result.usage) {
-            lines.push(`Tokens: ${result.usage.promptTokens || 0} prompt`
-                + ` + ${result.usage.completionTokens || 0} completion`
-                + ` = ${result.usage.totalTokens || 0} total`);
+            lines.push(t(
+                'ckeditor.dialog.debug.tokens',
+                'Tokens: %s prompt + %s completion = %s total',
+                result.usage.promptTokens || 0,
+                result.usage.completionTokens || 0,
+                result.usage.totalTokens || 0,
+            ));
         }
 
         // Show all messages sent to the LLM (system + user)
@@ -1038,38 +1080,39 @@ export class CowriterDialog {
                 ? inputText.substring(0, 500) + '\u2026'
                 : inputText;
             lines.push('');
-            lines.push('--- Input text ---');
+            lines.push(heading('ckeditor.dialog.debug.inputText', 'Input text'));
             lines.push(truncatedInput);
 
             lines.push('');
-            lines.push('--- Instruction sent ---');
+            lines.push(heading('ckeditor.dialog.debug.instructionSent', 'Instruction sent'));
             lines.push(instructionSent);
         }
 
         if (result.thinking) {
             lines.push('');
-            lines.push('--- Thinking ---');
+            lines.push(heading('ckeditor.dialog.debug.thinking', 'Thinking'));
             lines.push(this._decodeEntities(result.thinking));
         }
 
         lines.push('');
-        lines.push('--- Content returned ---');
+        lines.push(heading('ckeditor.dialog.debug.contentReturned', 'Content returned'));
         lines.push(this._decodeEntities(result.content || ''));
 
         content.textContent = lines.join('\n');
         details.appendChild(content);
 
         // Copy button inside the details
+        const copyLabel = t('ckeditor.dialog.copy', 'Copy to clipboard');
         const copyBtn = document.createElement('button');
         copyBtn.type = 'button';
         copyBtn.className = 'btn btn-sm btn-outline-secondary mt-1';
         copyBtn.dataset.role = 'debug-copy';
-        copyBtn.textContent = 'Copy to clipboard';
+        copyBtn.textContent = copyLabel;
         copyBtn.addEventListener('click', () => {
             const text = content.textContent;
             navigator.clipboard.writeText(text).then(() => {
-                copyBtn.textContent = 'Copied!';
-                setTimeout(() => { copyBtn.textContent = 'Copy to clipboard'; }, 2000);
+                copyBtn.textContent = t('ckeditor.dialog.copied', 'Copied!');
+                setTimeout(() => { copyBtn.textContent = copyLabel; }, 2000);
             }).catch(() => {
                 const ta = document.createElement('textarea');
                 ta.value = text;
@@ -1079,8 +1122,8 @@ export class CowriterDialog {
                 ta.select();
                 document.execCommand('copy');
                 ta.remove();
-                copyBtn.textContent = 'Copied!';
-                setTimeout(() => { copyBtn.textContent = 'Copy to clipboard'; }, 2000);
+                copyBtn.textContent = t('ckeditor.dialog.copied', 'Copied!');
+                setTimeout(() => { copyBtn.textContent = copyLabel; }, 2000);
             });
         });
         details.appendChild(copyBtn);

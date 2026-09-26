@@ -29,6 +29,7 @@ use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -55,6 +56,8 @@ use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 #[AllowMockObjectsWithoutExpectations]
 final class AjaxControllerTest extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
     private AjaxController $subject;
     private LlmServiceManagerInterface&MockObject $llmServiceManagerMock;
     private LlmConfigurationRepository&MockObject $configRepositoryMock;
@@ -70,6 +73,7 @@ final class AjaxControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->useXliffLanguageService();
 
         $this->llmServiceManagerMock = $this->createMock(LlmServiceManagerInterface::class);
         $this->configRepositoryMock  = $this->createMock(LlmConfigurationRepository::class);

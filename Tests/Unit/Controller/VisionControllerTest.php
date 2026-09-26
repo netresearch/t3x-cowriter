@@ -16,6 +16,7 @@ use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Controller\VisionController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\Stub;
@@ -30,12 +31,15 @@ use TYPO3\CMS\Core\Context\Context;
 #[CoversClass(VisionController::class)]
 final class VisionControllerTest extends TestCase
 {
+    use XliffLanguageServiceTrait;
+
     private VisionServiceInterface&Stub $visionServiceStub;
     private RateLimiterInterface&Stub $rateLimiterStub;
     private VisionController $subject;
 
     protected function setUp(): void
     {
+        $this->useXliffLanguageService();
         $this->visionServiceStub = $this->createStub(VisionServiceInterface::class);
         $this->rateLimiterStub   = $this->createStub(RateLimiterInterface::class);
         $contextStub             = $this->createStub(Context::class);
