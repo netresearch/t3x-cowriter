@@ -93,11 +93,17 @@ final readonly class ExecuteTaskRequest
     public const LENGTH_STEPS = [-2, -1, 0, 1, 2];
 
     /**
+     * How many versions of the answer the editor may ask for at once.
+     */
+    public const MAX_VARIANTS = 3;
+
+    /**
      * @param array{table: string, uid: int, field: string}|null $recordContext
      * @param list<array{pid: int, relation: string}>            $referencePages
      * @param int                                                $audience       uid of the audience prompt snippet; 0 for none
      * @param int                                                $tone           uid of the tone-of-voice prompt snippet; 0 for none
      * @param int                                                $length         one of {@see self::LENGTH_STEPS}
+     * @param int                                                $variants       versions to return, 1 to {@see self::MAX_VARIANTS}
      */
     public function __construct(
         public int $taskUid,
@@ -112,6 +118,7 @@ final readonly class ExecuteTaskRequest
         public int $audience = 0,
         public int $tone = 0,
         public int $length = 0,
+        public int $variants = 1,
     ) {}
 
     /**
@@ -146,6 +153,7 @@ final readonly class ExecuteTaskRequest
             audience: self::extractInt($data, 'audience'),
             tone: self::extractInt($data, 'tone'),
             length: self::extractInt($data, 'length'),
+            variants: max(1, self::extractInt($data, 'variants')),
         );
     }
 
@@ -159,6 +167,10 @@ final readonly class ExecuteTaskRequest
         }
 
         if ($this->audience < 0 || $this->tone < 0 || !in_array($this->length, self::LENGTH_STEPS, true)) {
+            return false;
+        }
+
+        if ($this->variants < 1 || $this->variants > self::MAX_VARIANTS) {
             return false;
         }
 
