@@ -105,6 +105,8 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.dialog.length.longer',
         'ckeditor.dialog.length.muchLonger',
         'ckeditor.dialog.wordsTarget',
+        'ckeditor.dialog.variants',
+        'ckeditor.dialog.variant',
         'ckeditor.dialog.contextScope',
         'ckeditor.dialog.scope.selection',
         'ckeditor.dialog.scope.text',
