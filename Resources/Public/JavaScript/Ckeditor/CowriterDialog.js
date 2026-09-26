@@ -101,6 +101,7 @@ export class CowriterDialog {
         // dialog: it appears once the list arrives. Without a list, every task
         // runs on its own configuration, as before.
         const configurationsRequest = this._loadConfigurations();
+        const styleRequest = this._loadStyleOptions();
         let tasks;
         try {
             const response = await this._service.getTasks();
@@ -118,8 +119,31 @@ export class CowriterDialog {
 
         return this._showModal(
             tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid,
-            configurationsRequest,
+            configurationsRequest, styleRequest,
         );
+    }
+
+    /**
+     * The audience and tone snippets the editor may choose from; empty lists
+     * when they are unavailable.
+     *
+     * @returns {Promise<{audiences: Array<{uid: number, name: string}>, tones: Array<{uid: number, name: string}>}>}
+     * @private
+     */
+    async _loadStyleOptions() {
+        const none = { audiences: [], tones: [] };
+        if (typeof this._service.getStyleOptions !== 'function') {
+            return none;
+        }
+        try {
+            const response = await this._service.getStyleOptions();
+            return {
+                audiences: Array.isArray(response?.audiences) ? response.audiences : [],
+                tones: Array.isArray(response?.tones) ? response.tones : [],
+            };
+        } catch {
+            return none;
+        }
     }
 
     /**
@@ -139,6 +163,107 @@ export class CowriterDialog {
         } catch {
             return [];
         }
+    }
+
+    /**
+     * The style row: audience and tone (hidden until the operator's snippets
+     * arrive) and the length step, which needs no data and is always there.
+     *
+     * @param {string} idPrefix
+     * @returns {HTMLElement}
+     * @private
+     */
+    _buildStyleRow(idPrefix) {
+        const row = document.createElement('div');
+        row.className = 'row mb-3';
+        row.dataset.role = 'style-row';
+
+        for (const [role, label, fallback] of [
+            ['audience', 'ckeditor.dialog.audience', 'Audience'],
+            ['tone', 'ckeditor.dialog.tone', 'Tone of voice'],
+        ]) {
+            const id = `${idPrefix}-${role}`;
+            const group = this._createFormGroup(t(label, fallback), id);
+            const select = document.createElement('select');
+            select.className = 'form-select';
+            select.id = id;
+            select.dataset.role = `${role}-select`;
+            const none = document.createElement('option');
+            none.value = '0';
+            none.textContent = t('ckeditor.dialog.styleDefault', 'No preference');
+            select.appendChild(none);
+            group.appendChild(select);
+
+            const col = document.createElement('div');
+            col.className = 'col-md-4';
+            col.dataset.role = `${role}-col`;
+            col.hidden = true;
+            col.appendChild(group);
+            row.appendChild(col);
+        }
+
+        const lengthId = `${idPrefix}-length`;
+        const lengthGroup = this._createFormGroup(t('ckeditor.dialog.length', 'Length'), lengthId);
+        const lengthSelect = document.createElement('select');
+        lengthSelect.className = 'form-select';
+        lengthSelect.id = lengthId;
+        lengthSelect.dataset.role = 'length-select';
+        for (const [value, key, fallback] of [
+            ['-2', 'ckeditor.dialog.length.muchShorter', 'Much shorter'],
+            ['-1', 'ckeditor.dialog.length.shorter', 'Shorter'],
+            ['0', 'ckeditor.dialog.length.unchanged', 'Unchanged'],
+            ['1', 'ckeditor.dialog.length.longer', 'Longer'],
+            ['2', 'ckeditor.dialog.length.muchLonger', 'Much longer'],
+        ]) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = t(key, fallback);
+            lengthSelect.appendChild(option);
+        }
+        lengthSelect.value = '0';
+        lengthGroup.appendChild(lengthSelect);
+        const lengthCol = document.createElement('div');
+        lengthCol.className = 'col-md-4';
+        lengthCol.appendChild(lengthGroup);
+        row.appendChild(lengthCol);
+
+        return row;
+    }
+
+    /**
+     * Fill the audience and tone selects and show each that has options.
+     *
+     * @param {HTMLElement} container
+     * @param {{audiences: Array<{uid: number, name: string}>, tones: Array<{uid: number, name: string}>}} options
+     * @private
+     */
+    _offerStyleOptions(container, options) {
+        for (const [role, list] of [['audience', options.audiences], ['tone', options.tones]]) {
+            const select = container.querySelector(`[data-role="${role}-select"]`);
+            const col = container.querySelector(`[data-role="${role}-col"]`);
+            if (!select || !col || list.length === 0) {
+                continue;
+            }
+            for (const item of list) {
+                const option = document.createElement('option');
+                option.value = String(item.uid);
+                option.textContent = item.name;
+                select.appendChild(option);
+            }
+            col.hidden = false;
+        }
+    }
+
+    /**
+     * The style choices as numbers; 0 means "no preference".
+     *
+     * @param {HTMLElement} container
+     * @returns {{audience: number, tone: number, length: number}}
+     * @private
+     */
+    _readStyle(container) {
+        const read = (role) => parseInt(container.querySelector(`[data-role="${role}-select"]`)?.value ?? '0', 10) || 0;
+        return { audience: read('audience'), tone: read('tone'), length: read('length') };
     }
 
     /**
@@ -173,7 +298,7 @@ export class CowriterDialog {
                 preview.replaceChildren(...Array.from(this._sanitizeHtml(streamed).childNodes));
             }, signal);
 
-            return { success: true, content: final.content ?? streamed, model: final.model };
+            return { success: true, content: final.content ?? streamed, model: final.model, targetWords: final.targetWords };
         } finally {
             preview.removeAttribute('aria-busy');
         }
@@ -326,7 +451,7 @@ export class CowriterDialog {
      */
     _showModal(
         tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid = null,
-        configurationsRequest = Promise.resolve([]),
+        configurationsRequest = Promise.resolve([]), styleRequest = Promise.resolve({ audiences: [], tones: [] }),
     ) {
         /** @type {Set<AbortController>} Track reference row listeners for cleanup */
         const referenceAbortControllers = new Set();
@@ -334,6 +459,7 @@ export class CowriterDialog {
             tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid,
         );
         configurationsRequest.then((configurations) => this._offerConfigurations(container, configurations));
+        styleRequest.then((options) => this._offerStyleOptions(container, options));
         /** @type {'idle'|'loading'|'result'} */
         let state = 'idle';
         let resultContent = '';
@@ -414,17 +540,18 @@ export class CowriterDialog {
                     }
 
                     const configuration = container.querySelector('[data-role="configuration-select"]')?.value || '';
+                    const style = this._readStyle(container);
 
                     const inputText = currentContext;
                     activeRequest = new AbortController();
                     const result = this._canStream()
                         ? await this._streamTask(preview, {
                             taskUid, context: currentContext, contextType, instruction, editorCapabilities,
-                            contextScope, recordContext, referencePages, configuration,
+                            contextScope, recordContext, referencePages, configuration, ...style,
                         }, activeRequest.signal)
                         : await this._service.executeTask(
                             taskUid, currentContext, contextType, instruction, editorCapabilities,
-                            contextScope, recordContext, referencePages, activeRequest.signal, configuration,
+                            contextScope, recordContext, referencePages, activeRequest.signal, configuration, style,
                         );
                     activeRequest = null;
 
@@ -443,6 +570,13 @@ export class CowriterDialog {
                                 infoText += ' | ' + t('ckeditor.dialog.tokens', '%s tokens', result.usage.totalTokens);
                             }
                             modelInfo.textContent = infoText;
+                            modelInfo.style.display = 'block';
+                        }
+                        if (result.targetWords) {
+                            // safeBody's nodes now live in the preview, so count what it shows.
+                            const words = (preview.textContent || '').trim().split(/\s+/).filter(Boolean).length;
+                            const wordsText = t('ckeditor.dialog.wordsTarget', 'About %s words (target %s)', words, result.targetWords);
+                            modelInfo.textContent = modelInfo.textContent ? `${modelInfo.textContent} | ${wordsText}` : wordsText;
                             modelInfo.style.display = 'block';
                         }
 
@@ -674,6 +808,7 @@ export class CowriterDialog {
         scopeCol.appendChild(contextGroup);
         configRow.appendChild(scopeCol);
         container.appendChild(configRow);
+        container.appendChild(this._buildStyleRow(idPrefix));
 
         // Reference pages section
         const refGroup = this._createFormGroup(t('ckeditor.dialog.referencePages', 'Reference pages (optional)'));

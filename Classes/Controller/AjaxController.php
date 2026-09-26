@@ -34,6 +34,8 @@ use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Style\StyleInstruction;
+use Netresearch\T3Cowriter\Service\Style\StyleInstructionBuilder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -119,6 +121,9 @@ final readonly class AjaxController
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
         private BackendLabels $labels = new BackendLabels(),
         private EventStreamEmitterInterface $eventStream = new ServerSentEventEmitter(),
+        // Optional so manual constructions without style choices keep working;
+        // the container injects it.
+        private ?StyleInstructionBuilder $styleInstructions = null,
     ) {}
 
     /**
@@ -420,6 +425,20 @@ final readonly class AjaxController
     }
 
     /**
+     * The audience and tone-of-voice prompt snippets an editor may choose in
+     * the dialog.
+     *
+     * @param ServerRequestInterface $request Required by TYPO3 AJAX action signature
+     */
+    public function getStyleOptionsAction(ServerRequestInterface $request): ResponseInterface
+    {
+        return new JsonResponse([
+            'success' => true,
+            ...($this->styleInstructions?->options() ?? ['audiences' => [], 'tones' => []]),
+        ]);
+    }
+
+    /**
      * Get available cowriter tasks for the frontend dialog.
      *
      * Returns active tasks in the 'content' category for the cowriter dialog.
@@ -520,7 +539,7 @@ final readonly class AjaxController
             return $prepared;
         }
 
-        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration] = $prepared;
+        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords] = $prepared;
 
         try {
             $response = $this->llmServiceManager->chatWithConfiguration(
@@ -546,6 +565,9 @@ final readonly class AjaxController
             }
 
             $responseData = CompleteResponse::success($response)->jsonSerialize();
+            if ($targetWords !== null) {
+                $responseData['targetWords'] = $targetWords;
+            }
 
             // Only expose raw LLM messages in TYPO3 development mode
             /** @var array{BE?: array{debug?: bool}} $typo3ConfVars */
@@ -590,7 +612,7 @@ final readonly class AjaxController
      * build the messages and choose the configuration. A refusal comes back
      * as the JSON response to send.
      *
-     * @return array{dto: ExecuteTaskRequest, task: Task|null, messages: list<array{role: string, content: string}>, configuration: LlmConfiguration}|ResponseInterface
+     * @return array{dto: ExecuteTaskRequest, task: Task|null, messages: list<array{role: string, content: string}>, configuration: LlmConfiguration, targetWords: int|null}|ResponseInterface
      */
     private function prepareTaskCall(ServerRequestInterface $request, RateLimitResult $rateLimitResult): array|ResponseInterface
     {
@@ -601,7 +623,8 @@ final readonly class AjaxController
             }
 
             $task     = $this->findTask($dto->taskUid);
-            $messages = $this->buildTaskMessages($dto, $this->surroundingContext($dto));
+            $style    = $this->styleInstructions?->build($dto) ?? new StyleInstruction();
+            $messages = $this->buildTaskMessages($dto, $this->surroundingContext($dto), $style->message);
 
             // The configuration the editor chose wins over the task's own, which
             // wins over the default. Each must be one the editor may use.
@@ -618,7 +641,13 @@ final readonly class AjaxController
             );
         }
 
-        return ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration];
+        return [
+            'dto'           => $dto,
+            'task'          => $task,
+            'messages'      => $messages,
+            'configuration' => $configuration,
+            'targetWords'   => $style->targetWords,
+        ];
     }
 
     /**
@@ -671,12 +700,12 @@ final readonly class AjaxController
 
     /**
      * The messages of a task call: the formatting rules, the scope, the
-     * editor content, the surrounding content, the editor capabilities, and
-     * the instruction last as the user message.
+     * editor content, the surrounding content, the editor capabilities, the
+     * editor's style choices, and the instruction last as the user message.
      *
      * @return list<array{role: string, content: string}>
      */
-    private function buildTaskMessages(ExecuteTaskRequest $dto, string $surroundingContext): array
+    private function buildTaskMessages(ExecuteTaskRequest $dto, string $surroundingContext, string $styleMessage): array
     {
         $messages = [];
 
@@ -734,6 +763,12 @@ final readonly class AjaxController
             ];
         }
 
+        // The editor's style choices for this request, last before the
+        // instruction so they apply over a tone the configuration sets.
+        if ($styleMessage !== '') {
+            $messages[] = ['role' => 'system', 'content' => $styleMessage];
+        }
+
         // Instruction is the user message — it IS the full prompt
         $messages[] = ['role' => 'user', 'content' => $dto->instruction];
 
@@ -764,7 +799,7 @@ final readonly class AjaxController
             return $prepared;
         }
 
-        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration] = $prepared;
+        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords] = $prepared;
 
         $this->eventStream->open($rateLimitResult->getHeaders());
 
@@ -798,11 +833,16 @@ final readonly class AjaxController
                 $this->eventStream->send(['content' => $pending]);
             }
 
-            $this->eventStream->send([
+            $done = [
                 'done'    => true,
                 'model'   => $configuration->getModelId(),
                 'content' => $this->convertMarkdownToHtml($content),
-            ]);
+            ];
+            if ($targetWords !== null) {
+                $done['targetWords'] = $targetWords;
+            }
+
+            $this->eventStream->send($done);
         } catch (ProviderException $e) {
             $this->logger->error('Task stream provider error', [
                 'taskUid'   => $dto->taskUid,

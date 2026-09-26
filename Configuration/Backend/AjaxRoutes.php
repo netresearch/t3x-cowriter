@@ -40,6 +40,10 @@ return [
         'path'   => '/cowriter/configurations',
         'target' => AjaxController::class . '::getConfigurationsAction',
     ],
+    'tx_cowriter_style_options' => [
+        'path'   => '/cowriter/style-options',
+        'target' => AjaxController::class . '::getStyleOptionsAction',
+    ],
     'tx_cowriter_tasks' => [
         'path'   => '/cowriter/tasks',
         'target' => AjaxController::class . '::getTasksAction',

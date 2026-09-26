@@ -641,6 +641,51 @@ describe('CowriterDialog', () => {
         });
     });
 
+    describe('style controls', () => {
+        const styleOptions = {
+            success: true,
+            audiences: [{ uid: 3, name: 'Experts' }],
+            tones: [],
+        };
+
+        it('should offer the audience snippets, hide an empty tone list and always offer the length', async () => {
+            mockService.getStyleOptions = vi.fn().mockResolvedValue(styleOptions);
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-role="audience-col"]')?.hidden).toBe(false));
+
+            expect([...document.querySelectorAll('[data-role="audience-select"] option')].map((o) => [o.value, o.textContent]))
+                .toEqual([['0', 'No preference'], ['3', 'Experts']]);
+            expect(document.querySelector('[data-role="tone-col"]').hidden).toBe(true);
+            expect([...document.querySelectorAll('[data-role="length-select"] option')].map((o) => o.value))
+                .toEqual(['-2', '-1', '0', '1', '2']);
+            expect(document.querySelector('[data-role="length-select"]').value).toBe('0');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should send the chosen style and show the word count against the target', async () => {
+            mockService.getStyleOptions = vi.fn().mockResolvedValue(styleOptions);
+            mockService.executeTask.mockResolvedValue({
+                success: true, content: '<p>one two three</p>', model: 'gpt-test', targetWords: 150,
+            });
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-role="audience-col"]')?.hidden).toBe(false));
+
+            document.querySelector('[data-role="audience-select"]').value = '3';
+            document.querySelector('[data-role="length-select"]').value = '-1';
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            expect(mockService.executeTask.mock.calls[0][10]).toEqual({ audience: 3, tone: 0, length: -1 });
+            await vi.waitFor(() => expect(document.querySelector('[data-role="model-info"]').textContent)
+                .toBe('Model: gpt-test | About 3 words (target 150)'));
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
     describe('execute flow', () => {
         it('should call executeTask with instruction from textarea', async () => {
             const dialog = new CowriterDialog(mockService);
@@ -660,7 +705,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'my selected text', 'selection', 'Improve:', '',
-                    'selection', null, [], expect.any(AbortSignal), '',
+                    'selection', null, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
                 );
             });
 
@@ -693,7 +738,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'full editor content here', 'content_element',
                     'Improve:', '',
-                    'text', null, [], expect.any(AbortSignal), '',
+                    'text', null, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
                 );
             });
 
@@ -728,7 +773,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     0, 'text', 'selection', 'Make it more formal', '',
-                    'selection', null, [], expect.any(AbortSignal), '',
+                    'selection', null, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
                 );
             });
 
@@ -1111,7 +1156,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Improve:', '',
-                    'page', recordContext, [], expect.any(AbortSignal), '',
+                    'page', recordContext, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
                 );
             });
 
@@ -1235,7 +1280,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Improve:', '',
                     'selection', rc,
-                    [{ pid: 5, relation: 'style guide' }], expect.any(AbortSignal), '',
+                    [{ pid: 5, relation: 'style guide' }], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
                 );
             });
 
@@ -1305,7 +1350,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Improve:', '',
                     'selection', rc,
-                    [{ pid: 5, relation: 'ref' }], expect.any(AbortSignal), '',
+                    [{ pid: 5, relation: 'ref' }], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
                 );
             });
 

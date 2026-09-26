@@ -87,8 +87,17 @@ final readonly class ExecuteTaskRequest
     private const ALLOWED_RECORD_TABLES = ['tt_content', 'pages'];
 
     /**
+     * The length step runs from much shorter (-2) to much longer (2); 0 asks
+     * for no change.
+     */
+    public const LENGTH_STEPS = [-2, -1, 0, 1, 2];
+
+    /**
      * @param array{table: string, uid: int, field: string}|null $recordContext
      * @param list<array{pid: int, relation: string}>            $referencePages
+     * @param int                                                $audience       uid of the audience prompt snippet; 0 for none
+     * @param int                                                $tone           uid of the tone-of-voice prompt snippet; 0 for none
+     * @param int                                                $length         one of {@see self::LENGTH_STEPS}
      */
     public function __construct(
         public int $taskUid,
@@ -100,6 +109,9 @@ final readonly class ExecuteTaskRequest
         public string $contextScope = '',
         public ?array $recordContext = null,
         public array $referencePages = [],
+        public int $audience = 0,
+        public int $tone = 0,
+        public int $length = 0,
     ) {}
 
     /**
@@ -131,6 +143,9 @@ final readonly class ExecuteTaskRequest
             contextScope: self::extractString($data, 'contextScope'),
             recordContext: self::extractRecordContext($data),
             referencePages: self::extractReferencePages($data),
+            audience: self::extractInt($data, 'audience'),
+            tone: self::extractInt($data, 'tone'),
+            length: self::extractInt($data, 'length'),
         );
     }
 
@@ -140,6 +155,10 @@ final readonly class ExecuteTaskRequest
     public function isValid(): bool
     {
         if ($this->taskUid < 0) {
+            return false;
+        }
+
+        if ($this->audience < 0 || $this->tone < 0 || !in_array($this->length, self::LENGTH_STEPS, true)) {
             return false;
         }
 

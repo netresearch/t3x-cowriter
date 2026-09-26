@@ -201,6 +201,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $this->assertArrayHasKey('tx_cowriter_stream', $decoded);
         $this->assertArrayHasKey('tx_cowriter_configurations', $decoded);
         $this->assertArrayHasKey('tx_cowriter_tasks', $decoded);
+        $this->assertArrayHasKey('tx_cowriter_style_options', $decoded);
         $this->assertArrayHasKey('tx_cowriter_task_execute', $decoded);
         $this->assertArrayHasKey('tx_cowriter_task_stream', $decoded);
         $this->assertArrayHasKey('tx_cowriter_context', $decoded);
@@ -237,6 +238,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $this->assertContains('ajax_tx_cowriter_stream', $generatedRoutes);
         $this->assertContains('ajax_tx_cowriter_configurations', $generatedRoutes);
         $this->assertContains('ajax_tx_cowriter_tasks', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_style_options', $generatedRoutes);
         $this->assertContains('ajax_tx_cowriter_task_execute', $generatedRoutes);
         $this->assertContains('ajax_tx_cowriter_task_stream', $generatedRoutes);
         $this->assertContains('ajax_tx_cowriter_context', $generatedRoutes);
