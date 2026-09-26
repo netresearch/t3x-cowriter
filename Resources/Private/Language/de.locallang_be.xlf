@@ -143,6 +143,10 @@
                 <source>You have no saved prompt with this number.</source>
                 <target>Sie haben keinen gespeicherten Prompt mit dieser Nummer.</target>
             </trans-unit>
+            <trans-unit id="error.toolNeedsApproval" resname="error.toolNeedsApproval">
+                <source>A tool asked for an approval, which the Cowriter dialog cannot give. Run the task without tools.</source>
+                <target>Ein Werkzeug hat eine Freigabe verlangt, die der Cowriter-Dialog nicht erteilen kann. Führen Sie die Aufgabe ohne Werkzeuge aus.</target>
+            </trans-unit>
             <trans-unit id="error.tool" resname="error.tool">
                 <source>Tool execution failed. Please try again.</source>
                 <target>Die Werkzeugausführung ist fehlgeschlagen. Bitte versuchen Sie es erneut.</target>
@@ -562,6 +566,14 @@
             <trans-unit id="ckeditor.dialog.variant" resname="ckeditor.dialog.variant">
                 <source>Version %s</source>
                 <target>Fassung %s</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.tools" resname="ckeditor.dialog.tools">
+                <source>Let the AI look up content with tools that change nothing</source>
+                <target>Die KI darf mit Werkzeugen nachschlagen, die nichts ändern</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.toolIterations" resname="ckeditor.dialog.toolIterations">
+                <source>Tool steps: %s</source>
+                <target>Werkzeugschritte: %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.contextScope" resname="ckeditor.dialog.contextScope">
                 <source>Context scope</source>

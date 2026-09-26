@@ -104,6 +104,7 @@ final readonly class ExecuteTaskRequest
      * @param int                                                $tone           uid of the tone-of-voice prompt snippet; 0 for none
      * @param int                                                $length         one of {@see self::LENGTH_STEPS}
      * @param int                                                $variants       versions to return, 1 to {@see self::MAX_VARIANTS}
+     * @param bool                                               $useTools       let the model call the tools that need no approval
      */
     public function __construct(
         public int $taskUid,
@@ -119,6 +120,7 @@ final readonly class ExecuteTaskRequest
         public int $tone = 0,
         public int $length = 0,
         public int $variants = 1,
+        public bool $useTools = false,
     ) {}
 
     /**
@@ -154,6 +156,7 @@ final readonly class ExecuteTaskRequest
             tone: self::extractInt($data, 'tone'),
             length: self::extractInt($data, 'length'),
             variants: max(1, self::extractInt($data, 'variants')),
+            useTools: in_array($data['useTools'] ?? false, [true, 1, '1', 'true'], true),
         );
     }
 
