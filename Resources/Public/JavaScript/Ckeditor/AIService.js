@@ -70,7 +70,7 @@ class AIServiceError extends Error {
 /**
  * The style choices that differ from "no preference", as request fields.
  *
- * @param {{audience?: number, tone?: number, length?: number}} style
+ * @param {{audience?: number, tone?: number, length?: number, variants?: number}} style
  * @returns {Record<string, number>}
  */
 function styleFields(style) {
@@ -80,6 +80,11 @@ function styleFields(style) {
         if (Number.isInteger(value) && value !== 0) {
             fields[key] = value;
         }
+    }
+    // One version is the default; only a request for more is sent.
+    const variants = Number(style?.variants ?? 1);
+    if (Number.isInteger(variants) && variants > 1) {
+        fields.variants = variants;
     }
     return fields;
 }

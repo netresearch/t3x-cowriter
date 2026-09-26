@@ -677,6 +677,22 @@ describe('AIService', () => {
         });
     });
 
+    describe('variants field', () => {
+        it('should send variants only when more than one version is asked for', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true, content: 'x' }) });
+            const service = new module.AIService();
+
+            await service.executeTask(1, 'text', 'selection', 'Improve', '', '', null, [], undefined, '', { variants: 2 });
+            await service.executeTask(1, 'text', 'selection', 'Improve', '', '', null, [], undefined, '', { variants: 1 });
+
+            expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body).variants).toBe(2);
+            expect(JSON.parse(globalThis.fetch.mock.calls[1][1].body)).not.toHaveProperty('variants');
+        });
+    });
+
     describe('getTasks', () => {
         it('should throw when tasks route is not configured', async () => {
             const service = new AIService();

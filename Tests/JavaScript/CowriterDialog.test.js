@@ -677,9 +677,52 @@ describe('CowriterDialog', () => {
             document.querySelector('[data-name="execute"]').click();
 
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
-            expect(mockService.executeTask.mock.calls[0][10]).toEqual({ audience: 3, tone: 0, length: -1 });
+            expect(mockService.executeTask.mock.calls[0][10]).toEqual({ audience: 3, tone: 0, length: -1, variants: 1 });
             await vi.waitFor(() => expect(document.querySelector('[data-role="model-info"]').textContent)
                 .toBe('Model: gpt-test | About 3 words (target 150)'));
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
+    describe('versions', () => {
+        it('should ask for two versions without streaming and insert the one the editor picks', async () => {
+            mockService._routes = { taskStream: '/typo3/ajax/tx_cowriter_task_stream' };
+            mockService.executeTaskStream = vi.fn();
+            mockService.executeTask.mockResolvedValue({
+                success: true, content: '<p>First</p>', variants: ['<p>First</p>', '<p>Second</p>'], model: 'gpt-test',
+            });
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-name="execute"]')).not.toBeNull());
+
+            document.querySelector('[data-role="variants-select"]').value = '2';
+            document.querySelector('[data-name="execute"]').click();
+
+            await vi.waitFor(() => expect(document.querySelectorAll('[data-role="variant-picker"] input[type="radio"]')).toHaveLength(2));
+            expect(mockService.executeTaskStream).not.toHaveBeenCalled();
+            expect(mockService.executeTask.mock.calls[0][10].variants).toBe(2);
+            const preview = document.querySelector('[data-role="result-preview"]');
+            expect(preview.innerHTML).toBe('<p>First</p>');
+
+            const second = document.querySelectorAll('[data-role="variant-picker"] input[type="radio"]')[1];
+            second.checked = true;
+            second.dispatchEvent(new Event('change'));
+            expect(preview.innerHTML).toBe('<p>Second</p>');
+
+            document.querySelector('[data-name="insert"]').click();
+            await expect(showPromise).resolves.toEqual({ content: '<p>Second</p>' });
+        });
+
+        it('should show no picker for a single answer', async () => {
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-name="execute"]')).not.toBeNull());
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => expect(document.querySelector('[data-role="result-preview"]').textContent).toContain('Improved text content'));
+
+            expect(document.querySelector('[data-role="variant-picker"]')).toBeNull();
 
             document.querySelector('[data-name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
@@ -705,7 +748,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'my selected text', 'selection', 'Improve:', '',
-                    'selection', null, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
+                    'selection', null, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0, variants: 1 },
                 );
             });
 
@@ -738,7 +781,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'full editor content here', 'content_element',
                     'Improve:', '',
-                    'text', null, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
+                    'text', null, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0, variants: 1 },
                 );
             });
 
@@ -773,7 +816,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     0, 'text', 'selection', 'Make it more formal', '',
-                    'selection', null, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
+                    'selection', null, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0, variants: 1 },
                 );
             });
 
@@ -1156,7 +1199,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Improve:', '',
-                    'page', recordContext, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
+                    'page', recordContext, [], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0, variants: 1 },
                 );
             });
 
@@ -1280,7 +1323,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Improve:', '',
                     'selection', rc,
-                    [{ pid: 5, relation: 'style guide' }], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
+                    [{ pid: 5, relation: 'style guide' }], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0, variants: 1 },
                 );
             });
 
@@ -1350,7 +1393,7 @@ describe('CowriterDialog', () => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
                     1, 'text', 'selection', 'Improve:', '',
                     'selection', rc,
-                    [{ pid: 5, relation: 'ref' }], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0 },
+                    [{ pid: 5, relation: 'ref' }], expect.any(AbortSignal), '', { audience: 0, tone: 0, length: 0, variants: 1 },
                 );
             });
 

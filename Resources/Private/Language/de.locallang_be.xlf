@@ -495,6 +495,14 @@
                 <source>About %s words (target %s)</source>
                 <target>Etwa %s Wörter (Ziel %s)</target>
             </trans-unit>
+            <trans-unit id="ckeditor.dialog.variants" resname="ckeditor.dialog.variants">
+                <source>Versions</source>
+                <target>Fassungen</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.variant" resname="ckeditor.dialog.variant">
+                <source>Version %s</source>
+                <target>Fassung %s</target>
+            </trans-unit>
             <trans-unit id="ckeditor.dialog.contextScope" resname="ckeditor.dialog.contextScope">
                 <source>Context scope</source>
                 <target>Kontextumfang</target>
