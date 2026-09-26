@@ -29,6 +29,7 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -110,7 +111,7 @@ final class FieldSuggestionControllerTest extends TestCase
         return new FieldSuggestionController(
             $this->reader,
             new FieldSuggestionService($this->completion, $this->slugBuilder),
-            $this->configurationRepository,
+            ConfigurationAccessDouble::selector($this->configurationRepository),
             $this->rateLimiter,
             $context,
             $logger,

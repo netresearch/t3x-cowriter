@@ -77,6 +77,7 @@ export class AIService {
         chat: null,
         complete: null,
         stream: null,
+        configurations: null,
         tasks: null,
         taskExecute: null,
         context: null,
@@ -96,6 +97,7 @@ export class AIService {
             this._routes.chat = TYPO3.settings.ajaxUrls.tx_cowriter_chat || null;
             this._routes.complete = TYPO3.settings.ajaxUrls.tx_cowriter_complete || null;
             this._routes.stream = TYPO3.settings.ajaxUrls.tx_cowriter_stream || null;
+            this._routes.configurations = TYPO3.settings.ajaxUrls.tx_cowriter_configurations || null;
             this._routes.tasks = TYPO3.settings.ajaxUrls.tx_cowriter_tasks || null;
             this._routes.taskExecute = TYPO3.settings.ajaxUrls.tx_cowriter_task_execute || null;
             this._routes.context = TYPO3.settings.ajaxUrls.tx_cowriter_context || null;
@@ -309,6 +311,29 @@ export class AIService {
     }
 
     /**
+     * Fetch the LLM configurations the current backend user may use.
+     *
+     * @returns {Promise<{success: boolean, configurations: Array<{identifier: string, name: string, isDefault: boolean}>}>}
+     */
+    async getConfigurations() {
+        if (!this._routes.configurations) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
+
+        const response = await fetch(this._routes.configurations, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            await this._throwResponseError(response);
+        }
+
+        return response.json();
+    }
+
+    /**
      * Fetch available cowriter tasks.
      *
      * @returns {Promise<{success: boolean, tasks: Array<{uid: number, identifier: string, name: string, description: string, promptTemplate: string}>}>}
@@ -374,13 +399,14 @@ export class AIService {
      * @param {{table: string, uid: number, field: string}|null} [recordContext=null]
      * @param {Array<{pid: number, relation: string}>} [referencePages=[]]
      * @param {AbortSignal} [signal] - Optional AbortSignal to cancel the request
+     * @param {string} [configuration=''] - Identifier of the LLM configuration the editor chose; '' for the task's own
      * @returns {Promise<CompleteResponse>}
      */
     async executeTask(
         taskUid, context, contextType,
         instruction = '', editorCapabilities = '',
         contextScope = '', recordContext = null, referencePages = [],
-        signal = undefined,
+        signal = undefined, configuration = '',
     ) {
         if (!this._routes.taskExecute) {
             throw new Error(
@@ -396,6 +422,7 @@ export class AIService {
             body: JSON.stringify({
                 taskUid, context, contextType, instruction, editorCapabilities,
                 contextScope, recordContext, referencePages,
+                ...(configuration ? { configuration } : {}),
             }),
             signal,
         });

@@ -24,6 +24,7 @@ use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -118,7 +119,7 @@ abstract class AbstractE2ETestCase extends TestCase
         // Create controller with mocked dependencies
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -237,6 +238,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $config->method('getIdentifier')->willReturn($identifier);
         $config->method('getName')->willReturn($name);
         $config->method('isDefault')->willReturn($isDefault);
+        $config->method('isActive')->willReturn(true);
         $config->method('getModelId')->willReturn($model);
         $config->method('toChatOptions')->willReturn($chatOptions);
 

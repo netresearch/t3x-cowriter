@@ -19,6 +19,7 @@ use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
+use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Override;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -70,7 +71,7 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
 
         $this->subject = new TranslationController(
             $this->translationServiceMock,
-            $configurationRepositoryMock,
+            ConfigurationAccessDouble::selector($configurationRepositoryMock),
             $this->rateLimiterMock,
             $this->contextMock,
             new NullLogger(),

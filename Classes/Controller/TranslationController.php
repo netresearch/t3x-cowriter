@@ -11,8 +11,6 @@ namespace Netresearch\T3Cowriter\Controller;
 
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
-use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
-use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\NrLlm\Specialized\Translation\LlmTranslator;
@@ -20,6 +18,7 @@ use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\CallerSource;
+use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
@@ -44,7 +43,7 @@ final readonly class TranslationController
 
     public function __construct(
         private TranslationServiceInterface $translationService,
-        private LlmConfigurationRepository $configurationRepository,
+        private ConfigurationSelector $configurationSelector,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
@@ -93,6 +92,24 @@ final readonly class TranslationController
             );
         }
 
+        // A pinned configuration must exist, be active and be one the editor
+        // may use. An unknown one is refused rather than silently replaced by
+        // the default path, which would apply another persona, tone and model
+        // without anyone noticing. Without a pin, translation takes the
+        // default path below.
+        $configuration = null;
+        if ($translationRequest->configuration !== null && $translationRequest->configuration !== '') {
+            $selection     = $this->configurationSelector->trySelect($translationRequest->configuration);
+            $configuration = $selection->configuration;
+            if (!$configuration instanceof LlmConfiguration) {
+                return $this->jsonResponseWithRateLimitHeaders(
+                    ['success' => false, 'error' => $this->labels->get($selection->errorLabel)],
+                    $rateLimitResult,
+                    $selection->status,
+                );
+            }
+        }
+
         try {
             // withCallerSource() names this extension on the telemetry row so
             // Analytics attributes translations to it (nr-llm ADR-177).
@@ -109,8 +126,6 @@ final readonly class TranslationController
             // When an editor pins a stored configuration, route through the
             // per-configuration path (nr-llm 0.22, #428) so the configuration's
             // persona/tone, model and provider apply.
-            $configuration = $this->resolveConfiguration($translationRequest->configuration);
-
             if ($configuration instanceof LlmConfiguration) {
                 $result = $this->translationService->translateForConfiguration(
                     $translationRequest->text,
@@ -233,35 +248,6 @@ final readonly class TranslationController
         }
 
         return $this->jsonResponseWithRateLimitHeaders($payload, $rateLimitResult);
-    }
-
-    /**
-     * Resolve a pinned configuration by identifier. Returns null when no
-     * identifier was supplied, so translation uses the default LLM path.
-     *
-     * A requested-but-unknown identifier is an error, not a silent fallback:
-     * falling back would apply the default persona/tone/model instead of the
-     * one the editor asked for, without anyone noticing. The thrown exception
-     * is caught in translateAction() and surfaced as a configuration error.
-     *
-     * @throws ConfigurationNotFoundException when $identifier is given but no
-     *                                        matching configuration exists
-     */
-    private function resolveConfiguration(?string $identifier): ?LlmConfiguration
-    {
-        if ($identifier === null || $identifier === '') {
-            return null;
-        }
-
-        $configuration = $this->configurationRepository->findOneByIdentifier($identifier);
-        if (!$configuration instanceof LlmConfiguration) {
-            throw new ConfigurationNotFoundException(
-                sprintf('LLM configuration "%s" not found.', $identifier),
-                1784419200,
-            );
-        }
-
-        return $configuration;
     }
 
     /**

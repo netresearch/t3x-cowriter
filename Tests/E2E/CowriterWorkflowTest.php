@@ -17,6 +17,7 @@ use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
+use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -74,7 +75,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -527,7 +528,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -564,7 +565,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -728,7 +729,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -882,7 +883,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -923,7 +924,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -1358,7 +1359,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $context->method('getPropertyFromAspect')->willReturn(1);
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -1454,7 +1455,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
 
         $controller = new AjaxController(
             $stack['serviceManager'],
-            $stack['configRepo'],
+            ConfigurationAccessDouble::selector($stack['configRepo']),
             $stack['taskRepo'],
             $stack['rateLimiter'],
             $stack['context'],
@@ -1491,7 +1492,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
 
         $controller = new AjaxController(
             $stack['serviceManager'],
-            $stack['configRepo'],
+            ConfigurationAccessDouble::selector($stack['configRepo']),
             $stack['taskRepo'],
             $stack['rateLimiter'],
             $stack['context'],
@@ -1855,7 +1856,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
 
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -1929,7 +1930,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
 
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -1982,7 +1983,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
 
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -2131,7 +2132,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
 
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,
@@ -2199,7 +2200,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
 
         $controller = new AjaxController(
             $serviceManager,
-            $configRepo,
+            ConfigurationAccessDouble::selector($configRepo),
             $taskRepo,
             $rateLimiter,
             $context,

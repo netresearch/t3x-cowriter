@@ -13,7 +13,6 @@ use JsonException;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Task;
-use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
@@ -25,6 +24,7 @@ use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
 use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\CallerSource;
+use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
@@ -96,7 +96,7 @@ final readonly class AjaxController
 
     public function __construct(
         private LlmServiceManagerInterface $llmServiceManager,
-        private LlmConfigurationRepository $configurationRepository,
+        private ConfigurationSelector $configurationSelector,
         private TaskRepository $taskRepository,
         private RateLimiterInterface $rateLimiter,
         private Context $context,
@@ -158,12 +158,13 @@ final readonly class AjaxController
 
         // Resolve configuration from request or fall back to default
         $configIdentifier = isset($body['configuration']) && is_string($body['configuration']) ? $body['configuration'] : null;
-        $configuration    = $this->resolveConfiguration($configIdentifier);
+        $selection        = $this->configurationSelector->trySelect($configIdentifier);
+        $configuration    = $selection->configuration;
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->labels->get('error.noConfiguration')],
+                ['success' => false, 'error' => $this->labels->get($selection->errorLabel)],
                 $rateLimitResult,
-                404,
+                $selection->status,
             );
         }
 
@@ -231,12 +232,13 @@ final readonly class AjaxController
         }
 
         // Resolve configuration (from identifier or default)
-        $configuration = $this->resolveConfiguration($dto->configuration);
+        $selection     = $this->configurationSelector->trySelect($dto->configuration);
+        $configuration = $selection->configuration;
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error($this->labels->get('error.noConfiguration'))->jsonSerialize(),
+                CompleteResponse::error($this->labels->get($selection->errorLabel))->jsonSerialize(),
                 $rateLimitResult,
-                404,
+                $selection->status,
             );
         }
 
@@ -320,9 +322,10 @@ final readonly class AjaxController
         }
 
         // Resolve configuration (from identifier or default)
-        $configuration = $this->resolveConfiguration($dto->configuration);
+        $selection     = $this->configurationSelector->trySelect($dto->configuration);
+        $configuration = $selection->configuration;
         if (!$configuration instanceof LlmConfiguration) {
-            return $this->sseErrorResponse($this->labels->get('error.noConfiguration'), 404);
+            return $this->sseErrorResponse($this->labels->get($selection->errorLabel), $selection->status);
         }
 
         // Build the streaming response using a generator
@@ -384,20 +387,15 @@ final readonly class AjaxController
     /**
      * Get available LLM configurations for the frontend.
      *
-     * Returns list of active configurations with identifier, name, and default flag.
+     * Returns the active configurations the current backend user may use, with
+     * identifier, name, and default flag.
      *
      * @param ServerRequestInterface $request Required by TYPO3 AJAX action signature
      */
     public function getConfigurationsAction(ServerRequestInterface $request): ResponseInterface
     {
-        $configurations = $this->configurationRepository->findActive();
-
         $list = [];
-        foreach ($configurations as $config) {
-            if (!$config instanceof LlmConfiguration) {
-                continue;
-            }
-
+        foreach ($this->configurationSelector->selectable() as $config) {
             $list[] = [
                 'identifier' => $config->getIdentifier(),
                 'name'       => $config->getName(),
@@ -438,6 +436,7 @@ final readonly class AjaxController
                 'name'           => $task->getName(),
                 'description'    => $task->getDescription(),
                 'promptTemplate' => $task->getPromptTemplate(),
+                'configuration'  => $this->taskConfiguration($task),
             ];
         }
 
@@ -616,17 +615,15 @@ final readonly class AjaxController
         // Instruction is the user message — it IS the full prompt
         $messages[] = ['role' => 'user', 'content' => $dto->instruction];
 
-        // Resolve configuration: task's config → request's config → default
-        $taskConfig    = $task?->getConfiguration();
-        $configuration = $taskConfig instanceof LlmConfiguration
-            ? $taskConfig
-            : $this->resolveConfiguration($dto->configuration);
-
+        // The configuration the editor chose wins over the task's own, which
+        // wins over the default. Each must be one the editor may use.
+        $selection     = $this->configurationSelector->trySelect($dto->configuration, $task?->getConfiguration());
+        $configuration = $selection->configuration;
         if (!$configuration instanceof LlmConfiguration) {
             return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error($this->labels->get('error.noConfiguration'))->jsonSerialize(),
+                CompleteResponse::error($this->labels->get($selection->errorLabel))->jsonSerialize(),
                 $rateLimitResult,
-                404,
+                $selection->status,
             );
         }
 
@@ -819,15 +816,19 @@ final readonly class AjaxController
     }
 
     /**
-     * Resolve configuration by identifier or return default.
+     * The configuration a task runs on when the editor chooses none, so the
+     * dialog can name it; null when the task falls back to the default.
+     *
+     * @return array{identifier: string, name: string}|null
      */
-    private function resolveConfiguration(?string $identifier): ?LlmConfiguration
+    private function taskConfiguration(Task $task): ?array
     {
-        if ($identifier !== null && $identifier !== '') {
-            return $this->configurationRepository->findOneByIdentifier($identifier);
+        $configuration = $task->getConfiguration();
+        if (!$configuration instanceof LlmConfiguration) {
+            return null;
         }
 
-        return $this->configurationRepository->findDefault();
+        return ['identifier' => $configuration->getIdentifier(), 'name' => $configuration->getName()];
     }
 
     /**

@@ -40,6 +40,7 @@ use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\Dto\Severity;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -92,7 +93,7 @@ final class TranslationControllerTest extends TestCase
 
         $this->subject = new TranslationController(
             $this->translationServiceStub,
-            $this->configurationRepositoryStub,
+            ConfigurationAccessDouble::selector($this->configurationRepositoryStub),
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
@@ -176,8 +177,10 @@ final class TranslationControllerTest extends TestCase
         $this->rateLimiterStub->method('checkLimit')
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
 
+        $pinned = $this->createStub(LlmConfiguration::class);
+        $pinned->method('isActive')->willReturn(true);
         $this->configurationRepositoryStub->method('findOneByIdentifier')
-            ->willReturn($this->createStub(LlmConfiguration::class));
+            ->willReturn($pinned);
 
         $captured          = new stdClass();
         $captured->options = null;
@@ -433,6 +436,7 @@ final class TranslationControllerTest extends TestCase
         );
 
         $configuration = $this->createStub(LlmConfiguration::class);
+        $configuration->method('isActive')->willReturn(true);
 
         $configurationRepositoryMock = $this->createMock(LlmConfigurationRepository::class);
         $configurationRepositoryMock->expects(self::once())
@@ -691,12 +695,10 @@ final class TranslationControllerTest extends TestCase
         ]);
         $response = $controller->translateAction($request);
 
-        self::assertSame(500, $response->getStatusCode());
+        self::assertSame(404, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
-        self::assertNotSame('', $data['error']);
-        // Classified as a configuration error, so the status-page link is offered.
-        self::assertArrayHasKey('statusUrl', $data);
+        self::assertSame('The selected LLM configuration does not exist or is inactive.', $data['error']);
     }
 
     /**
@@ -716,7 +718,7 @@ final class TranslationControllerTest extends TestCase
 
         return new TranslationController(
             $translationService,
-            $configurationRepository ?? $this->configurationRepositoryStub,
+            ConfigurationAccessDouble::selector($configurationRepository ?? $this->configurationRepositoryStub),
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),

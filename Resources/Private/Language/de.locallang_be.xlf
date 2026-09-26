@@ -71,6 +71,18 @@
                 <source>No LLM configuration available. Please configure the nr_llm extension.</source>
                 <target>Keine LLM-Konfiguration verfügbar. Bitte konfigurieren Sie die Erweiterung nr_llm.</target>
             </trans-unit>
+            <trans-unit id="error.configurationNotFound" resname="error.configurationNotFound">
+                <source>The selected LLM configuration does not exist or is inactive.</source>
+                <target>Die gewählte LLM-Konfiguration existiert nicht oder ist inaktiv.</target>
+            </trans-unit>
+            <trans-unit id="error.configurationDenied" resname="error.configurationDenied">
+                <source>You are not allowed to use this LLM configuration.</source>
+                <target>Sie dürfen diese LLM-Konfiguration nicht verwenden.</target>
+            </trans-unit>
+            <trans-unit id="error.taskConfigurationInactive" resname="error.taskConfigurationInactive">
+                <source>The LLM configuration of this task is inactive. Choose another configuration, or ask an administrator to activate it.</source>
+                <target>Die LLM-Konfiguration dieser Aufgabe ist inaktiv. Wählen Sie eine andere Konfiguration oder bitten Sie eine Administratorin oder einen Administrator, sie zu aktivieren.</target>
+            </trans-unit>
             <trans-unit id="error.notConfigured" resname="error.notConfigured">
                 <source>LLM is not configured yet.</source>
                 <target>Das LLM ist noch nicht konfiguriert.</target>
@@ -426,6 +438,22 @@
             <trans-unit id="ckeditor.dialog.editTasks.title" resname="ckeditor.dialog.editTasks.title">
                 <source>Manage tasks in LLM module</source>
                 <target>Aufgaben im LLM-Modul verwalten</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.configuration" resname="ckeditor.dialog.configuration">
+                <source>LLM configuration</source>
+                <target>LLM-Konfiguration</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.configuration.task" resname="ckeditor.dialog.configuration.task">
+                <source>Task setting (%s)</source>
+                <target>Einstellung der Aufgabe (%s)</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.configuration.default" resname="ckeditor.dialog.configuration.default">
+                <source>Default configuration</source>
+                <target>Standardkonfiguration</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.configuration.defaultMarker" resname="ckeditor.dialog.configuration.defaultMarker">
+                <source>%s (default)</source>
+                <target>%s (Standard)</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.contextScope" resname="ckeditor.dialog.contextScope">
                 <source>Context scope</source>

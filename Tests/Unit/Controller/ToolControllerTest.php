@@ -19,6 +19,7 @@ use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Controller\ToolController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -54,7 +55,7 @@ final class ToolControllerTest extends TestCase
 
         $this->subject = new ToolController(
             $this->toolLoopServiceStub,
-            $this->configRepositoryStub,
+            ConfigurationAccessDouble::selector($this->configRepositoryStub),
             $this->rateLimiterStub,
             $contextStub,
             new NullLogger(),
@@ -197,7 +198,7 @@ final class ToolControllerTest extends TestCase
     }
 
     #[Test]
-    public function executeActionReturns400ForUnknownRequestedConfiguration(): void
+    public function executeActionReturns404ForUnknownRequestedConfiguration(): void
     {
         $this->allowRateLimit();
         // A requested id that does not resolve → error, not silent fallback.
@@ -208,9 +209,9 @@ final class ToolControllerTest extends TestCase
             'configuration' => 'ghost',
         ]));
 
-        self::assertSame(400, $response->getStatusCode());
+        self::assertSame(404, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
-        self::assertStringContainsString('ghost', $data['error']);
+        self::assertSame('The selected LLM configuration does not exist or is inactive.', $data['error']);
     }
 
     #[Test]
@@ -227,7 +228,7 @@ final class ToolControllerTest extends TestCase
 
         $subject = new ToolController(
             $this->toolLoopServiceStub,
-            $configRepository,
+            ConfigurationAccessDouble::selector($configRepository),
             $rateLimiter,
             $contextStub,
             new NullLogger(),
