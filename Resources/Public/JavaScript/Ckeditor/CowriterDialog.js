@@ -37,6 +37,16 @@ import { t } from '@netresearch/t3_cowriter/Labels';
  */
 
 /**
+ * @typedef {object} SavedPromptItem
+ * @property {number} uid
+ * @property {string} title
+ * @property {string} instruction
+ * @property {boolean} own - The editor saved it
+ * @property {boolean} shared
+ * @property {boolean} awaitingApproval - Shared, but not yet visible to other editors
+ */
+
+/**
  * Context scope identifiers used for backend API calls.
  * @type {readonly string[]}
  */
@@ -102,6 +112,7 @@ export class CowriterDialog {
         // runs on its own configuration, as before.
         const configurationsRequest = this._loadConfigurations();
         const styleRequest = this._loadStyleOptions();
+        const promptsRequest = this._loadSavedPrompts();
         let tasks;
         try {
             const response = await this._service.getTasks();
@@ -119,7 +130,7 @@ export class CowriterDialog {
 
         return this._showModal(
             tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid,
-            configurationsRequest, styleRequest,
+            configurationsRequest, styleRequest, promptsRequest,
         );
     }
 
@@ -160,6 +171,24 @@ export class CowriterDialog {
         try {
             const response = await this._service.getConfigurations();
             return Array.isArray(response?.configurations) ? response.configurations : [];
+        } catch {
+            return [];
+        }
+    }
+
+    /**
+     * The saved prompts the editor sees; empty when the list is unavailable.
+     *
+     * @returns {Promise<SavedPromptItem[]>}
+     * @private
+     */
+    async _loadSavedPrompts() {
+        if (typeof this._service.getSavedPrompts !== 'function') {
+            return [];
+        }
+        try {
+            const response = await this._service.getSavedPrompts();
+            return Array.isArray(response?.prompts) ? response.prompts : [];
         } catch {
             return [];
         }
@@ -394,6 +423,189 @@ export class CowriterDialog {
     }
 
     /**
+     * Add the saved prompts to the task select: the editor's own prompts in
+     * one group, the shared prompts of others in a second. Choosing one fills
+     * the instruction and runs it as a custom instruction.
+     *
+     * @param {HTMLElement} container
+     * @param {SavedPromptItem[]} prompts
+     * @private
+     */
+    _offerSavedPrompts(container, prompts) {
+        for (const prompt of prompts) {
+            this._addPromptOption(container, prompt);
+        }
+    }
+
+    /**
+     * @param {HTMLElement} container
+     * @param {SavedPromptItem} prompt
+     * @returns {HTMLOptionElement|null}
+     * @private
+     */
+    _addPromptOption(container, prompt) {
+        const select = container.querySelector('[data-role="task-select"]');
+        if (!select) {
+            return null;
+        }
+        const role = prompt.own ? 'prompts-own' : 'prompts-shared';
+        let group = select.querySelector(`optgroup[data-role="${role}"]`);
+        if (!group) {
+            group = document.createElement('optgroup');
+            group.dataset.role = role;
+            group.label = prompt.own
+                ? t('ckeditor.dialog.prompts.own', 'My prompts')
+                : t('ckeditor.dialog.prompts.shared', 'Shared prompts');
+            // Own prompts stand before the shared ones.
+            const shared = select.querySelector('optgroup[data-role="prompts-shared"]');
+            select.insertBefore(group, prompt.own ? shared : null);
+        }
+
+        const option = document.createElement('option');
+        option.value = `prompt-${prompt.uid}`;
+        option.textContent = prompt.awaitingApproval
+            ? t('ckeditor.dialog.prompts.awaitingApproval', '%s (awaiting approval)', prompt.title)
+            : prompt.title;
+        option.dataset.promptUid = String(prompt.uid);
+        option.dataset.promptOwn = prompt.own ? '1' : '';
+        option.dataset.instruction = prompt.instruction;
+        option.dataset.description = '';
+        option.dataset.configurationName = '';
+        group.appendChild(option);
+
+        return option;
+    }
+
+    /**
+     * Save the instruction as a prompt of the editor and select it.
+     *
+     * @param {HTMLElement} container
+     * @private
+     */
+    async _savePrompt(container) {
+        const titleInput = container.querySelector('[data-role="prompt-title"]');
+        const shareInput = container.querySelector('[data-role="prompt-share"]');
+        const instruction = container.querySelector('[data-role="instruction"]').value.trim();
+        const title = titleInput.value.trim();
+        if (title === '' || instruction === '') {
+            titleInput.focus();
+            this._promptStatus(container, t('ckeditor.dialog.prompts.failed', 'The prompt could not be saved or deleted.'));
+            return;
+        }
+
+        try {
+            const response = await this._service.savePrompt({ title, instruction, shared: shareInput.checked });
+            const option = this._addPromptOption(container, response.prompt);
+            const select = container.querySelector('[data-role="task-select"]');
+            select.value = option.value;
+            select.dispatchEvent(new Event('change'));
+            titleInput.value = '';
+            shareInput.checked = false;
+            this._promptStatus(container, response.prompt.awaitingApproval
+                ? t('ckeditor.dialog.prompts.savedForApproval', 'Prompt saved. Other editors see it once an administrator approves it.')
+                : t('ckeditor.dialog.prompts.saved', 'Prompt saved.'));
+        } catch (error) {
+            this._promptStatus(container, error.message || t('ckeditor.dialog.prompts.failed', 'The prompt could not be saved or deleted.'));
+        }
+    }
+
+    /**
+     * Delete the selected own prompt and fall back to the custom instruction.
+     *
+     * @param {HTMLElement} container
+     * @private
+     */
+    async _deletePrompt(container) {
+        const select = container.querySelector('[data-role="task-select"]');
+        const option = select.options[select.selectedIndex];
+        const uid = parseInt(option?.dataset.promptUid || '', 10);
+        if (!uid || option.dataset.promptOwn !== '1') {
+            return;
+        }
+
+        try {
+            await this._service.deletePrompt(uid);
+            const group = option.parentElement;
+            option.remove();
+            if (group?.tagName === 'OPTGROUP' && group.children.length === 0) {
+                group.remove();
+            }
+            select.value = '0';
+            select.dispatchEvent(new Event('change'));
+            this._promptStatus(container, t('ckeditor.dialog.prompts.deleted', 'Prompt deleted.'));
+        } catch (error) {
+            this._promptStatus(container, error.message || t('ckeditor.dialog.prompts.failed', 'The prompt could not be saved or deleted.'));
+        }
+    }
+
+    /**
+     * @param {HTMLElement} container
+     * @param {string} message
+     * @private
+     */
+    _promptStatus(container, message) {
+        const status = container.querySelector('[data-role="prompt-status"]');
+        if (status) {
+            status.textContent = message;
+        }
+    }
+
+    /**
+     * "Save as prompt": a disclosure below the instruction with a title, the
+     * share switch and the save button. Hidden when the server offers no
+     * prompt storage.
+     *
+     * @param {string} idPrefix
+     * @returns {HTMLElement}
+     * @private
+     */
+    _buildPromptSaver(idPrefix) {
+        const details = document.createElement('details');
+        details.className = 'mt-2';
+        details.dataset.role = 'prompt-saver';
+        details.hidden = typeof this._service.savePrompt !== 'function';
+
+        const summary = document.createElement('summary');
+        summary.textContent = t('ckeditor.dialog.prompts.save', 'Save as prompt');
+        details.appendChild(summary);
+
+        const titleId = `${idPrefix}-prompt-title`;
+        const titleGroup = this._createFormGroup(t('ckeditor.dialog.prompts.title', 'Prompt title'), titleId);
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.className = 'form-control';
+        titleInput.id = titleId;
+        titleInput.maxLength = 255;
+        titleInput.dataset.role = 'prompt-title';
+        titleGroup.appendChild(titleInput);
+        details.appendChild(titleGroup);
+
+        const shareId = `${idPrefix}-prompt-share`;
+        const shareWrap = document.createElement('div');
+        shareWrap.className = 'form-check mb-2';
+        const shareInput = document.createElement('input');
+        shareInput.type = 'checkbox';
+        shareInput.className = 'form-check-input';
+        shareInput.id = shareId;
+        shareInput.dataset.role = 'prompt-share';
+        const shareLabel = document.createElement('label');
+        shareLabel.className = 'form-check-label';
+        shareLabel.htmlFor = shareId;
+        shareLabel.textContent = t('ckeditor.dialog.prompts.share', 'Share with other editors');
+        shareWrap.append(shareInput, shareLabel);
+        details.appendChild(shareWrap);
+
+        const saveButton = document.createElement('button');
+        saveButton.type = 'button';
+        saveButton.className = 'btn btn-sm btn-default';
+        saveButton.dataset.role = 'prompt-save';
+        saveButton.textContent = t('ckeditor.dialog.prompts.save', 'Save as prompt');
+        details.appendChild(saveButton);
+
+        return details;
+    }
+
+    /**
      * Label of the picker's first option: what runs when the editor chooses
      * nothing, which is the task's own configuration or else the default.
      *
@@ -512,6 +724,7 @@ export class CowriterDialog {
     _showModal(
         tasks, selectedText, fullContent, editorCapabilities, recordContext, preSelectedTaskUid = null,
         configurationsRequest = Promise.resolve([]), styleRequest = Promise.resolve({ audiences: [], tones: [] }),
+        promptsRequest = Promise.resolve([]),
     ) {
         /** @type {Set<AbortController>} Track reference row listeners for cleanup */
         const referenceAbortControllers = new Set();
@@ -520,6 +733,11 @@ export class CowriterDialog {
         );
         configurationsRequest.then((configurations) => this._offerConfigurations(container, configurations));
         styleRequest.then((options) => this._offerStyleOptions(container, options));
+        promptsRequest.then((prompts) => this._offerSavedPrompts(container, prompts));
+        container.querySelector('[data-role="prompt-save"]')
+            ?.addEventListener('click', () => this._savePrompt(container));
+        container.querySelector('[data-role="prompt-delete"]')
+            ?.addEventListener('click', () => this._deletePrompt(container));
         /** @type {'idle'|'loading'|'result'} */
         let state = 'idle';
         let resultContent = '';
@@ -581,9 +799,10 @@ export class CowriterDialog {
                 modelInfo.style.display = 'none';
 
                 try {
-                    const taskUid = parseInt(
-                        container.querySelector('[data-role="task-select"]').value, 10,
-                    );
+                    const taskSelect = container.querySelector('[data-role="task-select"]');
+                    const taskUid = taskSelect.options[taskSelect.selectedIndex]?.dataset.promptUid
+                        ? 0
+                        : parseInt(taskSelect.value, 10);
                     const contextScope = container.querySelector('[data-role="scope-select"]').value;
                     const contextType = hasSelection ? 'selection' : 'content_element';
                     const instruction = container.querySelector(
@@ -809,6 +1028,13 @@ export class CowriterDialog {
             editLink.title = t('ckeditor.dialog.editTasks.title', 'Manage tasks in LLM module');
             taskDescRow.appendChild(editLink);
         }
+        const deletePromptButton = document.createElement('button');
+        deletePromptButton.type = 'button';
+        deletePromptButton.className = 'btn btn-sm btn-link text-nowrap ms-2 p-0';
+        deletePromptButton.dataset.role = 'prompt-delete';
+        deletePromptButton.textContent = t('ckeditor.dialog.prompts.delete', 'Delete prompt');
+        deletePromptButton.hidden = true;
+        taskDescRow.appendChild(deletePromptButton);
         taskGroup.appendChild(taskDescRow);
 
         // Context scope dropdown
@@ -936,12 +1162,26 @@ export class CowriterDialog {
             instructionInput.value = this._resolveTemplate(initialTemplate);
         }
         instructionGroup.appendChild(instructionInput);
+        instructionGroup.appendChild(this._buildPromptSaver(idPrefix));
 
-        // Task change handler: prefill instruction with resolved template
+        const promptStatus = document.createElement('div');
+        promptStatus.className = 'form-text';
+        promptStatus.dataset.role = 'prompt-status';
+        promptStatus.setAttribute('role', 'status');
+        promptStatus.setAttribute('aria-live', 'polite');
+        instructionGroup.appendChild(promptStatus);
+
+        // Task change handler: prefill the instruction with the resolved task
+        // template, or with the text of a saved prompt as it was saved.
         taskSelect.addEventListener('change', () => {
             const selected = taskSelect.options[taskSelect.selectedIndex];
             taskDesc.textContent = selected?.dataset.description || '';
             taskSettingOption.textContent = this._taskSettingLabel(selected?.dataset.configurationName || '');
+            deletePromptButton.hidden = selected?.dataset.promptOwn !== '1';
+            if (selected?.dataset.promptUid) {
+                instructionInput.value = selected.dataset.instruction || '';
+                return;
+            }
             const template = selected?.dataset.promptTemplate || '';
             instructionInput.value = template
                 ? this._resolveTemplate(template)
