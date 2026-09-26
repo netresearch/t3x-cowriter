@@ -101,6 +101,9 @@ export class AIService {
         stream: null,
         configurations: null,
         styleOptions: null,
+        prompts: null,
+        promptSave: null,
+        promptDelete: null,
         tasks: null,
         taskExecute: null,
         taskStream: null,
@@ -123,6 +126,9 @@ export class AIService {
             this._routes.stream = TYPO3.settings.ajaxUrls.tx_cowriter_stream || null;
             this._routes.configurations = TYPO3.settings.ajaxUrls.tx_cowriter_configurations || null;
             this._routes.styleOptions = TYPO3.settings.ajaxUrls.tx_cowriter_style_options || null;
+            this._routes.prompts = TYPO3.settings.ajaxUrls.tx_cowriter_prompts || null;
+            this._routes.promptSave = TYPO3.settings.ajaxUrls.tx_cowriter_prompt_save || null;
+            this._routes.promptDelete = TYPO3.settings.ajaxUrls.tx_cowriter_prompt_delete || null;
             this._routes.tasks = TYPO3.settings.ajaxUrls.tx_cowriter_tasks || null;
             this._routes.taskExecute = TYPO3.settings.ajaxUrls.tx_cowriter_task_execute || null;
             this._routes.taskStream = TYPO3.settings.ajaxUrls.tx_cowriter_task_stream || null;
@@ -379,6 +385,68 @@ export class AIService {
         const response = await fetch(this._routes.styleOptions, {
             method: 'GET',
         });
+
+        if (!response.ok) {
+            await this._throwResponseError(response);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Fetch the prompts the current backend user saved, and the shared
+     * prompts of other editors.
+     *
+     * @returns {Promise<{success: boolean, prompts: Array<{uid: number, title: string, instruction: string,
+     *     own: boolean, shared: boolean, awaitingApproval: boolean}>}>}
+     */
+    async getSavedPrompts() {
+        return this._promptRequest(this._routes.prompts, { method: 'GET' });
+    }
+
+    /**
+     * Save an instruction as a prompt of the current backend user.
+     *
+     * @param {{title: string, instruction: string, shared: boolean}} prompt
+     * @returns {Promise<{success: boolean, prompt: {uid: number, title: string, instruction: string,
+     *     own: boolean, shared: boolean, awaitingApproval: boolean}}>}
+     */
+    async savePrompt(prompt) {
+        return this._promptRequest(this._routes.promptSave, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: prompt.title, instruction: prompt.instruction, shared: prompt.shared === true }),
+        });
+    }
+
+    /**
+     * Delete a prompt the current backend user saved.
+     *
+     * @param {number} uid
+     * @returns {Promise<{success: boolean}>}
+     */
+    async deletePrompt(uid) {
+        return this._promptRequest(this._routes.promptDelete, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid }),
+        });
+    }
+
+    /**
+     * @param {string|null} url
+     * @param {RequestInit} init
+     * @returns {Promise<object>}
+     * @private
+     */
+    async _promptRequest(url, init) {
+        if (!url) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
+
+        const response = await fetch(url, init);
 
         if (!response.ok) {
             await this._throwResponseError(response);

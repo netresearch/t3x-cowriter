@@ -1,0 +1,14 @@
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,1,0,"admin",1,"",0
+,2,0,"editor",0,"",0
+,3,0,"colleague",0,"",0
+"tx_cowriter_prompt"
+,"uid","pid","be_user","title","instruction","shared","approved","hidden","deleted"
+,11,0,2,"Zeta own","Own private instruction",0,0,0,0
+,12,0,2,"Alpha own shared","Own shared instruction",1,0,0,0
+,21,0,3,"Colleague private","Not for the editor",0,0,0,0
+,22,0,3,"Colleague shared unapproved","Waits for approval",1,0,0,0
+,23,0,3,"Colleague shared approved","Approved for everyone",1,1,0,0
+,24,0,3,"Colleague deleted","Deleted",1,1,0,1
+,25,0,3,"Colleague hidden","Hidden by an administrator",1,1,1,0

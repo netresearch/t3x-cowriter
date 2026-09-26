@@ -3,3 +3,6 @@ fieldSuggestions.fields = pages.seo_title,pages.description,pages.keywords,pages
 
 # cat=Field suggestions; type=int+; label=Number of suggestions: How many suggestions the button asks for (1 to 5).
 fieldSuggestions.count = 3
+
+# cat=Saved prompts; type=boolean; label=Shared prompts need approval: A prompt an editor shares reaches other editors only after an administrator sets "Approved" on the record (List module, root level). A prompt an administrator shares is approved when saved.
+prompts.sharedNeedApproval = 1

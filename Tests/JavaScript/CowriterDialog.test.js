@@ -596,6 +596,114 @@ describe('CowriterDialog', () => {
         });
     });
 
+    describe('saved prompts', () => {
+        const prompts = [
+            { uid: 12, title: 'Teaser', instruction: 'Write a teaser.', own: true, shared: true, awaitingApproval: true },
+            { uid: 23, title: 'House style', instruction: 'Use the house style.', own: false, shared: true, awaitingApproval: false },
+        ];
+
+        function taskSelect() {
+            return document.querySelector('[data-role="task-select"]');
+        }
+
+        it('should offer own and shared prompts and run the chosen one as a custom instruction', async () => {
+            mockService.getSavedPrompts = vi.fn().mockResolvedValue({ success: true, prompts });
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelectorAll('[data-role="task-select"] optgroup')).toHaveLength(2));
+
+            const groups = [...taskSelect().querySelectorAll('optgroup')].map((group) => [
+                group.label, [...group.querySelectorAll('option')].map((o) => [o.value, o.textContent]),
+            ]);
+            expect(groups).toEqual([
+                ['My prompts', [['prompt-12', 'Teaser (awaiting approval)']]],
+                ['Shared prompts', [['prompt-23', 'House style']]],
+            ]);
+
+            taskSelect().value = 'prompt-23';
+            taskSelect().dispatchEvent(new Event('change'));
+            expect(document.querySelector('[data-role="instruction"]').value).toBe('Use the house style.');
+            expect(document.querySelector('[data-role="prompt-delete"]').hidden).toBe(true);
+
+            document.querySelector('[data-name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            expect(mockService.executeTask.mock.calls[0][0]).toBe(0);
+            expect(mockService.executeTask.mock.calls[0][3]).toBe('Use the house style.');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should save the instruction as a prompt and select it', async () => {
+            mockService.getSavedPrompts = vi.fn().mockResolvedValue({ success: true, prompts: [] });
+            mockService.savePrompt = vi.fn().mockResolvedValue({
+                success: true,
+                prompt: { uid: 31, title: 'Short intro', instruction: 'Two sentences.', own: true, shared: true, awaitingApproval: true },
+            });
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-role="prompt-save"]')).not.toBeNull());
+
+            document.querySelector('[data-role="instruction"]').value = '  Two sentences.  ';
+            document.querySelector('[data-role="prompt-title"]').value = 'Short intro';
+            document.querySelector('[data-role="prompt-share"]').checked = true;
+            document.querySelector('[data-role="prompt-save"]').click();
+
+            await vi.waitFor(() => expect(taskSelect().value).toBe('prompt-31'));
+            expect(mockService.savePrompt).toHaveBeenCalledWith({ title: 'Short intro', instruction: 'Two sentences.', shared: true });
+            expect(document.querySelector('[data-role="prompt-status"]').textContent)
+                .toBe('Prompt saved. Other editors see it once an administrator approves it.');
+            expect(document.querySelector('[data-role="prompt-delete"]').hidden).toBe(false);
+            expect(document.querySelector('[data-role="prompt-title"]').value).toBe('');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should not save a prompt without a title', async () => {
+            mockService.savePrompt = vi.fn();
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-role="prompt-save"]')).not.toBeNull());
+
+            document.querySelector('[data-role="instruction"]').value = 'Two sentences.';
+            document.querySelector('[data-role="prompt-save"]').click();
+
+            expect(mockService.savePrompt).not.toHaveBeenCalled();
+            expect(document.querySelector('[data-role="prompt-status"]').textContent).not.toBe('');
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should delete an own prompt and return to the custom instruction', async () => {
+            mockService.getSavedPrompts = vi.fn().mockResolvedValue({ success: true, prompts: [prompts[0]] });
+            mockService.deletePrompt = vi.fn().mockResolvedValue({ success: true });
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(taskSelect().querySelector('option[value="prompt-12"]')).not.toBeNull());
+
+            taskSelect().value = 'prompt-12';
+            taskSelect().dispatchEvent(new Event('change'));
+            document.querySelector('[data-role="prompt-delete"]').click();
+
+            await vi.waitFor(() => expect(taskSelect().querySelector('optgroup')).toBeNull());
+            expect(mockService.deletePrompt).toHaveBeenCalledWith(12);
+            expect(taskSelect().value).toBe('0');
+            expect(document.querySelector('[data-role="prompt-delete"]').hidden).toBe(true);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should hide the save form when the service cannot store prompts', async () => {
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-role="prompt-saver"]')).not.toBeNull());
+
+            expect(document.querySelector('[data-role="prompt-saver"]').hidden).toBe(true);
+            expect(taskSelect().querySelector('optgroup')).toBeNull();
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
     describe('streamed answer', () => {
         it('should show the answer while it is written and the final HTML afterwards', async () => {
             let finish;
