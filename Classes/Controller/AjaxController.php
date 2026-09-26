@@ -808,14 +808,16 @@ final readonly class AjaxController
                 'taskUid'   => $dto->taskUid,
                 'exception' => $e->getMessage(),
             ]);
-            $this->eventStream->send(['error' => $this->labels->get('error.provider')]);
+            // The same payload a JSON answer carries: the guidance and, for a
+            // configuration error, the status page link.
+            $this->eventStream->send($this->buildErrorResponse($this->labels->get('error.provider'), $e));
         } catch (Throwable $e) {
             $this->logger->error('Task stream unexpected error', [
                 'taskUid'   => $dto->taskUid,
                 'exception' => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
             ]);
-            $this->eventStream->send(['error' => $this->labels->get('error.unexpected')]);
+            $this->eventStream->send($this->buildErrorResponse($this->labels->get('error.unexpected'), $e));
         }
 
         return new NullResponse();

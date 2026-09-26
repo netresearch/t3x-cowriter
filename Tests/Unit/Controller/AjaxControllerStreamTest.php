@@ -150,10 +150,26 @@ final class AjaxControllerStreamTest extends TestCase
 
         $this->subject()->executeTaskStreamAction($this->request());
 
-        self::assertSame(
-            ['error' => 'LLM provider error occurred. Please try again later.'],
-            $this->stream->events[array_key_last($this->stream->events)],
-        );
+        $last = $this->stream->events[array_key_last($this->stream->events)];
+        self::assertFalse($last['success']);
+        self::assertSame('LLM provider error occurred. Please try again later.', $last['error']);
+        self::assertArrayNotHasKey('statusUrl', $last);
+    }
+
+    #[Test]
+    public function aConfigurationErrorDuringTheStreamCarriesTheStatusLink(): void
+    {
+        $this->llm->method('streamChatWithConfiguration')->willReturnCallback(static function (): Generator {
+            yield from [];
+
+            // The code LlmErrorClassifier reads as "no default provider", a configuration error.
+            throw new ProviderException('No default provider configured', 4867297358);
+        });
+
+        $this->subject()->executeTaskStreamAction($this->request());
+
+        self::assertArrayHasKey('statusUrl', $this->stream->events[0]);
+        self::assertFalse($this->stream->events[0]['success']);
     }
 
     #[Test]
@@ -167,7 +183,7 @@ final class AjaxControllerStreamTest extends TestCase
 
         $this->subject()->executeTaskStreamAction($this->request());
 
-        self::assertSame(['error' => 'An unexpected error occurred.'], $this->stream->events[0]);
+        self::assertSame('An unexpected error occurred.', $this->stream->events[0]['error']);
         self::assertCount(1, $this->stream->events);
     }
 

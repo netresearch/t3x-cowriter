@@ -397,6 +397,48 @@ describe('AIService', () => {
         });
     });
 
+    describe('executeTaskStream endings', () => {
+        async function streamService(sse, status = 200) {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_task_stream = '/typo3/ajax/tx_cowriter_task_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const encoder = new TextEncoder();
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                status,
+                body: new ReadableStream({
+                    start(controller) {
+                        controller.enqueue(encoder.encode(sse));
+                        controller.close();
+                    },
+                }),
+            });
+            return new module.AIService();
+        }
+
+        it('should reject a stream that ends before its done event', async () => {
+            const service = await streamService('data: {"content":"Half an ans"}\n\n');
+            const onChunk = vi.fn();
+
+            await expect(service.executeTaskStream({ taskUid: 1 }, onChunk)).rejects.toThrow('The answer stopped before it was complete.');
+            expect(onChunk).toHaveBeenCalledWith('Half an ans');
+        });
+
+        it('should keep the status link of an error event', async () => {
+            const service = await streamService('data: {"success":false,"error":"No provider.","statusUrl":"/typo3/module/cowriter/status"}\n\n');
+
+            const error = await service.executeTaskStream({ taskUid: 1 }, vi.fn()).catch((e) => e);
+            expect(error.message).toBe('No provider.');
+            expect(error.statusUrl).toBe('/typo3/module/cowriter/status');
+        });
+
+        it('should return the done event of a complete stream', async () => {
+            const service = await streamService('data: {"content":"All"}\n\ndata: {"done":true,"content":"<p>All</p>"}\n\n');
+
+            await expect(service.executeTaskStream({ taskUid: 1 }, vi.fn())).resolves.toMatchObject({ done: true, content: '<p>All</p>' });
+        });
+    });
+
     describe('completeStream edge cases', () => {
         it('should call onChunk exactly once per content chunk', async () => {
             TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
@@ -936,6 +978,8 @@ describe('AIService', () => {
 
         it('should send the chosen configuration only when there is one', async () => {
             const service = await serviceWith(streamResponse(['data: {"done":true}\n\n']));
+            // A response body can be read once: each call gets its own.
+            globalThis.fetch = vi.fn().mockImplementation(async () => streamResponse(['data: {"done":true}\n\n']));
 
             await service.executeTaskStream({ ...request, configuration: 'creative' }, () => {});
             await service.executeTaskStream({ ...request, configuration: '' }, () => {});

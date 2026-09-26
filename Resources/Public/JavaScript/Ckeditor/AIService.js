@@ -284,7 +284,8 @@ export class AIService {
                 return; // Skip malformed SSE chunks
             }
             if (data.error) {
-                throw new Error(data.error);
+                // AIServiceError keeps the status page link a configuration error carries.
+                throw new AIServiceError(data.error, data.statusUrl || null, response.status);
             }
             if (data.done) {
                 lastData = data;
@@ -477,7 +478,17 @@ export class AIService {
             await this._throwResponseError(response);
         }
 
-        return this._readEventStream(response, onChunk);
+        const result = await this._readEventStream(response, onChunk);
+        if (!result.done) {
+            // The stream closed without its final event: what arrived is not the answer.
+            throw new AIServiceError(
+                t('ckeditor.dialog.streamIncomplete', 'The answer stopped before it was complete. Try again.'),
+                null,
+                response.status,
+            );
+        }
+
+        return result;
     }
 
     /**

@@ -403,6 +403,10 @@
                 <source>Generating…</source>
                 <target>Wird erzeugt…</target>
             </trans-unit>
+            <trans-unit id="ckeditor.dialog.streamIncomplete" resname="ckeditor.dialog.streamIncomplete">
+                <source>The answer stopped before it was complete. Try again.</source>
+                <target>Die Antwort brach ab, bevor sie vollständig war. Versuchen Sie es erneut.</target>
+            </trans-unit>
             <trans-unit id="ckeditor.dialog.model" resname="ckeditor.dialog.model">
                 <source>Model: %s</source>
                 <target>Modell: %s</target>
