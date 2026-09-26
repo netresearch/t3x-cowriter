@@ -342,6 +342,36 @@
             <trans-unit id="ckeditor.dialog.configuration.defaultMarker" resname="ckeditor.dialog.configuration.defaultMarker">
                 <source>%s (default)</source>
             </trans-unit>
+            <trans-unit id="ckeditor.dialog.audience" resname="ckeditor.dialog.audience">
+                <source>Audience</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.tone" resname="ckeditor.dialog.tone">
+                <source>Tone of voice</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length" resname="ckeditor.dialog.length">
+                <source>Length</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.styleDefault" resname="ckeditor.dialog.styleDefault">
+                <source>No preference</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.muchShorter" resname="ckeditor.dialog.length.muchShorter">
+                <source>Much shorter</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.shorter" resname="ckeditor.dialog.length.shorter">
+                <source>Shorter</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.unchanged" resname="ckeditor.dialog.length.unchanged">
+                <source>Unchanged</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.longer" resname="ckeditor.dialog.length.longer">
+                <source>Longer</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.muchLonger" resname="ckeditor.dialog.length.muchLonger">
+                <source>Much longer</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.wordsTarget" resname="ckeditor.dialog.wordsTarget">
+                <source>About %s words (target %s)</source>
+            </trans-unit>
             <trans-unit id="ckeditor.dialog.contextScope" resname="ckeditor.dialog.contextScope">
                 <source>Context scope</source>
             </trans-unit>

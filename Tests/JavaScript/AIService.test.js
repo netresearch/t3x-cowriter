@@ -646,6 +646,37 @@ describe('AIService', () => {
         });
     });
 
+    describe('style options and fields', () => {
+        async function serviceWithFetch(url, response) {
+            globalThis.TYPO3.settings.ajaxUrls[url] = '/typo3/ajax/' + url;
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            globalThis.fetch = vi.fn().mockResolvedValue(response);
+            return new module.AIService();
+        }
+
+        it('should fetch the style options', async () => {
+            const options = { success: true, audiences: [{ uid: 3, name: 'Experts' }], tones: [] };
+            const service = await serviceWithFetch('tx_cowriter_style_options', { ok: true, json: () => Promise.resolve(options) });
+
+            expect(await service.getStyleOptions()).toEqual(options);
+            expect(globalThis.fetch).toHaveBeenCalledWith('/typo3/ajax/tx_cowriter_style_options', { method: 'GET' });
+        });
+
+        it('should send only the style choices that differ from no preference', async () => {
+            const service = await serviceWithFetch('tx_cowriter_task_execute', {
+                ok: true, json: () => Promise.resolve({ success: true, content: 'x' }),
+            });
+
+            await service.executeTask(1, 'text', 'selection', 'Improve', '', '', null, [], undefined, '', { audience: 3, tone: 0, length: -1 });
+
+            const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+            expect(body.audience).toBe(3);
+            expect(body.length).toBe(-1);
+            expect(body).not.toHaveProperty('tone');
+        });
+    });
+
     describe('getTasks', () => {
         it('should throw when tasks route is not configured', async () => {
             const service = new AIService();

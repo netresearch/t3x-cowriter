@@ -94,6 +94,16 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.dialog.configuration.task',
         'ckeditor.dialog.configuration.default',
         'ckeditor.dialog.configuration.defaultMarker',
+        'ckeditor.dialog.audience',
+        'ckeditor.dialog.tone',
+        'ckeditor.dialog.length',
+        'ckeditor.dialog.styleDefault',
+        'ckeditor.dialog.length.muchShorter',
+        'ckeditor.dialog.length.shorter',
+        'ckeditor.dialog.length.unchanged',
+        'ckeditor.dialog.length.longer',
+        'ckeditor.dialog.length.muchLonger',
+        'ckeditor.dialog.wordsTarget',
         'ckeditor.dialog.contextScope',
         'ckeditor.dialog.scope.selection',
         'ckeditor.dialog.scope.text',
@@ -191,6 +201,8 @@ final readonly class InjectAjaxUrlsListener
                 ->buildUriFromRoute('ajax_tx_cowriter_stream'),
             'tx_cowriter_configurations' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_configurations'),
+            'tx_cowriter_style_options' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_style_options'),
             'tx_cowriter_tasks' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_tasks'),
             'tx_cowriter_task_execute' => (string) $this->backendUriBuilder

@@ -455,6 +455,46 @@
                 <source>%s (default)</source>
                 <target>%s (Standard)</target>
             </trans-unit>
+            <trans-unit id="ckeditor.dialog.audience" resname="ckeditor.dialog.audience">
+                <source>Audience</source>
+                <target>Zielgruppe</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.tone" resname="ckeditor.dialog.tone">
+                <source>Tone of voice</source>
+                <target>Tonalität</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length" resname="ckeditor.dialog.length">
+                <source>Length</source>
+                <target>Länge</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.styleDefault" resname="ckeditor.dialog.styleDefault">
+                <source>No preference</source>
+                <target>Keine Vorgabe</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.muchShorter" resname="ckeditor.dialog.length.muchShorter">
+                <source>Much shorter</source>
+                <target>Viel kürzer</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.shorter" resname="ckeditor.dialog.length.shorter">
+                <source>Shorter</source>
+                <target>Kürzer</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.unchanged" resname="ckeditor.dialog.length.unchanged">
+                <source>Unchanged</source>
+                <target>Unverändert</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.longer" resname="ckeditor.dialog.length.longer">
+                <source>Longer</source>
+                <target>Länger</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.length.muchLonger" resname="ckeditor.dialog.length.muchLonger">
+                <source>Much longer</source>
+                <target>Viel länger</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.wordsTarget" resname="ckeditor.dialog.wordsTarget">
+                <source>About %s words (target %s)</source>
+                <target>Etwa %s Wörter (Ziel %s)</target>
+            </trans-unit>
             <trans-unit id="ckeditor.dialog.contextScope" resname="ckeditor.dialog.contextScope">
                 <source>Context scope</source>
                 <target>Kontextumfang</target>
