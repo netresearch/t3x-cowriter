@@ -80,6 +80,7 @@ export class AIService {
         configurations: null,
         tasks: null,
         taskExecute: null,
+        taskStream: null,
         context: null,
         vision: null,
         translate: null,
@@ -100,6 +101,7 @@ export class AIService {
             this._routes.configurations = TYPO3.settings.ajaxUrls.tx_cowriter_configurations || null;
             this._routes.tasks = TYPO3.settings.ajaxUrls.tx_cowriter_tasks || null;
             this._routes.taskExecute = TYPO3.settings.ajaxUrls.tx_cowriter_task_execute || null;
+            this._routes.taskStream = TYPO3.settings.ajaxUrls.tx_cowriter_task_stream || null;
             this._routes.context = TYPO3.settings.ajaxUrls.tx_cowriter_context || null;
             this._routes.vision = TYPO3.settings.ajaxUrls.tx_cowriter_vision || null;
             this._routes.translate = TYPO3.settings.ajaxUrls.tx_cowriter_translate || null;
@@ -247,6 +249,21 @@ export class AIService {
             throw new AIServiceError(errorMessage, statusUrl);
         }
 
+        return this._readEventStream(response, onChunk);
+    }
+
+    /**
+     * Read a Server-Sent Events body: hand the text of each content event to
+     * onChunk, throw on an error event, and return the final done event. A
+     * done event's own content is the complete answer and is not a chunk.
+     * Lines other than `data:` (the padding comments) are skipped.
+     *
+     * @param {Response} response
+     * @param {function(string): void} [onChunk]
+     * @returns {Promise<{done: boolean, model?: string, content?: string}>}
+     * @private
+     */
+    async _readEventStream(response, onChunk) {
         if (!response.body) {
             throw new Error('Streaming not supported: response has no body');
         }
@@ -256,6 +273,29 @@ export class AIService {
         let buffer = '';
         let lastData = { done: false };
 
+        const handle = (line) => {
+            if (!line.startsWith('data: ')) {
+                return;
+            }
+            let data;
+            try {
+                data = JSON.parse(line.slice(6));
+            } catch {
+                return; // Skip malformed SSE chunks
+            }
+            if (data.error) {
+                // AIServiceError keeps the status page link a configuration error carries.
+                throw new AIServiceError(data.error, data.statusUrl || null, response.status);
+            }
+            if (data.done) {
+                lastData = data;
+                return;
+            }
+            if (data.content && onChunk) {
+                onChunk(data.content);
+            }
+        };
+
         try {
             while (true) {
                 const { done, value } = await reader.read();
@@ -264,45 +304,12 @@ export class AIService {
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split('\n');
                 buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        let data;
-                        try {
-                            data = JSON.parse(line.slice(6));
-                        } catch {
-                            continue; // Skip malformed SSE chunks
-                        }
-                        if (data.error) {
-                            throw new Error(data.error);
-                        }
-                        if (data.content && onChunk) {
-                            onChunk(data.content);
-                        }
-                        if (data.done) {
-                            lastData = data;
-                        }
-                    }
-                }
+                lines.forEach(handle);
             }
 
             // Flush any remaining bytes from the TextDecoder's internal buffer
             buffer += decoder.decode();
-
-            // Process any remaining data in the buffer
-            if (buffer.trim().startsWith('data: ')) {
-                try {
-                    const data = JSON.parse(buffer.trim().slice(6));
-                    if (data.content && onChunk) {
-                        onChunk(data.content);
-                    }
-                    if (data.done) {
-                        lastData = data;
-                    }
-                } catch {
-                    // Ignore incomplete final chunk
-                }
-            }
+            handle(buffer.trim());
         } finally {
             reader.releaseLock();
         }
@@ -432,6 +439,56 @@ export class AIService {
         }
 
         return response.json();
+    }
+
+    /**
+     * Execute a cowriter task and receive the answer while it is written.
+     *
+     * Takes the same fields as executeTask(). A refusal before the stream
+     * starts (rate limit, task, configuration) arrives as JSON and is thrown
+     * as an AIServiceError; an error during the stream is thrown as an Error.
+     *
+     * @param {{taskUid: number, context: string, contextType: string, instruction?: string,
+     *     editorCapabilities?: string, contextScope?: string,
+     *     recordContext?: {table: string, uid: number, field: string}|null,
+     *     referencePages?: Array<{pid: number, relation: string}>, configuration?: string}} request
+     * @param {function(string): void} onChunk - Receives each piece of text as it arrives
+     * @param {AbortSignal} [signal] - Optional AbortSignal to cancel the request
+     * @returns {Promise<{done: boolean, model?: string, content?: string}>} The final event, whose
+     *     content is the complete answer as HTML
+     */
+    async executeTaskStream(request, onChunk, signal = undefined) {
+        if (!this._routes.taskStream) {
+            throw new Error(
+                'TYPO3 AJAX routes not configured. Ensure the cowriter extension is properly installed.'
+            );
+        }
+
+        const { configuration = '', ...fields } = request;
+        const response = await fetch(this._routes.taskStream, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ...fields, ...(configuration ? { configuration } : {}) }),
+            signal,
+        });
+
+        if (!response.ok) {
+            await this._throwResponseError(response);
+        }
+
+        const result = await this._readEventStream(response, onChunk);
+        if (!result.done) {
+            // The stream closed without its final event: what arrived is not the answer.
+            throw new AIServiceError(
+                t('ckeditor.dialog.streamIncomplete', 'The answer stopped before it was complete. Try again.'),
+                null,
+                response.status,
+            );
+        }
+
+        return result;
     }
 
     /**

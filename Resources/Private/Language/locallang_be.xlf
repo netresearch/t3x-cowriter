@@ -303,6 +303,9 @@
             <trans-unit id="ckeditor.dialog.generating" resname="ckeditor.dialog.generating">
                 <source>Generating…</source>
             </trans-unit>
+            <trans-unit id="ckeditor.dialog.streamIncomplete" resname="ckeditor.dialog.streamIncomplete">
+                <source>The answer stopped before it was complete. Try again.</source>
+            </trans-unit>
             <trans-unit id="ckeditor.dialog.model" resname="ckeditor.dialog.model">
                 <source>Model: %s</source>
             </trans-unit>

@@ -81,6 +81,7 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.dialog.button.execute',
         'ckeditor.dialog.button.insert',
         'ckeditor.dialog.generating',
+        'ckeditor.dialog.streamIncomplete',
         'ckeditor.dialog.model',
         'ckeditor.dialog.tokens',
         'ckeditor.dialog.noContent',
@@ -195,6 +196,8 @@ final readonly class InjectAjaxUrlsListener
                 ->buildUriFromRoute('ajax_tx_cowriter_tasks'),
             'tx_cowriter_task_execute' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_task_execute'),
+            'tx_cowriter_task_stream' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_task_stream'),
             'tx_cowriter_context' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_context'),
             'tx_cowriter_vision' => (string) $this->backendUriBuilder

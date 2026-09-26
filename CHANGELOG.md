@@ -3,6 +3,7 @@
 ## FEATURE
 
 - The Cowriter dialog offers the LLM configurations the editor may use. The first option runs the task on its own configuration, or on the default one; its label names that configuration. A chosen configuration now wins over the task's own. The dialog opens without waiting for the list and shows the picker once it arrives; without a list it looks as before.
+- The Cowriter dialog shows the answer while the model writes it. The new route `tx_cowriter_task_stream` takes the same request as `tx_cowriter_task_execute`, builds the same messages and sends the answer as Server-Sent Events; the last event carries the complete answer after the same markdown-to-HTML fallback. Pieces arriving within 80 ms of the previous event are sent together, and each event is padded to 4 KB so a buffering proxy passes it on. The preview is marked `aria-busy` meanwhile, so a screen reader announces the finished answer once. Without the stream route the dialog calls `tx_cowriter_task_execute` as before.
 
 ## FIX
 

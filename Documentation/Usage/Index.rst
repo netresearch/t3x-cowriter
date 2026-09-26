@@ -75,9 +75,10 @@ The Cowriter dialog lets you choose what to do with your content:
     tone" or "Keep sentences short".
 
 **Execute and preview**
-    Click :guilabel:`Execute` to send the request to the LLM. The result
-    appears in a preview area with model and token usage info. You can
-    then:
+    Click :guilabel:`Execute` to send the request to the LLM. The answer
+    appears in the preview while the model writes it; when it is
+    complete, the preview shows the final text with the model name. You
+    can then:
 
     *   Click :guilabel:`Insert` to replace the content in the editor
     *   Click :guilabel:`Reset` to clear the result and adjust settings

@@ -28,6 +28,8 @@ use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
+use Netresearch\T3Cowriter\Service\EventStream\EventStreamEmitterInterface;
+use Netresearch\T3Cowriter\Service\EventStream\ServerSentEventEmitter;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -42,6 +44,7 @@ use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\JsonResponse;
+use TYPO3\CMS\Core\Http\NullResponse;
 use TYPO3\CMS\Core\Http\Response;
 use TYPO3\CMS\Core\Http\Stream;
 use TYPO3\CMS\Core\Type\Bitmask\Permission;
@@ -85,6 +88,12 @@ final readonly class AjaxController
     private const MAX_SEARCH_RESULTS = 20;
 
     /**
+     * Stream pieces arriving within this many seconds of the last event go out
+     * together, so a long answer does not become thousands of padded events.
+     */
+    private const STREAM_COALESCE_SECONDS = 0.08;
+
+    /**
      * System prompt for the cowriter assistant.
      */
     private const SYSTEM_PROMPT = <<<'PROMPT'
@@ -109,6 +118,7 @@ final readonly class AjaxController
         // the Symfony container still autowires the shared service.
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
         private BackendLabels $labels = new BackendLabels(),
+        private EventStreamEmitterInterface $eventStream = new ServerSentEventEmitter(),
     ) {}
 
     /**
@@ -505,127 +515,12 @@ final readonly class AjaxController
             return $this->rateLimitedResponse($rateLimitResult);
         }
 
-        $dto = ExecuteTaskRequest::fromRequest($request);
-
-        if (!$dto->isValid()) {
-            return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error('Invalid task execution request.')->jsonSerialize(),
-                $rateLimitResult,
-                400,
-            );
+        $prepared = $this->prepareTaskCall($request, $rateLimitResult);
+        if ($prepared instanceof ResponseInterface) {
+            return $prepared;
         }
 
-        // Resolve task (optional — taskUid=0 is custom mode)
-        $task = null;
-        if ($dto->taskUid > 0) {
-            $task = $this->taskRepository->findByUid($dto->taskUid);
-            if (!$task instanceof Task || !$task->isActive()) {
-                return $this->jsonResponseWithRateLimitHeaders(
-                    CompleteResponse::error($this->labels->get('error.taskNotFound'))->jsonSerialize(),
-                    $rateLimitResult,
-                    404,
-                );
-            }
-        }
-
-        $surroundingContext = '';
-
-        // For extended scopes, assemble surrounding context as reference
-        if (!in_array($dto->contextScope, ['', 'selection', 'text'], true)
-            && $dto->recordContext !== null
-        ) {
-            try {
-                $surroundingContext = $this->contextAssemblyService->assembleContext(
-                    $dto->recordContext['table'],
-                    $dto->recordContext['uid'],
-                    $dto->recordContext['field'],
-                    $dto->contextScope,
-                    $dto->referencePages,
-                );
-            } catch (Throwable $e) {
-                $this->logger->error('Context assembly error', [
-                    'exception' => $e->getMessage(),
-                ]);
-
-                return $this->jsonResponseWithRateLimitHeaders(
-                    CompleteResponse::error($this->labels->get('error.contextAssembly'))->jsonSerialize(),
-                    $rateLimitResult,
-                    500,
-                );
-            }
-        }
-
-        // Build messages
-        $messages = [];
-
-        // Core formatting instruction — must be first system message for reliable adherence
-        $messages[] = [
-            'role'    => 'system',
-            'content' => 'You are a writing assistant integrated into a rich text editor (CKEditor). '
-                . 'Respond ONLY with the content — no explanations, no preamble, no markdown. '
-                . 'Use HTML tags for formatting (e.g., <strong>, <em>, <ul>, <ol>, <h2>, <p>). '
-                . 'Do NOT use markdown syntax like **bold**, *italic*, # headings, or ```code blocks```.',
-        ];
-
-        // Tell the LLM exactly what scope it is working with (when context is present)
-        if (trim($dto->context) !== '') {
-            $isSelection      = $dto->contextType === 'selection';
-            $scopeInstruction = $isSelection
-                ? 'The user selected a portion of text. '
-                    . 'Return ONLY the transformed selection — '
-                    . 'do not add surrounding content or change the scope of the text.'
-                : 'Return the complete transformed content.';
-            $messages[] = ['role' => 'system', 'content' => $scopeInstruction];
-        }
-
-        // Inject editor content as structured system message
-        if (trim($dto->context) !== '') {
-            $messages[] = [
-                'role'    => 'system',
-                'content' => "<editor_content>\n" . $dto->context . "\n</editor_content>",
-            ];
-        }
-
-        // Inject surrounding context as read-only reference (BEFORE the instruction)
-        if ($surroundingContext !== '') {
-            $messages[] = [
-                'role'    => 'system',
-                'content' => "<reference_context>\n"
-                    . 'Surrounding content from the same page for reference. '
-                    . 'Use this to understand the broader context, avoid duplicating information, '
-                    . 'and match the existing tone, style, and formatting patterns '
-                    . '(heading levels, list styles). '
-                    . "Do NOT include this content in your output.\n"
-                    . $surroundingContext . "\n"
-                    . '</reference_context>',
-            ];
-        }
-
-        // Inject editor capabilities with concrete HTML examples
-        if (trim($dto->editorCapabilities) !== '') {
-            $messages[] = [
-                'role'    => 'system',
-                'content' => 'The rich text editor supports these formatting features: '
-                    . $dto->editorCapabilities
-                    . '. You may use any of these in the output. '
-                    . 'Use <mark> for text highlighting.',
-            ];
-        }
-
-        // Instruction is the user message — it IS the full prompt
-        $messages[] = ['role' => 'user', 'content' => $dto->instruction];
-
-        // The configuration the editor chose wins over the task's own, which
-        // wins over the default. Each must be one the editor may use.
-        $selection     = $this->configurationSelector->trySelect($dto->configuration, $task?->getConfiguration());
-        $configuration = $selection->configuration;
-        if (!$configuration instanceof LlmConfiguration) {
-            return $this->jsonResponseWithRateLimitHeaders(
-                CompleteResponse::error($this->labels->get($selection->errorLabel))->jsonSerialize(),
-                $rateLimitResult,
-                $selection->status,
-            );
-        }
+        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration] = $prepared;
 
         try {
             $response = $this->llmServiceManager->chatWithConfiguration(
@@ -687,6 +582,245 @@ final readonly class AjaxController
                 500,
             );
         }
+    }
+
+    /**
+     * Everything executeTask and executeTaskStream share before the LLM call:
+     * validate the request, find the task, assemble the surrounding context,
+     * build the messages and choose the configuration. A refusal comes back
+     * as the JSON response to send.
+     *
+     * @return array{dto: ExecuteTaskRequest, task: Task|null, messages: list<array{role: string, content: string}>, configuration: LlmConfiguration}|ResponseInterface
+     */
+    private function prepareTaskCall(ServerRequestInterface $request, RateLimitResult $rateLimitResult): array|ResponseInterface
+    {
+        try {
+            $dto = ExecuteTaskRequest::fromRequest($request);
+            if (!$dto->isValid()) {
+                throw new TaskCallRefusedException('Invalid task execution request.', 400);
+            }
+
+            $task     = $this->findTask($dto->taskUid);
+            $messages = $this->buildTaskMessages($dto, $this->surroundingContext($dto));
+
+            // The configuration the editor chose wins over the task's own, which
+            // wins over the default. Each must be one the editor may use.
+            $selection     = $this->configurationSelector->trySelect($dto->configuration, $task?->getConfiguration());
+            $configuration = $selection->configuration;
+            if (!$configuration instanceof LlmConfiguration) {
+                throw new TaskCallRefusedException($this->labels->get($selection->errorLabel), $selection->status);
+            }
+        } catch (TaskCallRefusedException $e) {
+            return $this->jsonResponseWithRateLimitHeaders(
+                CompleteResponse::error($e->getMessage())->jsonSerialize(),
+                $rateLimitResult,
+                $e->getCode(),
+            );
+        }
+
+        return ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration];
+    }
+
+    /**
+     * The active task, or null in custom mode (taskUid 0).
+     *
+     * @throws TaskCallRefusedException when the task does not exist or is inactive
+     */
+    private function findTask(int $taskUid): ?Task
+    {
+        if ($taskUid === 0) {
+            return null;
+        }
+
+        $task = $this->taskRepository->findByUid($taskUid);
+        if (!$task instanceof Task || !$task->isActive()) {
+            throw new TaskCallRefusedException($this->labels->get('error.taskNotFound'), 404);
+        }
+
+        return $task;
+    }
+
+    /**
+     * The surrounding content of the record for the extended scopes; empty
+     * for the selection and the editor text.
+     *
+     * @throws TaskCallRefusedException when the content cannot be assembled
+     */
+    private function surroundingContext(ExecuteTaskRequest $dto): string
+    {
+        if (in_array($dto->contextScope, ['', 'selection', 'text'], true) || $dto->recordContext === null) {
+            return '';
+        }
+
+        try {
+            return $this->contextAssemblyService->assembleContext(
+                $dto->recordContext['table'],
+                $dto->recordContext['uid'],
+                $dto->recordContext['field'],
+                $dto->contextScope,
+                $dto->referencePages,
+            );
+        } catch (Throwable $e) {
+            $this->logger->error('Context assembly error', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            throw new TaskCallRefusedException($this->labels->get('error.contextAssembly'), 500, $e);
+        }
+    }
+
+    /**
+     * The messages of a task call: the formatting rules, the scope, the
+     * editor content, the surrounding content, the editor capabilities, and
+     * the instruction last as the user message.
+     *
+     * @return list<array{role: string, content: string}>
+     */
+    private function buildTaskMessages(ExecuteTaskRequest $dto, string $surroundingContext): array
+    {
+        $messages = [];
+
+        // Core formatting instruction — must be first system message for reliable adherence
+        $messages[] = [
+            'role'    => 'system',
+            'content' => 'You are a writing assistant integrated into a rich text editor (CKEditor). '
+                . 'Respond ONLY with the content — no explanations, no preamble, no markdown. '
+                . 'Use HTML tags for formatting (e.g., <strong>, <em>, <ul>, <ol>, <h2>, <p>). '
+                . 'Do NOT use markdown syntax like **bold**, *italic*, # headings, or ```code blocks```.',
+        ];
+
+        // Tell the LLM exactly what scope it is working with (when context is present)
+        if (trim($dto->context) !== '') {
+            $isSelection      = $dto->contextType === 'selection';
+            $scopeInstruction = $isSelection
+                ? 'The user selected a portion of text. '
+                    . 'Return ONLY the transformed selection — '
+                    . 'do not add surrounding content or change the scope of the text.'
+                : 'Return the complete transformed content.';
+            $messages[] = ['role' => 'system', 'content' => $scopeInstruction];
+        }
+
+        // Inject editor content as structured system message
+        if (trim($dto->context) !== '') {
+            $messages[] = [
+                'role'    => 'system',
+                'content' => "<editor_content>\n" . $dto->context . "\n</editor_content>",
+            ];
+        }
+
+        // Inject surrounding context as read-only reference (BEFORE the instruction)
+        if ($surroundingContext !== '') {
+            $messages[] = [
+                'role'    => 'system',
+                'content' => "<reference_context>\n"
+                    . 'Surrounding content from the same page for reference. '
+                    . 'Use this to understand the broader context, avoid duplicating information, '
+                    . 'and match the existing tone, style, and formatting patterns '
+                    . '(heading levels, list styles). '
+                    . "Do NOT include this content in your output.\n"
+                    . $surroundingContext . "\n"
+                    . '</reference_context>',
+            ];
+        }
+
+        // Inject editor capabilities with concrete HTML examples
+        if (trim($dto->editorCapabilities) !== '') {
+            $messages[] = [
+                'role'    => 'system',
+                'content' => 'The rich text editor supports these formatting features: '
+                    . $dto->editorCapabilities
+                    . '. You may use any of these in the output. '
+                    . 'Use <mark> for text highlighting.',
+            ];
+        }
+
+        // Instruction is the user message — it IS the full prompt
+        $messages[] = ['role' => 'user', 'content' => $dto->instruction];
+
+        return $messages;
+    }
+
+    /**
+     * executeTask as a stream: the same request and the same messages, but the
+     * answer is sent as Server-Sent Events while the model writes it.
+     *
+     * Events: `{"content": "..."}` for each piece of text, then
+     * `{"done": true, "model": "...", "content": "<html>"}` with the complete
+     * answer after the markdown-to-HTML fallback executeTask applies, or
+     * `{"error": "..."}`. Pieces arriving within {@see self::STREAM_COALESCE_SECONDS}
+     * of each other go out as one event, because every event is padded for
+     * the proxy. A refusal before the stream starts (rate limit, invalid
+     * request, task, configuration) is a JSON response, as for executeTask.
+     */
+    public function executeTaskStreamAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $rateLimitResult = $this->checkRateLimit();
+        if (!$rateLimitResult->allowed) {
+            return $this->rateLimitedResponse($rateLimitResult);
+        }
+
+        $prepared = $this->prepareTaskCall($request, $rateLimitResult);
+        if ($prepared instanceof ResponseInterface) {
+            return $prepared;
+        }
+
+        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration] = $prepared;
+
+        $this->eventStream->open($rateLimitResult->getHeaders());
+
+        $content = '';
+        $pending = '';
+        // 0, not now: the first piece goes out at once, only later ones are
+        // gathered.
+        $lastSent = 0;
+        try {
+            $chunks = $this->llmServiceManager->streamChatWithConfiguration(
+                $messages,
+                $configuration,
+                [],
+                $this->callMetadata($this->taskOperation($task)),
+            );
+            foreach ($chunks as $chunk) {
+                if ($chunk === '') {
+                    continue;
+                }
+
+                $content .= $chunk;
+                $pending .= $chunk;
+                if ((hrtime(true) - $lastSent) / 1e9 >= self::STREAM_COALESCE_SECONDS) {
+                    $this->eventStream->send(['content' => $pending]);
+                    $pending  = '';
+                    $lastSent = hrtime(true);
+                }
+            }
+
+            if ($pending !== '') {
+                $this->eventStream->send(['content' => $pending]);
+            }
+
+            $this->eventStream->send([
+                'done'    => true,
+                'model'   => $configuration->getModelId(),
+                'content' => $this->convertMarkdownToHtml($content),
+            ]);
+        } catch (ProviderException $e) {
+            $this->logger->error('Task stream provider error', [
+                'taskUid'   => $dto->taskUid,
+                'exception' => $e->getMessage(),
+            ]);
+            // The same payload a JSON answer carries: the guidance and, for a
+            // configuration error, the status page link.
+            $this->eventStream->send($this->buildErrorResponse($this->labels->get('error.provider'), $e));
+        } catch (Throwable $e) {
+            $this->logger->error('Task stream unexpected error', [
+                'taskUid'   => $dto->taskUid,
+                'exception' => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+            $this->eventStream->send($this->buildErrorResponse($this->labels->get('error.unexpected'), $e));
+        }
+
+        return new NullResponse();
     }
 
     /**

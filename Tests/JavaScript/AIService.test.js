@@ -397,6 +397,48 @@ describe('AIService', () => {
         });
     });
 
+    describe('executeTaskStream endings', () => {
+        async function streamService(sse, status = 200) {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_task_stream = '/typo3/ajax/tx_cowriter_task_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const encoder = new TextEncoder();
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                status,
+                body: new ReadableStream({
+                    start(controller) {
+                        controller.enqueue(encoder.encode(sse));
+                        controller.close();
+                    },
+                }),
+            });
+            return new module.AIService();
+        }
+
+        it('should reject a stream that ends before its done event', async () => {
+            const service = await streamService('data: {"content":"Half an ans"}\n\n');
+            const onChunk = vi.fn();
+
+            await expect(service.executeTaskStream({ taskUid: 1 }, onChunk)).rejects.toThrow('The answer stopped before it was complete.');
+            expect(onChunk).toHaveBeenCalledWith('Half an ans');
+        });
+
+        it('should keep the status link of an error event', async () => {
+            const service = await streamService('data: {"success":false,"error":"No provider.","statusUrl":"/typo3/module/cowriter/status"}\n\n');
+
+            const error = await service.executeTaskStream({ taskUid: 1 }, vi.fn()).catch((e) => e);
+            expect(error.message).toBe('No provider.');
+            expect(error.statusUrl).toBe('/typo3/module/cowriter/status');
+        });
+
+        it('should return the done event of a complete stream', async () => {
+            const service = await streamService('data: {"content":"All"}\n\ndata: {"done":true,"content":"<p>All</p>"}\n\n');
+
+            await expect(service.executeTaskStream({ taskUid: 1 }, vi.fn())).resolves.toMatchObject({ done: true, content: '<p>All</p>' });
+        });
+    });
+
     describe('completeStream edge cases', () => {
         it('should call onChunk exactly once per content chunk', async () => {
             TYPO3Mock.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
@@ -877,6 +919,93 @@ describe('AIService', () => {
             await service.executeTask(1, 'text', 'selection');
 
             expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body)).not.toHaveProperty('configuration');
+        });
+    });
+
+    describe('executeTaskStream', () => {
+        function streamResponse(parts) {
+            const encoder = new TextEncoder();
+            return {
+                ok: true,
+                body: new ReadableStream({
+                    start(controller) {
+                        for (const part of parts) controller.enqueue(encoder.encode(part));
+                        controller.close();
+                    },
+                }),
+            };
+        }
+
+        async function serviceWith(response) {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_task_stream = '/typo3/ajax/tx_cowriter_task_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            globalThis.fetch = vi.fn().mockResolvedValue(response);
+            return new module.AIService();
+        }
+
+        const request = { taskUid: 1, context: 'text', contextType: 'selection', instruction: 'Improve' };
+
+        it('should hand each piece to onChunk and return the done event', async () => {
+            const service = await serviceWith(streamResponse([
+                'data: {"content":"Hello "}\n: ' + ' '.repeat(40) + '\n\n',
+                'data: {"content":"world"}\n\n',
+                'data: {"done":true,"model":"gpt-test","content":"<p>Hello world</p>"}\n\n',
+            ]));
+            const chunks = [];
+
+            const final = await service.executeTaskStream(request, (c) => chunks.push(c));
+
+            expect(chunks).toEqual(['Hello ', 'world']);
+            expect(final).toEqual({ done: true, model: 'gpt-test', content: '<p>Hello world</p>' });
+            const [url, init] = globalThis.fetch.mock.calls[0];
+            expect(url).toBe('/typo3/ajax/tx_cowriter_task_stream');
+            expect(JSON.parse(init.body)).toEqual(request);
+        });
+
+        it('should read an event split across two network chunks', async () => {
+            const service = await serviceWith(streamResponse([
+                'data: {"con',
+                'tent":"Hi"}\n\ndata: {"done":true,"content":"<p>Hi</p>"}',
+            ]));
+            const chunks = [];
+
+            const final = await service.executeTaskStream(request, (c) => chunks.push(c));
+
+            expect(chunks).toEqual(['Hi']);
+            expect(final.content).toBe('<p>Hi</p>');
+        });
+
+        it('should send the chosen configuration only when there is one', async () => {
+            const service = await serviceWith(streamResponse(['data: {"done":true}\n\n']));
+            // A response body can be read once: each call gets its own.
+            globalThis.fetch = vi.fn().mockImplementation(async () => streamResponse(['data: {"done":true}\n\n']));
+
+            await service.executeTaskStream({ ...request, configuration: 'creative' }, () => {});
+            await service.executeTaskStream({ ...request, configuration: '' }, () => {});
+
+            expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body).configuration).toBe('creative');
+            expect(JSON.parse(globalThis.fetch.mock.calls[1][1].body)).not.toHaveProperty('configuration');
+        });
+
+        it('should throw the message of an error event', async () => {
+            const service = await serviceWith(streamResponse([
+                'data: {"content":"Part"}\n\n',
+                'data: {"error":"LLM provider error occurred."}\n\n',
+            ]));
+
+            await expect(service.executeTaskStream(request, () => {})).rejects.toThrow('LLM provider error occurred.');
+        });
+
+        it('should throw the JSON refusal sent before the stream starts', async () => {
+            const service = await serviceWith({
+                ok: false,
+                status: 403,
+                json: () => Promise.resolve({ success: false, error: 'You are not allowed to use this LLM configuration.' }),
+            });
+
+            await expect(service.executeTaskStream(request, () => {}))
+                .rejects.toThrow('You are not allowed to use this LLM configuration.');
         });
     });
 

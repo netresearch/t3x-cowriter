@@ -596,6 +596,51 @@ describe('CowriterDialog', () => {
         });
     });
 
+    describe('streamed answer', () => {
+        it('should show the answer while it is written and the final HTML afterwards', async () => {
+            let finish;
+            mockService._routes = { taskStream: '/typo3/ajax/tx_cowriter_task_stream' };
+            mockService.executeTaskStream = vi.fn((request, onChunk) => {
+                onChunk('<p>Partial');
+                return new Promise((resolve) => { finish = resolve; });
+            });
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-name="execute"]')).not.toBeNull());
+
+            document.querySelector('[data-name="execute"]').click();
+            const preview = document.querySelector('[data-role="result-preview"]');
+            await vi.waitFor(() => expect(preview.textContent).toBe('Partial'));
+
+            expect(preview.getAttribute('aria-busy')).toBe('true');
+            expect(mockService.executeTask).not.toHaveBeenCalled();
+            expect(mockService.executeTaskStream.mock.calls[0][0]).toMatchObject({
+                taskUid: 1, context: 'my selected text', contextType: 'selection', configuration: '',
+            });
+
+            finish({ done: true, model: 'gpt-test', content: '<p>Final <strong>text</strong></p>' });
+            await vi.waitFor(() => expect(preview.innerHTML).toBe('<p>Final <strong>text</strong></p>'));
+            expect(preview.hasAttribute('aria-busy')).toBe(false);
+
+            document.querySelector('[data-name="insert"]').click();
+            await expect(showPromise).resolves.toEqual({ content: '<p>Final <strong>text</strong></p>' });
+        });
+
+        it('should show the error and clear the busy state when the stream fails', async () => {
+            mockService._routes = { taskStream: '/typo3/ajax/tx_cowriter_task_stream' };
+            mockService.executeTaskStream = vi.fn().mockRejectedValue(new Error('LLM provider error occurred.'));
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-name="execute"]')).not.toBeNull());
+
+            document.querySelector('[data-name="execute"]').click();
+            const preview = document.querySelector('[data-role="result-preview"]');
+            await vi.waitFor(() => expect(preview.textContent).toContain('LLM provider error occurred.'));
+            expect(preview.hasAttribute('aria-busy')).toBe(false);
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
     describe('execute flow', () => {
         it('should call executeTask with instruction from textarea', async () => {
             const dialog = new CowriterDialog(mockService);
