@@ -60,6 +60,9 @@
             <trans-unit id="error.configurationDenied" resname="error.configurationDenied">
                 <source>You are not allowed to use this LLM configuration.</source>
             </trans-unit>
+            <trans-unit id="error.taskConfigurationInactive" resname="error.taskConfigurationInactive">
+                <source>The LLM configuration of this task is inactive. Choose another configuration, or ask an administrator to activate it.</source>
+            </trans-unit>
             <trans-unit id="error.notConfigured" resname="error.notConfigured">
                 <source>LLM is not configured yet.</source>
             </trans-unit>

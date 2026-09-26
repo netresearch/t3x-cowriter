@@ -6,7 +6,7 @@
 
 ## FIX
 
-- Every route checks that the backend user may use the configuration it runs on: the one the editor chose, the task's own and the default one. nr-llm restricts a configuration to backend groups, but cowriter did not ask, so any editor could run a restricted configuration by sending its identifier, and the configuration list showed every active configuration. A refused configuration answers HTTP 403 with "You are not allowed to use this LLM configuration."; an unknown or inactive chosen one answers 404, and is no longer replaced by the default. The tool route used to answer an unknown configuration with HTTP 400 and the English exception text, and the translation route with HTTP 500.
+- Every route checks that the backend user may use the configuration it runs on: the one the editor chose, the task's own and the default one. nr-llm restricts a configuration to backend groups, but cowriter did not ask, so any editor could run a restricted configuration by sending its identifier, and the configuration list showed every active configuration. A refused configuration answers HTTP 403 with "You are not allowed to use this LLM configuration."; an unknown or inactive chosen one answers 404, and is no longer replaced by the default; an inactive configuration of the task itself answers 409 and asks the editor to choose another. The tool route used to answer an unknown configuration with HTTP 400 and the English exception text, and the translation route with HTTP 500.
 
 # 3.8.0 (2026-09-26)
 

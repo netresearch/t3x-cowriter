@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Service;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\AccessDeniedException;
+use Netresearch\NrLlm\Exception\ConfigurationInactiveException;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
@@ -113,6 +114,24 @@ final class ConfigurationSelectorTest extends TestCase
     }
 
     #[Test]
+    public function anInactiveTaskConfigurationIsRefusedNotReplacedByTheDefault(): void
+    {
+        $this->repository->method('findDefault')->willReturn($this->configuration('default'));
+
+        $this->expectException(ConfigurationInactiveException::class);
+        $this->selector()->select(null, $this->configuration('task', false));
+    }
+
+    #[Test]
+    public function aChosenConfigurationStillRunsWhenTheTaskConfigurationIsInactive(): void
+    {
+        $chosen = $this->configuration('chosen');
+        $this->repository->method('findOneByIdentifier')->willReturn($chosen);
+
+        self::assertSame($chosen, $this->selector()->select('chosen', $this->configuration('task', false)));
+    }
+
+    #[Test]
     public function noDefaultIsReportedAsNotFound(): void
     {
         $this->repository->method('findDefault')->willReturn(null);
@@ -140,6 +159,9 @@ final class ConfigurationSelectorTest extends TestCase
 
         $none = $selector->trySelect(null);
         self::assertSame(['error.noConfiguration', 404], [$none->errorLabel, $none->status]);
+
+        $inactiveTask = $selector->trySelect(null, $this->configuration('task', false));
+        self::assertSame(['error.taskConfigurationInactive', 409], [$inactiveTask->errorLabel, $inactiveTask->status]);
     }
 
     #[Test]

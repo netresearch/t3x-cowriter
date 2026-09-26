@@ -12,6 +12,7 @@ namespace Netresearch\T3Cowriter\Service;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\AccessDeniedException;
+use Netresearch\NrLlm\Exception\ConfigurationInactiveException;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\NrLlm\Service\LlmConfigurationServiceInterface;
 use Netresearch\T3Cowriter\Service\Dto\ConfigurationSelection;
@@ -60,6 +61,7 @@ final readonly class ConfigurationSelector
      *
      * @throws ConfigurationNotFoundException when the chosen identifier is unknown or inactive, or when nothing
      *                                        was chosen and neither a task configuration nor a default exists
+     * @throws ConfigurationInactiveException when nothing was chosen and the task's own configuration is inactive
      * @throws AccessDeniedException          when the current backend user may not use the configuration
      */
     public function select(?string $identifier, ?LlmConfiguration $taskConfiguration = null): LlmConfiguration
@@ -72,8 +74,19 @@ final readonly class ConfigurationSelector
                     1790100001,
                 );
             }
+        } elseif ($taskConfiguration instanceof LlmConfiguration) {
+            // Not replaced by the default: that would run the task with another
+            // persona and model than its author chose, without anyone noticing.
+            if (!$taskConfiguration->isActive()) {
+                throw new ConfigurationInactiveException(
+                    sprintf('The task\'s LLM configuration "%s" is inactive.', $taskConfiguration->getIdentifier()),
+                    1790100004,
+                );
+            }
+
+            $configuration = $taskConfiguration;
         } else {
-            $configuration = $taskConfiguration ?? $this->configurationRepository->findDefault();
+            $configuration = $this->configurationRepository->findDefault();
             if (!$configuration instanceof LlmConfiguration) {
                 throw new ConfigurationNotFoundException('No default LLM configuration.', 1790100002);
             }
@@ -101,6 +114,8 @@ final readonly class ConfigurationSelector
             return ConfigurationSelection::selected($this->select($identifier, $taskConfiguration));
         } catch (AccessDeniedException) {
             return ConfigurationSelection::refused('error.configurationDenied', 403);
+        } catch (ConfigurationInactiveException) {
+            return ConfigurationSelection::refused('error.taskConfigurationInactive', 409);
         } catch (ConfigurationNotFoundException) {
             $chosen = $identifier !== null && $identifier !== '';
 
