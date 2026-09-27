@@ -692,6 +692,52 @@ describe('CowriterDialog', () => {
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
+        it('should send one save request while the first is running', async () => {
+            let finish;
+            mockService.getSavedPrompts = vi.fn().mockResolvedValue({ success: true, prompts: [] });
+            mockService.savePrompt = vi.fn(() => new Promise((resolve) => { finish = resolve; }));
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[data-role="prompt-save"]')).not.toBeNull());
+
+            const save = document.querySelector('[data-role="prompt-save"]');
+            document.querySelector('[data-role="instruction"]').value = 'Two sentences.';
+            document.querySelector('[data-role="prompt-title"]').value = 'Short intro';
+            save.click();
+            save.click();
+
+            expect(mockService.savePrompt).toHaveBeenCalledTimes(1);
+            expect(save.getAttribute('aria-disabled')).toBe('true');
+
+            finish({ success: true, prompt: { uid: 31, title: 'Short intro', instruction: 'Two sentences.', own: true, shared: false, awaitingApproval: false } });
+            await vi.waitFor(() => expect(save.hasAttribute('aria-disabled')).toBe(false));
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('should send one delete request while the first is running', async () => {
+            let finish;
+            mockService.getSavedPrompts = vi.fn().mockResolvedValue({ success: true, prompts: [prompts[0]] });
+            mockService.deletePrompt = vi.fn(() => new Promise((resolve) => { finish = resolve; }));
+            const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+            await vi.waitFor(() => expect(taskSelect().querySelector('option[value="prompt-12"]')).not.toBeNull());
+
+            taskSelect().value = 'prompt-12';
+            taskSelect().dispatchEvent(new Event('change'));
+            const remove = document.querySelector('[data-role="prompt-delete"]');
+            remove.click();
+            remove.click();
+
+            expect(mockService.deletePrompt).toHaveBeenCalledTimes(1);
+            expect(remove.getAttribute('aria-disabled')).toBe('true');
+
+            finish({ success: true });
+            await vi.waitFor(() => expect(remove.hasAttribute('aria-disabled')).toBe(false));
+
+            document.querySelector('[data-name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
         it('should hide the save form when the service cannot store prompts', async () => {
             const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
             await vi.waitFor(() => expect(document.querySelector('[data-role="prompt-saver"]')).not.toBeNull());

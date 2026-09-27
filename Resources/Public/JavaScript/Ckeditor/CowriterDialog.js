@@ -493,6 +493,10 @@ export class CowriterDialog {
             return;
         }
 
+        const button = container.querySelector('[data-role="prompt-save"]');
+        if (!this._beginPending(button)) {
+            return;
+        }
         try {
             const response = await this._service.savePrompt({ title, instruction, shared: shareInput.checked });
             const option = this._addPromptOption(container, response.prompt);
@@ -506,6 +510,8 @@ export class CowriterDialog {
                 : t('ckeditor.dialog.prompts.saved', 'Prompt saved.'));
         } catch (error) {
             this._promptStatus(container, error.message || t('ckeditor.dialog.prompts.failed', 'The prompt could not be saved or deleted.'));
+        } finally {
+            this._endPending(button);
         }
     }
 
@@ -523,6 +529,10 @@ export class CowriterDialog {
             return;
         }
 
+        const button = container.querySelector('[data-role="prompt-delete"]');
+        if (!this._beginPending(button)) {
+            return;
+        }
         try {
             await this._service.deletePrompt(uid);
             const group = option.parentElement;
@@ -535,7 +545,37 @@ export class CowriterDialog {
             this._promptStatus(container, t('ckeditor.dialog.prompts.deleted', 'Prompt deleted.'));
         } catch (error) {
             this._promptStatus(container, error.message || t('ckeditor.dialog.prompts.failed', 'The prompt could not be saved or deleted.'));
+        } finally {
+            this._endPending(button);
         }
+    }
+
+    /**
+     * Mark a button busy for the length of one request, so a second click sends
+     * nothing. aria-disabled keeps the button focusable for keyboard users,
+     * where the disabled attribute would drop the focus.
+     *
+     * @param {HTMLElement|null} button
+     * @returns {boolean} false when a request of this button is still running
+     * @private
+     */
+    _beginPending(button) {
+        if (button?.getAttribute('aria-disabled') === 'true') {
+            return false;
+        }
+        button?.setAttribute('aria-disabled', 'true');
+        button?.classList.add('disabled');
+
+        return true;
+    }
+
+    /**
+     * @param {HTMLElement|null} button
+     * @private
+     */
+    _endPending(button) {
+        button?.removeAttribute('aria-disabled');
+        button?.classList.remove('disabled');
     }
 
     /**
