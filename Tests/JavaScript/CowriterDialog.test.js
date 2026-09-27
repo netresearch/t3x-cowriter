@@ -2529,9 +2529,54 @@ describe('CowriterDialog', () => {
                 expect(selectedIn).toBe('modal');
                 await vi.waitFor(() => expect(copyBtn.textContent).toBe('Copied!'));
                 expect(modalDocument.querySelector('textarea[style*="opacity"]')).toBeNull();
+                // The textarea took the focus for the copy; the button gets it back.
+                expect(modalDocument.activeElement).toBe(copyBtn);
 
                 modalDocument.querySelector('[name="cancel"]').click();
                 await showPromise.catch(() => {});
+            });
+
+            it('falls back when there is no clipboard API (no secure context)', async () => {
+                expect(navigator.clipboard).toBeUndefined();
+                expect(modalWindow.navigator.clipboard).toBeUndefined();
+                const modalExec = vi.fn().mockReturnValue(true);
+                modalWindow.document.execCommand = modalExec;
+
+                const { showPromise, modalDocument } = await openDebugDetails();
+                const copyBtn = modalDocument.querySelector('[data-role="debug-copy"]');
+                copyBtn.click();
+
+                await vi.waitFor(() => expect(modalExec).toHaveBeenCalledWith('copy'));
+                await vi.waitFor(() => expect(copyBtn.textContent).toBe('Copied!'));
+
+                modalDocument.querySelector('[name="cancel"]').click();
+                await showPromise.catch(() => {});
+            });
+
+            it('removes the fallback textarea and keeps the label when execCommand throws', async () => {
+                setClipboard(modalWindow, vi.fn().mockRejectedValue(new Error('Not allowed')));
+                const modalExec = vi.fn(() => { throw new Error('execCommand unsupported'); });
+                modalWindow.document.execCommand = modalExec;
+                const unhandled = vi.fn();
+                process.on('unhandledRejection', unhandled);
+                try {
+                    const { showPromise, modalDocument } = await openDebugDetails();
+                    const copyBtn = modalDocument.querySelector('[data-role="debug-copy"]');
+                    const label = copyBtn.textContent;
+                    copyBtn.click();
+
+                    await vi.waitFor(() => expect(modalExec).toHaveBeenCalled());
+                    await new Promise((r) => setTimeout(r, 0));
+                    expect(modalDocument.querySelector('textarea[style*="opacity"]')).toBeNull();
+                    expect(modalDocument.activeElement).toBe(copyBtn);
+                    expect(copyBtn.textContent).toBe(label);
+                    expect(unhandled).not.toHaveBeenCalled();
+
+                    modalDocument.querySelector('[name="cancel"]').click();
+                    await showPromise.catch(() => {});
+                } finally {
+                    process.off('unhandledRejection', unhandled);
+                }
             });
         });
 

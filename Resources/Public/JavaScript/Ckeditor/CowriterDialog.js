@@ -1860,18 +1860,28 @@ export class CowriterDialog {
                 copyBtn.textContent = t('ckeditor.dialog.copied', 'Copied!');
                 setTimeout(() => { copyBtn.textContent = copyLabel; }, 2000);
             };
-            clipboard.writeText(text).then(copied).catch(() => {
+            // Without a secure context (plain http) there is no clipboard API
+            // at all; go straight to the fallback.
+            const write = clipboard
+                ? clipboard.writeText(text)
+                : Promise.reject(new Error('Clipboard API unavailable'));
+            write.then(copied).catch(() => {
                 const ta = doc.createElement('textarea');
                 ta.value = text;
                 ta.style.position = 'fixed';
                 ta.style.opacity = '0';
                 // Inside the modal: a modal <dialog> makes the rest inert.
                 copyBtn.after(ta);
-                ta.select();
-                doc.execCommand('copy');
-                ta.remove();
-                copyBtn.focus();
-                copied();
+                try {
+                    ta.select();
+                    doc.execCommand('copy');
+                    copied();
+                } catch {
+                    // Copying is not possible here; the label stays as it is.
+                } finally {
+                    ta.remove();
+                    copyBtn.focus();
+                }
             });
         });
         details.appendChild(copyBtn);
