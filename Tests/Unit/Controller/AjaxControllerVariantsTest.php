@@ -11,20 +11,12 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
-use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
-use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
-use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Controller\AjaxController;
-use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
-use Netresearch\T3Cowriter\Service\DiagnosticService;
-use Netresearch\T3Cowriter\Service\RateLimiterInterface;
-use Netresearch\T3Cowriter\Service\RateLimitResult;
-use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
-use Netresearch\T3Cowriter\Tests\Support\RecordingEventStream;
+use Netresearch\T3Cowriter\Tests\Support\TaskRouteControllerTrait;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -32,15 +24,12 @@ use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Log\NullLogger;
-use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
-use TYPO3\CMS\Core\Context\Context;
-use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\ServerRequest;
 
 #[CoversClass(AjaxController::class)]
 final class AjaxControllerVariantsTest extends TestCase
 {
+    use TaskRouteControllerTrait;
     use XliffLanguageServiceTrait;
 
     private LlmServiceManagerInterface&Stub $llm;
@@ -120,24 +109,6 @@ final class AjaxControllerVariantsTest extends TestCase
 
     private function subject(bool $withCompletion = true): AjaxController
     {
-        $configuration = $this->createStub(LlmConfiguration::class);
-        $configuration->method('getIdentifier')->willReturn('default');
-        $configuration->method('isActive')->willReturn(true);
-        $configuration->method('getModelId')->willReturn('gpt-test');
-        $configurations = $this->createStub(LlmConfigurationRepository::class);
-        $configurations->method('findDefault')->willReturn($configuration);
-
-        $task = $this->createStub(Task::class);
-        $task->method('isActive')->willReturn(true);
-        $task->method('getConfiguration')->willReturn(null);
-        $tasks = $this->createStub(TaskRepository::class);
-        $tasks->method('findByUid')->willReturn($task);
-
-        $rateLimiter = $this->createStub(RateLimiterInterface::class);
-        $rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
-        $context = $this->createStub(Context::class);
-        $context->method('getPropertyFromAspect')->willReturn(1);
-
         $completion = null;
         if ($withCompletion) {
             $completion = $this->createStub(CompletionServiceInterface::class);
@@ -154,20 +125,7 @@ final class AjaxControllerVariantsTest extends TestCase
             );
         }
 
-        return new AjaxController(
-            $this->llm,
-            ConfigurationAccessDouble::selector($configurations),
-            $tasks,
-            $rateLimiter,
-            $context,
-            new NullLogger(),
-            $this->createStub(ContextAssemblyServiceInterface::class),
-            $this->createStub(ConnectionPool::class),
-            $this->createStub(BackendUriBuilder::class),
-            $this->createStub(DiagnosticService::class),
-            eventStream: new RecordingEventStream(),
-            completionService: $completion,
-        );
+        return $this->taskRouteController($this->llm, completionService: $completion);
     }
 
     private function request(int $variants): ServerRequestInterface
