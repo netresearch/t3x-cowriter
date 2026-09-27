@@ -32,7 +32,8 @@ function createMockModal(options) {
             const btn = document.createElement('button');
             btn.className = `btn ${btnDef.btnClass || ''}`.trim();
             btn.textContent = btnDef.text || '';
-            if (btnDef.name) btn.dataset.name = btnDef.name;
+            // Like the core modal (13.4 and 14.3): the name becomes the name attribute.
+            if (btnDef.name) btn.setAttribute('name', btnDef.name);
             btn.addEventListener('click', () => {
                 if (typeof btnDef.trigger === 'function') {
                     btnDef.trigger();
