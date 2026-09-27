@@ -2578,6 +2578,27 @@ describe('CowriterDialog', () => {
                     process.off('unhandledRejection', unhandled);
                 }
             });
+
+            it('removes the fallback textarea and keeps the label when execCommand returns false', async () => {
+                // Current browsers report a refused copy this way instead of throwing.
+                setClipboard(modalWindow, vi.fn().mockRejectedValue(new Error('Not allowed')));
+                const modalExec = vi.fn().mockReturnValue(false);
+                modalWindow.document.execCommand = modalExec;
+
+                const { showPromise, modalDocument } = await openDebugDetails();
+                const copyBtn = modalDocument.querySelector('[data-role="debug-copy"]');
+                const label = copyBtn.textContent;
+                copyBtn.click();
+
+                await vi.waitFor(() => expect(modalExec).toHaveBeenCalledWith('copy'));
+                await new Promise((r) => setTimeout(r, 0));
+                expect(copyBtn.textContent).toBe(label);
+                expect(modalDocument.querySelector('textarea[style*="opacity"]')).toBeNull();
+                expect(modalDocument.activeElement).toBe(copyBtn);
+
+                modalDocument.querySelector('[name="cancel"]').click();
+                await showPromise.catch(() => {});
+            });
         });
 
         it('adds the dialog styles to the modal\'s document once across module loads', async () => {

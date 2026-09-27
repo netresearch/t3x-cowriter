@@ -1874,10 +1874,14 @@ export class CowriterDialog {
                 copyBtn.after(ta);
                 try {
                     ta.select();
-                    doc.execCommand('copy');
-                    copied();
+                    // Browsers report a refused copy by returning false, older
+                    // ones by throwing. On false the label stays as it is.
+                    if (doc.execCommand('copy')) {
+                        copied();
+                    }
                 } catch {
-                    // Copying is not possible here; the label stays as it is.
+                    // execCommand threw: copying is not possible here, and
+                    // the label stays as it is.
                 } finally {
                     ta.remove();
                     copyBtn.focus();
