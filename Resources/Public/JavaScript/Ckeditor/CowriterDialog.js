@@ -126,6 +126,9 @@ export class CowriterDialog {
     /** @type {import('./AIService.js').AIService} */
     _service;
 
+    /** @type {HTMLElement|null} Focus target once the modal is hidden */
+    _returnFocusTo = null;
+
     /**
      * @param {import('./AIService.js').AIService} service
      */
@@ -144,6 +147,10 @@ export class CowriterDialog {
      * @returns {Promise<DialogResult>} Resolves with content to insert, rejects on cancel
      */
     async show(selectedText, fullContent, editorCapabilities = '', recordContext = null, preSelectedTaskUid = null) {
+        // What had focus when the dialog was asked for: the editor or the
+        // toolbar button. Opened from the FormEngine iframe, the modal lives in
+        // the parent window and cannot hand focus back into this document.
+        this._returnFocusTo = /** @type {HTMLElement|null} */ (document.activeElement);
         // The configuration picker is optional and does not hold up the
         // dialog: it appears once the list arrives. Without a list, every task
         // runs on its own configuration, as before.
@@ -806,6 +813,7 @@ export class CowriterDialog {
 
             // Handle modal dismissal via Escape key, X button, or Close button
             modal?.addEventListener?.('typo3-modal-hidden', () => {
+                this._restoreFocus();
                 reject(new Error('User cancelled'));
             });
         });
@@ -1056,6 +1064,7 @@ export class CowriterDialog {
 
             // Handle modal dismissal — always clean up listeners/requests
             modal?.addEventListener?.('typo3-modal-hidden', () => {
+                this._restoreFocus();
                 activeRequest?.abort();
                 for (const ac of referenceAbortControllers) ac.abort();
                 referenceAbortControllers.clear();
@@ -1071,6 +1080,19 @@ export class CowriterDialog {
             // so no click can have changed the state in between.
             modal?.updateComplete?.then?.(() => this._updateButtonVisibility(modal, 'idle'));
         });
+    }
+
+    /**
+     * Give focus back to what had it when show() was called. Runs once the
+     * modal is hidden: while it is open, the rest of the page is inert.
+     * @private
+     */
+    _restoreFocus() {
+        const target = this._returnFocusTo;
+        this._returnFocusTo = null;
+        if (target && target.isConnected && target !== target.ownerDocument.body) {
+            target.focus({ preventScroll: true });
+        }
     }
 
     /**
@@ -1383,6 +1405,9 @@ export class CowriterDialog {
         // Wrapper for search input + dropdown
         const searchWrapper = document.createElement('div');
         searchWrapper.className = 'position-relative';
+        // The TYPO3 backend CSS has no Bootstrap position utilities (14.3), so
+        // the classes alone leave the list in the flow; set the position here.
+        searchWrapper.style.position = 'relative';
         searchWrapper.style.minWidth = '250px';
 
         const dropdownId = 'cowriter-ref-dropdown-' + Math.random().toString(36).slice(2, 9);
@@ -1408,6 +1433,7 @@ export class CowriterDialog {
         dropdown.className = 'list-group position-absolute w-100 shadow-sm';
         dropdown.id = dropdownId;
         dropdown.setAttribute('role', 'listbox');
+        dropdown.style.position = 'absolute';
         dropdown.style.zIndex = '1050';
         dropdown.style.maxHeight = '200px';
         dropdown.style.overflowY = 'auto';
@@ -1449,11 +1475,18 @@ export class CowriterDialog {
         // Keyboard navigation for dropdown
         searchInput.addEventListener('keydown', (e) => {
             const items = dropdown.querySelectorAll('[role="option"]');
+            if (e.key === 'Escape' && dropdown.style.display !== 'none') {
+                // Close only the list. Keep the key from the modal: the 14.3
+                // modal (native <dialog>) closes unless the keydown is
+                // default-prevented, the 13.4 modal listens on the document.
+                e.preventDefault();
+                e.stopPropagation();
+                dropdown.style.display = 'none';
+                searchInput.setAttribute('aria-expanded', 'false');
+                searchInput.removeAttribute('aria-activedescendant');
+                return;
+            }
             if (!items.length || dropdown.style.display === 'none') {
-                if (e.key === 'Escape') {
-                    dropdown.style.display = 'none';
-                    searchInput.setAttribute('aria-expanded', 'false');
-                }
                 return;
             }
             const active = dropdown.querySelector('.active');
@@ -1477,10 +1510,6 @@ export class CowriterDialog {
             } else if (e.key === 'Enter' && active) {
                 e.preventDefault();
                 active.click();
-            } else if (e.key === 'Escape') {
-                dropdown.style.display = 'none';
-                searchInput.setAttribute('aria-expanded', 'false');
-                searchInput.removeAttribute('aria-activedescendant');
             }
         }, { signal: controller.signal });
 
@@ -1519,7 +1548,12 @@ export class CowriterDialog {
             clearTimeout(debounceTimer);
             controller.abort();
             referenceAbortControllers?.delete(controller);
+            // The focused button goes away with the row: move focus to the
+            // next row's page search, or to the add button after the last row.
+            const next = row.nextElementSibling?.querySelector('[data-role="ref-search"]')
+                ?? row.parentElement?.parentElement?.querySelector('[data-role="add-reference"]');
             row.remove();
+            next?.focus();
         });
         row.appendChild(removeBtn);
 
@@ -1575,6 +1609,8 @@ export class CowriterDialog {
                 dropdown.style.display = 'none';
                 searchInput.setAttribute('aria-expanded', 'false');
                 searchInput.removeAttribute('aria-activedescendant');
+                // A mouse click focuses the option, which the list now hides.
+                searchInput.focus();
             });
             dropdown.appendChild(item);
         }

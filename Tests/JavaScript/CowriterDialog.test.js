@@ -2276,6 +2276,155 @@ describe('CowriterDialog', () => {
         });
     });
 
+    describe('keyboard and focus', () => {
+        const openWithReferenceRow = async (dialog) => {
+            const showPromise = dialog.show('text', 'full', '', null);
+            await vi.waitFor(() => expect(document.querySelector('[data-role="add-reference"]')).not.toBeNull());
+            document.querySelector('[data-role="add-reference"]').click();
+            // Wrapped: awaiting the helper must not wait for the dialog to settle.
+            return { showPromise };
+        };
+
+        it('closes only the page list on Escape and lets a second Escape reach the modal', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            dialog._renderPageDropdown(dropdown, [{ uid: 1, title: 'Home', slug: '/' }], searchInput,
+                document.querySelector('[data-role="ref-pid"]'));
+            // Stands in for the modal: the 13.4 modal listens for Escape on the
+            // document, the 14.3 one (native <dialog>) closes unless the keydown
+            // is default-prevented.
+            const modalKeydown = vi.fn();
+            document.addEventListener('keydown', modalKeydown);
+            try {
+                const first = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+                searchInput.dispatchEvent(first);
+                expect(dropdown.style.display).toBe('none');
+                expect(first.defaultPrevented).toBe(true);
+                expect(modalKeydown).not.toHaveBeenCalled();
+
+                const second = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+                searchInput.dispatchEvent(second);
+                expect(second.defaultPrevented).toBe(false);
+                expect(modalKeydown).toHaveBeenCalledTimes(1);
+            } finally {
+                document.removeEventListener('keydown', modalKeydown);
+            }
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('keeps the list out of the layout without the Bootstrap position utilities', async () => {
+            // The TYPO3 14.3 backend CSS has no .position-absolute/.position-relative
+            // rules; jsdom loads no CSS either, so only inline positioning counts.
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+            expect(getComputedStyle(dropdown).position).toBe('absolute');
+            expect(getComputedStyle(dropdown.parentElement).position).toBe('relative');
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('keeps focus in the page search after an option is picked with the mouse', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+            const searchInput = document.querySelector('[data-role="ref-search"]');
+            dialog._renderPageDropdown(dropdown, [{ uid: 7, title: 'Home', slug: '/' }], searchInput,
+                document.querySelector('[data-role="ref-pid"]'));
+
+            const option = dropdown.querySelector('[role="option"]');
+            option.focus(); // a mouse press focuses the button
+            option.click();
+
+            expect(dropdown.style.display).toBe('none');
+            expect(document.activeElement).toBe(searchInput);
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('moves focus to the next row, then to the add button, when a row is removed', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            document.querySelector('[data-role="add-reference"]').click();
+            const [firstRow, secondRow] = document.querySelectorAll('[data-role="reference-row"]');
+
+            const firstRemove = firstRow.querySelector('[data-role="remove-reference"]');
+            firstRemove.focus();
+            firstRemove.click();
+            expect(document.activeElement).toBe(secondRow.querySelector('[data-role="ref-search"]'));
+
+            const lastRemove = secondRow.querySelector('[data-role="remove-reference"]');
+            lastRemove.focus();
+            lastRemove.click();
+            expect(document.querySelectorAll('[data-role="reference-row"]')).toHaveLength(0);
+            expect(document.activeElement).toBe(document.querySelector('[data-role="add-reference"]'));
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it.each(['cancel', 'hidden'])('gives focus back to the opener once the modal is hidden (%s)', async (how) => {
+            const opener = document.createElement('button');
+            document.body.appendChild(opener);
+            opener.focus();
+
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[name="cancel"]')).not.toBeNull());
+            // The core modal moves focus into the dialog.
+            document.querySelector('[name="cancel"]').focus();
+            expect(document.activeElement).not.toBe(opener);
+
+            if (how === 'cancel') {
+                document.querySelector('[name="cancel"]').click();
+            } else {
+                // Escape or the X button: the modal hides itself.
+                document.querySelector('.modal').hideModal();
+            }
+            await expect(showPromise).rejects.toThrow('User cancelled');
+            expect(document.activeElement).toBe(opener);
+        });
+
+        it('gives focus back to the opener after Insert', async () => {
+            const opener = document.createElement('button');
+            document.body.appendChild(opener);
+            opener.focus();
+
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[name="execute"]')).not.toBeNull());
+            document.querySelector('[name="execute"]').click();
+            const preview = document.querySelector('[data-role="result-preview"]');
+            await vi.waitFor(() => expect(preview.textContent).toBe('Improved text content'));
+            document.querySelector('[name="insert"]').focus();
+            expect(document.activeElement).not.toBe(opener);
+            document.querySelector('[name="insert"]').click();
+
+            await expect(showPromise).resolves.toEqual({ content: 'Improved text content' });
+            expect(document.activeElement).toBe(opener);
+        });
+
+        it('gives focus back to the opener when the no-tasks notice is closed', async () => {
+            mockService.getTasks.mockResolvedValue({ success: true, tasks: [] });
+            const opener = document.createElement('button');
+            document.body.appendChild(opener);
+            opener.focus();
+
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('[name="close"]')).not.toBeNull());
+            document.querySelector('[name="close"]').focus();
+            document.querySelector('[name="close"]').click();
+
+            await expect(showPromise).rejects.toThrow('User cancelled');
+            expect(document.activeElement).toBe(opener);
+        });
+    });
+
     describe('keyboard navigation', () => {
         it('should close dropdown on Escape key', async () => {
             const dialog = new CowriterDialog(mockService);
