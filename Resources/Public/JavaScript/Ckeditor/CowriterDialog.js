@@ -1018,6 +1018,11 @@ export class CowriterDialog {
             });
 
             this._updateButtonVisibility(modal, 'idle');
+            // The TYPO3 modal is a Lit element: Modal.advanced() returns before its
+            // footer buttons are rendered, so the call above finds none. Hide them
+            // once the first render has completed. No button exists before then,
+            // so no click can have changed the state in between.
+            modal?.updateComplete?.then?.(() => this._updateButtonVisibility(modal, 'idle'));
         });
     }
 
