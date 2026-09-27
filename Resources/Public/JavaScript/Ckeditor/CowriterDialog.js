@@ -129,11 +129,18 @@ export class CowriterDialog {
     /** @type {HTMLElement|null} Focus target once the modal is hidden */
     _returnFocusTo = null;
 
+    /** @type {(() => void)|null} Hands focus back instead of _returnFocusTo */
+    _returnFocus = null;
+
     /**
      * @param {import('./AIService.js').AIService} service
+     * @param {{returnFocus?: () => void}} [options] - returnFocus is called once
+     *     the modal is hidden, in place of focusing what had focus before; the
+     *     CKEditor plugin passes one that focuses the editing view.
      */
-    constructor(service) {
+    constructor(service, options = {}) {
         this._service = service;
+        this._returnFocus = options.returnFocus ?? null;
     }
 
     /**
@@ -1090,6 +1097,10 @@ export class CowriterDialog {
     _restoreFocus() {
         const target = this._returnFocusTo;
         this._returnFocusTo = null;
+        if (this._returnFocus) {
+            this._returnFocus();
+            return;
+        }
         if (target && target.isConnected && target !== target.ownerDocument.body) {
             target.focus({ preventScroll: true });
         }
@@ -1121,6 +1132,9 @@ export class CowriterDialog {
         taskSelect.className = 'form-select';
         taskSelect.id = taskSelectId;
         taskSelect.dataset.role = 'task-select';
+        // Start keyboard users in the content, not on the close button: the
+        // 13.4 modal focuses [autofocus], the 14.3 native dialog does too.
+        taskSelect.autofocus = true;
 
         // "Custom instruction" option first
         const customOption = document.createElement('option');
@@ -1260,7 +1274,9 @@ export class CowriterDialog {
 
         const addRefBtn = document.createElement('button');
         addRefBtn.type = 'button';
-        addRefBtn.className = 'btn btn-sm btn-outline-secondary mt-1';
+        // btn-default: the backend CSS (14.3) has no btn-outline-* rules, so
+        // those buttons had no border and no visible focus outline.
+        addRefBtn.className = 'btn btn-sm btn-default mt-1';
         addRefBtn.dataset.role = 'add-reference';
         // The icon is added by _showModal() with the modal's document.
         addRefBtn.append(' ' + t('ckeditor.dialog.addReference', 'Add reference page'));
@@ -1409,6 +1425,9 @@ export class CowriterDialog {
         // the classes alone leave the list in the flow; set the position here.
         searchWrapper.style.position = 'relative';
         searchWrapper.style.minWidth = '250px';
+        // Share the free width of the row with the relation field, so that
+        // page titles fit.
+        searchWrapper.style.flex = '1 1 0';
 
         const dropdownId = 'cowriter-ref-dropdown-' + Math.random().toString(36).slice(2, 9);
 
@@ -1437,9 +1456,23 @@ export class CowriterDialog {
         dropdown.style.zIndex = '1050';
         dropdown.style.maxHeight = '200px';
         dropdown.style.overflowY = 'auto';
+        // A scrolling box whose options are no Tab stops is one itself in
+        // Chromium; keep the list out of the Tab order as well.
+        dropdown.tabIndex = -1;
         dropdown.style.display = 'none';
         dropdown.dataset.role = 'ref-dropdown';
+        dropdown.setAttribute('aria-label', t('ckeditor.dialog.pageSearch.results', 'Matching pages'));
         searchWrapper.appendChild(dropdown);
+
+        // Result count for screen readers, and the visible "No pages found":
+        // outside the listbox, which may only hold options.
+        const status = document.createElement('div');
+        status.className = 'form-text';
+        status.dataset.role = 'ref-status';
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
+        searchWrapper.appendChild(status);
+        const closeList = () => this._closePageList(dropdown, searchInput);
 
         // AbortController for cleanup of event listeners and in-flight requests
         const controller = new AbortController();
@@ -1453,8 +1486,7 @@ export class CowriterDialog {
             hiddenPid.value = '';  // Clear selection on new input
             const query = searchInput.value.trim();
             if (query.length < 2) {
-                dropdown.style.display = 'none';
-                searchInput.setAttribute('aria-expanded', 'false');
+                closeList();
                 return;
             }
             const searchId = ++currentSearchId;
@@ -1465,27 +1497,27 @@ export class CowriterDialog {
                     this._renderPageDropdown(dropdown, result.pages, searchInput, hiddenPid);
                 } catch {
                     if (searchId === currentSearchId) {
-                        dropdown.style.display = 'none';
-                        searchInput.setAttribute('aria-expanded', 'false');
+                        closeList();
                     }
                 }
             }, 300);
         }, { signal: controller.signal });
 
+        // Escape anywhere in the search (field, list, "No pages found")
+        // closes only the list and keeps focus in the field. Keep the key from
+        // the modal: the 14.3 modal (native <dialog>) closes unless the keydown
+        // is default-prevented, the 13.4 modal listens on the document.
+        searchWrapper.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape' || !this._isPageListOpen(dropdown)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            closeList();
+            searchInput.focus();
+        }, { signal: controller.signal });
+
         // Keyboard navigation for dropdown
         searchInput.addEventListener('keydown', (e) => {
             const items = dropdown.querySelectorAll('[role="option"]');
-            if (e.key === 'Escape' && dropdown.style.display !== 'none') {
-                // Close only the list. Keep the key from the modal: the 14.3
-                // modal (native <dialog>) closes unless the keydown is
-                // default-prevented, the 13.4 modal listens on the document.
-                e.preventDefault();
-                e.stopPropagation();
-                dropdown.style.display = 'none';
-                searchInput.setAttribute('aria-expanded', 'false');
-                searchInput.removeAttribute('aria-activedescendant');
-                return;
-            }
             if (!items.length || dropdown.style.display === 'none') {
                 return;
             }
@@ -1518,14 +1550,20 @@ export class CowriterDialog {
         // so the listener is removed by hand: the controller belongs to this
         // window, and not every implementation accepts a signal from another
         // window (jsdom rejects it).
-        const closeOnOutsideClick = (e) => {
+        const closeOnOutsidePointer = (e) => {
             if (!searchWrapper.contains(e.target)) {
-                dropdown.style.display = 'none';
-                searchInput.setAttribute('aria-expanded', 'false');
+                closeList();
             }
         };
-        doc.addEventListener('click', closeOnOutsideClick);
-        controller.signal.addEventListener('abort', () => doc.removeEventListener('click', closeOnOutsideClick));
+        doc.addEventListener('pointerdown', closeOnOutsidePointer);
+        controller.signal.addEventListener('abort', () => doc.removeEventListener('pointerdown', closeOnOutsidePointer));
+        // Close it when focus leaves the search, so that the open list never
+        // covers the control that receives focus (WCAG 2.4.11).
+        searchWrapper.addEventListener('focusout', (e) => {
+            if (!searchWrapper.contains(/** @type {Node|null} */ (e.relatedTarget))) {
+                closeList();
+            }
+        }, { signal: controller.signal });
 
         row.appendChild(searchWrapper);
 
@@ -1536,11 +1574,12 @@ export class CowriterDialog {
         relationInput.placeholder = t('ckeditor.dialog.relation.placeholder', 'Relation (e.g., style guide)');
         relationInput.setAttribute('aria-label', t('ckeditor.dialog.relation.label', 'Relation to reference page'));
         relationInput.setAttribute('list', 'cowriter-relation-presets');
+        relationInput.style.flex = '1 1 0';
         row.appendChild(relationInput);
 
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
-        removeBtn.className = 'btn btn-sm btn-outline-danger';
+        removeBtn.className = 'btn btn-sm btn-default';
         removeBtn.dataset.role = 'remove-reference';
         removeBtn.appendChild(createIcon(doc, 'actions-delete'));
         removeBtn.setAttribute('aria-label', t('ckeditor.dialog.removeReference', 'Remove reference page'));
@@ -1572,18 +1611,20 @@ export class CowriterDialog {
     _renderPageDropdown(dropdown, pages, searchInput, hiddenPid) {
         dropdown.replaceChildren();
         searchInput.removeAttribute('aria-activedescendant');
+        const status = this._pageStatus(dropdown);
+        dropdown.setAttribute('role', 'listbox');
         if (!pages || pages.length === 0) {
-            dropdown.setAttribute('role', 'listbox');
-            const item = document.createElement('div');
-            item.className = 'list-group-item list-group-item-light text-muted small';
-            item.textContent = t('ckeditor.dialog.noPagesFound', 'No pages found');
-            item.setAttribute('role', 'status');
-            dropdown.appendChild(item);
-            dropdown.style.display = 'block';
-            searchInput.setAttribute('aria-expanded', 'true');
+            // No listbox without options: the list stays closed, the status
+            // says so, visibly and to screen readers.
+            dropdown.style.display = 'none';
+            searchInput.setAttribute('aria-expanded', 'false');
+            if (status) {
+                status.textContent = t('ckeditor.dialog.noPagesFound', 'No pages found');
+                status.dataset.state = 'empty';
+                status.classList.remove('visually-hidden');
+            }
             return;
         }
-        dropdown.setAttribute('role', 'listbox');
         const prefix = dropdown.id || 'ref-opt';
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
@@ -1593,22 +1634,27 @@ export class CowriterDialog {
             item.className = 'list-group-item list-group-item-action small';
             item.setAttribute('role', 'option');
             item.setAttribute('aria-selected', 'false');
+            // Combobox pattern: focus stays in the field, the arrow keys move
+            // aria-activedescendant; an option is no Tab stop of its own.
+            item.tabIndex = -1;
             item.style.overflow = 'hidden';
             item.style.textOverflow = 'ellipsis';
             item.style.whiteSpace = 'nowrap';
             item.textContent = `[${page.uid}] ${page.title}`;
             if (page.slug) {
                 const slug = document.createElement('span');
-                slug.className = 'text-muted ms-1';
-                slug.textContent = page.slug;
+                slug.className = 'text-muted';
+                // Separated in the text itself, so that the accessible name
+                // reads "Title – /slug", not "Title/slug".
+                slug.textContent = ` \u2013 ${page.slug}`;
                 item.appendChild(slug);
             }
+            // The whole text, for titles cut off by the list's width.
+            item.title = item.textContent;
             item.addEventListener('click', () => {
                 hiddenPid.value = String(page.uid);
                 searchInput.value = `[${page.uid}] ${page.title}`;
-                dropdown.style.display = 'none';
-                searchInput.setAttribute('aria-expanded', 'false');
-                searchInput.removeAttribute('aria-activedescendant');
+                this._closePageList(dropdown, searchInput);
                 // A mouse click focuses the option, which the list now hides.
                 searchInput.focus();
             });
@@ -1616,6 +1662,54 @@ export class CowriterDialog {
         }
         dropdown.style.display = 'block';
         searchInput.setAttribute('aria-expanded', 'true');
+        if (status) {
+            status.textContent = pages.length === 1
+                ? t('ckeditor.dialog.pageFound', '1 page found')
+                : t('ckeditor.dialog.pagesFound', '%s pages found', pages.length);
+            delete status.dataset.state;
+            // Announced only: the open list covers the place below the field.
+            status.classList.add('visually-hidden');
+        }
+    }
+
+    /**
+     * @param {HTMLElement} dropdown
+     * @returns {HTMLElement|null} The status element of the page search
+     * @private
+     */
+    _pageStatus(dropdown) {
+        return dropdown.parentElement?.querySelector('[data-role="ref-status"]') ?? null;
+    }
+
+    /**
+     * Whether the page search shows anything to close: the list, or the
+     * "No pages found" status.
+     *
+     * @param {HTMLElement} dropdown
+     * @returns {boolean}
+     * @private
+     */
+    _isPageListOpen(dropdown) {
+        return dropdown.style.display !== 'none' || this._pageStatus(dropdown)?.dataset.state === 'empty';
+    }
+
+    /**
+     * Close the page list, wherever it is closed from: the list, the combobox
+     * state, the active option and the status go together.
+     *
+     * @param {HTMLElement} dropdown
+     * @param {HTMLInputElement} searchInput
+     * @private
+     */
+    _closePageList(dropdown, searchInput) {
+        dropdown.style.display = 'none';
+        searchInput.setAttribute('aria-expanded', 'false');
+        searchInput.removeAttribute('aria-activedescendant');
+        const status = this._pageStatus(dropdown);
+        if (status) {
+            status.textContent = '';
+            delete status.dataset.state;
+        }
     }
 
     /**
@@ -1882,7 +1976,7 @@ export class CowriterDialog {
         const copyLabel = t('ckeditor.dialog.copy', 'Copy to clipboard');
         const copyBtn = document.createElement('button');
         copyBtn.type = 'button';
-        copyBtn.className = 'btn btn-sm btn-outline-secondary mt-1';
+        copyBtn.className = 'btn btn-sm btn-default mt-1';
         copyBtn.dataset.role = 'debug-copy';
         copyBtn.textContent = copyLabel;
         copyBtn.addEventListener('click', () => {

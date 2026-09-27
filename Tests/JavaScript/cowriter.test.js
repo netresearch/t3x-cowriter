@@ -7,6 +7,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Cowriter Plugin', () => {
     let Cowriter;
+    /** Options the plugin passed to the last CowriterDialog it created */
+    let lastDialogOptions;
 
     beforeEach(async () => {
         vi.resetModules();
@@ -59,7 +61,8 @@ describe('Cowriter Plugin', () => {
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
                 CowriterDialog: class MockCowriterDialog {
-                    constructor() {
+                    constructor(service, options) {
+                        lastDialogOptions = options;
                         this.show = mockDialogShow;
                     }
                 },
@@ -122,6 +125,16 @@ describe('Cowriter Plugin', () => {
             plugin._isProcessing = true;
             await capturedButton.fire('execute');
             expect(mockEditor.model.document.selection.getFirstRange).not.toHaveBeenCalled();
+        });
+
+        it('hands focus back to the editing view once the dialog is closed', async () => {
+            mockEditor.editing = { view: { focus: vi.fn(), getDomRoot: () => null } };
+            lastDialogOptions = undefined;
+            await capturedButton.fire('execute');
+
+            expect(mockEditor.editing.view.focus).not.toHaveBeenCalled();
+            lastDialogOptions.returnFocus();
+            expect(mockEditor.editing.view.focus).toHaveBeenCalledOnce();
         });
 
         it('should open dialog even without text selection', async () => {
@@ -1003,7 +1016,10 @@ describe('Cowriter Plugin', () => {
             }));
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
                 CowriterDialog: class MockCowriterDialog {
-                    constructor() { this.show = mockDialogShow; }
+                    constructor(service, options) {
+                        lastDialogOptions = options;
+                        this.show = mockDialogShow;
+                    }
                 },
             }));
 
@@ -1083,6 +1099,16 @@ describe('Cowriter Plugin', () => {
                 '', '<p>Full content</p>', '', null, 42,
             );
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
+        });
+
+        it('hands focus back to the editing view from the tasks dropdown too', async () => {
+            mockEditor.editing = { view: { focus: vi.fn(), getDomRoot: () => null } };
+            lastDialogOptions = undefined;
+            const dropdown = componentCallbacks['cowriterTemplates']();
+            await dropdown.fire('execute', { source: { taskUid: 42 } });
+
+            lastDialogOptions.returnFocus();
+            expect(mockEditor.editing.view.focus).toHaveBeenCalledOnce();
         });
 
         it('should not insert content when dialog is cancelled', async () => {

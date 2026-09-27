@@ -239,7 +239,11 @@ export class Cowriter extends Plugin {
                     const recordContext = this._getRecordContext();
 
                     // Show the task dialog
-                    const dialog = new CowriterDialog(this._service);
+                    // Once the dialog is closed, focus goes back into the editing
+                    // view, with its selection, as CKEditor's own dialogs do.
+                    const dialog = new CowriterDialog(this._service, {
+                        returnFocus: () => editor.editing.view.focus(),
+                    });
                     const result = await dialog.show(selectedText || '', fullContent, caps, recordContext);
 
                     if (result?.content) {
@@ -517,7 +521,11 @@ export class Cowriter extends Plugin {
                     const caps = this._getEditorCapabilities();
                     const recordContext = this._getRecordContext();
 
-                    const dialog = new CowriterDialog(this._service);
+                    // Once the dialog is closed, focus goes back into the editing
+                    // view, with its selection, as CKEditor's own dialogs do.
+                    const dialog = new CowriterDialog(this._service, {
+                        returnFocus: () => editor.editing.view.focus(),
+                    });
                     const dialogResult = await dialog.show(
                         selectedText || '', fullContent, caps, recordContext, taskUid,
                     );
