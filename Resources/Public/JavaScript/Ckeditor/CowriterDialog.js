@@ -62,21 +62,8 @@ let formIdCounter = 0;
 /** Id of the style element, so that a document gets it only once */
 const STYLE_ELEMENT_ID = 'cowriter-dialog-styles';
 
-/**
- * Inject cowriter-result styles once into the head of the document that
- * shows the dialog. From the FormEngine iframe, the TYPO3 modal opens in the
- * parent window, so this is not necessarily the script's own document. That
- * document outlives this module, which loads again with every iframe, so the
- * check reads the document rather than module state.
- *
- * @param {Document} doc
- * @private
- */
-function injectStyles(doc) {
-    if (doc.getElementById(STYLE_ELEMENT_ID)) return;
-    const style = doc.createElement('style');
-    style.id = STYLE_ELEMENT_ID;
-    style.textContent = `
+/** The dialog styles */
+const DIALOG_CSS = `
 .cowriter-result {
     min-height: 200px;
     max-height: 400px;
@@ -89,6 +76,29 @@ function injectStyles(doc) {
     color: var(--typo3-text-color-secondary);
     font-style: italic;
 }`;
+
+/**
+ * Inject the dialog styles once into the head of the document that shows
+ * the dialog. From the FormEngine iframe, the TYPO3 modal opens in the
+ * parent window, so this is not necessarily the script's own document. That
+ * document outlives this module, which loads again with every iframe, so the
+ * check reads the document rather than module state. An element left by an
+ * older version of this module gets the current styles.
+ *
+ * @param {Document} doc
+ * @private
+ */
+function injectStyles(doc) {
+    const existing = doc.getElementById(STYLE_ELEMENT_ID);
+    if (existing) {
+        if (existing.textContent !== DIALOG_CSS) {
+            existing.textContent = DIALOG_CSS;
+        }
+        return;
+    }
+    const style = doc.createElement('style');
+    style.id = STYLE_ELEMENT_ID;
+    style.textContent = DIALOG_CSS;
     doc.head.appendChild(style);
 }
 
@@ -1841,20 +1851,27 @@ export class CowriterDialog {
         copyBtn.textContent = copyLabel;
         copyBtn.addEventListener('click', () => {
             const text = content.textContent;
-            navigator.clipboard.writeText(text).then(() => {
+            // The click happens in the modal's document, which may be the
+            // parent window's: only that document has focus, and the
+            // clipboard refuses a document without it.
+            const doc = copyBtn.ownerDocument;
+            const clipboard = doc.defaultView?.navigator.clipboard ?? navigator.clipboard;
+            const copied = () => {
                 copyBtn.textContent = t('ckeditor.dialog.copied', 'Copied!');
                 setTimeout(() => { copyBtn.textContent = copyLabel; }, 2000);
-            }).catch(() => {
-                const ta = document.createElement('textarea');
+            };
+            clipboard.writeText(text).then(copied).catch(() => {
+                const ta = doc.createElement('textarea');
                 ta.value = text;
                 ta.style.position = 'fixed';
                 ta.style.opacity = '0';
-                document.body.appendChild(ta);
+                // Inside the modal: a modal <dialog> makes the rest inert.
+                copyBtn.after(ta);
                 ta.select();
-                document.execCommand('copy');
+                doc.execCommand('copy');
                 ta.remove();
-                copyBtn.textContent = t('ckeditor.dialog.copied', 'Copied!');
-                setTimeout(() => { copyBtn.textContent = copyLabel; }, 2000);
+                copyBtn.focus();
+                copied();
             });
         });
         details.appendChild(copyBtn);

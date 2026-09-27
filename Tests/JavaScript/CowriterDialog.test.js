@@ -2442,6 +2442,99 @@ describe('CowriterDialog', () => {
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
+        it('replaces a style element left by an older version', async () => {
+            const modalDocument = modalWindow.document;
+            const stale = modalDocument.createElement('style');
+            stale.id = 'cowriter-dialog-styles';
+            stale.textContent = '.cowriter-result { min-height: 1px; }';
+            modalDocument.head.appendChild(stale);
+
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            await vi.waitFor(() => expect(modalDocument.querySelector('[name="cancel"]')).not.toBeNull());
+
+            const styles = modalDocument.head.querySelectorAll('#cowriter-dialog-styles');
+            expect(styles).toHaveLength(1);
+            expect(styles[0].textContent).toContain('min-height: 200px');
+            expect(styles[0].textContent).not.toContain('min-height: 1px');
+
+            modalDocument.querySelector('[name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        describe('debug copy button', () => {
+            const setClipboard = (win, writeText) => {
+                Object.defineProperty(win.navigator, 'clipboard', {
+                    value: { writeText }, writable: true, configurable: true,
+                });
+            };
+
+            const openDebugDetails = async () => {
+                mockService.executeTask.mockResolvedValue({
+                    success: true, content: 'Result', model: 'test-model', finishReason: 'stop',
+                });
+                const showPromise = new CowriterDialog(mockService).show('input', 'full');
+                const modalDocument = modalWindow.document;
+                await vi.waitFor(() => expect(modalDocument.querySelector('[name="execute"]')).not.toBeNull());
+                modalDocument.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(modalDocument.querySelector('[data-role="debug-copy"]')).not.toBeNull());
+                return { showPromise, modalDocument };
+            };
+
+            afterEach(() => {
+                delete navigator.clipboard;
+                delete modalWindow.navigator.clipboard;
+                delete document.execCommand;
+                delete modalWindow.document.execCommand;
+            });
+
+            it('writes through the clipboard of the modal\'s window', async () => {
+                // In the browser the script's own document is not focused while
+                // the modal is open, and its clipboard rejects the write.
+                const scriptWrite = vi.fn().mockRejectedValue(new Error('Document is not focused.'));
+                const modalWrite = vi.fn().mockResolvedValue(undefined);
+                setClipboard(window, scriptWrite);
+                setClipboard(modalWindow, modalWrite);
+
+                const { showPromise, modalDocument } = await openDebugDetails();
+                const copyBtn = modalDocument.querySelector('[data-role="debug-copy"]');
+                copyBtn.click();
+
+                await vi.waitFor(() => expect(copyBtn.textContent).toBe('Copied!'));
+                expect(modalWrite).toHaveBeenCalledWith(expect.stringContaining('Model: test-model'));
+                expect(scriptWrite).not.toHaveBeenCalled();
+
+                modalDocument.querySelector('[name="cancel"]').click();
+                await showPromise.catch(() => {});
+            });
+
+            it('falls back to execCommand in the modal\'s document', async () => {
+                setClipboard(window, vi.fn().mockRejectedValue(new Error('Not allowed')));
+                setClipboard(modalWindow, vi.fn().mockRejectedValue(new Error('Not allowed')));
+                const scriptExec = vi.fn().mockReturnValue(true);
+                document.execCommand = scriptExec;
+                let selectedIn = null;
+                const modalExec = vi.fn(() => {
+                    const ta = [...modalWindow.document.querySelectorAll('textarea')].find((el) => el.style.opacity === '0');
+                    selectedIn = ta ? (ta.closest('.modal') ? 'modal' : 'elsewhere') : 'none';
+                    return true;
+                });
+                modalWindow.document.execCommand = modalExec;
+
+                const { showPromise, modalDocument } = await openDebugDetails();
+                const copyBtn = modalDocument.querySelector('[data-role="debug-copy"]');
+                copyBtn.click();
+
+                await vi.waitFor(() => expect(modalExec).toHaveBeenCalledWith('copy'));
+                expect(scriptExec).not.toHaveBeenCalled();
+                expect(selectedIn).toBe('modal');
+                await vi.waitFor(() => expect(copyBtn.textContent).toBe('Copied!'));
+                expect(modalDocument.querySelector('textarea[style*="opacity"]')).toBeNull();
+
+                modalDocument.querySelector('[name="cancel"]').click();
+                await showPromise.catch(() => {});
+            });
+        });
+
         it('adds the dialog styles to the modal\'s document once across module loads', async () => {
             // The module loads again with every FormEngine iframe, while the
             // parent document that shows the modal stays.
