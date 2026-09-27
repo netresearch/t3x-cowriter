@@ -15,5 +15,6 @@
 /package-lock.json      export-ignore
 /playwright.config.ts   export-ignore
 /renovate.json          export-ignore
+/.sonarcloud.properties export-ignore
 /captainhook.json       export-ignore
 /vitest.config.js       export-ignore

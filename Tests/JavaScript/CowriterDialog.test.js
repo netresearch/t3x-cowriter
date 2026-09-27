@@ -86,9 +86,9 @@ describe('CowriterDialog', () => {
             const bold = [...document.querySelectorAll('.alert-info strong')].map((el) => el.textContent);
             expect(bold).toEqual(['Admin Tools \u2192 LLM \u2192 Tasks', '"content"', 'active']);
             expect(document.querySelector('.alert-info p.mb-0').textContent).toContain('3. Make sure they are active');
-            expect(document.querySelector('[data-name="close"]').textContent).toBe('Close');
+            expect(document.querySelector('[name="close"]').textContent).toBe('Close');
 
-            document.querySelector('[data-name="close"]').click();
+            document.querySelector('[name="close"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -110,9 +110,9 @@ describe('CowriterDialog', () => {
             const bold = [...alert.querySelectorAll('strong')].map((el) => el.textContent);
             expect(bold).toEqual(['Admin-Werkzeuge \u2192 LLM \u2192 Aufgaben', '"content"', 'aktiv']);
             expect(alert.querySelector('p.mb-0').textContent).toContain('3. Stellen Sie sicher, dass sie aktiv sind');
-            expect(document.querySelector('[data-name="close"]').textContent).toBe('Schließen');
+            expect(document.querySelector('[name="close"]').textContent).toBe('Schließen');
 
-            document.querySelector('[data-name="close"]').click();
+            document.querySelector('[name="close"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -127,12 +127,12 @@ describe('CowriterDialog', () => {
                 'ckeditor.dialog.instruction.placeholder': 'Beschreiben Sie, was die KI tun soll\u2026',
             });
             const showPromise = new CowriterDialog(mockService).show('selected', 'full');
-            await vi.waitFor(() => expect(document.querySelector('[data-name="cancel"]')).not.toBeNull());
+            await vi.waitFor(() => expect(document.querySelector('[name="cancel"]')).not.toBeNull());
 
-            expect(document.querySelector('[data-name="cancel"]').textContent).toBe('Abbrechen');
-            expect(document.querySelector('[data-name="execute"]').textContent).toBe('Ausführen');
+            expect(document.querySelector('[name="cancel"]').textContent).toBe('Abbrechen');
+            expect(document.querySelector('[name="execute"]').textContent).toBe('Ausführen');
             // Not injected: the English text stays.
-            expect(document.querySelector('[data-name="insert"]').textContent).toBe('Insert');
+            expect(document.querySelector('[name="insert"]').textContent).toBe('Insert');
             expect(document.querySelector('label[for$="-task"]').textContent).toBe('Aufgabe');
             expect(document.querySelector('[data-role="task-select"] option[value="0"]').textContent).toBe('Eigene Anweisung');
             expect(document.querySelector('[data-role="scope-select"] option[value="selection"]').textContent).toBe('Auswahl');
@@ -140,7 +140,7 @@ describe('CowriterDialog', () => {
             expect(document.querySelector('[data-role="add-reference"] typo3-backend-icon')).not.toBeNull();
             expect(document.querySelector('[data-role="instruction"]').placeholder).toBe('Beschreiben Sie, was die KI tun soll\u2026');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -173,7 +173,7 @@ describe('CowriterDialog', () => {
             });
 
             // Find and click cancel to resolve the promise
-            const cancelBtn = document.querySelector('[data-name="cancel"]');
+            const cancelBtn = document.querySelector('[name="cancel"]');
             cancelBtn.click();
 
             await expect(showPromise).rejects.toThrow('User cancelled');
@@ -205,11 +205,11 @@ describe('CowriterDialog', () => {
             expect(alert.textContent).toContain('content');
 
             // Should have only a Close button, no Execute
-            expect(document.querySelector('[data-name="close"]')).not.toBeNull();
-            expect(document.querySelector('[data-name="execute"]')).toBeNull();
+            expect(document.querySelector('[name="close"]')).not.toBeNull();
+            expect(document.querySelector('[name="execute"]')).toBeNull();
 
             // Clicking Close should reject with User cancelled
-            document.querySelector('[data-name="close"]').click();
+            document.querySelector('[name="close"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -234,7 +234,7 @@ describe('CowriterDialog', () => {
             expect(select.value).toBe('1');
 
             // Cleanup
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -248,7 +248,7 @@ describe('CowriterDialog', () => {
                 expect(desc.textContent).toBe('Enhance readability');
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -263,7 +263,7 @@ describe('CowriterDialog', () => {
                 expect(select.value).toBe('2');
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -278,7 +278,7 @@ describe('CowriterDialog', () => {
                 expect(select.value).toBe('1');
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -294,7 +294,7 @@ describe('CowriterDialog', () => {
                 expect(link.href).toContain('/typo3/module/nrllm/tasks');
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -310,7 +310,7 @@ describe('CowriterDialog', () => {
             const editTasksLink = Array.from(links).find(l => l.textContent.includes('Edit tasks'));
             expect(editTasksLink).toBeUndefined();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -329,7 +329,7 @@ describe('CowriterDialog', () => {
             const desc = document.querySelector('[data-role="task-description"]');
             expect(desc.textContent).toBe('Create a summary');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -346,7 +346,7 @@ describe('CowriterDialog', () => {
             expect(textarea.rows).toBe(10);
             expect(textarea.placeholder).toContain('Describe what the AI should do');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -361,7 +361,7 @@ describe('CowriterDialog', () => {
                 expect(textarea.value).toBe('Improve:');
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -380,7 +380,7 @@ describe('CowriterDialog', () => {
             const textarea = document.querySelector('[data-role="instruction"]');
             expect(textarea.value).toBe('Summarize:');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -399,7 +399,7 @@ describe('CowriterDialog', () => {
             const textarea = document.querySelector('[data-role="instruction"]');
             expect(textarea.value).toBe('');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -417,7 +417,7 @@ describe('CowriterDialog', () => {
             const instruction = document.querySelector('[data-role="instruction"]');
             expect(instruction.value).toBe('Just summarize the text');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -432,7 +432,7 @@ describe('CowriterDialog', () => {
             expect(result.textContent).toContain('my selected text');
             expect(result.classList.contains('cowriter-result--empty')).toBe(true);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -445,7 +445,7 @@ describe('CowriterDialog', () => {
             expect(result.textContent).toContain('full content here');
             expect(result.classList.contains('cowriter-result--empty')).toBe(true);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -454,7 +454,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 const result = document.querySelector('[data-role="result-preview"]');
@@ -464,7 +464,7 @@ describe('CowriterDialog', () => {
             const result = document.querySelector('[data-role="result-preview"]');
             expect(result.classList.contains('cowriter-result--empty')).toBe(false);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -486,7 +486,7 @@ describe('CowriterDialog', () => {
             expect(cols[0].querySelector('[data-role="task-select"]')).toBeTruthy();
             expect(cols[1].querySelector('[data-role="scope-select"]')).toBeTruthy();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -507,7 +507,7 @@ describe('CowriterDialog', () => {
             expect(cols[0].querySelector('[data-role="instruction"]')).toBeTruthy();
             expect(cols[1].querySelector('[data-role="result-preview"]')).toBeTruthy();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -545,7 +545,7 @@ describe('CowriterDialog', () => {
             const cols = document.querySelectorAll('[data-role="config-row"] > [class*="col-md-"]:not([hidden])');
             expect([...cols].map((c) => c.className)).toEqual(['col-md-5', 'col-md-4', 'col-md-3']);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -562,7 +562,7 @@ describe('CowriterDialog', () => {
             expect(document.querySelector('[data-role="configuration-task-setting"]').textContent)
                 .toBe('Default configuration');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -572,12 +572,12 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => expect(pickerColumn()?.hidden).toBe(false));
 
             document.querySelector('[data-role="configuration-select"]').value = 'creative';
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             expect(mockService.executeTask.mock.calls[0][9]).toBe('creative');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -585,13 +585,13 @@ describe('CowriterDialog', () => {
             mockService.getConfigurations = vi.fn().mockRejectedValue(new Error('403'));
             const showPromise = new CowriterDialog(mockService).show('text', 'full');
             await vi.waitFor(() => expect(mockService.getConfigurations).toHaveBeenCalled());
-            await vi.waitFor(() => expect(document.querySelector('[data-name="cancel"]')).not.toBeNull());
+            await vi.waitFor(() => expect(document.querySelector('[name="cancel"]')).not.toBeNull());
             await Promise.resolve();
 
             expect(pickerColumn().hidden).toBe(true);
             expect(document.querySelector('[data-role="configuration-select"]').value).toBe('');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -615,7 +615,7 @@ describe('CowriterDialog', () => {
             expect(variants.value).toBe('1');
             expect(variants.disabled).toBe(true);
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             expect(mockService.executeTaskStream).not.toHaveBeenCalled();
             expect(mockService.executeTask.mock.calls[0][10]).toMatchObject({ useTools: true, variants: 1 });
@@ -625,7 +625,7 @@ describe('CowriterDialog', () => {
             toggle.dispatchEvent(new Event('change'));
             expect(variants.disabled).toBe(false);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -658,12 +658,12 @@ describe('CowriterDialog', () => {
             expect(document.querySelector('[data-role="instruction"]').value).toBe('Use the house style.');
             expect(document.querySelector('[data-role="prompt-delete"]').hidden).toBe(true);
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             expect(mockService.executeTask.mock.calls[0][0]).toBe(0);
             expect(mockService.executeTask.mock.calls[0][3]).toBe('Use the house style.');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -688,7 +688,7 @@ describe('CowriterDialog', () => {
             expect(document.querySelector('[data-role="prompt-delete"]').hidden).toBe(false);
             expect(document.querySelector('[data-role="prompt-title"]').value).toBe('');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -703,7 +703,7 @@ describe('CowriterDialog', () => {
             expect(mockService.savePrompt).not.toHaveBeenCalled();
             expect(document.querySelector('[data-role="prompt-status"]').textContent).not.toBe('');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -722,7 +722,7 @@ describe('CowriterDialog', () => {
             expect(taskSelect().value).toBe('0');
             expect(document.querySelector('[data-role="prompt-delete"]').hidden).toBe(true);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -745,7 +745,7 @@ describe('CowriterDialog', () => {
             finish({ success: true, prompt: { uid: 31, title: 'Short intro', instruction: 'Two sentences.', own: true, shared: false, awaitingApproval: false } });
             await vi.waitFor(() => expect(save.hasAttribute('aria-disabled')).toBe(false));
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -768,7 +768,7 @@ describe('CowriterDialog', () => {
             finish({ success: true });
             await vi.waitFor(() => expect(remove.hasAttribute('aria-disabled')).toBe(false));
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -779,7 +779,7 @@ describe('CowriterDialog', () => {
             expect(document.querySelector('[data-role="prompt-saver"]').hidden).toBe(true);
             expect(taskSelect().querySelector('optgroup')).toBeNull();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -793,9 +793,9 @@ describe('CowriterDialog', () => {
                 return new Promise((resolve) => { finish = resolve; });
             });
             const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
-            await vi.waitFor(() => expect(document.querySelector('[data-name="execute"]')).not.toBeNull());
+            await vi.waitFor(() => expect(document.querySelector('[name="execute"]')).not.toBeNull());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             const preview = document.querySelector('[data-role="result-preview"]');
             await vi.waitFor(() => expect(preview.textContent).toBe('Partial'));
 
@@ -809,7 +809,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => expect(preview.innerHTML).toBe('<p>Final <strong>text</strong></p>'));
             expect(preview.hasAttribute('aria-busy')).toBe(false);
 
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await expect(showPromise).resolves.toEqual({ content: '<p>Final <strong>text</strong></p>' });
         });
 
@@ -817,14 +817,14 @@ describe('CowriterDialog', () => {
             mockService._routes = { taskStream: '/typo3/ajax/tx_cowriter_task_stream' };
             mockService.executeTaskStream = vi.fn().mockRejectedValue(new Error('LLM provider error occurred.'));
             const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
-            await vi.waitFor(() => expect(document.querySelector('[data-name="execute"]')).not.toBeNull());
+            await vi.waitFor(() => expect(document.querySelector('[name="execute"]')).not.toBeNull());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             const preview = document.querySelector('[data-role="result-preview"]');
             await vi.waitFor(() => expect(preview.textContent).toContain('LLM provider error occurred.'));
             expect(preview.hasAttribute('aria-busy')).toBe(false);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -848,7 +848,7 @@ describe('CowriterDialog', () => {
                 .toEqual(['-2', '-1', '0', '1', '2']);
             expect(document.querySelector('[data-role="length-select"]').value).toBe('0');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -862,14 +862,14 @@ describe('CowriterDialog', () => {
 
             document.querySelector('[data-role="audience-select"]').value = '3';
             document.querySelector('[data-role="length-select"]').value = '-1';
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             expect(mockService.executeTask.mock.calls[0][10]).toEqual({ audience: 3, tone: 0, length: -1, variants: 1, useTools: false });
             await vi.waitFor(() => expect(document.querySelector('[data-role="model-info"]').textContent)
                 .toBe('Model: gpt-test | About 3 words (target 150)'));
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -882,10 +882,10 @@ describe('CowriterDialog', () => {
                 success: true, content: '<p>First</p>', variants: ['<p>First</p>', '<p>Second</p>'], model: 'gpt-test',
             });
             const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
-            await vi.waitFor(() => expect(document.querySelector('[data-name="execute"]')).not.toBeNull());
+            await vi.waitFor(() => expect(document.querySelector('[name="execute"]')).not.toBeNull());
 
             document.querySelector('[data-role="variants-select"]').value = '2';
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => expect(document.querySelectorAll('[data-role="variant-picker"] input[type="radio"]')).toHaveLength(2));
             expect(mockService.executeTaskStream).not.toHaveBeenCalled();
@@ -898,21 +898,21 @@ describe('CowriterDialog', () => {
             second.dispatchEvent(new Event('change'));
             expect(preview.innerHTML).toBe('<p>Second</p>');
 
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await expect(showPromise).resolves.toEqual({ content: '<p>Second</p>' });
         });
 
         it('should show no picker for a single answer', async () => {
             const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
-            await vi.waitFor(() => expect(document.querySelector('[data-name="execute"]')).not.toBeNull());
+            await vi.waitFor(() => expect(document.querySelector('[name="execute"]')).not.toBeNull());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => expect(document.querySelector('[data-role="result-preview"]').textContent).toContain('Improved text content'));
 
             expect(document.querySelector('[data-role="variant-picker"]')).toBeNull();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -923,7 +923,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('my selected text', 'full editor content');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
             // The instruction textarea should have been prefilled with the resolved template ({{input}} stripped)
@@ -931,7 +931,7 @@ describe('CowriterDialog', () => {
             expect(textarea.value).toBe('Improve:');
 
             // Click Execute
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
@@ -945,7 +945,7 @@ describe('CowriterDialog', () => {
                 const result = document.querySelector('[data-role="result-preview"]');
                 return result.textContent.includes('Improved text content');
             });
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
 
             const result = await showPromise;
             expect(result.content).toBe('Improved text content');
@@ -956,14 +956,14 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('', 'full editor content here');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
             // Template resolves with {{input}} stripped
             const textarea = document.querySelector('[data-role="instruction"]');
             expect(textarea.value).toBe('Improve:');
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
@@ -977,7 +977,7 @@ describe('CowriterDialog', () => {
                 const result = document.querySelector('[data-role="result-preview"]');
                 return result.textContent.includes('Improved text content');
             });
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             const result = await showPromise;
             expect(result.content).toBe('Improved text content');
         });
@@ -999,7 +999,7 @@ describe('CowriterDialog', () => {
             const textarea = document.querySelector('[data-role="instruction"]');
             textarea.value = 'Make it more formal';
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
@@ -1012,7 +1012,7 @@ describe('CowriterDialog', () => {
                 const result = document.querySelector('[data-role="result-preview"]');
                 return result.textContent.includes('Improved text content');
             });
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await showPromise;
         });
 
@@ -1027,10 +1027,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
@@ -1047,7 +1047,7 @@ describe('CowriterDialog', () => {
             expect(modelInfo.textContent).toBe('Model: gpt-4o');
             expect(modelInfo.style.display).toBe('block');
 
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await showPromise;
         });
 
@@ -1062,10 +1062,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
@@ -1075,7 +1075,7 @@ describe('CowriterDialog', () => {
             });
 
             // Cancel button should remain enabled during loading
-            const cancelBtn = document.querySelector('[data-name="cancel"]');
+            const cancelBtn = document.querySelector('[name="cancel"]');
             expect(cancelBtn.disabled).toBe(false);
 
             // Resolve the task
@@ -1086,7 +1086,7 @@ describe('CowriterDialog', () => {
                 expect(preview.textContent).toBe('Done');
             });
 
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await showPromise;
         });
 
@@ -1097,10 +1097,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
@@ -1108,7 +1108,7 @@ describe('CowriterDialog', () => {
             });
 
             // Cancel
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1119,17 +1119,17 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
                 expect(preview.textContent).toBe('Task failed');
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1147,10 +1147,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('input text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 const details = document.querySelector('[data-role="debug-details"]');
@@ -1179,7 +1179,7 @@ describe('CowriterDialog', () => {
             expect(copyBtn).not.toBeNull();
             expect(copyBtn.textContent).toBe('Copy to clipboard');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1190,10 +1190,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
@@ -1204,7 +1204,7 @@ describe('CowriterDialog', () => {
             expect(debugDetails).not.toBeNull();
             expect(debugDetails.textContent).toContain('Error: Failed');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1221,7 +1221,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('input', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="debug-details"]');
@@ -1233,7 +1233,7 @@ describe('CowriterDialog', () => {
             expect(debugContent).not.toContain('Tokens:');
             expect(debugContent).not.toContain('--- Thinking ---');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1249,7 +1249,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('input', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 const info = document.querySelector('[data-role="model-info"]');
@@ -1259,7 +1259,7 @@ describe('CowriterDialog', () => {
             const modelInfo = document.querySelector('[data-role="model-info"]');
             expect(modelInfo.textContent).toBe('Model: gpt-4o | 150 tokens');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1271,10 +1271,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="cancel"]')).not.toBeNull();
+                expect(document.querySelector('[name="cancel"]')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
 
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
@@ -1287,7 +1287,7 @@ describe('CowriterDialog', () => {
                 expect(document.querySelector('.modal')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
 
             expect(document.querySelector('.modal')).toBeNull();
@@ -1311,7 +1311,7 @@ describe('CowriterDialog', () => {
             expect(scopeSelect.options[4].textContent).toBe('Parent page');
             expect(scopeSelect.options[5].textContent).toBe('Grandparent page');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -1323,7 +1323,7 @@ describe('CowriterDialog', () => {
             const scopeSelect = document.querySelector('[data-role="scope-select"]');
             expect(scopeSelect.value).toBe('selection');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -1335,7 +1335,7 @@ describe('CowriterDialog', () => {
             const scopeSelect = document.querySelector('[data-role="scope-select"]');
             expect(scopeSelect.value).toBe('text');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -1347,7 +1347,7 @@ describe('CowriterDialog', () => {
             const scopeSelect = document.querySelector('[data-role="scope-select"]');
             expect(scopeSelect.options[0].disabled).toBe(true);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -1360,12 +1360,12 @@ describe('CowriterDialog', () => {
             scopeSelect.value = 'page';
             scopeSelect.dispatchEvent(new Event('change'));
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
 
             expect(mockService.executeTask.mock.calls[0][5]).toBe('page');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1375,14 +1375,14 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full', '', recordContext);
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
             const scopeSelect = document.querySelector('[data-role="scope-select"]');
             scopeSelect.value = 'page';
             scopeSelect.dispatchEvent(new Event('change'));
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
@@ -1395,7 +1395,7 @@ describe('CowriterDialog', () => {
                 const result = document.querySelector('[data-role="result-preview"]');
                 return result.textContent.includes('Improved text content');
             });
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await showPromise;
         });
 
@@ -1411,7 +1411,7 @@ describe('CowriterDialog', () => {
             expect(scopeSelect.options[4].disabled).toBe(false);  // Parent page
             expect(scopeSelect.options[5].disabled).toBe(false);  // Grandparent page
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -1430,7 +1430,7 @@ describe('CowriterDialog', () => {
             expect(scopeSelect.options[4].disabled).toBe(true);
             expect(scopeSelect.options[5].disabled).toBe(true);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -1446,7 +1446,7 @@ describe('CowriterDialog', () => {
                 expect(btn.textContent).toContain('Add reference page');
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1468,7 +1468,7 @@ describe('CowriterDialog', () => {
             expect(rows[0].querySelector('[data-role="ref-pid"]').type).toBe('hidden');
             expect(rows[0].querySelector('[data-role="ref-relation"]')).not.toBeNull();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1487,7 +1487,7 @@ describe('CowriterDialog', () => {
             document.querySelector('[data-role="remove-reference"]').click();
             expect(document.querySelectorAll('[data-role="reference-row"]').length).toBe(1);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1505,7 +1505,7 @@ describe('CowriterDialog', () => {
             row.querySelector('[data-role="ref-pid"]').value = '5';
             row.querySelector('[data-role="ref-relation"]').value = 'style guide';
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
@@ -1519,7 +1519,7 @@ describe('CowriterDialog', () => {
                 const result = document.querySelector('[data-role="result-preview"]');
                 return result.textContent.includes('Improved text content');
             });
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await showPromise;
         });
 
@@ -1538,7 +1538,7 @@ describe('CowriterDialog', () => {
             expect(searchInput.type).toBe('text');
             expect(searchInput.placeholder).toContain('Search pages');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1554,7 +1554,7 @@ describe('CowriterDialog', () => {
             const removeBtn = document.querySelector('[data-role="remove-reference"]');
             expect(removeBtn.getAttribute('aria-label')).toBe('Remove reference page');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1575,7 +1575,7 @@ describe('CowriterDialog', () => {
             rows[0].querySelector('[data-role="ref-relation"]').value = 'ref';
             // rows[1] left empty (PID = '' which parses to NaN, so pid > 0 is false)
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 expect(mockService.executeTask).toHaveBeenCalledWith(
@@ -1589,7 +1589,7 @@ describe('CowriterDialog', () => {
                 const result = document.querySelector('[data-role="result-preview"]');
                 return result.textContent.includes('Improved text content');
             });
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await showPromise;
         });
     });
@@ -1615,7 +1615,7 @@ describe('CowriterDialog', () => {
             expect(taskLabel).not.toBeNull();
             expect(scopeLabel).not.toBeNull();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1628,7 +1628,7 @@ describe('CowriterDialog', () => {
             expect(preview.getAttribute('role')).toBe('status');
             expect(preview.getAttribute('aria-live')).toBe('polite');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -1645,10 +1645,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
@@ -1659,7 +1659,7 @@ describe('CowriterDialog', () => {
                 expect(preview.querySelector('link')).toBeNull();
             });
 
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await showPromise;
         });
 
@@ -1674,10 +1674,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
 
             await vi.waitFor(() => {
-                expect(document.querySelector('[data-name="execute"]')).not.toBeNull();
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
             });
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
@@ -1687,7 +1687,7 @@ describe('CowriterDialog', () => {
                 }
             });
 
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             await showPromise;
         });
     });
@@ -1704,7 +1704,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 const result = document.querySelector('[data-role="result-preview"]');
@@ -1716,7 +1716,7 @@ describe('CowriterDialog', () => {
             expect(preview.querySelector('p')).toBeTruthy();
             expect(preview.textContent).toContain('Safe');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1731,7 +1731,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="result-preview"] img');
@@ -1742,7 +1742,7 @@ describe('CowriterDialog', () => {
             expect(img.getAttribute('onerror')).toBeNull();
             expect(img.getAttribute('src')).toBe('x.png');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1757,7 +1757,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="result-preview"] a');
@@ -1767,7 +1767,7 @@ describe('CowriterDialog', () => {
             expect(link).toBeTruthy();
             expect(link.getAttribute('href')).toBeNull();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1782,7 +1782,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="result-preview"] a');
@@ -1794,7 +1794,7 @@ describe('CowriterDialog', () => {
             const img = document.querySelector('[data-role="result-preview"] img');
             expect(img.getAttribute('src')).toBe('data:image/png;base64,abc');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });
@@ -1805,10 +1805,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            const cancel = document.querySelector('[data-name="cancel"]');
-            const reset = document.querySelector('[data-name="reset"]');
-            const execute = document.querySelector('[data-name="execute"]');
-            const insert = document.querySelector('[data-name="insert"]');
+            const cancel = document.querySelector('[name="cancel"]');
+            const reset = document.querySelector('[name="reset"]');
+            const execute = document.querySelector('[name="execute"]');
+            const insert = document.querySelector('[name="insert"]');
 
             expect(cancel).toBeTruthy();
             expect(execute).toBeTruthy();
@@ -1829,19 +1829,19 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 const result = document.querySelector('[data-role="result-preview"]');
                 return result.textContent.includes('Improved text content');
             });
 
-            const reset = document.querySelector('[data-name="reset"]');
-            const insert = document.querySelector('[data-name="insert"]');
+            const reset = document.querySelector('[name="reset"]');
+            const insert = document.querySelector('[name="insert"]');
             expect(reset.style.display).not.toBe('none');
             expect(insert.style.display).not.toBe('none');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1850,14 +1850,14 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 const result = document.querySelector('[data-role="result-preview"]');
                 return result.textContent.includes('Improved text content');
             });
 
-            document.querySelector('[data-name="insert"]').click();
+            document.querySelector('[name="insert"]').click();
             const result = await showPromise;
             expect(result.content).toBe('Improved text content');
         });
@@ -1880,7 +1880,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
             // First execute
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(1));
             await vi.waitFor(() => {
                 const result = document.querySelector('[data-role="result-preview"]');
@@ -1888,13 +1888,13 @@ describe('CowriterDialog', () => {
             });
 
             // Second execute (chained)
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(2));
 
             // The context (arg index 1) of the second call should be the decoded first result
             expect(mockService.executeTask.mock.calls[1][1]).toBe('First result');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1904,7 +1904,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
             // Execute to enter result state
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 const result = document.querySelector('[data-role="result-preview"]');
@@ -1912,7 +1912,7 @@ describe('CowriterDialog', () => {
             });
 
             // Click Reset
-            document.querySelector('[data-name="reset"]').click();
+            document.querySelector('[name="reset"]').click();
 
             // Result area should show original input again (muted)
             const result = document.querySelector('[data-role="result-preview"]');
@@ -1920,10 +1920,10 @@ describe('CowriterDialog', () => {
             expect(result.classList.contains('cowriter-result--empty')).toBe(true);
 
             // Reset and Insert should be hidden again
-            expect(document.querySelector('[data-name="reset"]').style.display).toBe('none');
-            expect(document.querySelector('[data-name="insert"]').style.display).toBe('none');
+            expect(document.querySelector('[name="reset"]').style.display).toBe('none');
+            expect(document.querySelector('[name="insert"]').style.display).toBe('none');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -1941,7 +1941,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
             // First execute
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(1));
             await vi.waitFor(() => {
                 const result = document.querySelector('[data-role="result-preview"]');
@@ -1949,15 +1949,15 @@ describe('CowriterDialog', () => {
             });
 
             // Reset
-            document.querySelector('[data-name="reset"]').click();
+            document.querySelector('[name="reset"]').click();
 
             // Execute again — should use original context, NOT "First result"
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(2));
 
             expect(mockService.executeTask.mock.calls[1][1]).toBe('original text');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -1969,17 +1969,17 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
-                const execute = document.querySelector('[data-name="execute"]');
+                const execute = document.querySelector('[name="execute"]');
                 expect(execute.disabled).toBe(true);
             });
 
             // Cancel should remain enabled
-            expect(document.querySelector('[data-name="cancel"]').disabled).toBeFalsy();
+            expect(document.querySelector('[name="cancel"]').disabled).toBeFalsy();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -1990,7 +1990,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
 
             // Wait for error to render
@@ -2000,12 +2000,12 @@ describe('CowriterDialog', () => {
             });
 
             // Execute should be re-enabled
-            expect(document.querySelector('[data-name="execute"]').disabled).toBeFalsy();
+            expect(document.querySelector('[name="execute"]').disabled).toBeFalsy();
             // Reset and Insert should be hidden (idle state)
-            expect(document.querySelector('[data-name="reset"]').style.display).toBe('none');
-            expect(document.querySelector('[data-name="insert"]').style.display).toBe('none');
+            expect(document.querySelector('[name="reset"]').style.display).toBe('none');
+            expect(document.querySelector('[name="insert"]').style.display).toBe('none');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -2016,10 +2016,10 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
@@ -2034,7 +2034,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
             // First execute succeeds
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(1));
             await vi.waitFor(() => {
                 const result = document.querySelector('[data-role="result-preview"]');
@@ -2042,7 +2042,7 @@ describe('CowriterDialog', () => {
             });
 
             // Second execute fails
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(2));
             await vi.waitFor(() => {
                 const result = document.querySelector('[data-role="result-preview"]');
@@ -2050,14 +2050,14 @@ describe('CowriterDialog', () => {
             });
 
             // Third execute (retry) — context should be sanitized "First result" (from chaining)
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(3));
 
             // The context arg should NOT be 'original text'
             const thirdCallContext = mockService.executeTask.mock.calls[2][1];
             expect(thirdCallContext).not.toBe('original text');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2067,12 +2067,12 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
             // Force Insert button to be visible by manipulating DOM
-            const insert = document.querySelector('[data-name="insert"]');
+            const insert = document.querySelector('[name="insert"]');
             insert.style.display = '';
             insert.click();
 
             // Promise should NOT have resolved — cancel to verify
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -2097,7 +2097,7 @@ describe('CowriterDialog', () => {
             // Dropdown is visible so aria-expanded must be true for consistency
             expect(searchInput.getAttribute('aria-expanded')).toBe('true');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2115,7 +2115,7 @@ describe('CowriterDialog', () => {
 
             expect(dropdown.textContent).toBe('No pages found');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2140,7 +2140,7 @@ describe('CowriterDialog', () => {
             expect(item.querySelector('span.text-muted')).not.toBeNull();
             expect(searchInput.getAttribute('aria-expanded')).toBe('true');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2161,7 +2161,7 @@ describe('CowriterDialog', () => {
             expect(item.textContent).toBe('[1] Home');
             expect(item.querySelector('span.text-muted')).toBeNull();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2185,7 +2185,7 @@ describe('CowriterDialog', () => {
             expect(dropdown.style.display).toBe('none');
             expect(searchInput.getAttribute('aria-expanded')).toBe('false');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2213,7 +2213,7 @@ describe('CowriterDialog', () => {
             expect(hiddenPid.value).toBe('2');
             expect(searchInput.value).toBe('[2] About');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });
@@ -2234,7 +2234,7 @@ describe('CowriterDialog', () => {
             expect(searchInput.getAttribute('aria-controls')).toBe(dropdown.id);
             expect(searchInput.getAttribute('aria-label')).toBe('Search pages by title or ID');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2249,7 +2249,7 @@ describe('CowriterDialog', () => {
             expect(dropdown.getAttribute('role')).toBe('listbox');
             expect(dropdown.id).toBeTruthy();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });
@@ -2274,7 +2274,7 @@ describe('CowriterDialog', () => {
             expect(dropdown.style.display).toBe('none');
             expect(searchInput.getAttribute('aria-expanded')).toBe('false');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2309,7 +2309,7 @@ describe('CowriterDialog', () => {
             expect(items[0].classList.contains('active')).toBe(true);
             expect(items[1].classList.contains('active')).toBe(false);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2336,7 +2336,7 @@ describe('CowriterDialog', () => {
             expect(searchInput.value).toBe('[7] Contact');
             expect(dropdown.style.display).toBe('none');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });
@@ -2370,7 +2370,7 @@ describe('CowriterDialog', () => {
             document.body.click();
             // Dropdown is detached, listener was aborted — no error is thrown
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });
@@ -2390,7 +2390,7 @@ describe('CowriterDialog', () => {
             const instruction = document.querySelector('[data-role="instruction"]');
             expect(instruction.value).toBe('');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -2481,7 +2481,7 @@ describe('CowriterDialog', () => {
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
             // Start an execution
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
 
             // Dismiss modal via hidden event
@@ -2539,7 +2539,7 @@ describe('CowriterDialog', () => {
                 expect(items[0].textContent).toContain('Test Page');
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2562,7 +2562,7 @@ describe('CowriterDialog', () => {
             // PID should be cleared immediately
             expect(hiddenPid.value).toBe('');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2586,7 +2586,7 @@ describe('CowriterDialog', () => {
             expect(dropdown.style.display).toBe('none');
             expect(searchInput.getAttribute('aria-expanded')).toBe('false');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2616,7 +2616,7 @@ describe('CowriterDialog', () => {
             });
             expect(searchInput.getAttribute('aria-expanded')).toBe('false');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });
@@ -2639,7 +2639,7 @@ describe('CowriterDialog', () => {
             expect(dropdown.style.display).toBe('none');
             expect(searchInput.getAttribute('aria-expanded')).toBe('false');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2656,7 +2656,7 @@ describe('CowriterDialog', () => {
             searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
             searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2687,7 +2687,7 @@ describe('CowriterDialog', () => {
             expect(items[2].classList.contains('active')).toBe(true);
             expect(items[0].classList.contains('active')).toBe(false);
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2714,7 +2714,7 @@ describe('CowriterDialog', () => {
             expect(searchInput.hasAttribute('aria-activedescendant')).toBe(false);
             expect(dropdown.style.display).toBe('none');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });
@@ -2731,7 +2731,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="result-preview"] a');
@@ -2741,7 +2741,7 @@ describe('CowriterDialog', () => {
             expect(link.getAttribute('target')).toBe('_blank');
             expect(link.getAttribute('rel')).toBe('noopener noreferrer');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2756,7 +2756,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="result-preview"] a');
@@ -2765,7 +2765,7 @@ describe('CowriterDialog', () => {
             const link = document.querySelector('[data-role="result-preview"] a');
             expect(link.getAttribute('rel')).toBeNull();
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });
@@ -2787,7 +2787,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('input text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="debug-details"]');
@@ -2802,7 +2802,7 @@ describe('CowriterDialog', () => {
             expect(debugContent).not.toContain('--- Input text ---');
             expect(debugContent).not.toContain('--- Instruction sent ---');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2819,7 +2819,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('input', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="debug-details"]');
@@ -2831,7 +2831,7 @@ describe('CowriterDialog', () => {
             expect(debugContent).toContain('--- Input text ---');
             expect(debugContent).toContain('--- Instruction sent ---');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });
@@ -2860,7 +2860,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('text', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
 
             await vi.waitFor(() => {
                 const preview = document.querySelector('[data-role="result-preview"]');
@@ -2868,10 +2868,10 @@ describe('CowriterDialog', () => {
             });
 
             // In loading state, Reset and Insert should be hidden
-            expect(document.querySelector('[data-name="reset"]').style.display).toBe('none');
-            expect(document.querySelector('[data-name="insert"]').style.display).toBe('none');
+            expect(document.querySelector('[name="reset"]').style.display).toBe('none');
+            expect(document.querySelector('[name="insert"]').style.display).toBe('none');
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
     });
@@ -2897,7 +2897,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('input', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="debug-copy"]');
@@ -2915,7 +2915,7 @@ describe('CowriterDialog', () => {
                 expect(copyBtn.textContent).toBe('Copied!');
             });
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
 
@@ -2942,7 +2942,7 @@ describe('CowriterDialog', () => {
             const showPromise = dialog.show('input', 'full');
             await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
 
-            document.querySelector('[data-name="execute"]').click();
+            document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
             await vi.waitFor(() => {
                 return document.querySelector('[data-role="debug-copy"]');
@@ -2963,7 +2963,7 @@ describe('CowriterDialog', () => {
 
             delete document.execCommand;
 
-            document.querySelector('[data-name="cancel"]').click();
+            document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});
         });
     });

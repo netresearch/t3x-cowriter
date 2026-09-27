@@ -1609,15 +1609,16 @@ export class CowriterDialog {
     }
 
     /**
-     * Show or hide Reset and Insert buttons based on dialog state.
+     * Show or hide Reset and Insert buttons based on dialog state. The TYPO3
+     * modal renders a button's name as its name attribute.
      *
      * @param {object} modal
      * @param {'idle'|'loading'|'result'} state
      * @private
      */
     _updateButtonVisibility(modal, state) {
-        const reset = modal?.querySelector?.('[data-name="reset"]');
-        const insert = modal?.querySelector?.('[data-name="insert"]');
+        const reset = modal?.querySelector?.('button[name="reset"]');
+        const insert = modal?.querySelector?.('button[name="insert"]');
         if (reset) reset.style.display = state === 'result' ? '' : 'none';
         if (insert) insert.style.display = state === 'result' ? '' : 'none';
     }
@@ -1820,7 +1821,7 @@ export class CowriterDialog {
      */
     _setButtonsDisabled(modal, disabled) {
         modal?.querySelectorAll?.('.btn')?.forEach((btn) => {
-            if (btn.dataset.name === 'cancel') return;
+            if (btn.getAttribute('name') === 'cancel') return;
             btn.disabled = disabled;
         });
     }

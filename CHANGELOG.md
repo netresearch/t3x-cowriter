@@ -4,6 +4,10 @@
 
 - Tools in the Cowriter dialog, off by default: with the switch on, `tx_cowriter_task_execute` (`useTools`) runs the task through nr-llm's tool loop with the tools the tool policy offers this user and configuration, narrowed to those that need no approval (`UnattendedToolFilterInterface`, nr-llm ADR-210). Without such a tool the task runs as before. A tool that asks for an approval all the same ends the task with 409. The answer is not streamed, comes as one version, and reports `toolIterations`. Requires nr-llm 0.38.
 
+## FIX
+
+- The Cowriter dialog hides Reset and Insert until an answer exists, and Cancel stays usable while a request runs. The dialog looked for the modal buttons by a `data-name` attribute, but the TYPO3 modal (13.4 and 14.3) renders the button name as the `name` attribute, so Reset and Insert were always shown and Cancel was disabled during a request like the other buttons. The test double of the modal now renders `name` as the core does.
+
 # 3.9.0 (2026-09-27)
 
 ## FEATURE
