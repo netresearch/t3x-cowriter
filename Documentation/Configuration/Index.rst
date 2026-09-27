@@ -178,6 +178,32 @@ The list is extension configuration rather than page TSconfig because the
 button is added to the TCA, which is the same for the whole installation.
 After changing either setting, flush the caches so the TCA is rebuilt.
 
+..  _configuration-saved-prompts:
+
+Saved prompts
+=============
+
+Editors save prompts from the Cowriter dialog
+(:ref:`usage <usage>`). The records are stored in the table
+``tx_cowriter_prompt`` on the root level (page 0), one owner each; an
+editor can have up to 100. Only the owner sees an unshared prompt and
+only the owner deletes one in the dialog.
+
+..  confval:: prompts.sharedNeedApproval
+    :name: t3-cowriter-prompts-sharedNeedApproval
+    :type: boolean
+    :default: ``1``
+
+    With the setting on, a shared prompt reaches other editors only after
+    an administrator approves it: in the :guilabel:`List` module on the
+    root page, open the :guilabel:`Cowriter prompt` record and set
+    :guilabel:`Approved for other editors`. A prompt an administrator
+    shares is approved when saved. With the setting off, every shared
+    prompt is visible at once.
+
+Hiding or deleting the record in the List module takes a prompt away
+from every editor, its owner included.
+
 ..  _configuration-style:
 
 Audience, tone and target length

@@ -42,6 +42,16 @@ The Cowriter dialog lets you choose what to do with your content:
     Each task has a description shown below the dropdown. You can also
     select "Custom instruction" to write a freeform prompt.
 
+**Saved prompts**
+    Below the instruction, :guilabel:`Save as prompt` stores the current
+    instruction under a title. Your prompts appear in the task list under
+    :guilabel:`My prompts`; choosing one fills the instruction, and
+    :guilabel:`Delete prompt` next to the description removes it. With
+    :guilabel:`Share with other editors`, other editors find the prompt
+    under :guilabel:`Shared prompts` once an administrator has approved it
+    (:ref:`configuration-saved-prompts`). Until then your list marks it
+    "awaiting approval". A saved prompt runs as a custom instruction.
+
 **LLM configuration**
     Choose which :ref:`LLM configuration <nrllm:configuration-llm>` runs
     the task. The first option, "Task setting", keeps the configuration
