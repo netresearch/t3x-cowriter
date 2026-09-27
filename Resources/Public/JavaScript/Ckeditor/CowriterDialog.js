@@ -59,15 +59,20 @@ const SCOPE_IDS = ['selection', 'text', 'element', 'page', 'ancestors_1', 'ances
 const SCOPE_LABELS = ['Selection', 'Full content', 'Content element', 'Page content', 'Parent page', 'Grandparent page'];
 
 let formIdCounter = 0;
-let cssInjected = false;
+/** @type {WeakSet<Document>} Documents that already carry the dialog styles */
+const styledDocuments = new WeakSet();
 
 /**
- * Inject cowriter-result styles once into the document head.
+ * Inject cowriter-result styles once into the head of the document that
+ * shows the dialog. From the FormEngine iframe, the TYPO3 modal opens in the
+ * parent window, so this is not necessarily the script's own document.
+ *
+ * @param {Document} doc
  * @private
  */
-function injectStyles() {
-    if (cssInjected) return;
-    const style = document.createElement('style');
+function injectStyles(doc) {
+    if (styledDocuments.has(doc)) return;
+    const style = doc.createElement('style');
     style.textContent = `
 .cowriter-result {
     min-height: 200px;
@@ -81,8 +86,28 @@ function injectStyles() {
     color: var(--typo3-text-color-secondary);
     font-style: italic;
 }`;
-    document.head.appendChild(style);
-    cssInjected = true;
+    doc.head.appendChild(style);
+    styledDocuments.add(doc);
+}
+
+/**
+ * Create a TYPO3 icon element in the given document.
+ *
+ * `typo3-backend-icon` is a Lit element. An element upgraded by one window's
+ * registry adopts that window's constructed stylesheets when it connects, and
+ * a browser refuses them in another document (NotAllowedError). The icon must
+ * therefore be created by the document it will be shown in.
+ *
+ * @param {Document} doc
+ * @param {string} identifier
+ * @returns {HTMLElement}
+ * @private
+ */
+function createIcon(doc, identifier) {
+    const icon = doc.createElement('typo3-backend-icon');
+    icon.setAttribute('identifier', identifier);
+    icon.setAttribute('size', 'small');
+    return icon;
 }
 
 export class CowriterDialog {
@@ -1007,6 +1032,16 @@ export class CowriterDialog {
                 ],
             });
 
+            // Opened from the FormEngine iframe, the TYPO3 modal lives in the
+            // parent window, so the content built above changes document. Plain
+            // nodes survive that; styles and Lit elements have to be made by the
+            // modal's document. Modal.advanced() renders the content only after
+            // it has returned, so the icon is in place before it connects.
+            const modalDocument = modal?.ownerDocument ?? document;
+            injectStyles(modalDocument);
+            container.querySelector('[data-role="add-reference"]')
+                ?.prepend(createIcon(modalDocument, 'actions-plus'));
+
             // Handle modal dismissal — always clean up listeners/requests
             modal?.addEventListener?.('typo3-modal-hidden', () => {
                 activeRequest?.abort();
@@ -1041,7 +1076,6 @@ export class CowriterDialog {
     _buildDialogContent(
         tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid = null,
     ) {
-        injectStyles();
         const container = document.createElement('div');
         container.className = 'cowriter-dialog';
         const idPrefix = `cowriter-${++formIdCounter}`;
@@ -1194,10 +1228,13 @@ export class CowriterDialog {
         addRefBtn.type = 'button';
         addRefBtn.className = 'btn btn-sm btn-outline-secondary mt-1';
         addRefBtn.dataset.role = 'add-reference';
-        addRefBtn.innerHTML = '<typo3-backend-icon identifier="actions-plus" size="small"></typo3-backend-icon>';
+        // The icon is added by _showModal() with the modal's document.
         addRefBtn.append(' ' + t('ckeditor.dialog.addReference', 'Add reference page'));
         addRefBtn.addEventListener('click', () => {
-            refContainer.appendChild(this._createReferenceRow(referenceAbortControllers));
+            // By the time of a click, the list shows in the modal's document.
+            refContainer.appendChild(
+                this._createReferenceRow(referenceAbortControllers, refContainer.ownerDocument),
+            );
         });
         refGroup.appendChild(addRefBtn);
 
@@ -1321,10 +1358,12 @@ export class CowriterDialog {
 
     /**
      * Create a reference page row with page ID, relation, and remove button.
+     * @param {Set<AbortController>} referenceAbortControllers
+     * @param {Document} [doc=document] - The document the row is shown in (the modal's)
      * @returns {HTMLElement}
      * @private
      */
-    _createReferenceRow(referenceAbortControllers) {
+    _createReferenceRow(referenceAbortControllers, doc = document) {
         const row = document.createElement('div');
         row.className = 'd-flex gap-2 mb-1 align-items-center';
         row.dataset.role = 'reference-row';
@@ -1433,13 +1472,19 @@ export class CowriterDialog {
             }
         }, { signal: controller.signal });
 
-        // Close dropdown on outside click (scoped to AbortController)
-        document.addEventListener('click', (e) => {
+        // Close dropdown on outside click (scoped to AbortController). The
+        // clicks happen in the modal's document, not necessarily in this one,
+        // so the listener is removed by hand: the controller belongs to this
+        // window, and not every implementation accepts a signal from another
+        // window (jsdom rejects it).
+        const closeOnOutsideClick = (e) => {
             if (!searchWrapper.contains(e.target)) {
                 dropdown.style.display = 'none';
                 searchInput.setAttribute('aria-expanded', 'false');
             }
-        }, { signal: controller.signal });
+        };
+        doc.addEventListener('click', closeOnOutsideClick);
+        controller.signal.addEventListener('abort', () => doc.removeEventListener('click', closeOnOutsideClick));
 
         row.appendChild(searchWrapper);
 
@@ -1456,7 +1501,7 @@ export class CowriterDialog {
         removeBtn.type = 'button';
         removeBtn.className = 'btn btn-sm btn-outline-danger';
         removeBtn.dataset.role = 'remove-reference';
-        removeBtn.innerHTML = '<typo3-backend-icon identifier="actions-delete" size="small"></typo3-backend-icon>';
+        removeBtn.appendChild(createIcon(doc, 'actions-delete'));
         removeBtn.setAttribute('aria-label', t('ckeditor.dialog.removeReference', 'Remove reference page'));
         removeBtn.addEventListener('click', () => {
             clearTimeout(debounceTimer);

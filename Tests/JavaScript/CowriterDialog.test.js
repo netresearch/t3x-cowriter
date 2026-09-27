@@ -2363,6 +2363,104 @@ describe('CowriterDialog', () => {
         });
     });
 
+    describe('modal in another document (dialog opened from the FormEngine iframe)', () => {
+        // The core modal opens in the parent window when the dialog is called
+        // from the FormEngine iframe. Both windows define typo3-backend-icon,
+        // each with its own class, as TYPO3 does. An icon upgraded by the
+        // wrong window adopts that window's stylesheets in the modal's
+        // document, which the browser refuses (issue 197).
+        let Modal;
+        let modalWindow;
+
+        const defineIcon = (win) => {
+            if (!win.customElements.get('typo3-backend-icon')) {
+                win.customElements.define('typo3-backend-icon', class extends win.HTMLElement {});
+            }
+        };
+
+        const expectIconsFromModalWindow = (root) => {
+            const icons = [...root.querySelectorAll('typo3-backend-icon')];
+            expect(icons.length).toBeGreaterThan(0);
+            const modalIconClass = modalWindow.customElements.get('typo3-backend-icon');
+            for (const icon of icons) {
+                expect(icon.constructor).toBe(modalIconClass);
+            }
+        };
+
+        beforeEach(async () => {
+            const frame = document.createElement('iframe');
+            document.body.appendChild(frame);
+            modalWindow = frame.contentWindow;
+            defineIcon(window);
+            defineIcon(modalWindow);
+            expect(modalWindow.customElements.get('typo3-backend-icon'))
+                .not.toBe(window.customElements.get('typo3-backend-icon'));
+            ({ default: Modal } = await import('@typo3/backend/modal.js'));
+            Modal.targetDocument = modalWindow.document;
+        });
+
+        afterEach(() => {
+            Modal.targetDocument = null;
+        });
+
+        it('creates the add-reference icon with the modal window\'s element class', async () => {
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            const modalDocument = modalWindow.document;
+            await vi.waitFor(() => expect(modalDocument.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            expectIconsFromModalWindow(modalDocument.querySelector('[data-role="add-reference"]'));
+
+            modalDocument.querySelector('[name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('creates the remove-reference icon with the modal window\'s element class', async () => {
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            const modalDocument = modalWindow.document;
+            await vi.waitFor(() => expect(modalDocument.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            modalDocument.querySelector('[data-role="add-reference"]').click();
+            expectIconsFromModalWindow(modalDocument.querySelector('[data-role="remove-reference"]'));
+
+            modalDocument.querySelector('[name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('puts the dialog styles into the modal\'s document', async () => {
+            const showPromise = new CowriterDialog(mockService).show('text', 'full');
+            const modalDocument = modalWindow.document;
+            await vi.waitFor(() => expect(modalDocument.querySelector('[name="cancel"]')).not.toBeNull());
+
+            const styles = [...modalDocument.head.querySelectorAll('style')].map((s) => s.textContent);
+            expect(styles.some((css) => css.includes('.cowriter-result {'))).toBe(true);
+
+            modalDocument.querySelector('[name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('closes the page dropdown on a click elsewhere in the modal\'s document', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            const modalDocument = modalWindow.document;
+            await vi.waitFor(() => expect(modalDocument.querySelector('[data-role="add-reference"]')).not.toBeNull());
+
+            modalDocument.querySelector('[data-role="add-reference"]').click();
+            const dropdown = modalDocument.querySelector('[data-role="ref-dropdown"]');
+            dialog._renderPageDropdown(
+                dropdown, [{ uid: 1, title: 'Page', slug: '' }],
+                modalDocument.querySelector('[data-role="ref-search"]'),
+                modalDocument.querySelector('[data-role="ref-pid"]'),
+            );
+            expect(dropdown.style.display).toBe('block');
+
+            modalDocument.querySelector('label.form-label').click();
+            expect(dropdown.style.display).toBe('none');
+
+            modalDocument.querySelector('[name="cancel"]').click();
+            await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+    });
+
     describe('event listener cleanup', () => {
         it('should remove document click listener when reference row is removed', async () => {
             const dialog = new CowriterDialog(mockService);
@@ -2390,7 +2488,8 @@ describe('CowriterDialog', () => {
             // verifies the listener was cleaned up (no error from orphaned handler)
             dropdown.style.display = 'block';
             document.body.click();
-            // Dropdown is detached, listener was aborted — no error is thrown
+            // Dropdown is detached and the listener removed: nothing closes it.
+            expect(dropdown.style.display).toBe('block');
 
             document.querySelector('[name="cancel"]').click();
             await showPromise.catch(() => {});

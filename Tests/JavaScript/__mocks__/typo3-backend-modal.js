@@ -12,12 +12,16 @@
  * @returns {HTMLElement}
  */
 function createMockModal(options) {
-    const el = document.createElement('div');
+    // The core modal opens in the parent window when called from the
+    // FormEngine iframe. Modal.targetDocument reproduces that: the modal and
+    // its markup belong to that document, and the content moves into it.
+    const doc = Modal.targetDocument || document;
+    const el = doc.createElement('div');
     el.className = 'modal';
     el.dataset.modalTitle = options.title || '';
 
     // Render content
-    const body = document.createElement('div');
+    const body = doc.createElement('div');
     body.className = 'modal-body';
     if (options.content instanceof HTMLElement) {
         body.appendChild(options.content);
@@ -29,12 +33,12 @@ function createMockModal(options) {
     // updateComplete resolves once it is there. Modal.renderAsync = true
     // reproduces that; by default the footer renders at once, a simplification
     // the tests that click buttons right after show() rely on.
-    const footer = document.createElement('div');
+    const footer = doc.createElement('div');
     footer.className = 'modal-footer';
     const renderFooter = () => {
         if (Array.isArray(options.buttons)) {
             for (const btnDef of options.buttons) {
-                const btn = document.createElement('button');
+                const btn = doc.createElement('button');
                 btn.className = `btn ${btnDef.btnClass || ''}`.trim();
                 btn.textContent = btnDef.text || '';
                 // Like the core modal: the name becomes the name attribute.
@@ -62,7 +66,7 @@ function createMockModal(options) {
         el.remove();
     };
 
-    document.body.appendChild(el);
+    doc.body.appendChild(el);
     return el;
 }
 
@@ -75,6 +79,8 @@ const Modal = {
     },
     advanced: (options) => createMockModal(options),
     renderAsync: false,
+    /** @type {Document|null} */
+    targetDocument: null,
 };
 
 export default Modal;
