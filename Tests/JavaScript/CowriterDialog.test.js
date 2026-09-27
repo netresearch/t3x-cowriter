@@ -1824,6 +1824,28 @@ describe('CowriterDialog', () => {
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
+        it('should hide Reset and Insert once the modal has rendered its buttons', async () => {
+            // The core modal renders its footer after Modal.advanced() has returned.
+            const { default: Modal } = await import('@typo3/backend/modal.js');
+            Modal.renderAsync = true;
+            try {
+                const showPromise = new CowriterDialog(mockService).show('text', 'full');
+                await vi.waitFor(() => expect(document.querySelector('[name="reset"]')).not.toBeNull());
+                const modal = document.querySelector('.modal');
+                await modal.updateComplete;
+                await Promise.resolve();
+
+                expect(document.querySelector('[name="reset"]').style.display).toBe('none');
+                expect(document.querySelector('[name="insert"]').style.display).toBe('none');
+                expect(document.querySelector('[name="execute"]').style.display).not.toBe('none');
+
+                document.querySelector('[name="cancel"]').click();
+                await expect(showPromise).rejects.toThrow('User cancelled');
+            } finally {
+                Modal.renderAsync = false;
+            }
+        });
+
         it('should show all four buttons in result state', async () => {
             const dialog = new CowriterDialog(mockService);
             const showPromise = dialog.show('text', 'full');

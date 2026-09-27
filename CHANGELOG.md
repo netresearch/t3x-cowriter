@@ -1,3 +1,9 @@
+# Unreleased
+
+## FIX
+
+- Reset and Insert are also hidden when the Cowriter dialog opens. 3.10.0 hid them during a request and after Reset, but not at first: the TYPO3 modal is a Lit element, `Modal.advanced()` returns before its footer buttons are rendered, and the first hiding call found none. The dialog hides them again once the modal's `updateComplete` resolves. The modal test double can now render its footer after `advanced()` returns, as the core does, and one test uses that mode.
+
 # 3.10.0 (2026-09-27)
 
 ## FEATURE
