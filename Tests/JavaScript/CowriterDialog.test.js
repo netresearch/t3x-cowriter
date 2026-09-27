@@ -2368,7 +2368,9 @@ describe('CowriterDialog', () => {
         // from the FormEngine iframe. Both windows define typo3-backend-icon,
         // each with its own class, as TYPO3 does. An icon upgraded by the
         // wrong window adopts that window's stylesheets in the modal's
-        // document, which the browser refuses (issue 197).
+        // document, which the browser refuses (issue 197). Like the core, the
+        // modal double renders its content only after Modal.advanced() has
+        // returned (renderContentAsync).
         let Modal;
         let modalWindow;
 
@@ -2397,10 +2399,12 @@ describe('CowriterDialog', () => {
                 .not.toBe(window.customElements.get('typo3-backend-icon'));
             ({ default: Modal } = await import('@typo3/backend/modal.js'));
             Modal.targetDocument = modalWindow.document;
+            Modal.renderContentAsync = true;
         });
 
         afterEach(() => {
             Modal.targetDocument = null;
+            Modal.renderContentAsync = false;
         });
 
         it('creates the add-reference icon with the modal window\'s element class', async () => {
@@ -2436,6 +2440,30 @@ describe('CowriterDialog', () => {
 
             modalDocument.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');
+        });
+
+        it('adds the dialog styles to the modal\'s document once across module loads', async () => {
+            // The module loads again with every FormEngine iframe, while the
+            // parent document that shows the modal stays.
+            const modalDocument = modalWindow.document;
+            const countStyles = () => [...modalDocument.head.querySelectorAll('style')]
+                .filter((s) => s.textContent.includes('.cowriter-result {')).length;
+
+            for (let load = 1; load <= 2; load++) {
+                if (load > 1) {
+                    vi.resetModules();
+                    ({ CowriterDialog } = await import('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js'));
+                    ({ default: Modal } = await import('@typo3/backend/modal.js'));
+                    Modal.targetDocument = modalDocument;
+                    Modal.renderContentAsync = true;
+                }
+                const showPromise = new CowriterDialog(mockService).show('text', 'full');
+                await vi.waitFor(() => expect(modalDocument.querySelector('[name="cancel"]')).not.toBeNull());
+                modalDocument.querySelector('[name="cancel"]').click();
+                await expect(showPromise).rejects.toThrow('User cancelled');
+            }
+
+            expect(countStyles()).toBe(1);
         });
 
         it('closes the page dropdown on a click elsewhere in the modal\'s document', async () => {

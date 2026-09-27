@@ -59,20 +59,23 @@ const SCOPE_IDS = ['selection', 'text', 'element', 'page', 'ancestors_1', 'ances
 const SCOPE_LABELS = ['Selection', 'Full content', 'Content element', 'Page content', 'Parent page', 'Grandparent page'];
 
 let formIdCounter = 0;
-/** @type {WeakSet<Document>} Documents that already carry the dialog styles */
-const styledDocuments = new WeakSet();
+/** Id of the style element, so that a document gets it only once */
+const STYLE_ELEMENT_ID = 'cowriter-dialog-styles';
 
 /**
  * Inject cowriter-result styles once into the head of the document that
  * shows the dialog. From the FormEngine iframe, the TYPO3 modal opens in the
- * parent window, so this is not necessarily the script's own document.
+ * parent window, so this is not necessarily the script's own document. That
+ * document outlives this module, which loads again with every iframe, so the
+ * check reads the document rather than module state.
  *
  * @param {Document} doc
  * @private
  */
 function injectStyles(doc) {
-    if (styledDocuments.has(doc)) return;
+    if (doc.getElementById(STYLE_ELEMENT_ID)) return;
     const style = doc.createElement('style');
+    style.id = STYLE_ELEMENT_ID;
     style.textContent = `
 .cowriter-result {
     min-height: 200px;
@@ -87,7 +90,6 @@ function injectStyles(doc) {
     font-style: italic;
 }`;
     doc.head.appendChild(style);
-    styledDocuments.add(doc);
 }
 
 /**

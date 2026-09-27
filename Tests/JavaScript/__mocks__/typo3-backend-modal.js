@@ -20,11 +20,18 @@ function createMockModal(options) {
     el.className = 'modal';
     el.dataset.modalTitle = options.title || '';
 
-    // Render content
+    // Render content. The core appends the modal element in generate() and
+    // Lit renders the content only after Modal.advanced() has returned.
+    // Modal.renderContentAsync = true reproduces that; by default the content
+    // is in place at once, a simplification most tests rely on.
     const body = doc.createElement('div');
     body.className = 'modal-body';
     if (options.content instanceof HTMLElement) {
-        body.appendChild(options.content);
+        if (Modal.renderContentAsync) {
+            queueMicrotask(() => body.appendChild(options.content));
+        } else {
+            body.appendChild(options.content);
+        }
     }
     el.appendChild(body);
 
@@ -79,6 +86,7 @@ const Modal = {
     },
     advanced: (options) => createMockModal(options),
     renderAsync: false,
+    renderContentAsync: false,
     /** @type {Document|null} */
     targetDocument: null,
 };
