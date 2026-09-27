@@ -552,7 +552,8 @@ final readonly class AjaxController
 
         ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords] = $prepared;
 
-        if ($dto->variants > 1 && $this->completionService instanceof CompletionServiceInterface) {
+        // A tools request answers once: the versions path makes no tool calls.
+        if ($dto->variants > 1 && !$dto->useTools && $this->completionService instanceof CompletionServiceInterface) {
             return $this->executeVariants($dto, $task, $messages, $configuration, $targetWords, $rateLimitResult);
         }
 

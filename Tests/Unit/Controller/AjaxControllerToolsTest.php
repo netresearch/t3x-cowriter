@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\ValueObject\SuspendedRunState;
 use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
+use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Tool\Exception\ToolApprovalRequiredException;
 use Netresearch\NrLlm\Service\Tool\ToolCallPolicyInterface;
@@ -105,6 +106,27 @@ final class AjaxControllerToolsTest extends TestCase
     }
 
     #[Test]
+    public function aToolsRequestForSeveralVersionsGetsOneAnswerFromTheToolLoop(): void
+    {
+        $structuredCalls = 0;
+        $completion      = $this->createStub(CompletionServiceInterface::class);
+        $completion->method('completeStructuredForConfiguration')->willReturnCallback(
+            static function () use (&$structuredCalls): array {
+                ++$structuredCalls;
+
+                return ['variants' => ['<p>One</p>', '<p>Two</p>']];
+            },
+        );
+
+        $data = $this->json($this->subject($completion)->executeTaskAction($this->request(useTools: true, variants: 2)));
+
+        self::assertSame('<p><strong>Two</strong> pages mention it.</p>', $data['content']);
+        self::assertArrayNotHasKey('variants', $data);
+        self::assertSame([['search_content']], $this->loopTools);
+        self::assertSame(0, $structuredCalls);
+    }
+
+    #[Test]
     public function aToolAskingForApprovalIsAConflict(): void
     {
         $this->loopFailure = ToolApprovalRequiredException::fromState(
@@ -117,7 +139,7 @@ final class AjaxControllerToolsTest extends TestCase
         self::assertStringContainsString('approval', $this->json($response)['error']);
     }
 
-    private function subject(): AjaxController
+    private function subject(?CompletionServiceInterface $completion = null): AjaxController
     {
         $policy = $this->createStub(ToolCallPolicyInterface::class);
         $policy->method('filterOfferable')->willReturn(['search_content', 'update_record']);
@@ -133,10 +155,14 @@ final class AjaxControllerToolsTest extends TestCase
             return new ToolLoopResult('**Two** pages mention it.', [], 3, false, new UsageStatistics(20, 8, 28));
         });
 
-        return $this->taskRouteController($this->llm, toolRunner: new UnattendedToolRunner($loop, $policy, $filter));
+        return $this->taskRouteController(
+            $this->llm,
+            completionService: $completion,
+            toolRunner: new UnattendedToolRunner($loop, $policy, $filter),
+        );
     }
 
-    private function request(bool $useTools): ServerRequestInterface
+    private function request(bool $useTools, int $variants = 1): ServerRequestInterface
     {
         return (new ServerRequest('https://example.com/typo3/ajax/cowriter/task-execute', 'POST'))
             ->withParsedBody([
@@ -145,6 +171,7 @@ final class AjaxControllerToolsTest extends TestCase
                 'contextType' => 'selection',
                 'instruction' => 'Which pages mention the fair?',
                 'useTools'    => $useTools,
+                'variants'    => $variants,
             ]);
     }
 
