@@ -75,6 +75,17 @@ const DIALOG_CSS = `
 .cowriter-result--empty {
     color: var(--typo3-text-color-secondary);
     font-style: italic;
+}
+@media (forced-colors: active) {
+    .cowriter-dialog [role="option"].active {
+        forced-color-adjust: none;
+        background: Highlight;
+        color: HighlightText;
+        outline: 2px solid Highlight;
+    }
+    .cowriter-dialog [role="option"].active * {
+        color: HighlightText;
+    }
 }`;
 
 /**
@@ -820,8 +831,8 @@ export class CowriterDialog {
 
             // Handle modal dismissal via Escape key, X button, or Close button
             modal?.addEventListener?.('typo3-modal-hidden', () => {
-                this._restoreFocus();
                 reject(new Error('User cancelled'));
+                this._restoreFocus();
             });
         });
     }
@@ -1071,13 +1082,14 @@ export class CowriterDialog {
 
             // Handle modal dismissal — always clean up listeners/requests
             modal?.addEventListener?.('typo3-modal-hidden', () => {
-                this._restoreFocus();
                 activeRequest?.abort();
                 for (const ac of referenceAbortControllers) ac.abort();
                 referenceAbortControllers.clear();
                 if (!resolved) {
                     reject(new Error('User cancelled'));
                 }
+                // Last: settling and clean-up must not depend on it.
+                this._restoreFocus();
             });
 
             this._updateButtonVisibility(modal, 'idle');
@@ -1097,12 +1109,17 @@ export class CowriterDialog {
     _restoreFocus() {
         const target = this._returnFocusTo;
         this._returnFocusTo = null;
-        if (this._returnFocus) {
-            this._returnFocus();
-            return;
-        }
-        if (target && target.isConnected && target !== target.ownerDocument.body) {
-            target.focus({ preventScroll: true });
+        try {
+            if (this._returnFocus) {
+                this._returnFocus();
+                return;
+            }
+            if (target && target.isConnected && target !== target.ownerDocument.body) {
+                target.focus({ preventScroll: true });
+            }
+        } catch (error) {
+            // Focus is a courtesy; a failing callback must not break closing.
+            console.error('[Cowriter]', error);
         }
     }
 
@@ -1415,7 +1432,9 @@ export class CowriterDialog {
      */
     _createReferenceRow(referenceAbortControllers, doc = document) {
         const row = document.createElement('div');
-        row.className = 'd-flex gap-2 mb-1 align-items-center';
+        // Top-aligned: "No pages found" below the search field makes the
+        // wrapper taller, and centring would move the other controls.
+        row.className = 'd-flex gap-2 mb-1 align-items-start';
         row.dataset.role = 'reference-row';
 
         // Wrapper for search input + dropdown
@@ -1462,6 +1481,10 @@ export class CowriterDialog {
         dropdown.style.display = 'none';
         dropdown.dataset.role = 'ref-dropdown';
         dropdown.setAttribute('aria-label', t('ckeditor.dialog.pageSearch.results', 'Matching pages'));
+        // A press on the list (its scrollbar, an option) must not take focus
+        // from the field: the arrow keys work there only, and an option click
+        // then does not depend on focusout's relatedTarget.
+        dropdown.addEventListener('mousedown', (e) => e.preventDefault());
         searchWrapper.appendChild(dropdown);
 
         // Result count for screen readers, and the visible "No pages found":
@@ -1472,7 +1495,6 @@ export class CowriterDialog {
         status.setAttribute('role', 'status');
         status.setAttribute('aria-live', 'polite');
         searchWrapper.appendChild(status);
-        const closeList = () => this._closePageList(dropdown, searchInput);
 
         // AbortController for cleanup of event listeners and in-flight requests
         const controller = new AbortController();
@@ -1481,6 +1503,13 @@ export class CowriterDialog {
         // Debounced search with stale-response guard
         let debounceTimer;
         let currentSearchId = 0;
+        // Closing also drops a search still pending or in flight: its answer
+        // would open the list again, over whatever has focus by then.
+        const closeList = () => {
+            clearTimeout(debounceTimer);
+            currentSearchId++;
+            this._closePageList(dropdown, searchInput);
+        };
         searchInput.addEventListener('input', () => {
             clearTimeout(debounceTimer);
             hiddenPid.value = '';  // Clear selection on new input
@@ -1494,7 +1523,7 @@ export class CowriterDialog {
                 try {
                     const result = await this._service.searchPages(query);
                     if (searchId !== currentSearchId) return; // discard stale response
-                    this._renderPageDropdown(dropdown, result.pages, searchInput, hiddenPid);
+                    this._renderPageDropdown(dropdown, result.pages, searchInput, hiddenPid, closeList);
                 } catch {
                     if (searchId === currentSearchId) {
                         closeList();
@@ -1606,9 +1635,12 @@ export class CowriterDialog {
      * @param {Array<{uid: number, title: string, slug: string}>} pages
      * @param {HTMLInputElement} searchInput
      * @param {HTMLInputElement} hiddenPid
+     * @param {() => void} [closeList] - Closes the list; the reference row
+     *     passes one that also drops a pending search.
      * @private
      */
-    _renderPageDropdown(dropdown, pages, searchInput, hiddenPid) {
+    _renderPageDropdown(dropdown, pages, searchInput, hiddenPid,
+        closeList = () => this._closePageList(dropdown, searchInput)) {
         dropdown.replaceChildren();
         searchInput.removeAttribute('aria-activedescendant');
         const status = this._pageStatus(dropdown);
@@ -1619,7 +1651,7 @@ export class CowriterDialog {
             dropdown.style.display = 'none';
             searchInput.setAttribute('aria-expanded', 'false');
             if (status) {
-                status.textContent = t('ckeditor.dialog.noPagesFound', 'No pages found');
+                this._setStatusText(status, t('ckeditor.dialog.noPagesFound', 'No pages found'));
                 status.dataset.state = 'empty';
                 status.classList.remove('visually-hidden');
             }
@@ -1637,9 +1669,10 @@ export class CowriterDialog {
             // Combobox pattern: focus stays in the field, the arrow keys move
             // aria-activedescendant; an option is no Tab stop of its own.
             item.tabIndex = -1;
-            item.style.overflow = 'hidden';
-            item.style.textOverflow = 'ellipsis';
-            item.style.whiteSpace = 'nowrap';
+            // Long titles wrap instead of being cut off: at 200 % zoom the
+            // list is narrow, and the full text must stay readable.
+            item.style.whiteSpace = 'normal';
+            item.style.overflowWrap = 'anywhere';
             item.textContent = `[${page.uid}] ${page.title}`;
             if (page.slug) {
                 const slug = document.createElement('span');
@@ -1649,12 +1682,12 @@ export class CowriterDialog {
                 slug.textContent = ` \u2013 ${page.slug}`;
                 item.appendChild(slug);
             }
-            // The whole text, for titles cut off by the list's width.
+            // The whole text as a tooltip as well.
             item.title = item.textContent;
             item.addEventListener('click', () => {
                 hiddenPid.value = String(page.uid);
                 searchInput.value = `[${page.uid}] ${page.title}`;
-                this._closePageList(dropdown, searchInput);
+                closeList();
                 // A mouse click focuses the option, which the list now hides.
                 searchInput.focus();
             });
@@ -1663,12 +1696,27 @@ export class CowriterDialog {
         dropdown.style.display = 'block';
         searchInput.setAttribute('aria-expanded', 'true');
         if (status) {
-            status.textContent = pages.length === 1
+            this._setStatusText(status, pages.length === 1
                 ? t('ckeditor.dialog.pageFound', '1 page found')
-                : t('ckeditor.dialog.pagesFound', '%s pages found', pages.length);
+                : t('ckeditor.dialog.pagesFound', '%s pages found', pages.length));
             delete status.dataset.state;
             // Announced only: the open list covers the place below the field.
             status.classList.add('visually-hidden');
+        }
+    }
+
+    /**
+     * Set the live region's text only when it changes: a screen reader
+     * announces every write, and each keystroke of a slow typist searches
+     * again with the same result.
+     *
+     * @param {HTMLElement} status
+     * @param {string} text
+     * @private
+     */
+    _setStatusText(status, text) {
+        if (status.textContent !== text) {
+            status.textContent = text;
         }
     }
 

@@ -2305,6 +2305,210 @@ describe('CowriterDialog', () => {
         };
         const PAGES = [{ uid: 1, title: 'Home', slug: '/' }, { uid: 2, title: 'About', slug: '/about' }];
 
+        const typeQuery = (input, value) => {
+            input.value = value;
+            input.dispatchEvent(new Event('input'));
+        };
+        const afterDebounce = () => new Promise((r) => setTimeout(r, 400));
+
+        describe('a search in flight does not reopen a closed list', () => {
+            it('drops the pending search when focus leaves during the debounce', async () => {
+                const dialog = new CowriterDialog(mockService);
+                const { showPromise } = await openWithReferenceRow(dialog);
+                mockService.searchPages.mockResolvedValue({ success: true, pages: PAGES });
+                const searchInput = document.querySelector('[data-role="ref-search"]');
+                const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+
+                typeQuery(searchInput, 'pa');
+                searchInput.dispatchEvent(new FocusEvent('focusout', {
+                    bubbles: true, relatedTarget: document.querySelector('[data-role="ref-relation"]'),
+                }));
+                await afterDebounce();
+
+                expect(dropdown.style.display).toBe('none');
+                expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+                // Dropped before it was sent, not only its answer ignored.
+                expect(mockService.searchPages).not.toHaveBeenCalled();
+
+                document.querySelector('[name="cancel"]').click();
+                await showPromise.catch(() => {});
+            });
+
+            it('ignores the answer of a search already sent when Escape closed the list', async () => {
+                const dialog = new CowriterDialog(mockService);
+                const { showPromise } = await openWithReferenceRow(dialog);
+                let answer;
+                mockService.searchPages.mockReturnValue(new Promise((r) => { answer = r; }));
+                const { dropdown, searchInput } = renderPages(dialog, PAGES);
+
+                typeQuery(searchInput, 'pag');
+                await vi.waitFor(() => expect(mockService.searchPages).toHaveBeenCalled());
+                escapeOn(searchInput);
+                answer({ success: true, pages: PAGES });
+                await afterDebounce();
+
+                expect(dropdown.style.display).toBe('none');
+                expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+                document.querySelector('[name="cancel"]').click();
+                await showPromise.catch(() => {});
+            });
+
+            it('drops the pending search when an option of the previous list is clicked', async () => {
+                const dialog = new CowriterDialog(mockService);
+                const { showPromise } = await openWithReferenceRow(dialog);
+                mockService.searchPages.mockResolvedValue({ success: true, pages: PAGES });
+                const searchInput = document.querySelector('[data-role="ref-search"]');
+                const dropdown = document.querySelector('[data-role="ref-dropdown"]');
+                typeQuery(searchInput, 'pa');
+                await vi.waitFor(() => expect(dropdown.style.display).toBe('block'));
+
+                typeQuery(searchInput, 'pag');
+                dropdown.querySelectorAll('[role="option"]')[1].click();
+                await afterDebounce();
+
+                expect(document.querySelector('[data-role="ref-pid"]').value).toBe('2');
+                expect(dropdown.style.display).toBe('none');
+                expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+                document.querySelector('[name="cancel"]').click();
+                await showPromise.catch(() => {});
+            });
+        });
+
+        it('keeps focus in the field when the list is pressed', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const { dropdown } = renderPages(dialog, PAGES);
+
+            for (const target of [dropdown, dropdown.querySelector('[role="option"]')]) {
+                const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+                target.dispatchEvent(press);
+                expect(press.defaultPrevented).toBe(true);
+            }
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('closes the list when focus leaves to nowhere (relatedTarget null)', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const { dropdown, searchInput } = renderPages(dialog, PAGES);
+
+            searchInput.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+            expect(dropdown.style.display).toBe('none');
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('sets aria-expanded to false when an open list gets an empty result', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const { searchInput } = renderPages(dialog, PAGES);
+            expect(searchInput.getAttribute('aria-expanded')).toBe('true');
+
+            renderPages(dialog, []);
+            expect(searchInput.getAttribute('aria-expanded')).toBe('false');
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('writes the live region only when its text changes', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const status = document.querySelector('[data-role="ref-status"]');
+            const observer = new MutationObserver(() => {});
+            observer.observe(status, { childList: true, characterData: true, subtree: true });
+
+            for (const pages of [PAGES, []]) {
+                renderPages(dialog, pages);
+                expect(observer.takeRecords().length).toBeGreaterThan(0);
+                renderPages(dialog, pages);
+                expect(observer.takeRecords()).toHaveLength(0);
+            }
+            observer.disconnect();
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('wraps long option texts instead of cutting them off', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const { dropdown } = renderPages(dialog, PAGES);
+            const cs = getComputedStyle(dropdown.querySelector('[role="option"]'));
+
+            expect(cs.whiteSpace).not.toBe('nowrap');
+            expect(cs.textOverflow).not.toBe('ellipsis');
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('marks the active option in forced colors', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const { dropdown, searchInput } = renderPages(dialog, PAGES);
+            arrowDown(searchInput);
+            const active = dropdown.querySelector('[role="option"].active');
+            const other = dropdown.querySelector('[role="option"]:not(.active)');
+
+            const sheet = document.getElementById('cowriter-dialog-styles').sheet;
+            const forced = [...sheet.cssRules].filter((r) => r.media && r.media.mediaText.includes('forced-colors: active'));
+            const rules = forced.flatMap((m) => [...m.cssRules]);
+            const marking = rules.filter((r) => active.matches(r.selectorText)
+                && r.style.getPropertyValue('background').toLowerCase().includes('highlight'));
+            expect(marking).toHaveLength(1);
+            expect(marking[0].style.getPropertyValue('forced-color-adjust')).toBe('none');
+            expect(other.matches(marking[0].selectorText)).toBe(false);
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it('keeps the controls of a row top-aligned, so that the status does not move them', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const { showPromise } = await openWithReferenceRow(dialog);
+            const row = document.querySelector('[data-role="reference-row"]');
+            expect(row.classList.contains('align-items-start')).toBe(true);
+            expect(row.classList.contains('align-items-center')).toBe(false);
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
+        it.each(['task dialog', 'no-tasks notice'])('settles and cleans up when returnFocus throws (%s)', async (which) => {
+            if (which === 'no-tasks notice') {
+                mockService.getTasks.mockResolvedValue({ success: true, tasks: [] });
+            }
+            const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const returnFocus = vi.fn(() => { throw new Error('editor gone'); });
+            const dialog = new CowriterDialog(mockService, { returnFocus });
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => expect(document.querySelector('.modal')).not.toBeNull());
+            let dropdown = null;
+            if (which === 'task dialog') {
+                document.querySelector('[data-role="add-reference"]').click();
+                ({ dropdown } = renderPages(dialog, PAGES));
+            }
+
+            // Escape or the X button: the modal hides itself.
+            document.querySelector('.modal').hideModal();
+
+            await expect(showPromise).rejects.toThrow('User cancelled');
+            expect(returnFocus).toHaveBeenCalledOnce();
+            expect(consoleError).toHaveBeenCalled();
+            if (dropdown) {
+                // The row's listeners were removed: nothing closes the list.
+                document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+                expect(dropdown.style.display).toBe('block');
+            }
+            consoleError.mockRestore();
+        });
+
         it('closes the list when focus leaves the page search, not when it moves inside', async () => {
             const dialog = new CowriterDialog(mockService);
             const { showPromise } = await openWithReferenceRow(dialog);
