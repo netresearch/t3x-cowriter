@@ -59,16 +59,11 @@ const SCOPE_IDS = ['selection', 'text', 'element', 'page', 'ancestors_1', 'ances
 const SCOPE_LABELS = ['Selection', 'Full content', 'Content element', 'Page content', 'Parent page', 'Grandparent page'];
 
 let formIdCounter = 0;
-let cssInjected = false;
+/** Id of the style element, so that a document gets it only once */
+const STYLE_ELEMENT_ID = 'cowriter-dialog-styles';
 
-/**
- * Inject cowriter-result styles once into the document head.
- * @private
- */
-function injectStyles() {
-    if (cssInjected) return;
-    const style = document.createElement('style');
-    style.textContent = `
+/** The dialog styles */
+const DIALOG_CSS = `
 .cowriter-result {
     min-height: 200px;
     max-height: 400px;
@@ -81,8 +76,50 @@ function injectStyles() {
     color: var(--typo3-text-color-secondary);
     font-style: italic;
 }`;
-    document.head.appendChild(style);
-    cssInjected = true;
+
+/**
+ * Inject the dialog styles once into the head of the document that shows
+ * the dialog. From the FormEngine iframe, the TYPO3 modal opens in the
+ * parent window, so this is not necessarily the script's own document. That
+ * document outlives this module, which loads again with every iframe, so the
+ * check reads the document rather than module state. An element left by an
+ * older version of this module gets the current styles.
+ *
+ * @param {Document} doc
+ * @private
+ */
+function injectStyles(doc) {
+    const existing = doc.getElementById(STYLE_ELEMENT_ID);
+    if (existing) {
+        if (existing.textContent !== DIALOG_CSS) {
+            existing.textContent = DIALOG_CSS;
+        }
+        return;
+    }
+    const style = doc.createElement('style');
+    style.id = STYLE_ELEMENT_ID;
+    style.textContent = DIALOG_CSS;
+    doc.head.appendChild(style);
+}
+
+/**
+ * Create a TYPO3 icon element in the given document.
+ *
+ * `typo3-backend-icon` is a Lit element. An element upgraded by one window's
+ * registry adopts that window's constructed stylesheets when it connects, and
+ * a browser refuses them in another document (NotAllowedError). The icon must
+ * therefore be created by the document it will be shown in.
+ *
+ * @param {Document} doc
+ * @param {string} identifier
+ * @returns {HTMLElement}
+ * @private
+ */
+function createIcon(doc, identifier) {
+    const icon = doc.createElement('typo3-backend-icon');
+    icon.setAttribute('identifier', identifier);
+    icon.setAttribute('size', 'small');
+    return icon;
 }
 
 export class CowriterDialog {
@@ -1007,6 +1044,16 @@ export class CowriterDialog {
                 ],
             });
 
+            // Opened from the FormEngine iframe, the TYPO3 modal lives in the
+            // parent window, so the content built above changes document. Plain
+            // nodes survive that; styles and Lit elements have to be made by the
+            // modal's document. Modal.advanced() renders the content only after
+            // it has returned, so the icon is in place before it connects.
+            const modalDocument = modal?.ownerDocument ?? document;
+            injectStyles(modalDocument);
+            container.querySelector('[data-role="add-reference"]')
+                ?.prepend(createIcon(modalDocument, 'actions-plus'));
+
             // Handle modal dismissal — always clean up listeners/requests
             modal?.addEventListener?.('typo3-modal-hidden', () => {
                 activeRequest?.abort();
@@ -1041,7 +1088,6 @@ export class CowriterDialog {
     _buildDialogContent(
         tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid = null,
     ) {
-        injectStyles();
         const container = document.createElement('div');
         container.className = 'cowriter-dialog';
         const idPrefix = `cowriter-${++formIdCounter}`;
@@ -1194,10 +1240,13 @@ export class CowriterDialog {
         addRefBtn.type = 'button';
         addRefBtn.className = 'btn btn-sm btn-outline-secondary mt-1';
         addRefBtn.dataset.role = 'add-reference';
-        addRefBtn.innerHTML = '<typo3-backend-icon identifier="actions-plus" size="small"></typo3-backend-icon>';
+        // The icon is added by _showModal() with the modal's document.
         addRefBtn.append(' ' + t('ckeditor.dialog.addReference', 'Add reference page'));
         addRefBtn.addEventListener('click', () => {
-            refContainer.appendChild(this._createReferenceRow(referenceAbortControllers));
+            // By the time of a click, the list shows in the modal's document.
+            refContainer.appendChild(
+                this._createReferenceRow(referenceAbortControllers, refContainer.ownerDocument),
+            );
         });
         refGroup.appendChild(addRefBtn);
 
@@ -1321,10 +1370,12 @@ export class CowriterDialog {
 
     /**
      * Create a reference page row with page ID, relation, and remove button.
+     * @param {Set<AbortController>} referenceAbortControllers
+     * @param {Document} [doc=document] - The document the row is shown in (the modal's)
      * @returns {HTMLElement}
      * @private
      */
-    _createReferenceRow(referenceAbortControllers) {
+    _createReferenceRow(referenceAbortControllers, doc = document) {
         const row = document.createElement('div');
         row.className = 'd-flex gap-2 mb-1 align-items-center';
         row.dataset.role = 'reference-row';
@@ -1433,13 +1484,19 @@ export class CowriterDialog {
             }
         }, { signal: controller.signal });
 
-        // Close dropdown on outside click (scoped to AbortController)
-        document.addEventListener('click', (e) => {
+        // Close dropdown on outside click (scoped to AbortController). The
+        // clicks happen in the modal's document, not necessarily in this one,
+        // so the listener is removed by hand: the controller belongs to this
+        // window, and not every implementation accepts a signal from another
+        // window (jsdom rejects it).
+        const closeOnOutsideClick = (e) => {
             if (!searchWrapper.contains(e.target)) {
                 dropdown.style.display = 'none';
                 searchInput.setAttribute('aria-expanded', 'false');
             }
-        }, { signal: controller.signal });
+        };
+        doc.addEventListener('click', closeOnOutsideClick);
+        controller.signal.addEventListener('abort', () => doc.removeEventListener('click', closeOnOutsideClick));
 
         row.appendChild(searchWrapper);
 
@@ -1456,7 +1513,7 @@ export class CowriterDialog {
         removeBtn.type = 'button';
         removeBtn.className = 'btn btn-sm btn-outline-danger';
         removeBtn.dataset.role = 'remove-reference';
-        removeBtn.innerHTML = '<typo3-backend-icon identifier="actions-delete" size="small"></typo3-backend-icon>';
+        removeBtn.appendChild(createIcon(doc, 'actions-delete'));
         removeBtn.setAttribute('aria-label', t('ckeditor.dialog.removeReference', 'Remove reference page'));
         removeBtn.addEventListener('click', () => {
             clearTimeout(debounceTimer);
@@ -1794,20 +1851,41 @@ export class CowriterDialog {
         copyBtn.textContent = copyLabel;
         copyBtn.addEventListener('click', () => {
             const text = content.textContent;
-            navigator.clipboard.writeText(text).then(() => {
+            // The click happens in the modal's document, which may be the
+            // parent window's: only that document has focus, and the
+            // clipboard refuses a document without it.
+            const doc = copyBtn.ownerDocument;
+            const clipboard = doc.defaultView?.navigator.clipboard ?? navigator.clipboard;
+            const copied = () => {
                 copyBtn.textContent = t('ckeditor.dialog.copied', 'Copied!');
                 setTimeout(() => { copyBtn.textContent = copyLabel; }, 2000);
-            }).catch(() => {
-                const ta = document.createElement('textarea');
+            };
+            // Without a secure context (plain http) there is no clipboard API
+            // at all; go straight to the fallback.
+            const write = clipboard
+                ? clipboard.writeText(text)
+                : Promise.reject(new Error('Clipboard API unavailable'));
+            write.then(copied).catch(() => {
+                const ta = doc.createElement('textarea');
                 ta.value = text;
                 ta.style.position = 'fixed';
                 ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                ta.remove();
-                copyBtn.textContent = t('ckeditor.dialog.copied', 'Copied!');
-                setTimeout(() => { copyBtn.textContent = copyLabel; }, 2000);
+                // Inside the modal: a modal <dialog> makes the rest inert.
+                copyBtn.after(ta);
+                try {
+                    ta.select();
+                    // Browsers report a refused copy by returning false, older
+                    // ones by throwing. On false the label stays as it is.
+                    if (doc.execCommand('copy')) {
+                        copied();
+                    }
+                } catch {
+                    // execCommand threw: copying is not possible here, and
+                    // the label stays as it is.
+                } finally {
+                    ta.remove();
+                    copyBtn.focus();
+                }
             });
         });
         details.appendChild(copyBtn);
