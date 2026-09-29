@@ -667,6 +667,18 @@
                 <source>No pages found</source>
                 <target>Keine Seiten gefunden</target>
             </trans-unit>
+            <trans-unit id="ckeditor.dialog.pageFound" resname="ckeditor.dialog.pageFound">
+                <source>1 page found</source>
+                <target>1 Seite gefunden</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.pagesFound" resname="ckeditor.dialog.pagesFound">
+                <source>%s pages found</source>
+                <target>%s Seiten gefunden</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.pageSearch.results" resname="ckeditor.dialog.pageSearch.results">
+                <source>Matching pages</source>
+                <target>Passende Seiten</target>
+            </trans-unit>
             <trans-unit id="ckeditor.dialog.openSetupStatus" resname="ckeditor.dialog.openSetupStatus">
                 <source>Open Setup Status</source>
                 <target>Einrichtungsstatus öffnen</target>

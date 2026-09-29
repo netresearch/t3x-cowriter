@@ -501,6 +501,15 @@
             <trans-unit id="ckeditor.dialog.noPagesFound" resname="ckeditor.dialog.noPagesFound">
                 <source>No pages found</source>
             </trans-unit>
+            <trans-unit id="ckeditor.dialog.pageFound" resname="ckeditor.dialog.pageFound">
+                <source>1 page found</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.pagesFound" resname="ckeditor.dialog.pagesFound">
+                <source>%s pages found</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.pageSearch.results" resname="ckeditor.dialog.pageSearch.results">
+                <source>Matching pages</source>
+            </trans-unit>
             <trans-unit id="ckeditor.dialog.openSetupStatus" resname="ckeditor.dialog.openSetupStatus">
                 <source>Open Setup Status</source>
             </trans-unit>
