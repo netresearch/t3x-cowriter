@@ -119,6 +119,17 @@ Checks that run on every pull request in this repository:
 - `.github/workflows/docs.yml`, when `Documentation/` changes: the
   documentation rendering.
 
+## Security
+
+Report vulnerabilities privately through
+[GitHub Security Advisories](https://github.com/netresearch/t3x-cowriter/security/advisories/new),
+not in a public issue.
+
+The security expectations, threat model and controls of the extension are in
+[docs/SECURITY-ASSURANCE.md](docs/SECURITY-ASSURANCE.md). A change that adds,
+removes or changes a control, or changes what is sent to the language model,
+updates that document.
+
 ## Questions?
 
 Open an issue or contact the maintainers via [GitHub Issues](https://github.com/netresearch/t3x-cowriter/issues).

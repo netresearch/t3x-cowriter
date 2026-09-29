@@ -197,6 +197,11 @@ open var/coverage/unit/index.html
 - TYPO3 backend route authentication with nonce-based URL tokens
 - Content Security Policy (CSP) compatible
 
+What users can expect from the extension in terms of security — what editor
+content leaves the system and to whom, how AI output enters the editor, the
+threat model, trust boundaries and the controls that implement them — is in
+[docs/SECURITY-ASSURANCE.md](docs/SECURITY-ASSURANCE.md).
+
 ## Migration to v3.x
 
 Version 3.0 requires TYPO3 v13.4+ and PHP 8.2+. It removes the frontend-only architecture
