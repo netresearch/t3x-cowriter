@@ -17,12 +17,13 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | API client | `Resources/Public/JavaScript/Ckeditor/AIService.js` | Fetch wrapper for all AJAX routes, `AIServiceError` |
 | URL loader | `Resources/Public/JavaScript/Ckeditor/UrlLoader.js` | CSP-compliant AJAX URL injection |
 | Field suggestions (JS) | `Resources/Public/JavaScript/FormEngine/FieldSuggestions.js` | FormEngine field control: suggestion list, pick fills the field |
-| AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 13 route definitions (see table below) |
-| Main controller | `Classes/Controller/AjaxController.php` | Chat, complete, stream (SSE), configurations, tasks, task execution, context, page search |
+| AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 18 route definitions (see table below) |
+| Main controller | `Classes/Controller/AjaxController.php` | Chat, complete, stream (SSE), configurations, style options, tasks, task execution (plain and SSE), context, page search |
 | Vision controller | `Classes/Controller/VisionController.php` | Image analysis / alt-text generation |
 | Translation controller | `Classes/Controller/TranslationController.php` | Content translation |
 | Template controller | `Classes/Controller/TemplateController.php` | Prompt template listing |
 | Tool controller | `Classes/Controller/ToolController.php` | LLM tool/function calling |
+| Saved prompt controller | `Classes/Controller/SavedPromptController.php`, `Classes/Service/Prompt/` | List, save and delete the editor's saved prompts (`tx_cowriter_prompt`), sharing with optional admin approval |
 | Field suggestion controller | `Classes/Controller/FieldSuggestionController.php` | N suggestions for one form field (permission check, structured LLM call) |
 | Field suggestion services | `Classes/Service/FieldSuggestion/` | Record/page context with permission checks (workspace-restricted and overlaid), system prompt + fenced untrusted data (`UntrustedDataFence`) + JSON schema, length limits, slug building via `SlugHelper` |
 | Field control registration | `Classes/EventListener/RegisterFieldSuggestionControlsListener.php`, `Classes/Form/FieldControl/FieldSuggestionsControl.php` | Adds the control to the configured TCA fields (`AfterTcaCompilationEvent`, `ext_conf_template.txt`) and renders the button |
@@ -42,13 +43,18 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | `tx_cowriter_complete` | `AjaxController::completeAction` |
 | `tx_cowriter_stream` | `AjaxController::streamAction` (SSE) |
 | `tx_cowriter_configurations` | `AjaxController::getConfigurationsAction` |
+| `tx_cowriter_style_options` | `AjaxController::getStyleOptionsAction` |
 | `tx_cowriter_tasks` | `AjaxController::getTasksAction` |
 | `tx_cowriter_task_execute` | `AjaxController::executeTaskAction` |
+| `tx_cowriter_task_stream` | `AjaxController::executeTaskStreamAction` (SSE) |
 | `tx_cowriter_context` | `AjaxController::getContextAction` |
 | `tx_cowriter_page_search` | `AjaxController::searchPagesAction` |
 | `tx_cowriter_vision` | `VisionController::analyzeAction` |
 | `tx_cowriter_translate` | `TranslationController::translateAction` |
 | `tx_cowriter_templates` | `TemplateController::listAction` |
+| `tx_cowriter_prompts` | `SavedPromptController::listAction` |
+| `tx_cowriter_prompt_save` | `SavedPromptController::saveAction` (POST) |
+| `tx_cowriter_prompt_delete` | `SavedPromptController::deleteAction` (POST) |
 | `tx_cowriter_tools` | `ToolController::executeAction` |
 | `tx_cowriter_suggestions` | `FieldSuggestionController::suggestAction` |
 

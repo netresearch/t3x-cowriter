@@ -32,7 +32,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Controller/ToolController.php | LLM function calling |
 | Controller/FieldSuggestionController.php | Field suggestions for FormEngine fields |
 | Domain/DTO/CompleteRequest.php | Request DTO with validation |
-| Domain/DTO/CompleteResponse.php | Response DTO with HTML escaping |
+| Domain/DTO/CompleteResponse.php | Response DTO; content returned unescaped (see Security) |
 | Domain/DTO/ContextRequest.php | Context preview request DTO |
 | Domain/DTO/ExecuteTaskRequest.php | Task execution request DTO |
 | Domain/DTO/PageSearchResult.php | Page search result DTO (tx_cowriter_page_search) |
@@ -173,7 +173,7 @@ public static function success(CompletionResponse $response): self
 {
     return new self(
         success: true,
-        content: htmlspecialchars($response->content, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+        content: $response->content, // raw; the frontend sanitizes it
         // ...
     );
 }
