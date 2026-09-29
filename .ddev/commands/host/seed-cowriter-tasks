@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 
 ## Description: Seed cowriter AI tasks into tx_nrllm_task table
 ## Usage: seed-cowriter-tasks

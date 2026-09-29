@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- SPDX-FileCopyrightText: Netresearch DTT GmbH
+
 -- Seed data for cowriter AI tasks
 -- These tasks appear in the cowriter dialog for common text operations.
 -- Run with: ddev seed-cowriter-tasks

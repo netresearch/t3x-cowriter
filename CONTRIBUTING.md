@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Contributing to AI Cowriter
 
 Thank you for your interest in contributing to AI Cowriter for TYPO3!

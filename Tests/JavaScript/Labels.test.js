@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: Netresearch DTT GmbH
+ */
+
 /**
  * Tests for the Labels module: texts injected by InjectAjaxUrlsListener as
  * JSON, with the English text of each call site as fallback.

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
+
 # Custom Dockerfile for t3_cowriter TYPO3 extension development
 # Adds PHP extensions and tools needed for development
 

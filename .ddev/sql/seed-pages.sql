@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- SPDX-FileCopyrightText: Netresearch DTT GmbH
+
 -- Demo page tree and content for testing the cowriter CKEditor plugin
 -- Creates a minimal site with RTE content for rewrite/summarize/extend testing
 -- Run with: ddev seed-pages [v13|v14]

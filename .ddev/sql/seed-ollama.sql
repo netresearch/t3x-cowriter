@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- SPDX-FileCopyrightText: Netresearch DTT GmbH
+
 -- Seed data for local Ollama LLM development with t3x-cowriter
 -- This creates a pre-configured Ollama provider, models, and sample configurations
 -- Run with: ddev seed-ollama

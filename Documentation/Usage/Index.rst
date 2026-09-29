@@ -1,3 +1,6 @@
+.. SPDX-License-Identifier: GPL-3.0-or-later
+.. SPDX-FileCopyrightText: Netresearch DTT GmbH
+
 ..  include:: /Includes.rst.txt
 
 .. _usage:
