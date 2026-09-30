@@ -8,5 +8,5 @@
 ,11,1,"Picture","textmedia",0,512
 ,20,2,"Inherited","text",0,256
 "be_users"
-,"uid","pid","username","password","admin","tstamp","crdate","disable","deleted"
-,1,0,"admin","$2y$12$RJxT/2Y6d3oRm5d5ohJi9.CmZlVW.7N4vMHXiQ/D6xJBPfqfNMpBm",1,1703347200,1703347200,0,0
+,"uid","pid","username","admin","tstamp","crdate","disable","deleted"
+,1,0,"admin",1,1703347200,1703347200,0,0
