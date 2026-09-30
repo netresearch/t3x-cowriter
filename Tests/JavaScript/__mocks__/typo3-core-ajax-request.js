@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: Netresearch DTT GmbH
+ */
+
 // Mock for @typo3/core/ajax/ajax-request.js
 // Tests set AjaxRequest.nextPost to a function (url, data, init) => Promise.
 const AjaxRequest = vi.fn(function (url) {

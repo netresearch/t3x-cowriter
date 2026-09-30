@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
+
 # Exclude from archive (git archive / TER upload)
 /.ddev                  export-ignore
 /.editorconfig          export-ignore

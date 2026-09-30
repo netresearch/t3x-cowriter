@@ -1,3 +1,6 @@
+.. SPDX-License-Identifier: GPL-3.0-or-later
+.. SPDX-FileCopyrightText: Netresearch DTT GmbH
+
 ..  include:: /Includes.rst.txt
 
 .. _configuration:
@@ -11,7 +14,7 @@ LLM provider setup
 
 The Cowriter extension uses the :ref:`nr-llm extension <nrllm:start>` for
 LLM provider configuration. Configure your preferred provider in the
-:ref:`nr-llm backend module <nrllm:configuration-backend-module>`.
+:ref:`nr-llm backend module <nrllm:administration-backend-module>`.
 
 Supported providers
 -------------------

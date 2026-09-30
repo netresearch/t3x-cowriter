@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
+
 # Makefile for t3_cowriter TYPO3 Extension
 # AI-powered content writing assistant for TYPO3 CKEditor
 

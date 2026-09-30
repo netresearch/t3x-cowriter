@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: Netresearch DTT GmbH
+ */
+
 // vim: ts=4 sw=4 expandtab colorcolumn=120
 // @ts-check
 

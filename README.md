@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # TYPO3 Extension: t3_cowriter
 
 <!-- CI/Quality -->
@@ -194,6 +196,11 @@ open var/coverage/unit/index.html
 - Frontend DOMParser-based content sanitization via CKEditor's HTML processing pipeline
 - TYPO3 backend route authentication with nonce-based URL tokens
 - Content Security Policy (CSP) compatible
+
+What users can expect from the extension in terms of security — what editor
+content leaves the system and to whom, how AI output enters the editor, the
+threat model, trust boundaries and the controls that implement them — is in
+[docs/SECURITY-ASSURANCE.md](docs/SECURITY-ASSURANCE.md).
 
 ## Migration to v3.x
 
