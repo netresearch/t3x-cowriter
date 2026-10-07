@@ -58,6 +58,17 @@ final class StructuredAnswerTest extends TestCase
     }
 
     #[Test]
+    public function anObjectIsUnwrappedToItsPublicDataArray(): void
+    {
+        $object = new class {
+            /** @var array<string, mixed> */
+            public array $data = ['suggestions' => ['A']];
+        };
+
+        self::assertSame(['suggestions' => ['A']], StructuredAnswer::payload($object));
+    }
+
+    #[Test]
     public function anObjectWithoutAPayloadArrayIsRefused(): void
     {
         $object       = new stdClass();

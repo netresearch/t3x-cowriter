@@ -17,14 +17,14 @@ use UnexpectedValueException;
  * nr-llm 0.38 returns the decoded payload of completeStructured() and
  * completeStructuredForConfiguration() as an array; from 0.39 on it returns a
  * StructuredCompletionResponse that carries the same array as its `data`
- * property (ADR-211). This is the only place that knows about the
+ * property (nr-llm ADR-211). This is the only place that knows about the
  * difference. The class is not named here, because it does not exist on 0.38.
  */
 final class StructuredAnswer
 {
     /**
      * @param array<mixed>|object|null $answer the return value of a structured completion call;
-     *                                         null where the completion service is not available
+     *                                         null is what a nullsafe call on an absent service yields
      *
      * @return array<mixed> the payload; empty for null
      *
