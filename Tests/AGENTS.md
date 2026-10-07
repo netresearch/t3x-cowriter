@@ -123,6 +123,7 @@ Tests/
 │                       # RateLimiterService, RateLimitResult tests
 ├── Functional/         # FieldSuggestion/: TCA registration and the suggestion endpoint against a real DB (sqlite in CI)
 │                       # Localization/: TYPO3 resolves the de. language files
+│                       # Context/: task context read rules (tables_select, language, root level, workspaces)
 ├── Integration/
 │   ├── AbstractIntegrationTestCase.php
 │   └── Controller/     # Ajax, Template, Translation, Vision + Backend/Status integration tests
@@ -130,7 +131,7 @@ Tests/
 │   ├── AbstractE2ETestCase.php, CowriterWorkflowTest.php, NewFeatureWorkflowTest.php  # PHP E2E
 │   ├── *.spec.ts       # Playwright specs (toolbar, dialog, tasks, translate, vision, context zoom)
 │   └── fixtures/       # Playwright auth fixture
-├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, UrlLoader, FieldSuggestions (+ __mocks__/)
+├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, HtmlSanitizer, UrlLoader, FieldSuggestions (+ __mocks__/)
 └── Support/            # TestQueryResult.php, TaskStubTrait.php, XliffFile.php (reads the language files)
 ```
 
