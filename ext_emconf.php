@@ -7,7 +7,7 @@
 
 $EM_CONF[$_EXTKEY] = [
     'title'          => 'AI Cowriter',
-    'description'    => 'With the help of AI you can now work on a page together with a cowriter - a digital assistant that helps you to write your content.',
+    'description'    => 'AI assistant in CKEditor that helps editors write page content.',
     'category'       => 'be',
     'author'         => 'Team der Netresearch DTT GmbH',
     'author_email'   => '',
