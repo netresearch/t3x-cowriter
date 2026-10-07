@@ -37,6 +37,7 @@ use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\StructuredAnswer;
 use Netresearch\T3Cowriter\Service\Style\StyleInstruction;
 use Netresearch\T3Cowriter\Service\Style\StyleInstructionBuilder;
 use Netresearch\T3Cowriter\Service\Tool\ToolNeedsApprovalException;
@@ -964,14 +965,14 @@ final readonly class AjaxController
         );
 
         try {
-            $answer = $this->completionService?->completeStructuredForConfiguration(
+            $answer = StructuredAnswer::payload($this->completionService?->completeStructuredForConfiguration(
                 $prompt,
                 $configuration,
                 $this->variantsSchema($dto->variants),
                 (new ChatOptions())
                     ->withSystemPrompt(implode("\n\n", $system))
                     ->withCallerSource(CallerSource::EXTENSION, $this->taskOperation($task)),
-            ) ?? [];
+            ));
 
             $variants = [];
             foreach (is_array($answer['variants'] ?? null) ? $answer['variants'] : [] as $variant) {
