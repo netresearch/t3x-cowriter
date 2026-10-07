@@ -145,6 +145,40 @@ final class ContextAssemblyServiceTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function liveUserFindsAContentElementOnItsLivePage(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/content_move.csv');
+
+        self::assertStringContainsString('MOVED-ELEMENT', $this->contextAs(1, 10, 'page'));
+        self::assertStringNotContainsString('MOVED-ELEMENT', $this->contextAs(1, 40, 'page'));
+    }
+
+    #[Test]
+    public function userInAWorkspaceFindsAContentElementMovedThereOnItsNewPageOnly(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/content_move.csv');
+
+        // Workspace 1 moves element 50 from page 3 to page 2.
+        self::assertStringNotContainsString('MOVED-ELEMENT', $this->contextAs(1, 10, 'page', 1));
+
+        $newPage = $this->contextAs(1, 40, 'page', 1);
+        self::assertSame(1, substr_count($newPage, 'Header: MOVED-ELEMENT'));
+        self::assertStringContainsString('(tt_content #50)', $newPage);
+        self::assertStringNotContainsString('(tt_content #51)', $newPage);
+    }
+
+    #[Test]
+    public function ancestorScopeStartsAtThePageOfTheRequestedElement(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/content_move.csv');
+
+        $context = $this->contextAs(1, 10, 'ancestors_1', 1);
+
+        self::assertStringContainsString('Ergonomic chairs', $context);
+        self::assertStringContainsString('PRODUCTS-PAGE-ELEMENT', $context);
+    }
+
+    #[Test]
     public function versionRowOfAnotherWorkspaceCannotBeAddressed(): void
     {
         $this->importCSVDataSet(__DIR__ . '/../FieldSuggestion/Fixtures/workspaces.csv');

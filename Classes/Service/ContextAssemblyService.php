@@ -268,8 +268,11 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
             return [];
         }
 
-        $rawPid = $records[0]['pid'] ?? 0;
-        $pid    = is_numeric($rawPid) ? (int) $rawPid : 0;
+        // The walk starts at the page of the requested element, which the first
+        // record of its page need not tell.
+        $element = $this->fetchSingleRecord($table, $uid);
+        $rawPid  = $element[0]['pid'] ?? 0;
+        $pid     = is_numeric($rawPid) ? (int) $rawPid : 0;
 
         for ($i = 0; $i < $levels && $pid > 0; ++$i) {
             $parentPid = $this->getParentPageId($pid, $this->workspaceId($backendUser));

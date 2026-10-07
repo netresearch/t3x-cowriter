@@ -115,14 +115,33 @@ class RecordFinder
 
         $elements = [];
         foreach ($rows as $row) {
-            $row = $this->overlay('tt_content', $row, $workspaceId);
-            // The default restrictions judged the live row; the draft may be hidden.
-            if ($row !== null && !in_array($row['hidden'] ?? 0, [1, '1', true], true)) {
+            $liveUid = $row['t3ver_oid'] ?? 0;
+            if (is_numeric($liveUid) && (int) $liveUid > 0) {
+                // The WorkspaceRestriction lets through the version row of a record
+                // this workspace moved onto the page; it stands for the live record.
+                $row['uid'] = (int) $liveUid;
+            } else {
+                $row = $this->overlay('tt_content', $row, $workspaceId);
+            }
+
+            // A record this workspace moved to another page is no longer here, and
+            // the default restrictions judged the live row; the draft may be hidden.
+            if ($row !== null && $this->isOnPage($row, $pageUid) && !in_array($row['hidden'] ?? 0, [1, '1', true], true)) {
                 $elements[] = $row;
             }
         }
 
         return $elements;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function isOnPage(array $row, int $pageUid): bool
+    {
+        $pid = $row['pid'] ?? 0;
+
+        return is_numeric($pid) && (int) $pid === $pageUid;
     }
 
     /**
