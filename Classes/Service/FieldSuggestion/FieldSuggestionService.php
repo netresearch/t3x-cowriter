@@ -13,6 +13,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Service\CallerSource;
+use Netresearch\T3Cowriter\Service\StructuredAnswer;
 
 /**
  * Asks the model for N alternative values of one field and returns them
@@ -53,12 +54,12 @@ final readonly class FieldSuggestionService
             ->withSystemPrompt($this->buildSystemPrompt($context, $profile, $count))
             ->withCallerSource(CallerSource::EXTENSION, self::OPERATION);
 
-        $answer = $this->completionService->completeStructuredForConfiguration(
+        $answer = StructuredAnswer::payload($this->completionService->completeStructuredForConfiguration(
             $this->buildUserMessage($context, $currentValue),
             $configuration,
             self::schema($count),
             $options,
-        );
+        ));
 
         $raw = $answer['suggestions'] ?? [];
         if (!is_array($raw)) {

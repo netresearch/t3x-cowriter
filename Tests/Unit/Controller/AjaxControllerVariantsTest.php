@@ -10,11 +10,9 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
-use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
-use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
-use Netresearch\NrLlm\Service\Option\ChatOptions;
+use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Tests\Support\TaskRouteControllerTrait;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
@@ -34,35 +32,39 @@ final class AjaxControllerVariantsTest extends TestCase
 
     private LlmServiceManagerInterface&Stub $llm;
 
-    /** @var list<array{prompt: string, schema: array<string, mixed>, system: string}> */
-    private array $structuredCalls = [];
-
-    /** @var array<string, mixed> */
-    private array $structuredAnswer = [];
+    /**
+     * nr-llm's own double: it returns the structured answer in the shape of
+     * the installed nr-llm line (an array on 0.38, a StructuredCompletionResponse
+     * from 0.39 on), so these tests run against either.
+     */
+    private FakeCompletionService $completion;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->useXliffLanguageService();
-        $this->llm = $this->createStub(LlmServiceManagerInterface::class);
+        $this->llm        = $this->createStub(LlmServiceManagerInterface::class);
+        $this->completion = new FakeCompletionService();
     }
 
     #[Test]
     public function twoVersionsComeBackAsHtmlFromOneStructuredCall(): void
     {
-        $this->structuredAnswer = ['variants' => ['**First**', '<p>Second</p>']];
+        $this->completion->structuredResult = ['variants' => ['**First**', '<p>Second</p>']];
 
         $data = $this->json($this->subject()->executeTaskAction($this->request(2)));
 
         self::assertTrue($data['success']);
         self::assertSame(['<p><strong>First</strong></p>', '<p>Second</p>'], $data['variants']);
         self::assertSame($data['variants'][0], $data['content']);
-        self::assertCount(1, $this->structuredCalls);
-        self::assertSame('Improve this', $this->structuredCalls[0]['prompt']);
-        self::assertSame(2, $this->structuredCalls[0]['schema']['properties']['variants']['minItems']);
-        self::assertSame(2, $this->structuredCalls[0]['schema']['properties']['variants']['maxItems']);
-        self::assertStringContainsString('Give exactly 2 different versions', $this->structuredCalls[0]['system']);
-        self::assertStringContainsString('<editor_content>', $this->structuredCalls[0]['system']);
+        $calls = $this->completion->completeStructuredForConfigurationCalls;
+        self::assertCount(1, $calls);
+        self::assertSame('Improve this', $calls[0]['prompt']);
+        self::assertSame(2, $calls[0]['schema']['properties']['variants']['minItems']);
+        self::assertSame(2, $calls[0]['schema']['properties']['variants']['maxItems']);
+        $system = (string) $calls[0]['options']?->getSystemPrompt();
+        self::assertStringContainsString('Give exactly 2 different versions', $system);
+        self::assertStringContainsString('<editor_content>', $system);
     }
 
     #[Test]
@@ -71,7 +73,7 @@ final class AjaxControllerVariantsTest extends TestCase
         $response = $this->subject()->executeTaskAction($this->request(4));
 
         self::assertSame(400, $response->getStatusCode());
-        self::assertSame([], $this->structuredCalls);
+        self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
 
     #[Test]
@@ -80,7 +82,7 @@ final class AjaxControllerVariantsTest extends TestCase
         $response = $this->subject()->executeTaskAction($this->request(0));
 
         self::assertSame(400, $response->getStatusCode());
-        self::assertSame([], $this->structuredCalls);
+        self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
 
     #[Test]
@@ -99,7 +101,7 @@ final class AjaxControllerVariantsTest extends TestCase
     #[Test]
     public function anAnswerWithoutVersionsIsAnError(): void
     {
-        $this->structuredAnswer = ['variants' => ['', '   ']];
+        $this->completion->structuredResult = ['variants' => ['', '   ']];
 
         $response = $this->subject()->executeTaskAction($this->request(2));
 
@@ -109,23 +111,7 @@ final class AjaxControllerVariantsTest extends TestCase
 
     private function subject(bool $withCompletion = true): AjaxController
     {
-        $completion = null;
-        if ($withCompletion) {
-            $completion = $this->createStub(CompletionServiceInterface::class);
-            $completion->method('completeStructuredForConfiguration')->willReturnCallback(
-                function (string $prompt, LlmConfiguration $configuration, array $schema, ?ChatOptions $options): array {
-                    $this->structuredCalls[] = [
-                        'prompt' => $prompt,
-                        'schema' => $schema,
-                        'system' => (string) $options?->getSystemPrompt(),
-                    ];
-
-                    return $this->structuredAnswer;
-                },
-            );
-        }
-
-        return $this->taskRouteController($this->llm, completionService: $completion);
+        return $this->taskRouteController($this->llm, completionService: $withCompletion ? $this->completion : null);
     }
 
     private function request(int $variants): ServerRequestInterface
