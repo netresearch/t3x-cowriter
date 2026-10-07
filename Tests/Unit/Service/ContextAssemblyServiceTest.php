@@ -11,8 +11,10 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Service;
 
 use Doctrine\DBAL\Result;
 use Netresearch\T3Cowriter\Service\ContextAssemblyService;
+use Netresearch\T3Cowriter\Service\FieldSuggestion\RecordFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
@@ -23,6 +25,11 @@ use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 #[CoversClass(ContextAssemblyService::class)]
 final class ContextAssemblyServiceTest extends TestCase
 {
+    /**
+     * Set by createConnectionPoolMock(): reads the same rows.
+     */
+    private RecordFinder&Stub $recordFinder;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -46,7 +53,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 123, 'pid' => 5, 'header' => 'Test Header', 'bodytext' => '<p>One two three four five</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'element');
 
         self::assertArrayHasKey('summary', $result);
@@ -63,7 +70,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 124, 'pid' => 5, 'header' => 'Element 2', 'bodytext' => '<p>Second element</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'page');
 
         self::assertArrayHasKey('wordCount', $result);
@@ -77,7 +84,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 123, 'pid' => 5, 'header' => 'Test Header', 'bodytext' => '<p>Body text here</p>', 'subheader' => 'Sub'],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext('tt_content', 123, 'bodytext', 'element');
 
         self::assertStringContainsString('Test Header', $result);
@@ -92,7 +99,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 123, 'pid' => 5, 'header' => 'Main', 'bodytext' => '<p>Main content</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext(
             'tt_content',
             123,
@@ -111,7 +118,7 @@ final class ContextAssemblyServiceTest extends TestCase
     {
         $connectionPool = $this->createConnectionPoolMock([]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext('tt_content', 123, 'bodytext', 'selection');
 
         self::assertSame('', $result);
@@ -122,7 +129,7 @@ final class ContextAssemblyServiceTest extends TestCase
     {
         $connectionPool = $this->createConnectionPoolMock([]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext('pages', 1, 'title', 'element');
 
         self::assertSame('', $result);
@@ -138,7 +145,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 123, 'pid' => 5, 'header' => 'Secret', 'bodytext' => 'Confidential', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext('tt_content', 123, 'bodytext', 'element');
 
         // Page access check should deny access when no BE_USER is set
@@ -155,7 +162,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 123, 'pid' => 5, 'header' => 'Secret', 'bodytext' => 'Confidential', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'page');
 
         self::assertSame(0, $result['wordCount']);
@@ -171,6 +178,8 @@ final class ContextAssemblyServiceTest extends TestCase
         // granting access iff those columns are present on the fetched row.
         $backendUser = $this->createStub(BackendUserAuthentication::class);
         $backendUser->method('isAdmin')->willReturn(false);
+        $backendUser->method('check')->willReturn(true);
+        $backendUser->method('checkLanguageAccess')->willReturn(true);
         $backendUser->method('doesUserHaveAccess')->willReturnCallback(
             static fn (array $row): bool => isset($row['perms_everybody']),
         );
@@ -183,7 +192,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 5, 'pid' => 0, 'perms_userid' => 1, 'perms_groupid' => 0, 'perms_user' => 31, 'perms_group' => 0, 'perms_everybody' => 1],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'element');
 
         self::assertGreaterThan(0, $result['wordCount']);
@@ -194,6 +203,8 @@ final class ContextAssemblyServiceTest extends TestCase
     {
         $backendUser = $this->createStub(BackendUserAuthentication::class);
         $backendUser->method('isAdmin')->willReturn(false);
+        $backendUser->method('check')->willReturn(true);
+        $backendUser->method('checkLanguageAccess')->willReturn(true);
         $backendUser->method('doesUserHaveAccess')->willReturnCallback(
             static fn (array $row): bool => isset($row['perms_everybody']),
         );
@@ -205,7 +216,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 5, 'pid' => 0, 'perms_userid' => 99, 'perms_groupid' => 0, 'perms_user' => 0, 'perms_group' => 0],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'element');
 
         self::assertSame(0, $result['wordCount']);
@@ -214,7 +225,7 @@ final class ContextAssemblyServiceTest extends TestCase
     #[Test]
     public function countWordsStripsHtmlTags(): void
     {
-        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]), $this->recordFinder);
 
         $method = new ReflectionMethod($service, 'countWords');
         $count  = $method->invoke($service, '<p>One <strong>two</strong> three &amp; four</p>');
@@ -225,7 +236,7 @@ final class ContextAssemblyServiceTest extends TestCase
     #[Test]
     public function formatSingleRecordSkipsEmptyFields(): void
     {
-        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]), $this->recordFinder);
 
         $method = new ReflectionMethod($service, 'formatSingleRecord');
         $result = $method->invoke($service, ['header' => 'Title', 'subheader' => '', 'bodytext' => 'Content']);
@@ -243,7 +254,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 123, 'pid' => 5, 'header' => 'Test', 'bodytext' => '<p>One two three</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 123, 'bodytext', 'text');
 
         self::assertStringContainsString('current text field', $result['summary']);
@@ -260,7 +271,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 3, 'pid' => 5, 'header' => 'C', 'bodytext' => '<p>Word3</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'ancestors_1');
 
         // Must contain " elements (+1 ancestor level)" — plural 's' and correct suffix
@@ -278,7 +289,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 1, 'pid' => 5, 'header' => 'Only', 'bodytext' => '<p>Single element</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'ancestors_1');
 
         // Must contain "1 element (+1 ancestor level)" — no 's' for singular
@@ -296,7 +307,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 2, 'pid' => 5, 'header' => 'B', 'bodytext' => '<p>Word2</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'ancestors_2');
 
         // Must contain " elements (+2 ancestor levels)" — plural 's' and correct suffix
@@ -313,7 +324,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 1, 'pid' => 5, 'header' => 'Only', 'bodytext' => '<p>Content</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'ancestors_2');
 
         // Must contain "1 element (+2 ancestor levels)" — no 's' for singular
@@ -329,7 +340,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 1, 'pid' => 5, 'header' => 'My Header', 'subheader' => 'My Sub', 'bodytext' => '<p>Content</p>'],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext('tt_content', 1, 'bodytext', 'element');
 
         self::assertStringContainsString('Header: My Header', $result);
@@ -345,7 +356,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 20, 'pid' => 5, 'header' => 'Second', 'subheader' => '', 'bodytext' => 'B'],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext('tt_content', 10, 'bodytext', 'page');
 
         self::assertStringContainsString('=== Current content element (tt_content #10) ===', $result);
@@ -355,7 +366,7 @@ final class ContextAssemblyServiceTest extends TestCase
     #[Test]
     public function countWordsHandlesHtmlEntities(): void
     {
-        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]), $this->recordFinder);
         $method  = new ReflectionMethod($service, 'countWords');
 
         self::assertSame(5, $method->invoke($service, 'one &amp; two &lt; three'));
@@ -364,7 +375,7 @@ final class ContextAssemblyServiceTest extends TestCase
     #[Test]
     public function countWordsReturnsZeroForEmptyString(): void
     {
-        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]), $this->recordFinder);
         $method  = new ReflectionMethod($service, 'countWords');
 
         self::assertSame(0, $method->invoke($service, ''));
@@ -377,7 +388,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 123, 'pid' => 5, 'header' => 'Main', 'bodytext' => '<p>Content</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext(
             'tt_content',
             123,
@@ -398,7 +409,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 123, 'pid' => 5, 'header' => 'Main', 'bodytext' => '<p>Content</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext(
             'tt_content',
             123,
@@ -426,7 +437,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 20, 'pid' => 5, 'header' => 'Other', 'subheader' => '', 'bodytext' => 'B'],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext('tt_content', 10, 'bodytext', 'page');
 
         // Current element uses '===' prefix/suffix
@@ -443,7 +454,7 @@ final class ContextAssemblyServiceTest extends TestCase
     public function formatSingleRecordCastsNonScalarFieldToEmpty(): void
     {
         // Kills CastString mutant: (string) $raw → $raw
-        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]), $this->recordFinder);
         $method  = new ReflectionMethod($service, 'formatSingleRecord');
 
         // When a field has a non-scalar value, it should be treated as empty
@@ -456,7 +467,7 @@ final class ContextAssemblyServiceTest extends TestCase
     public function formatSingleRecordTrimsFieldValues(): void
     {
         // Kills UnwrapTrim mutant on trim(is_scalar($raw) ? (string) $raw : '')
-        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]), $this->recordFinder);
         $method  = new ReflectionMethod($service, 'formatSingleRecord');
 
         $result = $method->invoke($service, ['header' => '  Trimmed Header  ', 'subheader' => '', 'bodytext' => '']);
@@ -470,7 +481,7 @@ final class ContextAssemblyServiceTest extends TestCase
     public function formatSingleRecordEndsWithNewline(): void
     {
         // Kills Concat mutant on trailing "\n"
-        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]), $this->recordFinder);
         $method  = new ReflectionMethod($service, 'formatSingleRecord');
 
         $result = $method->invoke($service, ['header' => 'Title', 'subheader' => '', 'bodytext' => '']);
@@ -487,7 +498,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => '42', 'pid' => 5, 'header' => 'Test', 'subheader' => '', 'bodytext' => 'Content'],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->assembleContext('tt_content', 42, 'bodytext', 'element');
 
         // uid should be cast to int properly — should show as current element
@@ -502,7 +513,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 1, 'pid' => 'not-numeric', 'header' => 'Test', 'subheader' => '', 'bodytext' => 'Content'],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         // With non-numeric pid, fetchPageContent returns just the single record
         $result = $service->assembleContext('tt_content', 1, 'bodytext', 'page');
 
@@ -518,7 +529,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 1, 'pid' => 5, 'header' => 'Only One', 'bodytext' => '<p>Content</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'page');
 
         // With 1 element, should be '1 element' (no 's')
@@ -535,7 +546,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['uid' => 3, 'pid' => 5, 'header' => 'Third', 'bodytext' => '<p>C</p>', 'subheader' => ''],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $result  = $service->getContextSummary('tt_content', 1, 'bodytext', 'page');
 
         self::assertStringContainsString('3 elements', $result['summary']);
@@ -547,7 +558,7 @@ final class ContextAssemblyServiceTest extends TestCase
         // Kills ReturnRemoval mutant: return 0 → (empty) for missing page
         $connectionPool = $this->createConnectionPoolMock([]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $method  = new ReflectionMethod($service, 'getParentPageId');
         $result  = $method->invoke($service, 999);
 
@@ -562,7 +573,7 @@ final class ContextAssemblyServiceTest extends TestCase
             ['pid' => 'abc'],
         ]);
 
-        $service = new ContextAssemblyService($connectionPool);
+        $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $method  = new ReflectionMethod($service, 'getParentPageId');
         $result  = $method->invoke($service, 1);
 
@@ -573,7 +584,7 @@ final class ContextAssemblyServiceTest extends TestCase
     public function countWordsHandlesWhitespaceOnlyString(): void
     {
         // Kills UnwrapTrim on countWords, and preg_split PREG_SPLIT_NO_EMPTY
-        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]), $this->recordFinder);
         $method  = new ReflectionMethod($service, 'countWords');
 
         self::assertSame(0, $method->invoke($service, '   '));
@@ -583,7 +594,7 @@ final class ContextAssemblyServiceTest extends TestCase
     public function countWordsBitwiseOrInEntityDecode(): void
     {
         // Kills BitwiseOr mutant: ENT_QUOTES | ENT_HTML5 → ENT_QUOTES & ENT_HTML5
-        $service = new ContextAssemblyService($this->createConnectionPoolMock([]));
+        $service = new ContextAssemblyService($this->createConnectionPoolMock([]), $this->recordFinder);
         $method  = new ReflectionMethod($service, 'countWords');
 
         // HTML5-specific entities that need ENT_HTML5 flag
@@ -611,6 +622,8 @@ final class ContextAssemblyServiceTest extends TestCase
         $queryBuilder->method('createNamedParameter')->willReturnCallback(
             fn ($value) => "'" . $value . "'",
         );
+        // RecordFinder and the remaining queries read the rows in one sequence,
+        // as one query builder did before RecordFinder took over the reads.
         $resultStub = $this->createStub(Result::class);
         $index      = 0;
         $resultStub->method('fetchAssociative')->willReturnCallback(
@@ -618,6 +631,13 @@ final class ContextAssemblyServiceTest extends TestCase
                 return $rows[$index++] ?? false;
             },
         );
+        $this->recordFinder = $this->createStub(RecordFinder::class);
+        $this->recordFinder->method('findRecord')->willReturnCallback(
+            function () use ($rows, &$index): ?array {
+                return $rows[$index++] ?? null;
+            },
+        );
+        $this->recordFinder->method('findVisibleContent')->willReturn($rows);
         $resultStub->method('fetchAllAssociative')->willReturn($rows);
         $queryBuilder->method('executeQuery')->willReturn($resultStub);
 

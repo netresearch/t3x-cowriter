@@ -17,9 +17,11 @@ use TYPO3\CMS\Core\Database\Query\Restriction\WorkspaceRestriction;
 use TYPO3\CMS\Core\Versioning\VersionState;
 
 /**
- * Database reads for field suggestions, as the given workspace sees them.
+ * Database reads for field suggestions and the task context, as the given
+ * workspace sees them.
  *
- * Holds no permission logic: the caller ({@see RecordContextReader}) decides
+ * Holds no permission logic: the caller ({@see RecordContextReader},
+ * {@see \Netresearch\T3Cowriter\Service\ContextAssemblyService}) decides
  * what the current user may see. Both queries carry a WorkspaceRestriction,
  * so draft rows of other workspaces and version rows (t3ver_oid > 0) are never
  * selected, and the rows found are overlaid with the version of the user's own
@@ -70,19 +72,42 @@ class RecordFinder
      */
     public function findPageContent(int $pageUid, int $languageId, int $workspaceId): array
     {
+        $elements = [];
+        foreach ($this->findVisibleContent($pageUid, $workspaceId, [$languageId, -1]) as $row) {
+            $elements[] = ['header' => $row['header'] ?? '', 'bodytext' => $row['bodytext'] ?? ''];
+        }
+
+        return $elements;
+    }
+
+    /**
+     * The whole rows of the visible content elements on a page, in every
+     * language (or only in $languageIds), as $workspaceId sees them. The
+     * caller decides which of them the user may read.
+     *
+     * @param list<int>|null $languageIds
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findVisibleContent(int $pageUid, int $workspaceId, ?array $languageIds = null): array
+    {
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tt_content');
         $queryBuilder->getRestrictions()->add(new WorkspaceRestriction($workspaceId));
+
+        $constraints = [
+            $queryBuilder->expr()->eq('pid', $queryBuilder->createNamedParameter($pageUid, Connection::PARAM_INT)),
+        ];
+        if ($languageIds !== null) {
+            $constraints[] = $queryBuilder->expr()->in(
+                'sys_language_uid',
+                $queryBuilder->createNamedParameter($languageIds, Connection::PARAM_INT_ARRAY),
+            );
+        }
 
         $rows = $queryBuilder
             ->select('*')
             ->from('tt_content')
-            ->where(
-                $queryBuilder->expr()->eq('pid', $queryBuilder->createNamedParameter($pageUid, Connection::PARAM_INT)),
-                $queryBuilder->expr()->in(
-                    'sys_language_uid',
-                    $queryBuilder->createNamedParameter([$languageId, -1], Connection::PARAM_INT_ARRAY),
-                ),
-            )
+            ->where(...$constraints)
             ->orderBy('sorting')
             ->setMaxResults(self::MAX_CONTENT_ELEMENTS)
             ->executeQuery()
@@ -93,7 +118,7 @@ class RecordFinder
             $row = $this->overlay('tt_content', $row, $workspaceId);
             // The default restrictions judged the live row; the draft may be hidden.
             if ($row !== null && !in_array($row['hidden'] ?? 0, [1, '1', true], true)) {
-                $elements[] = ['header' => $row['header'] ?? '', 'bodytext' => $row['bodytext'] ?? ''];
+                $elements[] = $row;
             }
         }
 
