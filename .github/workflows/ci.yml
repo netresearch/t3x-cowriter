@@ -22,6 +22,9 @@ jobs:
       typo3-versions: '["^13.4","^14.3"]'
       typo3-packages: '["typo3/cms-core","typo3/cms-backend","typo3/cms-rte-ckeditor"]'
       run-functional-tests: true
+      # Every other cell resolves the newest nr-llm the constraint admits;
+      # this extra cell keeps the older supported line under test.
+      pin-packages: 'netresearch/nr-llm:^0.38'
       upload-coverage: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
