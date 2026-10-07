@@ -162,6 +162,32 @@ final class ToolControllerTest extends TestCase
     }
 
     #[Test]
+    public function executeActionRunsTheLoopUnderTheBudgetOfTheBackendUser(): void
+    {
+        $this->allowRateLimit();
+
+        $captured = null;
+        $this->toolLoopServiceStub->method('runLoop')
+            ->willReturnCallback(function (
+                array $messages,
+                LlmConfiguration $config,
+                ToolExecutionContext $context,
+                ?array $allowed,
+                ?ToolOptions $options = null,
+            ) use (&$captured): ToolLoopResult {
+                $captured = $options;
+
+                return $this->loopResult('ok');
+            });
+
+        $this->subject->executeAction($this->createJsonRequest(['prompt' => 'Query']));
+
+        self::assertInstanceOf(ToolOptions::class, $captured);
+        // The context stub reports backend user 1.
+        self::assertSame(1, $captured->getBeUserUid());
+    }
+
+    #[Test]
     public function executeActionMapsAbsentToolsToNullAllowedNames(): void
     {
         $this->allowRateLimit();

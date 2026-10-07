@@ -13,6 +13,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\ValueObject\SuspendedRunState;
 use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
+use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\NrLlm\Service\Tool\Exception\ToolApprovalRequiredException;
 use Netresearch\NrLlm\Service\Tool\ToolCallPolicyInterface;
 use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
@@ -63,6 +64,38 @@ final class UnattendedToolRunnerTest extends TestCase
     }
 
     #[Test]
+    public function theLoopRunsUnderTheBudgetOfTheBackendUser(): void
+    {
+        $policy = $this->createStub(ToolCallPolicyInterface::class);
+        $policy->method('filterOfferable')->willReturn(['search_content']);
+        $filter = $this->createStub(UnattendedToolFilterInterface::class);
+        $filter->method('unattended')->willReturn(['search_content']);
+
+        $captured = null;
+        $loop     = $this->createStub(ToolLoopServiceInterface::class);
+        $loop->method('runLoop')->willReturnCallback(
+            function (
+                array $messages,
+                LlmConfiguration $config,
+                ToolExecutionContext $context,
+                ?array $tools,
+                ?ToolOptions $options = null,
+            ) use (&$captured): ToolLoopResult {
+                $captured = $options;
+
+                return new ToolLoopResult('<p>Two pages.</p>', [], 2, false, new UsageStatistics(10, 5, 15));
+            },
+        );
+
+        (new UnattendedToolRunner($loop, $policy, $filter))->run(self::MESSAGES, new LlmConfiguration(), $this->user());
+
+        self::assertInstanceOf(ToolOptions::class, $captured);
+        self::assertSame(7, $captured->getBeUserUid());
+        self::assertSame('t3_cowriter', $captured->getCallerSourceExtension());
+        self::assertSame('taskTools', $captured->getCallerSourceOperation());
+    }
+
+    #[Test]
     public function withoutAnUnattendedToolTheLoopDoesNotRun(): void
     {
         $policy = $this->createStub(ToolCallPolicyInterface::class);
@@ -96,6 +129,7 @@ final class UnattendedToolRunnerTest extends TestCase
         $user = $this->createStub(BackendUserAuthentication::class);
         $user->method('isAdmin')->willReturn(false);
         $user->user = ['uid' => 7];
+        $user->method('getUserId')->willReturn(7);
 
         return $user;
     }

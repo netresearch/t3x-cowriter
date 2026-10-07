@@ -114,17 +114,19 @@ final readonly class ToolController
                 ? ToolExecutionContext::fromBackendUser($backendUser)
                 : ToolExecutionContext::none();
 
-            // withCallerSource() names this extension on the telemetry row so
-            // Analytics attributes tool calls to it (nr-llm ADR-177). nr-llm
-            // 0.31.1 does not deliver it yet: ToolLoopService forwards only
-            // budget metadata onto the chat calls it makes, so these calls stay
-            // unattributed until nr-llm#845 lands.
+            // withBeUserUid() charges the loop's model calls to this backend
+            // user, so nr-llm's per-user budget applies: the tool loop does not
+            // look the user up itself. withCallerSource() names this extension
+            // on the telemetry row so Analytics attributes tool calls to it
+            // (nr-llm ADR-177).
             $result = $this->toolLoopService->runLoop(
                 $messages,
                 $configuration,
                 $context,
                 $allowedToolNames,
-                ToolOptions::auto()->withCallerSource(CallerSource::EXTENSION, 'toolCall'),
+                ToolOptions::auto()
+                    ->withBeUserUid((int) $userId)
+                    ->withCallerSource(CallerSource::EXTENSION, 'toolCall'),
             );
 
             return $this->jsonResponseWithRateLimitHeaders([

@@ -93,10 +93,15 @@ $response      = $this->llmServiceManager->chatWithConfiguration($messages, $con
 ```
 
 Calls that take an options object instead of a metadata array (vision,
-translation, tool loop) tag the identity with
+translation, tool loop) carry the backend user id with `withBeUserUid()` and tag
+the identity with
 `AbstractOptions::withCallerSource(CallerSource::EXTENSION, '<operation>')`. The
-operation is the editor action, named per call site — never one constant for the
-whole extension.
+tool loop (`ToolController`, `UnattendedToolRunner`) does not look the user up
+itself, so the per-user budget applies to it only through `withBeUserUid()`.
+nr-llm's `CompletionService` (field suggestions, task variants) fills the
+user id from the backend session when the options carry none. The operation is
+the editor action, named per call site — never one constant for the whole
+extension.
 
 ### Response Handling
 
