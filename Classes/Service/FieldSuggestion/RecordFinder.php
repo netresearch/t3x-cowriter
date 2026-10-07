@@ -10,10 +10,12 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Service\FieldSuggestion;
 
 use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\WorkspaceRestriction;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Versioning\VersionState;
 
 /**
@@ -91,8 +93,13 @@ class RecordFinder
      */
     public function findVisibleContent(int $pageUid, int $workspaceId, ?array $languageIds = null): array
     {
+        // Hidden and start/end time are judged after the overlay, on the row the
+        // workspace shows: a draft can show what is hidden live, and the reverse.
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tt_content');
-        $queryBuilder->getRestrictions()->add(new WorkspaceRestriction($workspaceId));
+        $queryBuilder->getRestrictions()
+            ->removeAll()
+            ->add(new DeletedRestriction())
+            ->add(new WorkspaceRestriction($workspaceId));
 
         $constraints = [
             $queryBuilder->expr()->eq('pid', $queryBuilder->createNamedParameter($pageUid, Connection::PARAM_INT)),
@@ -124,9 +131,8 @@ class RecordFinder
                 $row = $this->overlay('tt_content', $row, $workspaceId);
             }
 
-            // A record this workspace moved to another page is no longer here, and
-            // the default restrictions judged the live row; the draft may be hidden.
-            if ($row !== null && $this->isOnPage($row, $pageUid) && !in_array($row['hidden'] ?? 0, [1, '1', true], true)) {
+            // A record this workspace moved to another page is no longer here.
+            if ($row !== null && $this->isOnPage($row, $pageUid) && $this->isVisible($row)) {
                 // Keyed by live uid: a record the workspace reordered on this page
                 // comes as its overlaid live row and as its version row.
                 $elements[$this->intValue($row['uid'] ?? 0)] = $row;
@@ -142,6 +148,24 @@ class RecordFinder
     private function intValue(mixed $value): int
     {
         return is_numeric($value) ? (int) $value : 0;
+    }
+
+    /**
+     * Not hidden, and within its start and end time.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function isVisible(array $row): bool
+    {
+        $now = GeneralUtility::makeInstance(Context::class)->getPropertyFromAspect('date', 'timestamp');
+        $now = is_int($now) ? $now : time();
+
+        $starttime = $this->intValue($row['starttime'] ?? 0);
+        $endtime   = $this->intValue($row['endtime'] ?? 0);
+
+        return $this->intValue($row['hidden'] ?? 0) === 0
+            && ($starttime === 0 || $starttime <= $now)
+            && ($endtime === 0 || $endtime > $now);
     }
 
     /**

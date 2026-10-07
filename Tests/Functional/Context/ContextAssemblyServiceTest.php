@@ -183,6 +183,21 @@ final class ContextAssemblyServiceTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function visibilityIsJudgedAsTheWorkspaceShowsTheElement(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/visibility.csv');
+
+        $live = $this->contextAs(1, 10, 'page');
+        self::assertStringNotContainsString('SHOWN-IN-WORKSPACE', $live);
+        self::assertStringNotContainsString('EXPIRED-ELEMENT', $live);
+
+        // Workspace 1 shows element 13, which is hidden live.
+        $workspace = $this->contextAs(1, 10, 'page', 1);
+        self::assertStringContainsString('SHOWN-IN-WORKSPACE', $workspace);
+        self::assertStringNotContainsString('EXPIRED-ELEMENT', $workspace);
+    }
+
+    #[Test]
     public function ancestorScopeStartsAtThePageOfTheRequestedElement(): void
     {
         $this->importCSVDataSet(__DIR__ . '/Fixtures/content_move.csv');
