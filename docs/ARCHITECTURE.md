@@ -14,6 +14,7 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 |-----------|------|----------------|
 | CKEditor plugin | `Resources/Public/JavaScript/Ckeditor/cowriter.js` | Toolbar items, editor integration |
 | Task dialog | `Resources/Public/JavaScript/Ckeditor/CowriterDialog.js` | Task dialog UI, status link on errors |
+| HTML sanitiser | `Resources/Public/JavaScript/Ckeditor/HtmlSanitizer.js` | Allow-list for model output shown as markup or inserted (dialog, translation) |
 | API client | `Resources/Public/JavaScript/Ckeditor/AIService.js` | Fetch wrapper for all AJAX routes, `AIServiceError` |
 | URL loader | `Resources/Public/JavaScript/Ckeditor/UrlLoader.js` | CSP-compliant AJAX URL injection |
 | Field suggestions (JS) | `Resources/Public/JavaScript/FormEngine/FieldSuggestions.js` | FormEngine field control: suggestion list, pick fills the field |

@@ -1776,6 +1776,30 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
         });
 
+        it('shows an image from another origin only when the editor content held it', async () => {
+            mockService.executeTask.mockResolvedValue({
+                success: true,
+                content: '<p>Text</p><img src="https://cdn.example/photo.jpg" alt="kept"><img src="https://elsewhere.example/p.png" alt="dropped">',
+                model: 'gpt-4o',
+            });
+
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('', '<p>Text</p><img src="https://cdn.example/photo.jpg">');
+            await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+            document.querySelector('[name="execute"]').click();
+            await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="result-preview"] p')).not.toBeNull();
+            });
+
+            const images = document.querySelectorAll('[data-role="result-preview"] img');
+            expect([...images].map((img) => img.getAttribute('alt'))).toEqual(['kept']);
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
         it('should block non-image data: URIs but allow data:image/png', async () => {
             mockService.executeTask.mockResolvedValue({
                 success: true,

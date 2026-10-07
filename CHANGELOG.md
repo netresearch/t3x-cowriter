@@ -1,5 +1,13 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+# Unreleased
+
+## FIX
+
+- The task context holds only content the editor may read. `ContextAssemblyService` reads content elements only for users with read access to `tt_content`, only on pages they may show, records on the root level only for administrators, only in languages they may access, and as their workspace shows them: drafts of other workspaces are not read. `RecordFinder::findVisibleContent()` returns the whole rows of a page's visible content elements for it.
+- Translations pass through the same allow-list sanitiser as the dialog's answers before they enter the editor. The sanitiser moved to `Resources/Public/JavaScript/Ckeditor/HtmlSanitizer.js`. It keeps an image only when the source is an inline `data:image/` (PNG, JPEG, GIF, WebP), lies on the backend's own origin, or already appeared in the editor content sent to the model.
+- Tool-loop calls (the tool route and tasks with tools) count against the backend user's nr-llm budget: `ToolController` and `UnattendedToolRunner` pass the user id on the `ToolOptions`.
+
 # 3.10.2 (2026-09-30)
 
 ## FIX

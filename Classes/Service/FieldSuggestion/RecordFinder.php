@@ -10,20 +10,26 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Service\FieldSuggestion;
 
 use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\WorkspaceRestriction;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Versioning\VersionState;
 
 /**
- * Database reads for field suggestions, as the given workspace sees them.
+ * Database reads for field suggestions and the task context, as the given
+ * workspace sees them.
  *
- * Holds no permission logic: the caller ({@see RecordContextReader}) decides
- * what the current user may see. Both queries carry a WorkspaceRestriction,
+ * Holds no permission logic: the caller ({@see RecordContextReader},
+ * {@see \Netresearch\T3Cowriter\Service\ContextAssemblyService}) decides
+ * what the current user may see. Every query carries a WorkspaceRestriction,
  * so draft rows of other workspaces and version rows (t3ver_oid > 0) are never
- * selected, and the rows found are overlaid with the version of the user's own
- * workspace, the way FormEngine shows them to the editor.
+ * selected, except the move pointers of the user's own workspace, which
+ * findVisibleContent() lists under the live uid. The rows found are overlaid
+ * with the version of the user's own workspace, the way FormEngine shows them
+ * to the editor.
  */
 class RecordFinder
 {
@@ -70,34 +76,108 @@ class RecordFinder
      */
     public function findPageContent(int $pageUid, int $languageId, int $workspaceId): array
     {
+        $elements = [];
+        foreach ($this->findVisibleContent($pageUid, $workspaceId, [$languageId, -1]) as $row) {
+            $elements[] = ['header' => $row['header'] ?? '', 'bodytext' => $row['bodytext'] ?? ''];
+        }
+
+        return $elements;
+    }
+
+    /**
+     * The whole rows of the visible content elements on a page, in every
+     * language (or only in $languageIds), as $workspaceId sees them. The
+     * caller decides which of them the user may read.
+     *
+     * @param list<int>|null $languageIds
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findVisibleContent(int $pageUid, int $workspaceId, ?array $languageIds = null): array
+    {
+        // Hidden and start/end time are judged after the overlay, on the row the
+        // workspace shows: a draft can show what is hidden live, and the reverse.
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tt_content');
-        $queryBuilder->getRestrictions()->add(new WorkspaceRestriction($workspaceId));
+        $queryBuilder->getRestrictions()
+            ->removeAll()
+            ->add(new DeletedRestriction())
+            ->add(new WorkspaceRestriction($workspaceId));
+
+        $constraints = [
+            $queryBuilder->expr()->eq('pid', $queryBuilder->createNamedParameter($pageUid, Connection::PARAM_INT)),
+        ];
+        if ($languageIds !== null) {
+            $constraints[] = $queryBuilder->expr()->in(
+                'sys_language_uid',
+                $queryBuilder->createNamedParameter($languageIds, Connection::PARAM_INT_ARRAY),
+            );
+        }
 
         $rows = $queryBuilder
             ->select('*')
             ->from('tt_content')
-            ->where(
-                $queryBuilder->expr()->eq('pid', $queryBuilder->createNamedParameter($pageUid, Connection::PARAM_INT)),
-                $queryBuilder->expr()->in(
-                    'sys_language_uid',
-                    $queryBuilder->createNamedParameter([$languageId, -1], Connection::PARAM_INT_ARRAY),
-                ),
-            )
+            ->where(...$constraints)
             ->orderBy('sorting')
-            ->setMaxResults(self::MAX_CONTENT_ELEMENTS)
             ->executeQuery()
             ->fetchAllAssociative();
 
         $elements = [];
         foreach ($rows as $row) {
-            $row = $this->overlay('tt_content', $row, $workspaceId);
-            // The default restrictions judged the live row; the draft may be hidden.
-            if ($row !== null && !in_array($row['hidden'] ?? 0, [1, '1', true], true)) {
-                $elements[] = ['header' => $row['header'] ?? '', 'bodytext' => $row['bodytext'] ?? ''];
+            $liveUid = $row['t3ver_oid'] ?? 0;
+            if (is_numeric($liveUid) && (int) $liveUid > 0) {
+                // The WorkspaceRestriction lets through the version row of a record
+                // this workspace moved onto the page; it stands for the live record.
+                $row['uid'] = (int) $liveUid;
+            } else {
+                $row = $this->overlay('tt_content', $row, $workspaceId);
+            }
+
+            // A record this workspace moved to another page is no longer here.
+            if ($row !== null && $this->isOnPage($row, $pageUid) && $this->isVisible($row)) {
+                // Keyed by live uid: a record the workspace reordered on this page
+                // comes as its overlaid live row and as its version row.
+                $elements[$this->intValue($row['uid'] ?? 0)] = $row;
             }
         }
 
-        return $elements;
+        // The query sorted by the live position; the workspace may have moved records.
+        usort($elements, fn (array $a, array $b): int => $this->intValue($a['sorting'] ?? 0) <=> $this->intValue($b['sorting'] ?? 0));
+
+        // Capped only now: hidden, expired and moved-away rows must not take places.
+        return array_slice($elements, 0, self::MAX_CONTENT_ELEMENTS);
+    }
+
+    private function intValue(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
+    }
+
+    /**
+     * Not hidden, and within its start and end time.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function isVisible(array $row): bool
+    {
+        $now = GeneralUtility::makeInstance(Context::class)->getPropertyFromAspect('date', 'timestamp');
+        $now = is_int($now) ? $now : time();
+
+        $starttime = $this->intValue($row['starttime'] ?? 0);
+        $endtime   = $this->intValue($row['endtime'] ?? 0);
+
+        return $this->intValue($row['hidden'] ?? 0) === 0
+            && ($starttime === 0 || $starttime <= $now)
+            && ($endtime === 0 || $endtime > $now);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function isOnPage(array $row, int $pageUid): bool
+    {
+        $pid = $row['pid'] ?? 0;
+
+        return is_numeric($pid) && (int) $pid === $pageUid;
     }
 
     /**

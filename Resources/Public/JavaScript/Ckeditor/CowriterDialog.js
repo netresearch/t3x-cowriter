@@ -18,6 +18,7 @@
 
 import Modal from '@typo3/backend/modal.js';
 import { t } from '@netresearch/t3_cowriter/Labels';
+import { imageSourcesOf, sanitizeHtml } from '@netresearch/t3_cowriter/HtmlSanitizer';
 
 /**
  * @typedef {object} DialogResult
@@ -149,6 +150,15 @@ export class CowriterDialog {
     _returnFocus = null;
 
     /**
+     * Absolute sources of the images in the content the dialog was opened
+     * with (see HtmlSanitizer.imageSourcesOf()).
+     *
+     * @type {Set<string>}
+     * @private
+     */
+    _knownImageSources = new Set();
+
+    /**
      * @param {import('./AIService.js').AIService} service
      * @param {{returnFocus?: () => void}} [options] - returnFocus is called once
      *     the modal is hidden, in place of focusing what had focus before; the
@@ -174,6 +184,8 @@ export class CowriterDialog {
         // toolbar button. Opened from the FormEngine iframe, the modal lives in
         // the parent window and cannot hand focus back into this document.
         this._returnFocusTo = /** @type {HTMLElement|null} */ (document.activeElement);
+        // Images the model may keep from another origin: those already in the content.
+        this._knownImageSources = imageSourcesOf(selectedText, fullContent);
         // The configuration picker is optional and does not hold up the
         // dialog: it appears once the list arrives. Without a list, every task
         // runs on its own configuration, as before.
@@ -1783,74 +1795,16 @@ export class CowriterDialog {
     }
 
     /**
-     * Parse HTML string safely via DOMParser and remove dangerous elements/attributes.
-     *
-     * Uses an allowlist approach: only known-safe HTML elements and attributes
-     * are preserved. Everything else is removed. This protects against SVG,
-     * MathML, custom elements, and future HTML additions.
+     * Sanitise model output with the allow-list of HtmlSanitizer.js. Images
+     * from another origin stay only when the editor content the dialog was
+     * opened with already held them.
      *
      * @param {string} html
      * @returns {HTMLElement} The sanitized body element
      * @private
      */
     _sanitizeHtml(html) {
-        const ALLOWED_TAGS = new Set([
-            'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'ins',
-            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-            'ul', 'ol', 'li', 'dl', 'dt', 'dd',
-            'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
-            'blockquote', 'pre', 'code', 'hr', 'a', 'img', 'mark',
-            'span', 'div', 'figure', 'figcaption', 'sub', 'sup', 'abbr',
-        ]);
-        const ALLOWED_ATTRS = new Set([
-            'href', 'src', 'alt', 'title', 'class', 'colspan', 'rowspan',
-            'scope', 'headers', 'width', 'height', 'target', 'rel', 'lang', 'dir',
-        ]);
-
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-
-        const walk = (node) => {
-            // Use index-based loop so newly inserted (unwrapped) children are visited
-            let i = 0;
-            while (i < node.children.length) {
-                const child = node.children[i];
-                if (!ALLOWED_TAGS.has(child.localName)) {
-                    // Preserve text content, unwrap disallowed element
-                    while (child.firstChild) {
-                        child.parentNode.insertBefore(child.firstChild, child);
-                    }
-                    child.remove();
-                    // Don't increment — next child is now at index i
-                    continue;
-                }
-                for (const attr of [...child.attributes]) {
-                    if (!ALLOWED_ATTRS.has(attr.name)) {
-                        child.removeAttribute(attr.name);
-                        continue;
-                    }
-                    // URI scheme validation on href and src
-                    if (attr.name === 'href' || attr.name === 'src') {
-                        // Control characters are exactly what an obfuscated scheme hides behind.
-                        // eslint-disable-next-line no-control-regex
-                        const normalized = attr.value.replace(/[\s\x00-\x1F\x7F-\x9F]/g, '').toLowerCase();
-                        if (normalized.startsWith('javascript:')
-                            || normalized.startsWith('vbscript:')
-                            || (normalized.startsWith('data:')
-                                && !/^data:image\/(png|jpeg|gif|webp)(;base64)?,/.test(normalized))) {
-                            child.removeAttribute(attr.name);
-                        }
-                    }
-                }
-                // Enforce rel="noopener noreferrer" on target="_blank" links
-                if (child.localName === 'a' && child.getAttribute('target') === '_blank') {
-                    child.setAttribute('rel', 'noopener noreferrer');
-                }
-                walk(child);
-                i++;
-            }
-        };
-        walk(doc.body);
-        return doc.body;
+        return sanitizeHtml(html, this._knownImageSources);
     }
 
     /**

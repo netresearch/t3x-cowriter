@@ -66,12 +66,16 @@ final readonly class UnattendedToolRunner
         }
 
         try {
+            // The tool loop does not look the user up itself: without the uid
+            // nr-llm's per-user budget would not apply to these model calls.
             return $this->toolLoop->runLoop(
                 $messages,
                 $configuration,
                 ToolExecutionContext::fromBackendUser($user),
                 $tools,
-                ToolOptions::auto()->withCallerSource(CallerSource::EXTENSION, 'taskTools'),
+                ToolOptions::auto()
+                    ->withBeUserUid($user->getUserId() ?? 0)
+                    ->withCallerSource(CallerSource::EXTENSION, 'taskTools'),
             );
         } catch (ToolApprovalRequiredException $e) {
             throw new ToolNeedsApprovalException('A tool asked for an approval.', 1790200001, $e);
