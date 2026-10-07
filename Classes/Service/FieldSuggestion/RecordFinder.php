@@ -127,11 +127,21 @@ class RecordFinder
             // A record this workspace moved to another page is no longer here, and
             // the default restrictions judged the live row; the draft may be hidden.
             if ($row !== null && $this->isOnPage($row, $pageUid) && !in_array($row['hidden'] ?? 0, [1, '1', true], true)) {
-                $elements[] = $row;
+                // Keyed by live uid: a record the workspace reordered on this page
+                // comes as its overlaid live row and as its version row.
+                $elements[$this->intValue($row['uid'] ?? 0)] = $row;
             }
         }
 
+        // The query sorted by the live position; the workspace may have moved records.
+        usort($elements, fn (array $a, array $b): int => $this->intValue($a['sorting'] ?? 0) <=> $this->intValue($b['sorting'] ?? 0));
+
         return $elements;
+    }
+
+    private function intValue(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
     }
 
     /**

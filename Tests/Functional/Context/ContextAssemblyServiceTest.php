@@ -168,6 +168,21 @@ final class ContextAssemblyServiceTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function userInAWorkspaceFindsAContentElementReorderedOnItsPageOnceAtItsNewPosition(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/same_page_move.csv');
+
+        // Workspace 1 moves element 10 behind element 11 on the same page.
+        $context = $this->contextAs(1, 11, 'page', 1);
+
+        self::assertSame(1, substr_count($context, 'Header: Ergonomic chairs'));
+        self::assertLessThan(
+            strpos($context, 'Header: Ergonomic chairs'),
+            strpos($context, 'Header: Second element'),
+        );
+    }
+
+    #[Test]
     public function ancestorScopeStartsAtThePageOfTheRequestedElement(): void
     {
         $this->importCSVDataSet(__DIR__ . '/Fixtures/content_move.csv');
