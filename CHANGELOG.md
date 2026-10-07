@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.11.0 (2026-10-07)
+
+### FEATURE
+
+- Runs on `netresearch/nr-llm` 0.38 and 0.39: `composer.json` accepts `^0.38 || ^0.39`, `ext_emconf.php` `0.38.0-0.39.99`. nr-llm 0.39 returns a `StructuredCompletionResponse` from `completeStructuredForConfiguration()` instead of the payload array (nr-llm ADR-211); field suggestions and requests for several versions read the payload through `StructuredAnswer::payload()`, which accepts both shapes. Without it, every field suggestion and every request for several versions failed on nr-llm 0.39. The other breaking changes of nr-llm 0.39 (`decideForConfiguration()`, the `ModelResolution` parameter, decimal model prices, the removed LLM judge grader) do not reach this extension. CI keeps one cell pinned to nr-llm 0.38 (#210).
+
+### MISC
+
+- One extension title everywhere: TER, TYPO3 v14, docs.typo3.org and the README show "AI Cowriter", and `ext_emconf.php` and `composer.json` carry the same description (#209).
+
 ## 3.10.3 (2026-10-07)
 
 ### FIX
