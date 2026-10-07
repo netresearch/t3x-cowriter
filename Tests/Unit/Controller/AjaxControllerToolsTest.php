@@ -20,6 +20,7 @@ use Netresearch\NrLlm\Service\Tool\Exception\ToolApprovalRequiredException;
 use Netresearch\NrLlm\Service\Tool\ToolCallPolicyInterface;
 use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\NrLlm\Service\Tool\UnattendedToolFilterInterface;
+use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\Tool\UnattendedToolRunner;
 use Netresearch\T3Cowriter\Tests\Support\TaskRouteControllerTrait;
@@ -108,22 +109,15 @@ final class AjaxControllerToolsTest extends TestCase
     #[Test]
     public function aToolsRequestForSeveralVersionsGetsOneAnswerFromTheToolLoop(): void
     {
-        $structuredCalls = 0;
-        $completion      = $this->createStub(CompletionServiceInterface::class);
-        $completion->method('completeStructuredForConfiguration')->willReturnCallback(
-            static function () use (&$structuredCalls): array {
-                ++$structuredCalls;
-
-                return ['variants' => ['<p>One</p>', '<p>Two</p>']];
-            },
-        );
+        $completion                   = new FakeCompletionService();
+        $completion->structuredResult = ['variants' => ['<p>One</p>', '<p>Two</p>']];
 
         $data = $this->json($this->subject($completion)->executeTaskAction($this->request(useTools: true, variants: 2)));
 
         self::assertSame('<p><strong>Two</strong> pages mention it.</p>', $data['content']);
         self::assertArrayNotHasKey('variants', $data);
         self::assertSame([['search_content']], $this->loopTools);
-        self::assertSame(0, $structuredCalls);
+        self::assertSame([], $completion->completeStructuredForConfigurationCalls);
     }
 
     #[Test]
