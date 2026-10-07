@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
-# TYPO3 Extension: t3_cowriter
+# AI Cowriter for TYPO3
 
 <!-- CI/Quality -->
 [![CI](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml/badge.svg)](https://github.com/netresearch/t3x-cowriter/actions/workflows/ci.yml)

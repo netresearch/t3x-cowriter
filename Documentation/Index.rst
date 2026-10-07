@@ -5,9 +5,9 @@
 
 .. _start:
 
-=========================
-AI Cowriter (t3_cowriter)
-=========================
+===========
+AI Cowriter
+===========
 
 :Extension key:
     t3_cowriter
