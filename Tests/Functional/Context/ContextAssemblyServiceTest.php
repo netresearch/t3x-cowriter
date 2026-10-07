@@ -122,6 +122,29 @@ final class ContextAssemblyServiceTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function liveUserFollowsTheLivePageTreeToTheParent(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/workspace_move.csv');
+
+        $context = $this->contextAs(1, 10, 'ancestors_1');
+
+        self::assertStringContainsString('PRODUCTS-PAGE-ELEMENT', $context);
+        self::assertStringNotContainsString('HOME-PAGE-ELEMENT', $context);
+    }
+
+    #[Test]
+    public function userInAWorkspaceFollowsAPageMovedThereToItsNewParent(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/workspace_move.csv');
+
+        // Workspace 1 moves page 3 from below page 2 to below page 1.
+        $context = $this->contextAs(1, 10, 'ancestors_1', 1);
+
+        self::assertStringContainsString('HOME-PAGE-ELEMENT', $context);
+        self::assertStringNotContainsString('PRODUCTS-PAGE-ELEMENT', $context);
+    }
+
+    #[Test]
     public function versionRowOfAnotherWorkspaceCannotBeAddressed(): void
     {
         $this->importCSVDataSet(__DIR__ . '/../FieldSuggestion/Fixtures/workspaces.csv');

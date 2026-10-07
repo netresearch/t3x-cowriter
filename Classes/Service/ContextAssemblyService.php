@@ -40,7 +40,7 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
     private RecordFinder $recordFinder;
 
     public function __construct(
-        private ConnectionPool $connectionPool,
+        ConnectionPool $connectionPool,
         ?RecordFinder $recordFinder = null,
     ) {
         $this->recordFinder = $recordFinder ?? new RecordFinder($connectionPool);
@@ -262,8 +262,9 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
      */
     private function fetchWithAncestors(string $table, int $uid, int $levels): array
     {
-        $records = $this->fetchPageContent($table, $uid);
-        if ($records === []) {
+        $records     = $this->fetchPageContent($table, $uid);
+        $backendUser = $this->contentReader();
+        if ($records === [] || !$backendUser instanceof BackendUserAuthentication) {
             return [];
         }
 
@@ -271,7 +272,7 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
         $pid    = is_numeric($rawPid) ? (int) $rawPid : 0;
 
         for ($i = 0; $i < $levels && $pid > 0; ++$i) {
-            $parentPid = $this->getParentPageId($pid);
+            $parentPid = $this->getParentPageId($pid, $this->workspaceId($backendUser));
             if ($parentPid <= 0) {
                 break;
             }
@@ -284,18 +285,14 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
         return $records;
     }
 
-    private function getParentPageId(int $pageUid): int
+    /**
+     * The parent of a page in the tree the user's workspace shows, so a page
+     * moved in that workspace is followed to its new parent.
+     */
+    private function getParentPageId(int $pageUid, int $workspaceId): int
     {
-        $qb     = $this->connectionPool->getQueryBuilderForTable('pages');
-        $result = $qb
-            ->select('pid')
-            ->from('pages')
-            ->where($qb->expr()->eq('uid', $qb->createNamedParameter($pageUid)))
-            ->executeQuery();
-
-        $row = $result->fetchAssociative();
-
-        if ($row === false) {
+        $row = $this->recordFinder->findRecord('pages', $pageUid, $workspaceId);
+        if ($row === null) {
             return 0;
         }
 

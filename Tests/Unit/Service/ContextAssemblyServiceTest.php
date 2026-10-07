@@ -560,7 +560,7 @@ final class ContextAssemblyServiceTest extends TestCase
 
         $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $method  = new ReflectionMethod($service, 'getParentPageId');
-        $result  = $method->invoke($service, 999);
+        $result  = $method->invoke($service, 999, 0);
 
         self::assertSame(0, $result);
     }
@@ -575,7 +575,7 @@ final class ContextAssemblyServiceTest extends TestCase
 
         $service = new ContextAssemblyService($connectionPool, $this->recordFinder);
         $method  = new ReflectionMethod($service, 'getParentPageId');
-        $result  = $method->invoke($service, 1);
+        $result  = $method->invoke($service, 1, 0);
 
         self::assertSame(0, $result);
     }
