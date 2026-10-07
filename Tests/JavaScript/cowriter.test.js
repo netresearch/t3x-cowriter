@@ -861,6 +861,33 @@ describe('Cowriter Plugin', () => {
             expect(Notification.success).toHaveBeenCalledWith('Translation complete', 'Translated to German', 3);
         });
 
+        it('passes the translation through the allow-list before inserting it', async () => {
+            mockTranslate.mockResolvedValue({
+                success: true,
+                translation: '<p onclick="x()">Hallo</p><img src="https://elsewhere.example/p.png" alt="p">',
+            });
+            const dropdown = componentCallbacks['cowriterTranslate']();
+
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            expect(mockEditor.data.processor.toView).toHaveBeenCalledWith('<p>Hallo</p>');
+        });
+
+        it('keeps an image in the translation that the selection held', async () => {
+            mockEditor.data.stringify.mockReturnValue('<p>Hello</p><img src="https://cdn.example/photo.jpg" alt="photo">');
+            mockTranslate.mockResolvedValue({
+                success: true,
+                translation: '<p>Hallo</p><img src="https://cdn.example/photo.jpg" alt="Foto">',
+            });
+            const dropdown = componentCallbacks['cowriterTranslate']();
+
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            expect(mockEditor.data.processor.toView).toHaveBeenCalledWith(
+                '<p>Hallo</p><img src="https://cdn.example/photo.jpg" alt="Foto">',
+            );
+        });
+
         it('should not translate when no text is selected', async () => {
             mockEditor.model.document.selection.getFirstRange.mockReturnValue({ isCollapsed: true });
             mockEditor.data.stringify.mockReturnValue('');

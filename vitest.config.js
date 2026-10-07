@@ -57,6 +57,10 @@ export default defineConfig({
                 __dirname,
                 'Resources/Public/JavaScript/Ckeditor/Labels.js'
             ),
+            '@netresearch/t3_cowriter/HtmlSanitizer': resolve(
+                __dirname,
+                'Resources/Public/JavaScript/Ckeditor/HtmlSanitizer.js'
+            ),
         },
     },
     test: {

@@ -12,6 +12,7 @@ import { Collection } from "@ckeditor/ckeditor5-utils";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
 import { t } from "@netresearch/t3_cowriter/Labels";
+import { imageSourcesOf, sanitizeHtml } from "@netresearch/t3_cowriter/HtmlSanitizer";
 import Notification from "@typo3/backend/notification.js";
 
 /**
@@ -418,7 +419,10 @@ export class Cowriter extends Plugin {
 
                     const result = await this._service.translate(selectedText, langCode);
                     if (result?.success && result.translation) {
-                        const viewFragment = editor.data.processor.toView(result.translation);
+                        // The same allow-list as the dialog's result; images from
+                        // another origin stay only when the selection held them.
+                        const safeTranslation = sanitizeHtml(result.translation, imageSourcesOf(selectedText)).innerHTML;
+                        const viewFragment = editor.data.processor.toView(safeTranslation);
                         const modelFragment = editor.data.toModel(viewFragment);
 
                         model.change((writer) => {

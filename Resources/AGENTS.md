@@ -16,6 +16,7 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 - **AIService.js** - API client for backend communication (chat, complete, stream)
 - **cowriter.js** - CKEditor 5 plugin integration
 - **CowriterDialog.js** - Task dialog UI (incl. status link on errors)
+- **HtmlSanitizer.js** - Allow-list sanitiser for every model answer shown as markup or inserted (dialog result, variants, stream, translation)
 - **UrlLoader.js** - CSP-compliant AJAX URL injection from data attributes
 - **FormEngine/FieldSuggestions.js** - "Suggest" field control for plain form fields (suggestion list, keyboard, live region)
 
@@ -33,6 +34,7 @@ Resources/
 │       │   ├── AIService.js       # AJAX API client
 │       │   ├── cowriter.js        # CKEditor plugin
 │       │   ├── CowriterDialog.js  # Task dialog UI
+│       │   ├── HtmlSanitizer.js   # Allow-list sanitiser for model output
 │       │   └── UrlLoader.js       # CSP-compliant URL loader
 │       └── FormEngine/
 │           └── FieldSuggestions.js # "Suggest" field control
@@ -163,7 +165,7 @@ export class Cowriter extends Core.Plugin {
 
 - **Sanitize input:** Validate user input before sending
 - **Safe output:** Use textContent, not innerHTML for AI responses
-- **XSS prevention:** Let CKEditor handle content sanitization
+- **XSS prevention:** Pass every model answer that becomes markup through `sanitizeHtml()` (HtmlSanitizer.js) before CKEditor's data pipeline
 
 ## PR/Commit Checklist
 
