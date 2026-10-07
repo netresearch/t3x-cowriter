@@ -198,6 +198,18 @@ final class ContextAssemblyServiceTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function hiddenElementsDoNotTakeThePlacesOfVisibleOnes(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/many_hidden.csv');
+
+        // 50 hidden elements sort before the visible one.
+        $context = $this->contextAs(1, 200, 'page');
+
+        self::assertStringContainsString('VISIBLE-AFTER', $context);
+        self::assertStringNotContainsString('HIDDEN-', $context);
+    }
+
+    #[Test]
     public function ancestorScopeStartsAtThePageOfTheRequestedElement(): void
     {
         $this->importCSVDataSet(__DIR__ . '/Fixtures/content_move.csv');

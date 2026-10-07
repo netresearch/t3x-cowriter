@@ -24,10 +24,12 @@ use TYPO3\CMS\Core\Versioning\VersionState;
  *
  * Holds no permission logic: the caller ({@see RecordContextReader},
  * {@see \Netresearch\T3Cowriter\Service\ContextAssemblyService}) decides
- * what the current user may see. Both queries carry a WorkspaceRestriction,
+ * what the current user may see. Every query carries a WorkspaceRestriction,
  * so draft rows of other workspaces and version rows (t3ver_oid > 0) are never
- * selected, and the rows found are overlaid with the version of the user's own
- * workspace, the way FormEngine shows them to the editor.
+ * selected, except the move pointers of the user's own workspace, which
+ * findVisibleContent() lists under the live uid. The rows found are overlaid
+ * with the version of the user's own workspace, the way FormEngine shows them
+ * to the editor.
  */
 class RecordFinder
 {
@@ -116,7 +118,6 @@ class RecordFinder
             ->from('tt_content')
             ->where(...$constraints)
             ->orderBy('sorting')
-            ->setMaxResults(self::MAX_CONTENT_ELEMENTS)
             ->executeQuery()
             ->fetchAllAssociative();
 
@@ -142,7 +143,8 @@ class RecordFinder
         // The query sorted by the live position; the workspace may have moved records.
         usort($elements, fn (array $a, array $b): int => $this->intValue($a['sorting'] ?? 0) <=> $this->intValue($b['sorting'] ?? 0));
 
-        return $elements;
+        // Capped only now: hidden, expired and moved-away rows must not take places.
+        return array_slice($elements, 0, self::MAX_CONTENT_ELEMENTS);
     }
 
     private function intValue(mixed $value): int
