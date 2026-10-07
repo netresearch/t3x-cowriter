@@ -1,0 +1,72 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","perms_userid","perms_groupid","perms_user","perms_group","perms_everybody"
+,1,0,"Home","/",1,1,1,1,31,31,1
+,2,1,"Products","/products",0,1,1,1,31,31,1
+"tt_content"
+,"uid","pid","header","bodytext","CType","sys_language_uid","l18n_parent","sorting"
+,100,2,"DEFAULT-00","Default language.","text",0,0,1
+,101,2,"TRANSLATION-00-1","Translation.","text",1,100,2
+,102,2,"TRANSLATION-00-2","Translation.","text",2,100,3
+,103,2,"DEFAULT-01","Default language.","text",0,0,31
+,104,2,"TRANSLATION-01-1","Translation.","text",1,103,32
+,105,2,"TRANSLATION-01-2","Translation.","text",2,103,33
+,106,2,"DEFAULT-02","Default language.","text",0,0,61
+,107,2,"TRANSLATION-02-1","Translation.","text",1,106,62
+,108,2,"TRANSLATION-02-2","Translation.","text",2,106,63
+,109,2,"DEFAULT-03","Default language.","text",0,0,91
+,110,2,"TRANSLATION-03-1","Translation.","text",1,109,92
+,111,2,"TRANSLATION-03-2","Translation.","text",2,109,93
+,112,2,"DEFAULT-04","Default language.","text",0,0,121
+,113,2,"TRANSLATION-04-1","Translation.","text",1,112,122
+,114,2,"TRANSLATION-04-2","Translation.","text",2,112,123
+,115,2,"DEFAULT-05","Default language.","text",0,0,151
+,116,2,"TRANSLATION-05-1","Translation.","text",1,115,152
+,117,2,"TRANSLATION-05-2","Translation.","text",2,115,153
+,118,2,"DEFAULT-06","Default language.","text",0,0,181
+,119,2,"TRANSLATION-06-1","Translation.","text",1,118,182
+,120,2,"TRANSLATION-06-2","Translation.","text",2,118,183
+,121,2,"DEFAULT-07","Default language.","text",0,0,211
+,122,2,"TRANSLATION-07-1","Translation.","text",1,121,212
+,123,2,"TRANSLATION-07-2","Translation.","text",2,121,213
+,124,2,"DEFAULT-08","Default language.","text",0,0,241
+,125,2,"TRANSLATION-08-1","Translation.","text",1,124,242
+,126,2,"TRANSLATION-08-2","Translation.","text",2,124,243
+,127,2,"DEFAULT-09","Default language.","text",0,0,271
+,128,2,"TRANSLATION-09-1","Translation.","text",1,127,272
+,129,2,"TRANSLATION-09-2","Translation.","text",2,127,273
+,130,2,"DEFAULT-10","Default language.","text",0,0,301
+,131,2,"TRANSLATION-10-1","Translation.","text",1,130,302
+,132,2,"TRANSLATION-10-2","Translation.","text",2,130,303
+,133,2,"DEFAULT-11","Default language.","text",0,0,331
+,134,2,"TRANSLATION-11-1","Translation.","text",1,133,332
+,135,2,"TRANSLATION-11-2","Translation.","text",2,133,333
+,136,2,"DEFAULT-12","Default language.","text",0,0,361
+,137,2,"TRANSLATION-12-1","Translation.","text",1,136,362
+,138,2,"TRANSLATION-12-2","Translation.","text",2,136,363
+,139,2,"DEFAULT-13","Default language.","text",0,0,391
+,140,2,"TRANSLATION-13-1","Translation.","text",1,139,392
+,141,2,"TRANSLATION-13-2","Translation.","text",2,139,393
+,142,2,"DEFAULT-14","Default language.","text",0,0,421
+,143,2,"TRANSLATION-14-1","Translation.","text",1,142,422
+,144,2,"TRANSLATION-14-2","Translation.","text",2,142,423
+,145,2,"DEFAULT-15","Default language.","text",0,0,451
+,146,2,"TRANSLATION-15-1","Translation.","text",1,145,452
+,147,2,"TRANSLATION-15-2","Translation.","text",2,145,453
+,148,2,"DEFAULT-16","Default language.","text",0,0,481
+,149,2,"TRANSLATION-16-1","Translation.","text",1,148,482
+,150,2,"TRANSLATION-16-2","Translation.","text",2,148,483
+,151,2,"DEFAULT-17","Default language.","text",0,0,511
+,152,2,"TRANSLATION-17-1","Translation.","text",1,151,512
+,153,2,"TRANSLATION-17-2","Translation.","text",2,151,513
+,154,2,"DEFAULT-18","Default language.","text",0,0,541
+,155,2,"TRANSLATION-18-1","Translation.","text",1,154,542
+,156,2,"TRANSLATION-18-2","Translation.","text",2,154,543
+,157,2,"DEFAULT-19","Default language.","text",0,0,571
+,158,2,"TRANSLATION-19-1","Translation.","text",1,157,572
+,159,2,"TRANSLATION-19-2","Translation.","text",2,157,573
+"be_groups"
+,"uid","pid","title","tables_select","tables_modify","allowed_languages","db_mountpoints"
+,1,0,"Editors of the default language","pages,tt_content","pages,tt_content","0","1"
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,2,0,"editor",0,"1",0

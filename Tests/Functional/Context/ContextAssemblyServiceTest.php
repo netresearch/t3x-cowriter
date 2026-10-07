@@ -210,6 +210,19 @@ final class ContextAssemblyServiceTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function elementsInOtherLanguagesDoNotTakeThePlacesOfReadableOnes(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/many_translations.csv');
+
+        // 20 elements in the default language, each followed by two translations
+        // the editor may not read: 60 rows, more than the cap of 50.
+        $context = $this->contextAs(2, 100, 'page');
+
+        self::assertSame(20, substr_count($context, 'Header: DEFAULT-'));
+        self::assertStringNotContainsString('TRANSLATION-', $context);
+    }
+
+    #[Test]
     public function ancestorScopeStartsAtThePageOfTheRequestedElement(): void
     {
         $this->importCSVDataSet(__DIR__ . '/Fixtures/content_move.csv');

@@ -96,6 +96,29 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
     }
 
     /**
+     * The languages the user may read content in, "all languages" (-1)
+     * included; null when the user is not limited to some languages.
+     *
+     * @return list<int>|null
+     */
+    private function allowedLanguageIds(BackendUserAuthentication $backendUser): ?array
+    {
+        $allowed = $backendUser->groupData['allowed_languages'] ?? '';
+        if ($backendUser->isAdmin() || !is_string($allowed) || trim($allowed) === '') {
+            return null;
+        }
+
+        $ids = [-1];
+        foreach (explode(',', $allowed) as $id) {
+            if (is_numeric(trim($id))) {
+                $ids[] = (int) trim($id);
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * Whether the user may read a content element in its language.
      *
      * @param array<string, mixed> $record
@@ -245,8 +268,10 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
             return [];
         }
 
+        // The language rule goes into the query, so that elements in other
+        // languages do not take places under the element cap.
         $records = [];
-        foreach ($this->recordFinder->findVisibleContent($pid, $this->workspaceId($backendUser)) as $record) {
+        foreach ($this->recordFinder->findVisibleContent($pid, $this->workspaceId($backendUser), $this->allowedLanguageIds($backendUser)) as $record) {
             if ($this->userHasLanguageAccess($record, $backendUser)) {
                 $records[] = $record;
             }
