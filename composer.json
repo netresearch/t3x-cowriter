@@ -90,7 +90,10 @@
         "audit": {
             "abandoned": "ignore",
             "ignore": {
-                "PKSA-y2cr-5h3j-g3ys": "Upstream firebase/php-jwt issue via typo3/cms-core, no fix available yet"
+                "PKSA-y2cr-5h3j-g3ys": "Upstream firebase/php-jwt issue via typo3/cms-core, no fix available yet",
+                "PKSA-6j95-1jtb-x6wc": "enshrined/svg-sanitize is transitive via typo3/cms-core, which requires ~0.22; the advisory is fixed only in 1.0.0. Remove this ignore once typo3/cms-core allows the fix.",
+                "PKSA-8j6w-3kr7-s9xk": "enshrined/svg-sanitize is transitive via typo3/cms-core, which requires ~0.22; the advisory is fixed only in 1.0.0. Remove this ignore once typo3/cms-core allows the fix.",
+                "PKSA-cbx2-m9db-bmzd": "enshrined/svg-sanitize is transitive via typo3/cms-core, which requires ~0.22; the advisory is fixed only in 1.0.0. Remove this ignore once typo3/cms-core allows the fix."
             }
         }
     },
