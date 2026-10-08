@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.12.0 (2026-10-08)
+
+### FEATURE
+
+- Runs on `netresearch/nr-llm` 0.40 as well: `composer.json` accepts `^0.38 || ^0.39 || ^0.40`, `ext_emconf.php` `0.38.0-0.40.99`. nr-llm 0.40 changes no signature of a class this extension calls or implements.
+
+### MISC
+
+- `composer.json` accepts three `enshrined/svg-sanitize` advisories (GHSA-9rjx-3jch-6vjf, GHSA-m9xh-6747-9r6f, GHSA-v383-3rw5-q8rf) in `config.audit.ignore`. They are fixed only in 1.0.0, and `typo3/cms-core` 13.4 and 14.3 require `~0.22`; each ignore says to remove it once core allows the fix.
+
 ## 3.11.0 (2026-10-07)
 
 ### FEATURE
