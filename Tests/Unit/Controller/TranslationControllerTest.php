@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
+use TYPO3\CMS\Core\Http\Uri;
 use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
@@ -67,10 +68,15 @@ final class TranslationControllerTest extends TestCase
     use XliffLanguageServiceTrait;
 
     private TranslationServiceInterface&Stub $translationServiceStub;
+
     private LlmConfigurationRepository&Stub $configurationRepositoryStub;
+
     private RateLimiterInterface&Stub $rateLimiterStub;
+
     private BackendUriBuilder&Stub $backendUriBuilderStub;
+
     private DiagnosticService&Stub $diagnosticServiceStub;
+
     private TranslationController $subject;
 
     protected function setUp(): void
@@ -81,7 +87,7 @@ final class TranslationControllerTest extends TestCase
         $this->rateLimiterStub             = $this->createStub(RateLimiterInterface::class);
         $this->backendUriBuilderStub       = $this->createStub(BackendUriBuilder::class);
         $this->backendUriBuilderStub->method('buildUriFromRoute')
-            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+            ->willReturn(new Uri('/typo3/module/cowriter/status'));
         $this->diagnosticServiceStub = $this->createStub(DiagnosticService::class);
         $contextStub                 = $this->createStub(Context::class);
 

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Integration\Controller;
 
+use TYPO3\CMS\Core\Http\Uri;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
@@ -33,7 +34,6 @@ use Psr\Log\NullLogger;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 /**
  * Integration tests for AjaxController.
@@ -46,10 +46,15 @@ use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
 {
     private AjaxController $subject;
+
     private LlmServiceManagerInterface&MockObject $llmServiceMock;
+
     private LlmConfigurationRepository&MockObject $configRepoMock;
+
     private TaskRepository&MockObject $taskRepoMock;
+
     private RateLimiterInterface&MockObject $rateLimiterMock;
+
     private Context&MockObject $contextMock;
 
     #[Override]
@@ -72,7 +77,7 @@ final class AjaxControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->contextMock->method('getPropertyFromAspect')->willReturn(1);
 
         $backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
-        $backendUriBuilderMock->method('buildUriFromRoute')->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+        $backendUriBuilderMock->method('buildUriFromRoute')->willReturn(new Uri('/typo3/module/cowriter/status'));
 
         $diagnosticServiceMock = $this->createMock(DiagnosticService::class);
         $diagnosticServiceMock->method('runFirst')->willReturn(new DiagnosticResult(true, []));

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Integration\Controller\Backend;
 
+use TYPO3\CMS\Core\Http\Uri;
 use Netresearch\T3Cowriter\Controller\Backend\StatusController;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
@@ -32,8 +33,8 @@ final class StatusControllerIntegrationTest extends TestCase
         $backendUriBuilder
             ->method('buildUriFromRoute')
             ->willReturnMap([
-                ['nrllm_providers', [], new \TYPO3\CMS\Core\Http\Uri('/typo3/module/nrllm/providers')],
-                ['nrllm_models', [], new \TYPO3\CMS\Core\Http\Uri('/typo3/module/nrllm/models')],
+                ['nrllm_providers', [], new Uri('/typo3/module/nrllm/providers')],
+                ['nrllm_models', [], new Uri('/typo3/module/nrllm/models')],
             ]);
 
         $controller = new StatusController(

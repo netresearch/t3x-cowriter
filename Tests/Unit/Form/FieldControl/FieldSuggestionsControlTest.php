@@ -36,10 +36,11 @@ final class FieldSuggestionsControlTest extends TestCase
      */
     private function render(array $data, ?UriBuilder $uriBuilder = null): array
     {
-        if ($uriBuilder === null) {
+        if (!$uriBuilder instanceof UriBuilder) {
             $uriBuilder = $this->createStub(UriBuilder::class);
             $uriBuilder->method('buildUriFromRoute')->willReturn(new Uri('/typo3/ajax/cowriter/suggestions?token=abc'));
         }
+
         $subject = new FieldSuggestionsControl($uriBuilder);
         $subject->setData($data + [
             'tableName'      => 'pages',
@@ -82,6 +83,7 @@ final class FieldSuggestionsControlTest extends TestCase
         foreach (['heading', 'loading', 'loaded', 'empty', 'error', 'inserted', 'close'] as $label) {
             self::assertSame('translated:' . $label, $attributes['data-label-' . $label]);
         }
+
         self::assertSame('translated:loadedSingular', $attributes['data-label-loaded-singular']);
     }
 

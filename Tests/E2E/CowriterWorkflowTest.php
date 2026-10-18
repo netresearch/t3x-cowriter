@@ -9,6 +9,18 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\E2E;
 
+use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
+use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\RateLimitResult;
+use TYPO3\CMS\Core\Context\Context;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use TYPO3\CMS\Core\Http\Uri;
+use PHPUnit\Framework\MockObject\MockObject;
 use Generator;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
@@ -54,25 +66,25 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
      * @param array<string> $chunks Content chunks for the generator
      * @param string        $model  Model name for configuration
      *
-     * @return array{controller: AjaxController, serviceManager: \Netresearch\NrLlm\Service\LlmServiceManagerInterface&\PHPUnit\Framework\MockObject\MockObject, configRepo: \Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository&\PHPUnit\Framework\MockObject\MockObject, rateLimiter: \Netresearch\T3Cowriter\Service\RateLimiterInterface&\PHPUnit\Framework\MockObject\MockObject, context: \TYPO3\CMS\Core\Context\Context&\PHPUnit\Framework\MockObject\MockObject}
+     * @return array{controller: AjaxController, serviceManager: LlmServiceManagerInterface&MockObject, configRepo: LlmConfigurationRepository&MockObject, rateLimiter: RateLimiterInterface&MockObject, context: Context&MockObject}
      */
     private function createStreamingStack(array $chunks, string $model = 'gpt-4o'): array
     {
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
         $serviceManager->method('streamChatWithConfiguration')
-            ->willReturnCallback(fn () => $this->createChunkGenerator($chunks));
+            ->willReturnCallback(fn (): Generator => $this->createChunkGenerator($chunks));
 
-        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo = $this->createMock(LlmConfigurationRepository::class);
 
-        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
         );
 
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
 
-        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo   = $this->createMock(TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             ConfigurationAccessDouble::selector($configRepo),
@@ -81,7 +93,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -517,15 +529,15 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     public function completeWorkflowReturnsRateLimitedResponse(): void
     {
         // Build stack manually with rate limiter that denies
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
-        $configRepo     = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
-        $rateLimiter    = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
+        $configRepo     = $this->createMock(LlmConfigurationRepository::class);
+        $rateLimiter    = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
+            new RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
         );
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
-        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo   = $this->createMock(TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             ConfigurationAccessDouble::selector($configRepo),
@@ -534,7 +546,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -554,15 +566,15 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     public function chatWorkflowReturnsRateLimitedResponse(): void
     {
         // Build stack manually with rate limiter that denies
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
-        $configRepo     = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
-        $rateLimiter    = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
+        $configRepo     = $this->createMock(LlmConfigurationRepository::class);
+        $rateLimiter    = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
+            new RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
         );
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
-        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo   = $this->createMock(TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             ConfigurationAccessDouble::selector($configRepo),
@@ -571,7 +583,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -693,10 +705,10 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     public function chatWorkflowHandlesInvalidJson(): void
     {
         // Create a request with an invalid JSON body
-        $bodyStub = self::createStub(\Psr\Http\Message\StreamInterface::class);
+        $bodyStub = self::createStub(StreamInterface::class);
         $bodyStub->method('getContents')->willReturn('{invalid json}');
 
-        $request = self::createStub(\Psr\Http\Message\ServerRequestInterface::class);
+        $request = self::createStub(ServerRequestInterface::class);
         $request->method('getBody')->willReturn($bodyStub);
         $request->method('getParsedBody')->willReturn(null);
 
@@ -718,15 +730,15 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     public function streamWorkflowReturnsRateLimitedResponse(): void
     {
         // Build stack manually with rate limiter that denies
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
-        $configRepo     = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
-        $rateLimiter    = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
+        $configRepo     = $this->createMock(LlmConfigurationRepository::class);
+        $rateLimiter    = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
+            new RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
         );
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
-        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo   = $this->createMock(TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             ConfigurationAccessDouble::selector($configRepo),
@@ -735,7 +747,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -847,7 +859,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $stack = $this->createStreamingStack(['Hello']);
 
         // Create config with special chars in model name
-        $config = self::createStub(\Netresearch\NrLlm\Domain\Model\LlmConfiguration::class);
+        $config = self::createStub(LlmConfiguration::class);
         $config->method('getIdentifier')->willReturn('test');
         $config->method('getName')->willReturn('Test');
         $config->method('isDefault')->willReturn(true);
@@ -866,21 +878,21 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     #[Test]
     public function streamWorkflowHandlesProviderException(): void
     {
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
         $serviceManager->method('streamChatWithConfiguration')
             ->willThrowException(new ProviderException('API key expired'));
 
-        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo = $this->createMock(LlmConfigurationRepository::class);
         $config     = $this->createLlmConfiguration();
         $configRepo->method('findDefault')->willReturn($config);
 
-        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
         );
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
-        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo   = $this->createMock(TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             ConfigurationAccessDouble::selector($configRepo),
@@ -889,7 +901,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -907,21 +919,21 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     #[Test]
     public function streamWorkflowHandlesUnexpectedException(): void
     {
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
         $serviceManager->method('streamChatWithConfiguration')
             ->willThrowException(new RuntimeException('Connection timeout'));
 
-        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo = $this->createMock(LlmConfigurationRepository::class);
         $config     = $this->createLlmConfiguration();
         $configRepo->method('findDefault')->willReturn($config);
 
-        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
         );
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
-        $taskRepo   = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo   = $this->createMock(TaskRepository::class);
         $controller = new AjaxController(
             $serviceManager,
             ConfigurationAccessDouble::selector($configRepo),
@@ -930,7 +942,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -1348,14 +1360,14 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     #[Test]
     public function executeTaskWorkflowReturnsRateLimited(): void
     {
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
-        $configRepo     = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
-        $taskRepo       = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
-        $rateLimiter    = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
+        $configRepo     = $this->createMock(LlmConfigurationRepository::class);
+        $taskRepo       = $this->createMock(TaskRepository::class);
+        $rateLimiter    = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
+            new RateLimitResult(allowed: false, limit: 20, remaining: 0, resetTime: time() + 60),
         );
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
         $controller = new AjaxController(
             $serviceManager,
@@ -1365,7 +1377,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $this->createMock(ContextAssemblyServiceInterface::class),
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -1600,7 +1612,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $capturedMessages = [];
         $stack['serviceManager']->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
@@ -1622,6 +1634,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
                 break;
             }
         }
+
         self::assertNotNull($editorContentMsg, 'Expected <editor_content> system message');
         self::assertStringContainsString("<editor_content>\nThe product is excellent.\n</editor_content>", $editorContentMsg['content']);
     }
@@ -1640,7 +1653,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $capturedMessages = [];
         $stack['serviceManager']->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
@@ -1676,7 +1689,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $capturedMessages = [];
         $stack['serviceManager']->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
@@ -1714,7 +1727,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $capturedMessages = [];
         $stack['serviceManager']->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
@@ -1751,7 +1764,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $capturedMessages = [];
         $stack['serviceManager']->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
@@ -1774,6 +1787,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
                 break;
             }
         }
+
         self::assertNotNull($capabilitiesMsg, 'Expected editor capabilities system message');
         self::assertStringContainsString('bold, italic, lists, links', $capabilitiesMsg['content']);
         self::assertStringContainsString('<mark>', $capabilitiesMsg['content']);
@@ -1795,7 +1809,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $capturedMessages = [];
         $stack['serviceManager']->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
@@ -1827,31 +1841,31 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             ->with('tt_content', 42, 'bodytext', 'page', [])
             ->willReturn('Surrounding page content for reference.');
 
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
 
         $capturedMessages = [];
         $serviceManager->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
             });
 
-        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo = $this->createMock(LlmConfigurationRepository::class);
         $config     = $this->createLlmConfiguration();
         $configRepo->method('findDefault')->willReturn($config);
 
-        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo = $this->createMock(TaskRepository::class);
         $task     = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
         $taskRepo->method('findByUid')->willReturn($task);
 
-        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
         );
 
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
 
         $controller = new AjaxController(
@@ -1862,7 +1876,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $contextAssembly,
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -1887,6 +1901,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
                 break;
             }
         }
+
         self::assertNotNull($refContextMsg, 'Expected <reference_context> system message');
         self::assertStringContainsString('Surrounding page content for reference.', $refContextMsg['content']);
         self::assertStringContainsString('Do NOT include this content in your output', $refContextMsg['content']);
@@ -1909,23 +1924,23 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             )
             ->willReturn('Context with reference pages.');
 
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
         $serviceManager->method('chatWithConfiguration')->willReturn($llmResponse);
 
-        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo = $this->createMock(LlmConfigurationRepository::class);
         $config     = $this->createLlmConfiguration();
         $configRepo->method('findDefault')->willReturn($config);
 
-        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo = $this->createMock(TaskRepository::class);
         $task     = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
         $taskRepo->method('findByUid')->willReturn($task);
 
-        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
         );
 
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
 
         $controller = new AjaxController(
@@ -1936,7 +1951,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $contextAssembly,
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -1965,20 +1980,20 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $contextAssembly->method('assembleContext')
             ->willThrowException(new RuntimeException('DB connection lost'));
 
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
 
-        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo = $this->createMock(LlmConfigurationRepository::class);
 
-        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo = $this->createMock(TaskRepository::class);
         $task     = $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}');
         $taskRepo->method('findByUid')->willReturn($task);
 
-        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
         );
 
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
 
         $controller = new AjaxController(
@@ -1989,7 +2004,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $contextAssembly,
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -2023,7 +2038,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $capturedMessages = [];
         $stack['serviceManager']->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
@@ -2055,6 +2070,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
                 self::assertStringContainsString('Existing content here.', $msg['content']);
             }
         }
+
         self::assertTrue($hasEditorContent, 'Custom mode should inject <editor_content>');
     }
 
@@ -2071,7 +2087,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $capturedMessages = [];
         $stack['serviceManager']->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
@@ -2103,31 +2119,31 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
         $contextAssembly->method('assembleContext')->willReturn('Surrounding context.');
 
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
 
         $capturedMessages = [];
         $serviceManager->expects(self::once())
             ->method('chatWithConfiguration')
-            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse) {
+            ->willReturnCallback(function (array $messages) use (&$capturedMessages, $llmResponse): CompletionResponse {
                 $capturedMessages = $messages;
 
                 return $llmResponse;
             });
 
-        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo = $this->createMock(LlmConfigurationRepository::class);
         $configRepo->method('findDefault')->willReturn($this->createLlmConfiguration());
 
-        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo = $this->createMock(TaskRepository::class);
         $taskRepo->method('findByUid')->willReturn(
             $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}'),
         );
 
-        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
         );
 
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
 
         $controller = new AjaxController(
@@ -2138,7 +2154,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $contextAssembly,
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -2179,23 +2195,23 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
         $contextAssembly = $this->createMock(ContextAssemblyServiceInterface::class);
         $contextAssembly->expects(self::never())->method('assembleContext');
 
-        $serviceManager = $this->createMock(\Netresearch\NrLlm\Service\LlmServiceManagerInterface::class);
+        $serviceManager = $this->createMock(LlmServiceManagerInterface::class);
         $serviceManager->method('chatWithConfiguration')->willReturn($llmResponse);
 
-        $configRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository::class);
+        $configRepo = $this->createMock(LlmConfigurationRepository::class);
         $configRepo->method('findDefault')->willReturn($this->createLlmConfiguration());
 
-        $taskRepo = $this->createMock(\Netresearch\NrLlm\Domain\Repository\TaskRepository::class);
+        $taskRepo = $this->createMock(TaskRepository::class);
         $taskRepo->method('findByUid')->willReturn(
             $this->createTaskMock(1, 'improve', 'Improve', 'desc', '{{input}}'),
         );
 
-        $rateLimiter = $this->createMock(\Netresearch\T3Cowriter\Service\RateLimiterInterface::class);
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(
-            new \Netresearch\T3Cowriter\Service\RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
+            new RateLimitResult(allowed: true, limit: 20, remaining: 19, resetTime: time() + 60),
         );
 
-        $context = $this->createMock(\TYPO3\CMS\Core\Context\Context::class);
+        $context = $this->createMock(Context::class);
         $context->method('getPropertyFromAspect')->willReturn(1);
 
         $controller = new AjaxController(
@@ -2206,7 +2222,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
             $context,
             $this->logger,
             $contextAssembly,
-            $this->createMock(\TYPO3\CMS\Core\Database\ConnectionPool::class),
+            $this->createMock(ConnectionPool::class),
             $this->createCowriterStatusUriBuilderMock(),
             $this->createPassingDiagnosticServiceMock(),
         );
@@ -2228,7 +2244,7 @@ final class CowriterWorkflowTest extends AbstractE2ETestCase
     private function createCowriterStatusUriBuilderMock(): BackendUriBuilder
     {
         $mock = $this->createMock(BackendUriBuilder::class);
-        $mock->method('buildUriFromRoute')->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+        $mock->method('buildUriFromRoute')->willReturn(new Uri('/typo3/module/cowriter/status'));
 
         return $mock;
     }

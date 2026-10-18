@@ -620,7 +620,7 @@ final class ContextAssemblyServiceTest extends TestCase
         $queryBuilder->method('setMaxResults')->willReturn($queryBuilder);
         $queryBuilder->method('expr')->willReturn($expressionBuilder);
         $queryBuilder->method('createNamedParameter')->willReturnCallback(
-            fn ($value) => "'" . $value . "'",
+            fn ($value): string => "'" . $value . "'",
         );
         // RecordFinder and the remaining queries read the rows in one sequence,
         // as one query builder did before RecordFinder took over the reads.

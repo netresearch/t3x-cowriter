@@ -32,7 +32,9 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     use XliffLanguageServiceTrait;
 
     private InjectAjaxUrlsListener $subject;
+
     private BackendUriBuilder&MockObject $backendUriBuilderMock;
+
     private LoggerInterface&MockObject $loggerMock;
 
     protected function setUp(): void
@@ -66,7 +68,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     {
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
-            ->willReturnCallback(fn (string $route) => new Uri('/typo3/ajax/' . $route));
+            ->willReturnCallback(fn (string $route): Uri => new Uri('/typo3/ajax/' . $route));
 
         $inlineCalls    = [];
         $assetCollector = $this->createMock(AssetCollector::class);
@@ -110,7 +112,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     {
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
-            ->willReturnCallback(fn (string $route) => new Uri('/typo3/ajax/' . $route));
+            ->willReturnCallback(fn (string $route): Uri => new Uri('/typo3/ajax/' . $route));
 
         $captured       = [];
         $assetCollector = $this->createMock(AssetCollector::class);
@@ -170,7 +172,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     {
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
-            ->willReturnCallback(fn (string $route) => new Uri('/typo3/ajax/' . $route));
+            ->willReturnCallback(fn (string $route): Uri => new Uri('/typo3/ajax/' . $route));
 
         $capturedJson   = '';
         $assetCollector = $this->createMock(AssetCollector::class);
@@ -215,7 +217,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $generatedRoutes = [];
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
-            ->willReturnCallback(function (string $route) use (&$generatedRoutes) {
+            ->willReturnCallback(function (string $route) use (&$generatedRoutes): Uri {
                 $generatedRoutes[] = $route;
 
                 return new Uri('/typo3/ajax/' . $route);
@@ -291,7 +293,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     {
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
-            ->willReturnCallback(fn (string $route) => new Uri('/typo3/ajax/' . $route));
+            ->willReturnCallback(fn (string $route): Uri => new Uri('/typo3/ajax/' . $route));
 
         $capturedJson   = '';
         $assetCollector = $this->createMock(AssetCollector::class);

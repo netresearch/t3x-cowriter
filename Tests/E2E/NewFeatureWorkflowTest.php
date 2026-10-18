@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\E2E;
 
+use TYPO3\CMS\Core\Http\Uri;
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
@@ -113,7 +114,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $backendUriBuilder = $this->createMock(BackendUriBuilder::class);
         $backendUriBuilder->method('buildUriFromRoute')
-            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+            ->willReturn(new Uri('/typo3/module/cowriter/status'));
 
         $diagnosticService = $this->createMock(DiagnosticService::class);
         $diagnosticService->method('runFirst')
@@ -381,7 +382,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $backendUriBuilder2 = $this->createMock(BackendUriBuilder::class);
         $backendUriBuilder2->method('buildUriFromRoute')
-            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+            ->willReturn(new Uri('/typo3/module/cowriter/status'));
 
         $diagnosticService2 = $this->createMock(DiagnosticService::class);
         $diagnosticService2->method('runFirst')

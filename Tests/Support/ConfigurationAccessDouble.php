@@ -22,16 +22,16 @@ use Netresearch\T3Cowriter\Service\ConfigurationSelector;
  * denied ones, which is what nr-llm answers an administrator. The management
  * methods are not used by cowriter and throw.
  */
-final class ConfigurationAccessDouble implements LlmConfigurationServiceInterface
+final readonly class ConfigurationAccessDouble implements LlmConfigurationServiceInterface
 {
     /**
      * @param list<string>                $deniedIdentifiers
      * @param list<LlmConfiguration>|null $accessible        null: derive from $repository
      */
     public function __construct(
-        private readonly array $deniedIdentifiers = [],
-        private readonly ?array $accessible = null,
-        private readonly ?LlmConfigurationRepository $repository = null,
+        private array $deniedIdentifiers = [],
+        private ?array $accessible = null,
+        private ?LlmConfigurationRepository $repository = null,
     ) {}
 
     /**

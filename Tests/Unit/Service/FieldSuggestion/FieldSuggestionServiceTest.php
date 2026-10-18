@@ -44,7 +44,7 @@ final class FieldSuggestionServiceTest extends TestCase
         return new FieldSuggestionService($this->completion, $slugBuilder ?? $this->createStub(SlugSuggestionBuilder::class));
     }
 
-    private static function context(string $field = 'seo_title', string $storedValue = 'Stored title'): RecordContext
+    private function context(string $field = 'seo_title', string $storedValue = 'Stored title'): RecordContext
     {
         return new RecordContext(
             table: 'pages',
@@ -62,7 +62,7 @@ final class FieldSuggestionServiceTest extends TestCase
     {
         $this->completion->structuredResult = ['suggestions' => ['A', 'B', 'C']];
 
-        $this->subject()->suggest(self::context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 3, new LlmConfiguration());
+        $this->subject()->suggest($this->context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 3, new LlmConfiguration());
 
         self::assertCount(1, $this->completion->completeStructuredForConfigurationCalls);
         $call = $this->completion->completeStructuredForConfigurationCalls[0];
@@ -96,7 +96,7 @@ final class FieldSuggestionServiceTest extends TestCase
         $this->completion->structuredResult = ['suggestions' => ['A']];
         $configuration                      = new LlmConfiguration();
 
-        $this->subject()->suggest(self::context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 1, $configuration);
+        $this->subject()->suggest($this->context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 1, $configuration);
 
         $call = $this->completion->completeStructuredForConfigurationCalls[0];
         self::assertSame($configuration, $call['configuration']);
@@ -116,7 +116,7 @@ final class FieldSuggestionServiceTest extends TestCase
             'office chairs',
         ]];
 
-        $result = $this->subject()->suggest(self::context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 3, new LlmConfiguration());
+        $result = $this->subject()->suggest($this->context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 3, new LlmConfiguration());
 
         self::assertSame(['Ergonomic office chairs with lumbar support for long working', 'Office chairs'], $result);
     }
@@ -126,14 +126,14 @@ final class FieldSuggestionServiceTest extends TestCase
     {
         $this->completion->structuredResult = ['suggestions' => 'Just one string'];
 
-        self::assertSame([], $this->subject()->suggest(self::context(), new FieldProfile(FieldKind::Text, 60), '', 3, new LlmConfiguration()));
+        self::assertSame([], $this->subject()->suggest($this->context(), new FieldProfile(FieldKind::Text, 60), '', 3, new LlmConfiguration()));
     }
 
     #[Test]
     public function slugSuggestionsAreBuiltByTheSlugBuilder(): void
     {
         $this->completion->structuredResult = ['suggestions' => ['Ergonomic Chairs', 'Office seating', 'Chairs!', 'nothing usable']];
-        $context                            = self::context('slug', '/products/old');
+        $context                            = $this->context('slug', '/products/old');
 
         $slugBuilder = $this->createMock(SlugSuggestionBuilder::class);
         $slugBuilder->expects(self::exactly(4))->method('build')->willReturnCallback(
@@ -158,7 +158,7 @@ final class FieldSuggestionServiceTest extends TestCase
         $slugBuilder                        = $this->createMock(SlugSuggestionBuilder::class);
         $slugBuilder->expects(self::never())->method('build');
 
-        $this->subject($slugBuilder)->suggest(self::context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 1, new LlmConfiguration());
+        $this->subject($slugBuilder)->suggest($this->context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 1, new LlmConfiguration());
     }
 
     #[Test]
@@ -167,19 +167,19 @@ final class FieldSuggestionServiceTest extends TestCase
         $this->completion->structuredResult = ['suggestions' => ['A', 'B', 'C']];
         $profile                            = new FieldProfile(FieldKind::SeoTitle, 60);
 
-        $this->subject()->suggest(self::context(), $profile, 'Typed, not saved', 3, new LlmConfiguration());
+        $this->subject()->suggest($this->context(), $profile, 'Typed, not saved', 3, new LlmConfiguration());
 
         $call    = $this->completion->completeStructuredForConfigurationCalls[0];
         $options = $call['options'];
         self::assertInstanceOf(ChatOptions::class, $options);
-        self::assertSame($this->subject()->buildSystemPrompt(self::context(), $profile, 3), $options->getSystemPrompt());
-        self::assertSame($this->subject()->buildUserMessage(self::context(), 'Typed, not saved'), $call['prompt']);
+        self::assertSame($this->subject()->buildSystemPrompt($this->context(), $profile, 3), $options->getSystemPrompt());
+        self::assertSame($this->subject()->buildUserMessage($this->context(), 'Typed, not saved'), $call['prompt']);
     }
 
     #[Test]
     public function systemPromptCarriesTheInstructionsAndNoRecordData(): void
     {
-        $system = $this->subject()->buildSystemPrompt(self::context(), new FieldProfile(FieldKind::SeoTitle, 60), 3);
+        $system = $this->subject()->buildSystemPrompt($this->context(), new FieldProfile(FieldKind::SeoTitle, 60), 3);
 
         self::assertStringContainsString('Give exactly 3 different suggestions.', $system);
         self::assertStringContainsString('at most 60 characters', $system);
@@ -194,7 +194,7 @@ final class FieldSuggestionServiceTest extends TestCase
     #[Test]
     public function userMessageHoldsOnlyTheFencedRecordData(): void
     {
-        $message = $this->subject()->buildUserMessage(self::context(), 'Typed, not saved');
+        $message = $this->subject()->buildUserMessage($this->context(), 'Typed, not saved');
 
         self::assertSame(
             UntrustedDataFence::BEGIN_MARKER . "\n"

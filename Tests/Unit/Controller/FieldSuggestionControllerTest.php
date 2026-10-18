@@ -60,9 +60,13 @@ final class FieldSuggestionControllerTest extends TestCase
     use XliffLanguageServiceTrait;
 
     private FakeCompletionService $completion;
+
     private RecordContextReader&Stub $reader;
+
     private LlmConfigurationRepository&Stub $configurationRepository;
+
     private RateLimiterInterface&Stub $rateLimiter;
+
     private SlugSuggestionBuilder&Stub $slugBuilder;
 
     /** @var list<string> */
@@ -78,7 +82,7 @@ final class FieldSuggestionControllerTest extends TestCase
 
         $this->rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
         $this->configurationRepository->method('findDefault')->willReturn(new LlmConfiguration());
-        $this->reader->method('read')->willReturn(self::context('seo_title'));
+        $this->reader->method('read')->willReturn($this->context('seo_title'));
         $this->useXliffLanguageService();
 
         $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
@@ -88,7 +92,7 @@ final class FieldSuggestionControllerTest extends TestCase
         ]]];
     }
 
-    private static function context(string $field, array $record = ['uid' => 12, 'pid' => 3], int $slugPid = 3, int $maxCount = 5): RecordContext
+    private function context(string $field, array $record = ['uid' => 12, 'pid' => 3], int $slugPid = 3, int $maxCount = 5): RecordContext
     {
         return new RecordContext('pages', $field, $record, '', 'Office chairs', 'Ergonomic chairs.', $slugPid, $maxCount);
     }
@@ -136,7 +140,7 @@ final class FieldSuggestionControllerTest extends TestCase
     /**
      * @return array<string, mixed>
      */
-    private static function json(ResponseInterface $response): array
+    private function json(ResponseInterface $response): array
     {
         /** @var array<string, mixed> $data */
         $data = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
@@ -147,7 +151,7 @@ final class FieldSuggestionControllerTest extends TestCase
     /**
      * @return array<string, mixed>
      */
-    private static function body(array $overrides = []): array
+    private function body(array $overrides = []): array
     {
         return $overrides + ['table' => 'pages', 'field' => 'seo_title', 'uid' => 12, 'pid' => 12, 'count' => 3];
     }
@@ -157,12 +161,12 @@ final class FieldSuggestionControllerTest extends TestCase
     {
         $this->completion->structuredResult = ['suggestions' => ['Office chairs', 'Ergonomic office chairs', 'Chairs for your office']];
 
-        $response = $this->subject()->suggestAction($this->request(self::body()));
+        $response = $this->subject()->suggestAction($this->request($this->body()));
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame(
             ['success' => true, 'suggestions' => ['Office chairs', 'Ergonomic office chairs', 'Chairs for your office']],
-            self::json($response),
+            $this->json($response),
         );
         self::assertSame(FieldSuggestionService::schema(3), $this->completion->completeStructuredForConfigurationCalls[0]['schema']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
@@ -173,9 +177,9 @@ final class FieldSuggestionControllerTest extends TestCase
     {
         $this->completion->structuredResult = ['suggestions' => ['1', '2', '3', '4', '5']];
 
-        $response = $this->subject()->suggestAction($this->request(self::body(['count' => 50])));
+        $response = $this->subject()->suggestAction($this->request($this->body(['count' => 50])));
 
-        self::assertCount(5, self::json($response)['suggestions']);
+        self::assertCount(5, $this->json($response)['suggestions']);
         self::assertSame(FieldSuggestionService::schema(5), $this->completion->completeStructuredForConfigurationCalls[0]['schema']);
     }
 
@@ -183,10 +187,10 @@ final class FieldSuggestionControllerTest extends TestCase
     public function configuredCountCapsTheRequestedCount(): void
     {
         $this->reader = $this->createStub(RecordContextReader::class);
-        $this->reader->method('read')->willReturn(self::context('seo_title', maxCount: 2));
+        $this->reader->method('read')->willReturn($this->context('seo_title', maxCount: 2));
         $this->completion->structuredResult = ['suggestions' => ['1', '2']];
 
-        $this->subject()->suggestAction($this->request(self::body(['count' => 4])));
+        $this->subject()->suggestAction($this->request($this->body(['count' => 4])));
 
         self::assertSame(FieldSuggestionService::schema(2), $this->completion->completeStructuredForConfigurationCalls[0]['schema']);
     }
@@ -195,10 +199,10 @@ final class FieldSuggestionControllerTest extends TestCase
     public function fewerThanTheConfiguredCountMayBeRequested(): void
     {
         $this->reader = $this->createStub(RecordContextReader::class);
-        $this->reader->method('read')->willReturn(self::context('seo_title', maxCount: 4));
+        $this->reader->method('read')->willReturn($this->context('seo_title', maxCount: 4));
         $this->completion->structuredResult = ['suggestions' => ['1', '2']];
 
-        $this->subject()->suggestAction($this->request(self::body(['count' => 2])));
+        $this->subject()->suggestAction($this->request($this->body(['count' => 2])));
 
         self::assertSame(FieldSuggestionService::schema(2), $this->completion->completeStructuredForConfigurationCalls[0]['schema']);
     }
@@ -211,7 +215,7 @@ final class FieldSuggestionControllerTest extends TestCase
             ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
         $this->completion->structuredResult = ['suggestions' => ['A']];
 
-        $this->subject()->suggestAction($this->request(self::body(['count' => 1])));
+        $this->subject()->suggestAction($this->request($this->body(['count' => 1])));
     }
 
     #[Test]
@@ -220,7 +224,7 @@ final class FieldSuggestionControllerTest extends TestCase
         $this->rateLimiter = $this->createStub(RateLimiterInterface::class);
         $this->rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(false, 20, 0, time() + 30));
 
-        $response = $this->subject()->suggestAction($this->request(self::body()));
+        $response = $this->subject()->suggestAction($this->request($this->body()));
 
         self::assertSame(429, $response->getStatusCode());
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
@@ -232,7 +236,7 @@ final class FieldSuggestionControllerTest extends TestCase
         $response = $this->subject()->suggestAction($this->request('{not json'));
 
         self::assertSame(400, $response->getStatusCode());
-        self::assertSame(['success' => false, 'error' => 'Invalid JSON in request body.'], self::json($response));
+        self::assertSame(['success' => false, 'error' => 'Invalid JSON in request body.'], $this->json($response));
     }
 
     #[Test]
@@ -241,7 +245,7 @@ final class FieldSuggestionControllerTest extends TestCase
         $response = $this->subject()->suggestAction($this->request(['field' => 'seo_title']));
 
         self::assertSame(400, $response->getStatusCode());
-        self::assertSame(['success' => false, 'error' => 'Table and field are required.'], self::json($response));
+        self::assertSame(['success' => false, 'error' => 'Table and field are required.'], $this->json($response));
     }
 
     #[Test]
@@ -249,10 +253,10 @@ final class FieldSuggestionControllerTest extends TestCase
     {
         unset($GLOBALS['BE_USER']);
 
-        $response = $this->subject()->suggestAction($this->request(self::body()));
+        $response = $this->subject()->suggestAction($this->request($this->body()));
 
         self::assertSame(403, $response->getStatusCode());
-        self::assertSame(['success' => false, 'error' => 'No backend user session.'], self::json($response));
+        self::assertSame(['success' => false, 'error' => 'No backend user session.'], $this->json($response));
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
 
@@ -262,10 +266,10 @@ final class FieldSuggestionControllerTest extends TestCase
         $this->reader = $this->createStub(RecordContextReader::class);
         $this->reader->method('read')->willThrowException(FieldSuggestionException::accessDenied());
 
-        $response = $this->subject()->suggestAction($this->request(self::body()));
+        $response = $this->subject()->suggestAction($this->request($this->body()));
 
         self::assertSame(403, $response->getStatusCode());
-        self::assertSame(['success' => false, 'error' => 'You are not allowed to edit this field.'], self::json($response));
+        self::assertSame(['success' => false, 'error' => 'You are not allowed to edit this field.'], $this->json($response));
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
 
@@ -273,12 +277,12 @@ final class FieldSuggestionControllerTest extends TestCase
     public function slugOfASiteRootIsNotSuggested(): void
     {
         $this->reader = $this->createStub(RecordContextReader::class);
-        $this->reader->method('read')->willReturn(self::context('slug', ['uid' => 1, 'pid' => 0, 'is_siteroot' => 1], 0));
+        $this->reader->method('read')->willReturn($this->context('slug', ['uid' => 1, 'pid' => 0, 'is_siteroot' => 1], 0));
 
-        $response = $this->subject()->suggestAction($this->request(self::body(['field' => 'slug'])));
+        $response = $this->subject()->suggestAction($this->request($this->body(['field' => 'slug'])));
 
         self::assertSame(422, $response->getStatusCode());
-        self::assertSame('The root page of a site always has the slug "/".', self::json($response)['error']);
+        self::assertSame('The root page of a site always has the slug "/".', $this->json($response)['error']);
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
 
@@ -286,15 +290,15 @@ final class FieldSuggestionControllerTest extends TestCase
     public function slugSuggestionsComeFromTheSlugBuilder(): void
     {
         $this->reader = $this->createStub(RecordContextReader::class);
-        $this->reader->method('read')->willReturn(self::context('slug'));
+        $this->reader->method('read')->willReturn($this->context('slug'));
         $this->slugBuilder->method('build')->willReturnCallback(
             static fn (string $segment): string => '/products/' . strtolower(str_replace(' ', '-', $segment)),
         );
         $this->completion->structuredResult = ['suggestions' => ['Office Chairs']];
 
-        $response = $this->subject()->suggestAction($this->request(self::body(['field' => 'slug', 'count' => 1])));
+        $response = $this->subject()->suggestAction($this->request($this->body(['field' => 'slug', 'count' => 1])));
 
-        self::assertSame(['/products/office-chairs'], self::json($response)['suggestions']);
+        self::assertSame(['/products/office-chairs'], $this->json($response)['suggestions']);
     }
 
     #[Test]
@@ -303,12 +307,12 @@ final class FieldSuggestionControllerTest extends TestCase
         $this->configurationRepository = $this->createStub(LlmConfigurationRepository::class);
         $this->configurationRepository->method('findDefault')->willReturn(null);
 
-        $response = $this->subject()->suggestAction($this->request(self::body()));
+        $response = $this->subject()->suggestAction($this->request($this->body()));
 
         self::assertSame(404, $response->getStatusCode());
         self::assertSame(
             ['success' => false, 'error' => 'No LLM configuration available. Please configure the nr_llm extension.'],
-            self::json($response),
+            $this->json($response),
         );
     }
 
@@ -353,10 +357,10 @@ final class FieldSuggestionControllerTest extends TestCase
     {
         $this->completion->throwable = $failure;
 
-        $response = $this->subject()->suggestAction($this->request(self::body()));
+        $response = $this->subject()->suggestAction($this->request($this->body()));
 
         self::assertSame(502, $response->getStatusCode());
-        self::assertSame(['success' => false, 'error' => $expected], self::json($response));
+        self::assertSame(['success' => false, 'error' => $expected], $this->json($response));
         self::assertStringNotContainsString($failure->getMessage(), (string) $response->getBody());
         // The details go to the log instead.
         self::assertSame(['Field suggestion failed ' . json_encode(['exception' => $failure->getMessage()])], $this->logged);
@@ -367,10 +371,10 @@ final class FieldSuggestionControllerTest extends TestCase
     {
         $this->completion->structuredResult = ['suggestions' => ['', '   ']];
 
-        $response = $this->subject()->suggestAction($this->request(self::body()));
+        $response = $this->subject()->suggestAction($this->request($this->body()));
 
         self::assertSame(502, $response->getStatusCode());
-        self::assertSame(['success' => false, 'error' => 'The AI returned no usable suggestions. Please try again.'], self::json($response));
+        self::assertSame(['success' => false, 'error' => 'The AI returned no usable suggestions. Please try again.'], $this->json($response));
     }
 
     #[Test]
@@ -379,16 +383,16 @@ final class FieldSuggestionControllerTest extends TestCase
         $this->useXliffLanguageService('de');
 
         $this->completion->throwable = new ProviderResponseException('Too many requests', 429);
-        $response                    = $this->subject()->suggestAction($this->request(self::body()));
+        $response                    = $this->subject()->suggestAction($this->request($this->body()));
         self::assertSame(
             'Das Anfragelimit des LLM-Anbieters wurde überschritten. Bitte warten Sie einen Moment und versuchen Sie es erneut.',
-            self::json($response)['error'],
+            $this->json($response)['error'],
         );
 
         $this->reader = $this->createStub(RecordContextReader::class);
         $this->reader->method('read')->willThrowException(FieldSuggestionException::accessDenied());
-        $response = $this->subject()->suggestAction($this->request(self::body()));
-        self::assertSame('Sie dürfen dieses Feld nicht bearbeiten.', self::json($response)['error']);
+        $response = $this->subject()->suggestAction($this->request($this->body()));
+        self::assertSame('Sie dürfen dieses Feld nicht bearbeiten.', $this->json($response)['error']);
     }
 
     #[Test]
@@ -396,7 +400,7 @@ final class FieldSuggestionControllerTest extends TestCase
     {
         $this->completion->structuredResult = ['suggestions' => ['A']];
 
-        $this->subject()->suggestAction($this->request(self::body(['count' => 1])));
+        $this->subject()->suggestAction($this->request($this->body(['count' => 1])));
 
         self::assertSame([], $this->logged);
     }

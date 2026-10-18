@@ -115,7 +115,7 @@ final class RecordContextReaderTest extends TestCase
     /**
      * @param array<string, mixed> $body
      */
-    private static function request(array $body): FieldSuggestionRequest
+    private function request(array $body): FieldSuggestionRequest
     {
         return FieldSuggestionRequest::fromArray($body + ['table' => 'pages', 'field' => 'seo_title', 'uid' => 12]);
     }
@@ -142,7 +142,7 @@ final class RecordContextReaderTest extends TestCase
         self::assertInstanceOf(MockObject::class, $finder);
         $finder->expects(self::once())->method('findPageContent')->with(12, 0, 0);
 
-        $context = (new RecordContextReader($finder))->read(self::request([]), $this->editor());
+        $context = (new RecordContextReader($finder))->read($this->request([]), $this->editor());
 
         self::assertSame('pages', $context->table);
         self::assertSame('seo_title', $context->field);
@@ -162,7 +162,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read(self::request([]), $user),
+            fn (): RecordContext => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read($this->request([]), $user),
         );
     }
 
@@ -172,7 +172,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read(self::request([]), $this->editor(['tables_modify:pages'])),
+            fn (): RecordContext => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read($this->request([]), $this->editor(['tables_modify:pages'])),
         );
     }
 
@@ -182,7 +182,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read(self::request([]), $this->editor(['non_exclude_fields:pages:seo_title'])),
+            fn (): RecordContext => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read($this->request([]), $this->editor(['non_exclude_fields:pages:seo_title'])),
         );
     }
 
@@ -192,8 +192,8 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))
-                ->read(self::request(['field' => 'keywords']), $this->editor(['non_exclude_fields:pages:keywords'])),
+            fn (): RecordContext => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))
+                ->read($this->request(['field' => 'keywords']), $this->editor(['non_exclude_fields:pages:keywords'])),
         );
     }
 
@@ -214,7 +214,7 @@ final class RecordContextReaderTest extends TestCase
             $user->method('recordEditAccessInternals')->willReturn(true);
         }
 
-        $context = (new RecordContextReader($finder))->read(self::request(['uid' => 57]), $user);
+        $context = (new RecordContextReader($finder))->read($this->request(['uid' => 57]), $user);
 
         self::assertSame('Bürostühle', $context->pageTitle);
         self::assertSame('Alt', $context->storedValue);
@@ -229,14 +229,14 @@ final class RecordContextReaderTest extends TestCase
         self::assertInstanceOf(MockObject::class, $finder);
         $finder->expects(self::once())->method('findPageContent')->with(57, 2, 0);
 
-        self::assertSame('Orphan', (new RecordContextReader($finder))->read(self::request(['uid' => 57]), $this->editor())->pageTitle);
+        self::assertSame('Orphan', (new RecordContextReader($finder))->read($this->request(['uid' => 57]), $this->editor())->pageTitle);
     }
 
     #[Test]
     public function nonExcludeFieldDoesNotNeedTheExcludePermission(): void
     {
         $context = (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))
-            ->read(self::request(['field' => 'slug']), $this->editor(['non_exclude_fields:pages:slug']));
+            ->read($this->request(['field' => 'slug']), $this->editor(['non_exclude_fields:pages:slug']));
 
         self::assertSame('/products/office-chairs', $context->storedValue);
     }
@@ -247,7 +247,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read(self::request([]), $this->editor(['record'])),
+            fn (): RecordContext => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read($this->request([]), $this->editor(['record'])),
         );
     }
 
@@ -256,10 +256,10 @@ final class RecordContextReaderTest extends TestCase
     {
         $reader = new RecordContextReader($this->finder(['pages:12' => self::PAGE]));
 
-        $this->assertRefused('Suggestions are not enabled for this field.', 400, fn () => $reader->read(self::request(['field' => 'title']), $this->editor()));
-        $this->assertRefused('Suggestions are not enabled for this field.', 400, fn () => $reader->read(self::request(['field' => 'abstract']), $this->editor()));
-        $this->assertRefused('Suggestions are not enabled for this field.', 400, fn () => $reader->read(self::request(['field' => 'subtitle']), $this->editor()));
-        $this->assertRefused('Suggestions are not enabled for this field.', 400, fn () => $reader->read(self::request(['table' => 'be_users', 'field' => 'password']), $this->editor(admin: true)));
+        $this->assertRefused('Suggestions are not enabled for this field.', 400, fn (): RecordContext => $reader->read($this->request(['field' => 'title']), $this->editor()));
+        $this->assertRefused('Suggestions are not enabled for this field.', 400, fn (): RecordContext => $reader->read($this->request(['field' => 'abstract']), $this->editor()));
+        $this->assertRefused('Suggestions are not enabled for this field.', 400, fn (): RecordContext => $reader->read($this->request(['field' => 'subtitle']), $this->editor()));
+        $this->assertRefused('Suggestions are not enabled for this field.', 400, fn (): RecordContext => $reader->read($this->request(['table' => 'be_users', 'field' => 'password']), $this->editor(admin: true)));
     }
 
     #[Test]
@@ -268,7 +268,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($this->finder()))->read(self::request([]), $this->editor()),
+            fn (): RecordContext => (new RecordContextReader($this->finder()))->read($this->request([]), $this->editor()),
         );
     }
 
@@ -278,7 +278,7 @@ final class RecordContextReaderTest extends TestCase
         $finder = $this->finder(['tt_content:40' => self::CONTENT, 'pages:12' => self::PAGE]);
         $body   = ['table' => 'tt_content', 'field' => 'header', 'uid' => 40];
 
-        $context = (new RecordContextReader($finder))->read(self::request($body), $this->editor());
+        $context = (new RecordContextReader($finder))->read($this->request($body), $this->editor());
         self::assertSame('Old header', $context->storedValue);
         self::assertSame('Office chairs', $context->pageTitle);
         self::assertSame(12, $context->slugPid);
@@ -286,7 +286,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($finder))->read(self::request($body), $this->editor(['page:' . Permission::CONTENT_EDIT])),
+            fn (): RecordContext => (new RecordContextReader($finder))->read($this->request($body), $this->editor(['page:' . Permission::CONTENT_EDIT])),
         );
     }
 
@@ -298,7 +298,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($finder))->read(self::request(['table' => 'tt_content', 'field' => 'header', 'uid' => 40]), $this->editor()),
+            fn (): RecordContext => (new RecordContextReader($finder))->read($this->request(['table' => 'tt_content', 'field' => 'header', 'uid' => 40]), $this->editor()),
         );
     }
 
@@ -308,9 +308,9 @@ final class RecordContextReaderTest extends TestCase
         $finder = $this->finder(['tt_content:40' => ['pid' => 0] + self::CONTENT]);
         $body   = ['table' => 'tt_content', 'field' => 'header', 'uid' => 40];
 
-        $this->assertRefused('You are not allowed to edit this field.', 403, fn () => (new RecordContextReader($finder))->read(self::request($body), $this->editor()));
+        $this->assertRefused('You are not allowed to edit this field.', 403, fn (): RecordContext => (new RecordContextReader($finder))->read($this->request($body), $this->editor()));
 
-        $context = (new RecordContextReader($finder))->read(self::request($body), $this->editor(admin: true));
+        $context = (new RecordContextReader($finder))->read($this->request($body), $this->editor(admin: true));
         self::assertSame('', $context->pageTitle);
         self::assertSame('', $context->pageContent);
     }
@@ -322,7 +322,7 @@ final class RecordContextReaderTest extends TestCase
         self::assertInstanceOf(MockObject::class, $finder);
         $finder->expects(self::once())->method('findPageContent')->with(12, 2, 0);
 
-        (new RecordContextReader($finder))->read(self::request([]), $this->editor());
+        (new RecordContextReader($finder))->read($this->request([]), $this->editor());
     }
 
     #[Test]
@@ -332,7 +332,7 @@ final class RecordContextReaderTest extends TestCase
         self::assertInstanceOf(MockObject::class, $finder);
         $finder->expects(self::never())->method('findPageContent');
 
-        $context = (new RecordContextReader($finder))->read(self::request([]), $this->editor(['tables_select:tt_content']));
+        $context = (new RecordContextReader($finder))->read($this->request([]), $this->editor(['tables_select:tt_content']));
 
         self::assertSame('', $context->pageContent);
     }
@@ -345,7 +345,7 @@ final class RecordContextReaderTest extends TestCase
         self::assertInstanceOf(MockObject::class, $finder);
         $finder->expects(self::once())->method('findPageContent')->with(12, 0, 0);
 
-        (new RecordContextReader($finder))->read(self::request([]), $this->editor());
+        (new RecordContextReader($finder))->read($this->request([]), $this->editor());
     }
 
     #[Test]
@@ -355,7 +355,7 @@ final class RecordContextReaderTest extends TestCase
         self::assertInstanceOf(MockObject::class, $finder);
         $finder->expects(self::once())->method('findPageContent')->with(12, 0, 0);
 
-        (new RecordContextReader($finder))->read(self::request([]), $this->editor());
+        (new RecordContextReader($finder))->read($this->request([]), $this->editor());
     }
 
     #[Test]
@@ -365,7 +365,7 @@ final class RecordContextReaderTest extends TestCase
         self::assertInstanceOf(MockObject::class, $finder);
         $finder->expects(self::once())->method('findPageContent')->with(3, 0, 0);
 
-        (new RecordContextReader($finder))->read(self::request(['uid' => 'NEW1', 'pid' => 3]), $this->editor());
+        (new RecordContextReader($finder))->read($this->request(['uid' => 'NEW1', 'pid' => 3]), $this->editor());
     }
 
     #[Test]
@@ -378,7 +378,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($finder))->read(self::request(['table' => 'tt_content', 'field' => 'header', 'uid' => 40]), $this->editor()),
+            fn (): RecordContext => (new RecordContextReader($finder))->read($this->request(['table' => 'tt_content', 'field' => 'header', 'uid' => 40]), $this->editor()),
         );
     }
 
@@ -387,7 +387,7 @@ final class RecordContextReaderTest extends TestCase
     {
         $finder = $this->finder(['pages:12' => self::PAGE], [['header' => str_repeat('ä', 7000), 'bodytext' => '']]);
 
-        $context = (new RecordContextReader($finder))->read(self::request([]), $this->editor());
+        $context = (new RecordContextReader($finder))->read($this->request([]), $this->editor());
 
         self::assertSame(str_repeat('ä', RecordContextReader::MAX_PAGE_CONTENT_LENGTH), $context->pageContent);
     }
@@ -397,7 +397,7 @@ final class RecordContextReaderTest extends TestCase
     {
         $finder = $this->finder(['pages:12' => self::PAGE], [['header' => '', 'bodytext' => '<p>Don&apos;t miss &quot;it&quot;</p>  ']]);
 
-        $context = (new RecordContextReader($finder))->read(self::request([]), $this->editor());
+        $context = (new RecordContextReader($finder))->read($this->request([]), $this->editor());
 
         self::assertSame('Don\'t miss "it"', $context->pageContent);
     }
@@ -407,7 +407,7 @@ final class RecordContextReaderTest extends TestCase
     {
         $finder = $this->finder(['pages:12' => self::PAGE], [['header' => str_repeat('a', 7000), 'bodytext' => '']]);
 
-        $context = (new RecordContextReader($finder))->read(self::request([]), $this->editor());
+        $context = (new RecordContextReader($finder))->read($this->request([]), $this->editor());
 
         self::assertSame(RecordContextReader::MAX_PAGE_CONTENT_LENGTH, mb_strlen($context->pageContent));
     }
@@ -418,7 +418,7 @@ final class RecordContextReaderTest extends TestCase
         $finder = $this->finder(['pages:3' => self::PARENT_PAGE]);
         $body   = ['uid' => 'NEW1', 'pid' => 3];
 
-        $context = (new RecordContextReader($finder))->read(self::request($body), $this->editor());
+        $context = (new RecordContextReader($finder))->read($this->request($body), $this->editor());
         self::assertSame('Products', $context->pageTitle);
         self::assertSame('', $context->storedValue);
         self::assertSame(['pid' => 3], $context->record);
@@ -427,7 +427,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($finder))->read(self::request($body), $this->editor(['page:' . Permission::PAGE_NEW])),
+            fn (): RecordContext => (new RecordContextReader($finder))->read($this->request($body), $this->editor(['page:' . Permission::PAGE_NEW])),
         );
     }
 
@@ -437,12 +437,12 @@ final class RecordContextReaderTest extends TestCase
         $finder = $this->finder(['pages:12' => self::PAGE]);
         $body   = ['table' => 'tt_content', 'field' => 'header', 'uid' => 'NEW1', 'pid' => 12];
 
-        self::assertSame('Office chairs', (new RecordContextReader($finder))->read(self::request($body), $this->editor(['page:' . Permission::PAGE_NEW]))->pageTitle);
+        self::assertSame('Office chairs', (new RecordContextReader($finder))->read($this->request($body), $this->editor(['page:' . Permission::PAGE_NEW]))->pageTitle);
 
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($finder))->read(self::request($body), $this->editor(['page:' . Permission::CONTENT_EDIT])),
+            fn (): RecordContext => (new RecordContextReader($finder))->read($this->request($body), $this->editor(['page:' . Permission::CONTENT_EDIT])),
         );
     }
 
@@ -452,7 +452,7 @@ final class RecordContextReaderTest extends TestCase
         $this->assertRefused(
             'You are not allowed to edit this field.',
             403,
-            fn () => (new RecordContextReader($this->finder()))->read(self::request(['uid' => 'NEW1', 'pid' => 99]), $this->editor()),
+            fn (): RecordContext => (new RecordContextReader($this->finder()))->read($this->request(['uid' => 'NEW1', 'pid' => 99]), $this->editor()),
         );
     }
 
@@ -462,9 +462,9 @@ final class RecordContextReaderTest extends TestCase
         $reader = new RecordContextReader($this->finder());
         $body   = ['uid' => 'NEW1', 'pid' => 0];
 
-        $this->assertRefused('You are not allowed to edit this field.', 403, fn () => $reader->read(self::request($body), $this->editor()));
+        $this->assertRefused('You are not allowed to edit this field.', 403, fn (): RecordContext => $reader->read($this->request($body), $this->editor()));
 
-        $context = $reader->read(self::request($body), $this->editor(admin: true));
+        $context = $reader->read($this->request($body), $this->editor(admin: true));
         self::assertSame(0, $context->slugPid);
         self::assertTrue($context->isSiteRoot());
     }
@@ -484,7 +484,7 @@ final class RecordContextReaderTest extends TestCase
         $user            = $this->editor();
         $user->workspace = 4;
 
-        (new RecordContextReader($finder))->read(self::request(['table' => 'tt_content', 'field' => 'header', 'uid' => 40]), $user);
+        (new RecordContextReader($finder))->read($this->request(['table' => 'tt_content', 'field' => 'header', 'uid' => 40]), $user);
     }
 
     #[Test]
@@ -496,7 +496,7 @@ final class RecordContextReaderTest extends TestCase
         $user            = $this->editor();
         $user->workspace = -99;
 
-        (new RecordContextReader($finder))->read(self::request([]), $user);
+        (new RecordContextReader($finder))->read($this->request([]), $user);
     }
 
     #[Test]
@@ -505,14 +505,14 @@ final class RecordContextReaderTest extends TestCase
         $GLOBALS['TCA']['pages']['columns']['seo_title']['config']['fieldControl'][RegisterFieldSuggestionControlsListener::CONTROL_NAME]['options'] = ['count' => 2];
         $reader                                                                                                                                      = new RecordContextReader($this->finder(['pages:12' => self::PAGE, 'pages:3' => self::PARENT_PAGE]));
 
-        self::assertSame(2, $reader->read(self::request([]), $this->editor())->maxCount);
-        self::assertSame(2, $reader->read(self::request(['uid' => 'NEW1', 'pid' => 3]), $this->editor())->maxCount);
+        self::assertSame(2, $reader->read($this->request([]), $this->editor())->maxCount);
+        self::assertSame(2, $reader->read($this->request(['uid' => 'NEW1', 'pid' => 3]), $this->editor())->maxCount);
 
         $GLOBALS['TCA']['pages']['columns']['seo_title']['config']['fieldControl'][RegisterFieldSuggestionControlsListener::CONTROL_NAME]['options'] = ['count' => 9];
-        self::assertSame(5, $reader->read(self::request([]), $this->editor())->maxCount);
+        self::assertSame(5, $reader->read($this->request([]), $this->editor())->maxCount);
 
         $GLOBALS['TCA']['pages']['columns']['seo_title']['config']['fieldControl'][RegisterFieldSuggestionControlsListener::CONTROL_NAME]['options'] = ['count' => 0];
-        self::assertSame(1, $reader->read(self::request([]), $this->editor())->maxCount);
+        self::assertSame(1, $reader->read($this->request([]), $this->editor())->maxCount);
     }
 
     #[Test]
@@ -520,7 +520,7 @@ final class RecordContextReaderTest extends TestCase
     {
         $reader = new RecordContextReader($this->finder(['pages:12' => self::PAGE]));
 
-        self::assertSame(5, $reader->read(self::request([]), $this->editor())->maxCount);
+        self::assertSame(5, $reader->read($this->request([]), $this->editor())->maxCount);
     }
 
     #[Test]

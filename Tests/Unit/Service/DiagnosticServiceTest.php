@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Service;
 
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
+use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Provider;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
@@ -25,15 +27,17 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 
 #[CoversClass(DiagnosticService::class)]
-#[CoversClass(\Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck::class)]
-#[CoversClass(\Netresearch\T3Cowriter\Service\Dto\DiagnosticResult::class)]
+#[CoversClass(DiagnosticCheck::class)]
+#[CoversClass(DiagnosticResult::class)]
 #[CoversClass(Severity::class)]
 final class DiagnosticServiceTest extends TestCase
 {
     use XliffLanguageServiceTrait;
 
     private ProviderRepository&Stub $providerRepoStub;
+
     private ModelRepository&Stub $modelRepoStub;
+
     private LlmConfigurationRepository&Stub $configRepoStub;
 
     protected function setUp(): void

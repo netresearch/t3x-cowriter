@@ -50,9 +50,13 @@ final class AjaxControllerStreamTest extends TestCase
     use XliffLanguageServiceTrait;
 
     private LlmServiceManagerInterface&Stub $llm;
+
     private LlmConfigurationRepository&Stub $configurations;
+
     private TaskRepository&Stub $tasks;
+
     private RecordingEventStream $stream;
+
     private LlmConfiguration&Stub $configuration;
 
     /** @var list<list<array<string, mixed>>> messages of each LLM call, streamed or not */
@@ -143,6 +147,7 @@ final class AjaxControllerStreamTest extends TestCase
             self::assertSame(['role' => 'user', 'content' => 'Improve this'], $messages[$count - 1]);
             self::assertSame(['role' => 'system', 'content' => "For this request:\n\nAim for about 150 words."], $messages[$count - 2]);
         }
+
         self::assertCount(2, $this->sentMessages);
         $data = json_decode((string) $json->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($data);
@@ -155,12 +160,13 @@ final class AjaxControllerStreamTest extends TestCase
     {
         $this->streamChunks(['x']);
 
-        $this->subject(targetWords: null)->executeTaskStreamAction($this->request());
+        $this->subject()->executeTaskStreamAction($this->request());
 
         self::assertCount(1, $this->sentMessages);
         foreach ($this->sentMessages[0] as $message) {
             self::assertStringNotContainsString('For this request', (string) $message['content']);
         }
+
         self::assertArrayNotHasKey('targetWords', $this->stream->events[array_key_last($this->stream->events)]);
     }
 

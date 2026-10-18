@@ -38,10 +38,12 @@ final class XliffFile
             if (!$unit instanceof DOMElement) {
                 continue;
             }
+
             $id = $unit->getAttribute('id');
             if (array_key_exists($id, $units)) {
                 throw new RuntimeException(sprintf('Duplicate trans-unit id "%s" in %s', $id, $path));
             }
+
             $source     = $xpath->query('x:source', $unit)?->item(0);
             $target     = $xpath->query('x:target', $unit)?->item(0);
             $units[$id] = [
@@ -73,11 +75,13 @@ final class XliffFile
         if (!str_starts_with($reference, self::LABEL_PREFIX)) {
             return '';
         }
+
         [$fileName, $id] = explode(':', substr($reference, strlen(self::LABEL_PREFIX)), 2) + ['', ''];
         $path            = self::LANGUAGE_DIRECTORY . '/' . ($language === 'en' ? '' : $language . '.') . $fileName;
         if (!is_file($path)) {
             return '';
         }
+
         $unit = self::units($path)[$id] ?? null;
         if ($unit === null) {
             return '';
@@ -92,6 +96,7 @@ final class XliffFile
         if (!is_file($path) || !$document->load($path)) {
             throw new RuntimeException(sprintf('Cannot read XLIFF file %s', $path));
         }
+
         $xpath = new DOMXPath($document);
         $xpath->registerNamespace('x', self::NAMESPACE_URI);
 

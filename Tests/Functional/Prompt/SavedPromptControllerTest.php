@@ -150,6 +150,7 @@ final class SavedPromptControllerTest extends FunctionalTestCase
             $response = $this->subject()->saveAction($this->request('POST', $body));
             self::assertSame(400, $response->getStatusCode());
         }
+
         self::assertSame(200, $this->subject()->saveAction($this->request('POST', ['title' => str_repeat('ä', 255), 'instruction' => 'x']))->getStatusCode());
     }
 

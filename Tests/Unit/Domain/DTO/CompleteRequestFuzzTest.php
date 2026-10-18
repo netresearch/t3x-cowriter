@@ -78,7 +78,7 @@ final class CompleteRequestFuzzTest extends TestCase
         yield 'vertical tab' => ["vertical\x0Btab"];
         yield 'escape sequence' => ["\x1B[31mred\x1B[0m"];
         yield 'delete character' => ["del\x7Fete"];
-        yield 'all low control chars' => [implode('', array_map('chr', range(0, 31)))];
+        yield 'all low control chars' => [implode('', array_map(chr(...), range(0, 31)))];
     }
 
     // ===================================================

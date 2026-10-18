@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
+use TYPO3\CMS\Core\Http\Uri;
 use Doctrine\DBAL\Result;
 use Generator;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
@@ -61,15 +62,25 @@ final class AjaxControllerTest extends TestCase
     use XliffLanguageServiceTrait;
 
     private AjaxController $subject;
+
     private LlmServiceManagerInterface&MockObject $llmServiceManagerMock;
+
     private LlmConfigurationRepository&MockObject $configRepositoryMock;
+
     private TaskRepository&MockObject $taskRepositoryMock;
+
     private RateLimiterInterface&MockObject $rateLimiterMock;
+
     private Context&MockObject $contextMock;
+
     private LoggerInterface&MockObject $loggerMock;
+
     private ContextAssemblyServiceInterface&MockObject $contextAssemblyMock;
+
     private ConnectionPool&MockObject $connectionPoolMock;
+
     private BackendUriBuilder&MockObject $backendUriBuilderMock;
+
     private DiagnosticService&MockObject $diagnosticServiceMock;
 
     protected function setUp(): void
@@ -88,7 +99,7 @@ final class AjaxControllerTest extends TestCase
         $this->backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
         $this->backendUriBuilderMock
             ->method('buildUriFromRoute')
-            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+            ->willReturn(new Uri('/typo3/module/cowriter/status'));
         $this->diagnosticServiceMock = $this->createMock(DiagnosticService::class);
 
         // Default: rate limit allows request
@@ -861,14 +872,13 @@ final class AjaxControllerTest extends TestCase
             ->expects($this->once())
             ->method('chatWithConfiguration')
             ->with(
-                $this->callback(static function (array $messages): bool {
+                $this->callback(
                     // Verify system message has both role and content
-                    return count($messages) === 2
-                        && $messages[0]['role'] === 'system'
-                        && isset($messages[0]['content'])
-                        && $messages[1]['role'] === 'user'
-                        && $messages[1]['content'] === 'Test prompt';
-                }),
+                    static fn(array $messages): bool => count($messages) === 2
+                    && $messages[0]['role'] === 'system'
+                    && isset($messages[0]['content'])
+                    && $messages[1]['role'] === 'user'
+                    && $messages[1]['content'] === 'Test prompt'),
                 $this->anything(),
             )
             ->willReturn($completionResponse);
@@ -1488,14 +1498,13 @@ final class AjaxControllerTest extends TestCase
             ->expects($this->once())
             ->method('streamChatWithConfiguration')
             ->with(
-                $this->callback(static function (array $messages): bool {
+                $this->callback(
                     // Verify system message has role and content
-                    return count($messages) === 2
-                        && $messages[0]['role'] === 'system'
-                        && isset($messages[0]['content'])
-                        && $messages[1]['role'] === 'user'
-                        && $messages[1]['content'] === 'Test prompt';
-                }),
+                    static fn(array $messages): bool => count($messages) === 2
+                    && $messages[0]['role'] === 'system'
+                    && isset($messages[0]['content'])
+                    && $messages[1]['role'] === 'user'
+                    && $messages[1]['content'] === 'Test prompt'),
                 $this->anything(),
             )
             ->willReturnCallback(function () {
@@ -1996,20 +2005,19 @@ final class AjaxControllerTest extends TestCase
             ->expects($this->once())
             ->method('chatWithConfiguration')
             ->with(
-                $this->callback(static function (array $messages): bool {
+                $this->callback(
                     // [0] = formatting, [1] = scope, [2] = editor_content, [3] = capabilities, [4] = user prompt
-                    return count($messages) === 5
-                        && $messages[0]['role'] === 'system'
-                        && str_contains($messages[0]['content'], 'Do NOT use markdown')
-                        && $messages[1]['role'] === 'system'
-                        && str_contains($messages[1]['content'], 'selected a portion of text')
-                        && $messages[2]['role'] === 'system'
-                        && str_contains($messages[2]['content'], '<editor_content>')
-                        && $messages[3]['role'] === 'system'
-                        && str_contains($messages[3]['content'], 'bold')
-                        && str_contains($messages[3]['content'], 'tables')
-                        && str_contains($messages[3]['content'], '<mark>');
-                }),
+                    static fn(array $messages): bool => count($messages) === 5
+                    && $messages[0]['role'] === 'system'
+                    && str_contains($messages[0]['content'], 'Do NOT use markdown')
+                    && $messages[1]['role'] === 'system'
+                    && str_contains($messages[1]['content'], 'selected a portion of text')
+                    && $messages[2]['role'] === 'system'
+                    && str_contains($messages[2]['content'], '<editor_content>')
+                    && $messages[3]['role'] === 'system'
+                    && str_contains($messages[3]['content'], 'bold')
+                    && str_contains($messages[3]['content'], 'tables')
+                    && str_contains($messages[3]['content'], '<mark>')),
                 $config,
             )
             ->willReturn($completionResponse);
@@ -2042,16 +2050,15 @@ final class AjaxControllerTest extends TestCase
             ->expects($this->once())
             ->method('chatWithConfiguration')
             ->with(
-                $this->callback(static function (array $messages): bool {
+                $this->callback(
                     // [0] = formatting, [1] = scope, [2] = editor_content, [3] = user message (no capabilities)
-                    return count($messages) === 4
-                        && $messages[0]['role'] === 'system'
-                        && str_contains($messages[0]['content'], 'Do NOT use markdown')
-                        && $messages[1]['role'] === 'system'
-                        && $messages[2]['role'] === 'system'
-                        && str_contains($messages[2]['content'], '<editor_content>')
-                        && $messages[3]['role'] === 'user';
-                }),
+                    static fn(array $messages): bool => count($messages) === 4
+                    && $messages[0]['role'] === 'system'
+                    && str_contains($messages[0]['content'], 'Do NOT use markdown')
+                    && $messages[1]['role'] === 'system'
+                    && $messages[2]['role'] === 'system'
+                    && str_contains($messages[2]['content'], '<editor_content>')
+                    && $messages[3]['role'] === 'user'),
                 $config,
             )
             ->willReturn($completionResponse);
@@ -2483,6 +2490,7 @@ final class AjaxControllerTest extends TestCase
                         if (str_contains($msg['content'] ?? '', 'user selected a portion')) {
                             return false;
                         }
+
                         if (str_contains($msg['content'] ?? '', 'Return the complete transformed content')) {
                             return false;
                         }
@@ -2652,6 +2660,7 @@ final class AjaxControllerTest extends TestCase
                     if (count($messages) < 5) {
                         return false;
                     }
+
                     $refContent = $messages[3]['content'];
 
                     // Each fragment from the concatenation must appear, in order
@@ -2712,6 +2721,7 @@ final class AjaxControllerTest extends TestCase
                     if (count($messages) < 5) {
                         return false;
                     }
+
                     $capContent = $messages[3]['content'];
 
                     // Each fragment from the concatenation must appear in order
@@ -2752,20 +2762,19 @@ final class AjaxControllerTest extends TestCase
             ->expects($this->once())
             ->method('chatWithConfiguration')
             ->with(
-                $this->callback(static function (array $messages): bool {
+                $this->callback(
                     // [0] = formatting, [1] = scope, [2] = editor_content, [3] = user instruction
-                    return count($messages) === 4
-                        && $messages[0]['role'] === 'system'
-                        && str_contains($messages[0]['content'], 'Do NOT use markdown')
-                        && $messages[1]['role'] === 'system'
-                        && str_contains($messages[1]['content'], 'selected a portion of text')
-                        && $messages[2]['role'] === 'system'
-                        && str_contains($messages[2]['content'], '<editor_content>')
-                        && str_contains($messages[2]['content'], 'some text')
-                        && str_contains($messages[2]['content'], '</editor_content>')
-                        && $messages[3]['role'] === 'user'
-                        && $messages[3]['content'] === 'Make this text more formal';
-                }),
+                    static fn(array $messages): bool => count($messages) === 4
+                    && $messages[0]['role'] === 'system'
+                    && str_contains($messages[0]['content'], 'Do NOT use markdown')
+                    && $messages[1]['role'] === 'system'
+                    && str_contains($messages[1]['content'], 'selected a portion of text')
+                    && $messages[2]['role'] === 'system'
+                    && str_contains($messages[2]['content'], '<editor_content>')
+                    && str_contains($messages[2]['content'], 'some text')
+                    && str_contains($messages[2]['content'], '</editor_content>')
+                    && $messages[3]['role'] === 'user'
+                    && $messages[3]['content'] === 'Make this text more formal'),
                 $config,
             )
             ->willReturn($completionResponse);
@@ -2800,14 +2809,13 @@ final class AjaxControllerTest extends TestCase
             ->expects($this->once())
             ->method('chatWithConfiguration')
             ->with(
-                $this->callback(static function (array $messages): bool {
+                $this->callback(
                     // [0] = formatting instruction, [1] = user instruction (no scope/editor when context empty)
-                    return count($messages) === 2
-                        && $messages[0]['role'] === 'system'
-                        && str_contains($messages[0]['content'], 'Do NOT use markdown')
-                        && $messages[1]['role'] === 'user'
-                        && $messages[1]['content'] === 'Write a blog post about PHP 8.5';
-                }),
+                    static fn(array $messages): bool => count($messages) === 2
+                    && $messages[0]['role'] === 'system'
+                    && str_contains($messages[0]['content'], 'Do NOT use markdown')
+                    && $messages[1]['role'] === 'user'
+                    && $messages[1]['content'] === 'Write a blog post about PHP 8.5'),
                 $config,
             )
             ->willReturn($completionResponse);
@@ -3825,7 +3833,7 @@ final class AjaxControllerTest extends TestCase
     {
         $task = $this->createTaskMock(1, 'improve', 'Improve', 'desc', true);
         $task->method('buildPrompt')->willReturnCallback(
-            static fn (array $vars) => 'Improve: ' . ($vars['input'] ?? 'text'),
+            static fn (array $vars): string => 'Improve: ' . ($vars['input'] ?? 'text'),
         );
         $task->method('getConfiguration')->willReturn(null);
 
@@ -3911,18 +3919,6 @@ final class AjaxControllerTest extends TestCase
     }
 
     /**
-     * Create a query result stub that properly iterates over items.
-     *
-     * @param array<LlmConfiguration&MockObject> $items
-     *
-     * @return QueryResultInterface<LlmConfiguration>
-     */
-    private function createQueryResultMock(array $items): QueryResultInterface
-    {
-        return new TestQueryResult($items);
-    }
-
-    /**
      * Create a query result stub with mixed types for testing filtering.
      *
      * @param array<mixed> $items
@@ -3932,7 +3928,7 @@ final class AjaxControllerTest extends TestCase
     private function createQueryResultMockWithMixedTypes(array $items): QueryResultInterface
     {
         // Filter to objects only for type safety
-        $objects = array_filter($items, static fn (mixed $item): bool => is_object($item));
+        $objects = array_filter($items, is_object(...));
 
         return new TestQueryResult(array_values($objects));
     }

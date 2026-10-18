@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Support;
 
+use PHPUnit\Framework\TestCase;
 use Netresearch\NrLlm\Domain\Model\Task;
 use PHPUnit\Framework\MockObject\MockObject;
 
@@ -17,7 +18,7 @@ use PHPUnit\Framework\MockObject\MockObject;
  * suites (unit / integration / e2e) so the identical four-getter stub lives in
  * one place instead of being copied per file.
  *
- * @mixin \PHPUnit\Framework\TestCase
+ * @mixin TestCase
  */
 trait TaskStubTrait
 {

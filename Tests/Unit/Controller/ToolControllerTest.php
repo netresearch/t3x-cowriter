@@ -36,8 +36,11 @@ final class ToolControllerTest extends TestCase
     use XliffLanguageServiceTrait;
 
     private ToolLoopServiceInterface&Stub $toolLoopServiceStub;
+
     private LlmConfigurationRepository&Stub $configRepositoryStub;
+
     private RateLimiterInterface&Stub $rateLimiterStub;
+
     private ToolController $subject;
 
     protected function setUp(): void
