@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
-use TYPO3\CMS\Core\Http\Uri;
 use Doctrine\DBAL\Result;
 use Generator;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
@@ -53,6 +52,7 @@ use TYPO3\CMS\Core\Database\Query\Expression\CompositeExpression;
 use TYPO3\CMS\Core\Database\Query\Expression\ExpressionBuilder;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Http\JsonResponse;
+use TYPO3\CMS\Core\Http\Uri;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 #[CoversClass(AjaxController::class)]
@@ -874,11 +874,12 @@ final class AjaxControllerTest extends TestCase
             ->with(
                 $this->callback(
                     // Verify system message has both role and content
-                    static fn(array $messages): bool => count($messages) === 2
+                    static fn (array $messages): bool => count($messages) === 2
                     && $messages[0]['role'] === 'system'
                     && isset($messages[0]['content'])
                     && $messages[1]['role'] === 'user'
-                    && $messages[1]['content'] === 'Test prompt'),
+                    && $messages[1]['content'] === 'Test prompt',
+                ),
                 $this->anything(),
             )
             ->willReturn($completionResponse);
@@ -1500,11 +1501,12 @@ final class AjaxControllerTest extends TestCase
             ->with(
                 $this->callback(
                     // Verify system message has role and content
-                    static fn(array $messages): bool => count($messages) === 2
+                    static fn (array $messages): bool => count($messages) === 2
                     && $messages[0]['role'] === 'system'
                     && isset($messages[0]['content'])
                     && $messages[1]['role'] === 'user'
-                    && $messages[1]['content'] === 'Test prompt'),
+                    && $messages[1]['content'] === 'Test prompt',
+                ),
                 $this->anything(),
             )
             ->willReturnCallback(function () {
@@ -2007,7 +2009,7 @@ final class AjaxControllerTest extends TestCase
             ->with(
                 $this->callback(
                     // [0] = formatting, [1] = scope, [2] = editor_content, [3] = capabilities, [4] = user prompt
-                    static fn(array $messages): bool => count($messages) === 5
+                    static fn (array $messages): bool => count($messages) === 5
                     && $messages[0]['role'] === 'system'
                     && str_contains($messages[0]['content'], 'Do NOT use markdown')
                     && $messages[1]['role'] === 'system'
@@ -2017,7 +2019,8 @@ final class AjaxControllerTest extends TestCase
                     && $messages[3]['role'] === 'system'
                     && str_contains($messages[3]['content'], 'bold')
                     && str_contains($messages[3]['content'], 'tables')
-                    && str_contains($messages[3]['content'], '<mark>')),
+                    && str_contains($messages[3]['content'], '<mark>'),
+                ),
                 $config,
             )
             ->willReturn($completionResponse);
@@ -2052,13 +2055,14 @@ final class AjaxControllerTest extends TestCase
             ->with(
                 $this->callback(
                     // [0] = formatting, [1] = scope, [2] = editor_content, [3] = user message (no capabilities)
-                    static fn(array $messages): bool => count($messages) === 4
+                    static fn (array $messages): bool => count($messages) === 4
                     && $messages[0]['role'] === 'system'
                     && str_contains($messages[0]['content'], 'Do NOT use markdown')
                     && $messages[1]['role'] === 'system'
                     && $messages[2]['role'] === 'system'
                     && str_contains($messages[2]['content'], '<editor_content>')
-                    && $messages[3]['role'] === 'user'),
+                    && $messages[3]['role'] === 'user',
+                ),
                 $config,
             )
             ->willReturn($completionResponse);
@@ -2764,7 +2768,7 @@ final class AjaxControllerTest extends TestCase
             ->with(
                 $this->callback(
                     // [0] = formatting, [1] = scope, [2] = editor_content, [3] = user instruction
-                    static fn(array $messages): bool => count($messages) === 4
+                    static fn (array $messages): bool => count($messages) === 4
                     && $messages[0]['role'] === 'system'
                     && str_contains($messages[0]['content'], 'Do NOT use markdown')
                     && $messages[1]['role'] === 'system'
@@ -2774,7 +2778,8 @@ final class AjaxControllerTest extends TestCase
                     && str_contains($messages[2]['content'], 'some text')
                     && str_contains($messages[2]['content'], '</editor_content>')
                     && $messages[3]['role'] === 'user'
-                    && $messages[3]['content'] === 'Make this text more formal'),
+                    && $messages[3]['content'] === 'Make this text more formal',
+                ),
                 $config,
             )
             ->willReturn($completionResponse);
@@ -2811,11 +2816,12 @@ final class AjaxControllerTest extends TestCase
             ->with(
                 $this->callback(
                     // [0] = formatting instruction, [1] = user instruction (no scope/editor when context empty)
-                    static fn(array $messages): bool => count($messages) === 2
+                    static fn (array $messages): bool => count($messages) === 2
                     && $messages[0]['role'] === 'system'
                     && str_contains($messages[0]['content'], 'Do NOT use markdown')
                     && $messages[1]['role'] === 'user'
-                    && $messages[1]['content'] === 'Write a blog post about PHP 8.5'),
+                    && $messages[1]['content'] === 'Write a blog post about PHP 8.5',
+                ),
                 $config,
             )
             ->willReturn($completionResponse);

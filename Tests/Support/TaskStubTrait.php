@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Support;
 
-use PHPUnit\Framework\TestCase;
 use Netresearch\NrLlm\Domain\Model\Task;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Shared factory for nr-llm Task stubs, used by the TemplateController test

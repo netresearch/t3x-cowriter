@@ -113,7 +113,8 @@ final class RateLimiterServiceTest extends TestCase
                 $this->anything(),
                 $this->callback(
                     // Should have 3 entries: 2 current + 1 new, with sequential 0-based keys
-                    static fn(array $data): bool => count($data) === 3 && array_keys($data) === range(0, 2)),
+                    static fn (array $data): bool => count($data) === 3 && array_keys($data) === range(0, 2),
+                ),
                 $this->anything(),
                 $this->anything(),
             );
@@ -213,7 +214,8 @@ final class RateLimiterServiceTest extends TestCase
                 $this->anything(),
                 $this->callback(
                     // Should have 2 entries (1 valid int + 1 new) with sequential 0-based keys
-                    static fn(array $data): bool => count($data) === 2 && array_keys($data) === [0, 1]),
+                    static fn (array $data): bool => count($data) === 2 && array_keys($data) === [0, 1],
+                ),
                 $this->anything(),
                 $this->anything(),
             );

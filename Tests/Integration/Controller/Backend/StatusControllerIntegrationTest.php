@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Integration\Controller\Backend;
 
-use TYPO3\CMS\Core\Http\Uri;
 use Netresearch\T3Cowriter\Controller\Backend\StatusController;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
@@ -22,6 +21,7 @@ use ReflectionMethod;
 use RuntimeException;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
+use TYPO3\CMS\Core\Http\Uri;
 
 #[CoversClass(StatusController::class)]
 final class StatusControllerIntegrationTest extends TestCase
