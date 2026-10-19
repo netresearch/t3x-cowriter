@@ -38,6 +38,7 @@ use Psr\Log\NullLogger;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Http\Uri;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 /**
@@ -109,7 +110,7 @@ abstract class AbstractE2ETestCase extends TestCase
         // Create backend URI builder mock
         $backendUriBuilder = $this->createMock(BackendUriBuilder::class);
         $backendUriBuilder->method('buildUriFromRoute')
-            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+            ->willReturn(new Uri('/typo3/module/cowriter/status'));
 
         // Create diagnostic service mock
         $diagnosticService = $this->createMock(DiagnosticService::class);
@@ -217,7 +218,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $chatOptions = self::createStub(ChatOptions::class);
         $chatOptions->method('getModel')->willReturn($model);
         $chatOptions->method('withModel')->willReturnCallback(
-            fn (string $newModel) => $this->createChatOptionsStub($newModel),
+            fn (string $newModel): ChatOptions&Stub => $this->createChatOptionsStub($newModel),
         );
 
         return $chatOptions;
@@ -275,7 +276,7 @@ abstract class AbstractE2ETestCase extends TestCase
         $mock->method('isActive')->willReturn($isActive);
         $mock->method('getConfiguration')->willReturn($configuration);
         $mock->method('buildPrompt')->willReturnCallback(
-            static fn (array $vars) => str_replace('{{input}}', $vars['input'] ?? '', $promptTemplate),
+            static fn (array $vars): string => str_replace('{{input}}', $vars['input'] ?? '', $promptTemplate),
         );
 
         return $mock;
@@ -294,6 +295,7 @@ abstract class AbstractE2ETestCase extends TestCase
             if ($raw === '' || !str_starts_with($raw, 'data: ')) {
                 continue;
             }
+
             $json     = substr($raw, 6); // strip "data: "
             $events[] = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
         }

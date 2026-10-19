@@ -11,13 +11,14 @@ namespace Netresearch\T3Cowriter\Tests\Support;
 
 use Netresearch\NrLlm\Domain\Model\Task;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Shared factory for nr-llm Task stubs, used by the TemplateController test
  * suites (unit / integration / e2e) so the identical four-getter stub lives in
  * one place instead of being copied per file.
  *
- * @mixin \PHPUnit\Framework\TestCase
+ * @mixin TestCase
  */
 trait TaskStubTrait
 {

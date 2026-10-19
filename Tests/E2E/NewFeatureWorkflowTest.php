@@ -35,6 +35,7 @@ use RuntimeException;
 use stdClass;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Http\Uri;
 
 /**
  * E2E tests for Vision, Translation, and Template controller workflows.
@@ -113,7 +114,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $backendUriBuilder = $this->createMock(BackendUriBuilder::class);
         $backendUriBuilder->method('buildUriFromRoute')
-            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+            ->willReturn(new Uri('/typo3/module/cowriter/status'));
 
         $diagnosticService = $this->createMock(DiagnosticService::class);
         $diagnosticService->method('runFirst')
@@ -381,7 +382,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
 
         $backendUriBuilder2 = $this->createMock(BackendUriBuilder::class);
         $backendUriBuilder2->method('buildUriFromRoute')
-            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+            ->willReturn(new Uri('/typo3/module/cowriter/status'));
 
         $diagnosticService2 = $this->createMock(DiagnosticService::class);
         $diagnosticService2->method('runFirst')

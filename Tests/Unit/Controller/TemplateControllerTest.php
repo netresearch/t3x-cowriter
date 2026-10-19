@@ -34,7 +34,9 @@ final class TemplateControllerTest extends TestCase
     use TaskStubTrait;
 
     private TaskRepository&Stub $templateRepositoryStub;
+
     private RateLimiterInterface&Stub $rateLimiterStub;
+
     private TemplateController $subject;
 
     protected function setUp(): void
@@ -169,13 +171,13 @@ final class TemplateControllerTest extends TestCase
         $queryResult = $this->createStub(QueryResultInterface::class);
 
         $queryResult->method('current')
-            ->willReturnCallback(static fn () => $iterator->current());
+            ->willReturnCallback(static fn (): Task => $iterator->current());
         $queryResult->method('next')
             ->willReturnCallback(static function () use ($iterator): void {
                 $iterator->next();
             });
         $queryResult->method('key')
-            ->willReturnCallback(static fn () => $iterator->key());
+            ->willReturnCallback(static fn (): int => $iterator->key());
         $queryResult->method('valid')
             ->willReturnCallback(static fn (): bool => $iterator->valid());
         $queryResult->method('rewind')

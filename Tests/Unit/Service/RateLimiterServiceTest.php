@@ -26,6 +26,7 @@ use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 final class RateLimiterServiceTest extends TestCase
 {
     private FrontendInterface&MockObject $cacheMock;
+
     private CacheManager&MockObject $cacheManagerMock;
 
     protected function setUp(): void
@@ -83,6 +84,7 @@ final class RateLimiterServiceTest extends TestCase
         for ($i = 0; $i < 20; ++$i) {
             $requests[] = $now - $i;
         }
+
         $this->cacheMock->method('get')->willReturn($requests);
         $this->cacheMock->expects($this->never())->method('set');
 
@@ -109,10 +111,10 @@ final class RateLimiterServiceTest extends TestCase
             ->method('set')
             ->with(
                 $this->anything(),
-                $this->callback(static function (array $data): bool {
+                $this->callback(
                     // Should have 3 entries: 2 current + 1 new, with sequential 0-based keys
-                    return count($data) === 3 && array_keys($data) === range(0, 2);
-                }),
+                    static fn (array $data): bool => count($data) === 3 && array_keys($data) === range(0, 2),
+                ),
                 $this->anything(),
                 $this->anything(),
             );
@@ -184,6 +186,7 @@ final class RateLimiterServiceTest extends TestCase
         for ($i = 0; $i < 20; ++$i) {
             $requests[] = $now - 10; // All 10 seconds ago
         }
+
         $this->cacheMock->method('get')->willReturn($requests);
 
         $service    = new RateLimiterService($this->cacheManagerMock, 20);
@@ -209,10 +212,10 @@ final class RateLimiterServiceTest extends TestCase
             ->method('set')
             ->with(
                 $this->anything(),
-                $this->callback(static function (array $data): bool {
+                $this->callback(
                     // Should have 2 entries (1 valid int + 1 new) with sequential 0-based keys
-                    return count($data) === 2 && array_keys($data) === [0, 1];
-                }),
+                    static fn (array $data): bool => count($data) === 2 && array_keys($data) === [0, 1],
+                ),
                 $this->anything(),
                 $this->anything(),
             );
@@ -287,7 +290,7 @@ final class RateLimiterServiceTest extends TestCase
     {
         $storedData = [];
         $this->cacheMock->method('get')
-            ->willReturnCallback(function () use (&$storedData) {
+            ->willReturnCallback(function () use (&$storedData): array|false {
                 return $storedData !== [] ? $storedData : false;
             });
         $this->cacheMock->method('set')
@@ -336,6 +339,7 @@ final class RateLimiterServiceTest extends TestCase
         for ($i = 0; $i < 5; ++$i) {
             $requests[] = $now - $i;
         }
+
         $this->cacheMock->method('get')->willReturn($requests);
         $this->cacheMock->expects($this->never())->method('set');
 
@@ -428,7 +432,6 @@ final class RateLimiterServiceTest extends TestCase
     public function checkLimitStoresCacheWithSufficientTtl(): void
     {
         // Kills DecrementInteger/IncrementInteger/Plus mutants on WINDOW_SIZE_SECONDS + 10
-        $now = time();
         $this->cacheMock->method('get')->willReturn(false);
 
         $capturedTtl = null;

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Support;
 
+use PHPUnit\Framework\TestCase;
 use TYPO3\CMS\Core\Localization\LanguageService;
 
 /**
@@ -17,7 +18,7 @@ use TYPO3\CMS\Core\Localization\LanguageService;
  * without a TYPO3 container use it so BackendLabels answers in English (or
  * German) instead of asking GeneralUtility for a LanguageServiceFactory.
  *
- * @mixin \PHPUnit\Framework\TestCase
+ * @mixin TestCase
  */
 trait XliffLanguageServiceTrait
 {

@@ -34,7 +34,9 @@ final class VisionControllerTest extends TestCase
     use XliffLanguageServiceTrait;
 
     private VisionServiceInterface&Stub $visionServiceStub;
+
     private RateLimiterInterface&Stub $rateLimiterStub;
+
     private VisionController $subject;
 
     protected function setUp(): void

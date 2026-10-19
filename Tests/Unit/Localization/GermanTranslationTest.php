@@ -118,8 +118,8 @@ final class GermanTranslationTest extends TestCase
 
         foreach (XliffFile::units(XliffFile::LANGUAGE_DIRECTORY . '/de.' . $file) as $id => $unit) {
             self::assertSame(
-                self::placeholders($english[$id]['source'] ?? ''),
-                self::placeholders($unit['target'] ?? ''),
+                $this->placeholders($english[$id]['source'] ?? ''),
+                $this->placeholders($unit['target'] ?? ''),
                 $id . ': placeholders differ',
             );
         }
@@ -128,7 +128,7 @@ final class GermanTranslationTest extends TestCase
     /**
      * @return list<string>
      */
-    private static function placeholders(string $text): array
+    private function placeholders(string $text): array
     {
         preg_match_all(self::PLACEHOLDER_PATTERN, $text, $matches);
         $placeholders = $matches[0];

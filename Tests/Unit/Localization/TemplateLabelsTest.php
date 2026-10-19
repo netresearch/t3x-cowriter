@@ -43,6 +43,7 @@ final class TemplateLabelsTest extends TestCase
             if (!$file->isFile() || $file->getExtension() !== 'html') {
                 continue;
             }
+
             $template = (string) file_get_contents($file->getPathname());
             preg_match_all('/LLL:EXT:t3_cowriter\/Resources\/Private\/Language\/[A-Za-z_.]+\.xlf:[A-Za-z0-9_.{}]+/', $template, $matches);
             foreach (array_unique($matches[0]) as $reference) {
@@ -81,6 +82,7 @@ final class TemplateLabelsTest extends TestCase
         if (!str_contains($reference, '{check.key}')) {
             return [$reference];
         }
+
         preg_match_all("/key:\\s*'([a-z_]+)'/", (string) file_get_contents(self::DIAGNOSTIC_SERVICE), $keys);
 
         return array_map(

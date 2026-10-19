@@ -18,6 +18,7 @@ use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
@@ -128,7 +129,7 @@ abstract class AbstractIntegrationTestCase extends TestCase
 
         // When withModel is called, return a new stub with the new model
         $chatOptions->method('withModel')->willReturnCallback(
-            fn (string $newModel) => $this->createChatOptionsStub($newModel),
+            fn (string $newModel): ChatOptions&Stub => $this->createChatOptionsStub($newModel),
         );
 
         return $chatOptions;
@@ -186,7 +187,7 @@ abstract class AbstractIntegrationTestCase extends TestCase
      *
      * @return array<string, mixed>
      */
-    protected function assertSuccessfulJsonResponse(\Psr\Http\Message\ResponseInterface $response): array
+    protected function assertSuccessfulJsonResponse(ResponseInterface $response): array
     {
         self::assertSame(200, $response->getStatusCode());
         $body = (string) $response->getBody();
@@ -203,7 +204,7 @@ abstract class AbstractIntegrationTestCase extends TestCase
      * @return array<string, mixed>
      */
     protected function assertErrorJsonResponse(
-        \Psr\Http\Message\ResponseInterface $response,
+        ResponseInterface $response,
         int $expectedStatusCode,
     ): array {
         self::assertSame($expectedStatusCode, $response->getStatusCode());

@@ -28,6 +28,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Http\Uri;
 
 /**
  * Integration tests for TranslationController.
@@ -40,8 +41,11 @@ use TYPO3\CMS\Core\Context\Context;
 final class TranslationControllerIntegrationTest extends AbstractIntegrationTestCase
 {
     private TranslationController $subject;
+
     private TranslationServiceInterface&MockObject $translationServiceMock;
+
     private RateLimiterInterface&MockObject $rateLimiterMock;
+
     private Context&MockObject $contextMock;
 
     #[Override]
@@ -62,7 +66,7 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
         $this->contextMock->method('getPropertyFromAspect')->willReturn(1);
 
         $backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
-        $backendUriBuilderMock->method('buildUriFromRoute')->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+        $backendUriBuilderMock->method('buildUriFromRoute')->willReturn(new Uri('/typo3/module/cowriter/status'));
 
         $diagnosticServiceMock = $this->createMock(DiagnosticService::class);
         $diagnosticServiceMock->method('runFirst')->willReturn(new DiagnosticResult(true, []));

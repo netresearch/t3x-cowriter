@@ -21,6 +21,7 @@ use ReflectionMethod;
 use RuntimeException;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
+use TYPO3\CMS\Core\Http\Uri;
 
 #[CoversClass(StatusController::class)]
 final class StatusControllerIntegrationTest extends TestCase
@@ -32,8 +33,8 @@ final class StatusControllerIntegrationTest extends TestCase
         $backendUriBuilder
             ->method('buildUriFromRoute')
             ->willReturnMap([
-                ['nrllm_providers', [], new \TYPO3\CMS\Core\Http\Uri('/typo3/module/nrllm/providers')],
-                ['nrllm_models', [], new \TYPO3\CMS\Core\Http\Uri('/typo3/module/nrllm/models')],
+                ['nrllm_providers', [], new Uri('/typo3/module/nrllm/providers')],
+                ['nrllm_models', [], new Uri('/typo3/module/nrllm/models')],
             ]);
 
         $controller = new StatusController(

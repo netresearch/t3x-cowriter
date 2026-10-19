@@ -60,6 +60,7 @@ use stdClass;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Http\Uri;
 
 #[CoversClass(TranslationController::class)]
 final class TranslationControllerTest extends TestCase
@@ -67,10 +68,15 @@ final class TranslationControllerTest extends TestCase
     use XliffLanguageServiceTrait;
 
     private TranslationServiceInterface&Stub $translationServiceStub;
+
     private LlmConfigurationRepository&Stub $configurationRepositoryStub;
+
     private RateLimiterInterface&Stub $rateLimiterStub;
+
     private BackendUriBuilder&Stub $backendUriBuilderStub;
+
     private DiagnosticService&Stub $diagnosticServiceStub;
+
     private TranslationController $subject;
 
     protected function setUp(): void
@@ -81,7 +87,7 @@ final class TranslationControllerTest extends TestCase
         $this->rateLimiterStub             = $this->createStub(RateLimiterInterface::class);
         $this->backendUriBuilderStub       = $this->createStub(BackendUriBuilder::class);
         $this->backendUriBuilderStub->method('buildUriFromRoute')
-            ->willReturn(new \TYPO3\CMS\Core\Http\Uri('/typo3/module/cowriter/status'));
+            ->willReturn(new Uri('/typo3/module/cowriter/status'));
         $this->diagnosticServiceStub = $this->createStub(DiagnosticService::class);
         $contextStub                 = $this->createStub(Context::class);
 

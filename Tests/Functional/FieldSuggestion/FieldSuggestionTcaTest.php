@@ -30,7 +30,7 @@ final class FieldSuggestionTcaTest extends FunctionalTestCase
         'netresearch/t3-cowriter',
     ];
 
-    private static function control(string $table, string $field): mixed
+    private function control(string $table, string $field): mixed
     {
         return $GLOBALS['TCA'][$table]['columns'][$field]['config']['fieldControl'][RegisterFieldSuggestionControlsListener::CONTROL_NAME] ?? null;
     }
@@ -40,9 +40,9 @@ final class FieldSuggestionTcaTest extends FunctionalTestCase
     {
         $expected = ['renderType' => RegisterFieldSuggestionControlsListener::NODE_NAME, 'options' => ['count' => 3]];
 
-        self::assertSame($expected, self::control('pages', 'description'));
-        self::assertSame($expected, self::control('pages', 'keywords'));
-        self::assertSame($expected, self::control('pages', 'slug'));
+        self::assertSame($expected, $this->control('pages', 'description'));
+        self::assertSame($expected, $this->control('pages', 'keywords'));
+        self::assertSame($expected, $this->control('pages', 'slug'));
     }
 
     #[Test]
@@ -54,9 +54,9 @@ final class FieldSuggestionTcaTest extends FunctionalTestCase
     #[Test]
     public function unconfiguredFieldsStayWithoutTheControl(): void
     {
-        self::assertNull(self::control('pages', 'title'));
-        self::assertNull(self::control('pages', 'abstract'));
-        self::assertNull(self::control('pages', 'categories'));
+        self::assertNull($this->control('pages', 'title'));
+        self::assertNull($this->control('pages', 'abstract'));
+        self::assertNull($this->control('pages', 'categories'));
     }
 
     #[Test]

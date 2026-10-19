@@ -395,7 +395,7 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function isValidAcceptsNullRecordContext(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', '', null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', '');
         self::assertTrue($dto->isValid());
     }
 
@@ -418,21 +418,21 @@ final class ExecuteTaskRequestTest extends TestCase
     #[Test]
     public function isValidRequiresRecordContextWhenScopeIsElement(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'element', null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'element');
         self::assertFalse($dto->isValid());
     }
 
     #[Test]
     public function isValidRequiresRecordContextWhenScopeIsPage(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'page', null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'page');
         self::assertFalse($dto->isValid());
     }
 
     #[Test]
     public function isValidRequiresRecordContextWhenScopeIsAncestors(): void
     {
-        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'ancestors_1', null);
+        $dto = new ExecuteTaskRequest(1, 'text', 'selection', 'Do it', null, '', 'ancestors_1');
         self::assertFalse($dto->isValid());
     }
 

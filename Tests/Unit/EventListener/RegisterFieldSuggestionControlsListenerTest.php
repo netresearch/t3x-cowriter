@@ -34,7 +34,7 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
      *
      * @return array<string, mixed>
      */
-    private static function coreTca(): array
+    private function coreTca(): array
     {
         return [
             'pages' => [
@@ -61,7 +61,7 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
     /**
      * @param array<array-key, mixed> $tca
      */
-    private static function control(array $tca, string $table, string $field): mixed
+    private function control(array $tca, string $table, string $field): mixed
     {
         return $tca[$table]['columns'][$field]['config']['fieldControl'][RegisterFieldSuggestionControlsListener::CONTROL_NAME] ?? null;
     }
@@ -69,44 +69,44 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
     #[Test]
     public function defaultFieldsGetTheControlWhenTheyExist(): void
     {
-        $event = new AfterTcaCompilationEvent(self::coreTca());
+        $event = new AfterTcaCompilationEvent($this->coreTca());
 
         ($this->subject())($event);
         $tca = $event->getTca();
 
-        self::assertSame(self::EXPECTED_CONTROL, self::control($tca, 'pages', 'description'));
-        self::assertSame(self::EXPECTED_CONTROL, self::control($tca, 'pages', 'keywords'));
-        self::assertSame(self::EXPECTED_CONTROL, self::control($tca, 'pages', 'slug'));
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($tca, 'pages', 'description'));
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($tca, 'pages', 'keywords'));
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($tca, 'pages', 'slug'));
     }
 
     #[Test]
     public function missingSeoTitleWithoutExtSeoRegistersNothing(): void
     {
-        $event = new AfterTcaCompilationEvent(self::coreTca());
+        $event = new AfterTcaCompilationEvent($this->coreTca());
 
         ($this->subject())($event);
         $tca = $event->getTca();
 
         self::assertArrayNotHasKey('seo_title', $tca['pages']['columns']);
-        self::assertNull(self::control($tca, 'pages', 'seo_title'));
+        self::assertNull($this->control($tca, 'pages', 'seo_title'));
     }
 
     #[Test]
     public function seoTitleGetsTheControlWhenExtSeoProvidesIt(): void
     {
-        $tca                                  = self::coreTca();
+        $tca                                  = $this->coreTca();
         $tca['pages']['columns']['seo_title'] = ['exclude' => true, 'config' => ['type' => 'input', 'max' => 255]];
         $event                                = new AfterTcaCompilationEvent($tca);
 
         ($this->subject())($event);
 
-        self::assertSame(self::EXPECTED_CONTROL, self::control($event->getTca(), 'pages', 'seo_title'));
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($event->getTca(), 'pages', 'seo_title'));
     }
 
     #[Test]
     public function otherColumnsAndTheirConfigurationStayUntouched(): void
     {
-        $tca    = self::coreTca();
+        $tca    = $this->coreTca();
         $result = $this->subject()->register($tca, [['pages', 'slug']], 3);
 
         self::assertSame($tca['pages']['columns']['title'], $result['pages']['columns']['title']);
@@ -118,7 +118,7 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
     #[Test]
     public function otherTablesStayUntouched(): void
     {
-        $tca               = self::coreTca();
+        $tca               = $this->coreTca();
         $tca['tt_content'] = ['columns' => ['header' => ['config' => ['type' => 'input']]]];
 
         $result = $this->subject()->register($tca, [['pages', 'slug']], 3);
@@ -129,7 +129,7 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
     #[Test]
     public function unknownTableOrFieldIsSkipped(): void
     {
-        $tca = self::coreTca();
+        $tca = $this->coreTca();
 
         self::assertSame($tca, $this->subject()->register($tca, [['tx_missing', 'title'], ['pages', 'missing']], 3));
     }
@@ -137,7 +137,7 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
     #[Test]
     public function unsupportedFieldTypesAreSkipped(): void
     {
-        $tca = self::coreTca();
+        $tca = $this->coreTca();
 
         self::assertSame($tca, $this->subject()->register($tca, [['pages', 'categories']], 3));
     }
@@ -145,22 +145,22 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
     #[Test]
     public function richTextFieldsAreSkipped(): void
     {
-        $tca                                   = self::coreTca();
+        $tca                                   = $this->coreTca();
         $tca['pages']['columns']['bodytext']   = ['config' => ['type' => 'text', 'enableRichtext' => true]];
         $tca['pages']['columns']['plain_text'] = ['config' => ['type' => 'text', 'enableRichtext' => false]];
         $tca['pages']['columns']['rte_int']    = ['config' => ['type' => 'text', 'enableRichtext' => 1]];
 
         $result = $this->subject()->register($tca, [['pages', 'bodytext'], ['pages', 'plain_text'], ['pages', 'rte_int']], 3);
 
-        self::assertNull(self::control($result, 'pages', 'bodytext'));
-        self::assertNull(self::control($result, 'pages', 'rte_int'));
-        self::assertSame(self::EXPECTED_CONTROL, self::control($result, 'pages', 'plain_text'));
+        self::assertNull($this->control($result, 'pages', 'bodytext'));
+        self::assertNull($this->control($result, 'pages', 'rte_int'));
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($result, 'pages', 'plain_text'));
     }
 
     #[Test]
     public function existingFieldControlsArePreserved(): void
     {
-        $tca                                                              = self::coreTca();
+        $tca                                                              = $this->coreTca();
         $tca['pages']['columns']['description']['config']['fieldControl'] = ['editPopup' => ['disabled' => false]];
 
         $result = $this->subject()->register($tca, [['pages', 'description']], 5);
@@ -181,13 +181,13 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
     public function aControlConfiguredByTheIntegratorIsNotOverwritten(): void
     {
         $own                                                           = ['renderType' => RegisterFieldSuggestionControlsListener::NODE_NAME, 'disabled' => true];
-        $tca                                                           = self::coreTca();
+        $tca                                                           = $this->coreTca();
         $tca['pages']['columns']['keywords']['config']['fieldControl'] = [RegisterFieldSuggestionControlsListener::CONTROL_NAME => $own];
 
         $result = $this->subject()->register($tca, [['pages', 'keywords'], ['pages', 'description']], 3);
 
-        self::assertSame($own, self::control($result, 'pages', 'keywords'));
+        self::assertSame($own, $this->control($result, 'pages', 'keywords'));
         // The fields after it are still registered.
-        self::assertSame(self::EXPECTED_CONTROL, self::control($result, 'pages', 'description'));
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($result, 'pages', 'description'));
     }
 }

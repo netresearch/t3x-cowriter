@@ -89,7 +89,7 @@ final class FieldSuggestionControllerTest extends FunctionalTestCase
     /**
      * @return array<string, mixed>
      */
-    private static function json(ResponseInterface $response): array
+    private function json(ResponseInterface $response): array
     {
         /** @var array<string, mixed> $data */
         $data = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
@@ -110,7 +110,7 @@ final class FieldSuggestionControllerTest extends FunctionalTestCase
         $response = $this->suggest(['table' => 'pages', 'field' => 'description', 'uid' => 3, 'pid' => 3, 'count' => 3]);
 
         self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
-        self::assertCount(3, self::json($response)['suggestions']);
+        self::assertCount(3, $this->json($response)['suggestions']);
 
         $prompt = $this->completion->completeStructuredForConfigurationCalls[0]['prompt'];
         self::assertStringContainsString('Page title: Office chairs', $prompt);
@@ -127,7 +127,7 @@ final class FieldSuggestionControllerTest extends FunctionalTestCase
         $response = $this->suggest(['table' => 'pages', 'field' => 'description', 'uid' => 3]);
 
         self::assertSame(403, $response->getStatusCode());
-        self::assertSame('You are not allowed to edit this field.', self::json($response)['error']);
+        self::assertSame('You are not allowed to edit this field.', $this->json($response)['error']);
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
 
@@ -164,7 +164,7 @@ final class FieldSuggestionControllerTest extends FunctionalTestCase
         self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
         self::assertSame(
             ['/products/ergonomic-office-chairs', '/products/buerostuehle-sitzmoebel'],
-            self::json($response)['suggestions'],
+            $this->json($response)['suggestions'],
         );
     }
 
@@ -176,7 +176,7 @@ final class FieldSuggestionControllerTest extends FunctionalTestCase
 
         $response = $this->suggest(['table' => 'pages', 'field' => 'slug', 'uid' => 'NEW123', 'pid' => 2, 'count' => 1]);
 
-        self::assertSame(['/products/desks'], self::json($response)['suggestions']);
+        self::assertSame(['/products/desks'], $this->json($response)['suggestions']);
     }
 
     #[Test]

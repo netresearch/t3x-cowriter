@@ -39,6 +39,7 @@ final class TemplateControllerIntegrationTest extends AbstractIntegrationTestCas
     use TaskStubTrait;
 
     private TemplateController $subject;
+
     private TaskRepository&MockObject $templateRepoMock;
 
     #[Override]

@@ -42,7 +42,6 @@ final class UsageDataTest extends TestCase
             promptTokens: 50,
             completionTokens: 75,
             totalTokens: 125,
-            estimatedCost: null,
         );
 
         $this->assertNull($usageData->estimatedCost);
@@ -73,7 +72,6 @@ final class UsageDataTest extends TestCase
             promptTokens: 10,
             completionTokens: 20,
             totalTokens: 30,
-            estimatedCost: null,
         );
 
         $usageData = UsageData::fromUsageStatistics($statistics);
@@ -126,7 +124,6 @@ final class UsageDataTest extends TestCase
             promptTokens: 10,
             completionTokens: 20,
             totalTokens: 30,
-            estimatedCost: null,
         );
 
         $json = $usageData->jsonSerialize();
@@ -144,7 +141,6 @@ final class UsageDataTest extends TestCase
             promptTokens: $promptTokens,
             completionTokens: $completionTokens,
             totalTokens: $totalTokens,
-            estimatedCost: null,
         );
 
         $usageData = UsageData::fromUsageStatistics($statistics);

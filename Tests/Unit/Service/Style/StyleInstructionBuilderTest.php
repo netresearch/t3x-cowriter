@@ -158,7 +158,7 @@ final class StyleInstructionBuilderTest extends TestCase
         $snippet->method('getUid')->willReturn($uid);
         $snippet->method('getName')->willReturn($name);
         $snippet->method('getSnippet')->willReturn($text);
-        $snippet->method('getTagList')->willReturn(array_map('trim', explode(',', $tags)));
+        $snippet->method('getTagList')->willReturn(array_map(trim(...), explode(',', $tags)));
 
         return $snippet;
     }

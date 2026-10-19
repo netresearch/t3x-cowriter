@@ -35,8 +35,11 @@ use TYPO3\CMS\Core\Context\Context;
 final class VisionControllerIntegrationTest extends AbstractIntegrationTestCase
 {
     private VisionController $subject;
+
     private VisionServiceInterface&MockObject $visionServiceMock;
+
     private RateLimiterInterface&MockObject $rateLimiterMock;
+
     private Context&MockObject $contextMock;
 
     #[Override]
