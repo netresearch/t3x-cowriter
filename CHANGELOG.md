@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.13.0 (2026-10-20)
+
+### FEATURE
+
+- Runs on `netresearch/nr-llm` 0.41 as well: `composer.json` accepts `^0.38 || ^0.39 || ^0.40 || ^0.41`, `ext_emconf.php` `0.38.0-0.41.99`. nr-llm 0.41 extends `ToolCallPolicyInterface` and `ToolLoopServiceInterface` with optional parameters and a new policy method; this extension calls both and implements neither, so nothing changes for it.
+
+### MISC
+
+- The development tooling moves to `netresearch/typo3-ci-workflows` 2.0.3 and its shared configuration (#215).
+
 ## 3.12.0 (2026-10-08)
 
 ### FEATURE
