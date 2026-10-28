@@ -18,7 +18,7 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | API client | `Resources/Public/JavaScript/Ckeditor/AIService.js` | Fetch wrapper for all AJAX routes, `AIServiceError` |
 | URL loader | `Resources/Public/JavaScript/Ckeditor/UrlLoader.js` | CSP-compliant AJAX URL injection |
 | Field suggestions (JS) | `Resources/Public/JavaScript/FormEngine/FieldSuggestions.js` | FormEngine field control: suggestion list, pick fills the field |
-| AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 18 route definitions (see table below) |
+| AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 19 route definitions (see table below) |
 | Main controller | `Classes/Controller/AjaxController.php` | Chat, complete, stream (SSE), configurations, style options, tasks, task execution (plain and SSE), context, page search |
 | Vision controller | `Classes/Controller/VisionController.php` | Image analysis / alt-text generation |
 | Translation controller | `Classes/Controller/TranslationController.php` | Content translation |
@@ -26,6 +26,8 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | Tool controller | `Classes/Controller/ToolController.php` | LLM tool/function calling |
 | Saved prompt controller | `Classes/Controller/SavedPromptController.php`, `Classes/Service/Prompt/` | List, save and delete the editor's saved prompts (`tx_cowriter_prompt`), sharing with optional admin approval |
 | Field suggestion controller | `Classes/Controller/FieldSuggestionController.php` | N suggestions for one form field (permission check, structured LLM call) |
+| Budget status controller | `Classes/Controller/BudgetStatusController.php` | The session user's own usage today and this month against their nr-llm budget (`UserBudgetStatusService`), for the dialog's "Your AI usage" table |
+| Budget refusal | `Classes/Service/BudgetRefusal.php` | Answers a call nr-llm's budget refused (`BudgetExceededException`, or a tool loop ended with `BUDGET_EXHAUSTED`) with 429, `budgetExceeded: true` and a localised message naming the limit |
 | Field suggestion services | `Classes/Service/FieldSuggestion/` | Record/page context with permission checks (workspace-restricted and overlaid), system prompt + fenced untrusted data (`UntrustedDataFence`) + JSON schema, length limits, slug building via `SlugHelper` |
 | Field control registration | `Classes/EventListener/RegisterFieldSuggestionControlsListener.php`, `Classes/Form/FieldControl/FieldSuggestionsControl.php` | Adds the control to the configured TCA fields (`AfterTcaCompilationEvent`, `ext_conf_template.txt`) and renders the button |
 | Status module | `Classes/Controller/Backend/StatusController.php`, `Configuration/Backend/Modules.php` | Setup diagnostics page (`cowriter_status`) |
@@ -58,6 +60,7 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | `tx_cowriter_prompt_delete` | `SavedPromptController::deleteAction` (POST) |
 | `tx_cowriter_tools` | `ToolController::executeAction` |
 | `tx_cowriter_suggestions` | `FieldSuggestionController::suggestAction` |
+| `tx_cowriter_budget_status` | `BudgetStatusController::statusAction` (GET) |
 
 ## Data Flow
 

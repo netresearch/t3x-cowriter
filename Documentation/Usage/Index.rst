@@ -125,6 +125,23 @@ The Cowriter dialog lets you choose what to do with your content:
         previous output becomes the new input)
     *   Click :guilabel:`Cancel` to discard
 
+**Your AI usage**
+    Below the result, :guilabel:`Your AI usage` opens a table of your own
+    requests, tokens and cost today and this month, read from nr-llm. With
+    a :ref:`personal budget <nrllm:administration-user-budgets>`, each
+    value shows the limit next to it ("12 of 50") and a bar; without one,
+    the table says that no personal limit is set and still counts your
+    requests. Cost is an estimate in USD. Today counts from 00:00, this
+    month from the first day of the month, both in server time. The table
+    is read again after every request.
+
+**Budget refusal**
+    When a limit is used up, the request is refused. The preview names
+    the limit, for example "This limit is used up: your daily cost.", and
+    :guilabel:`Your AI usage` opens. A limit of an LLM configuration
+    applies to all users of that configuration together. The same message
+    appears for translation, alt text and field suggestions.
+
 Available tasks
 ===============
 
