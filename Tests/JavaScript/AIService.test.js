@@ -1115,6 +1115,108 @@ describe('AIService', () => {
             await expect(service.executeTaskStream(request, () => {}))
                 .rejects.toThrow('You are not allowed to use this LLM configuration.');
         });
+
+        it('should mark a budget refusal sent before the stream starts', async () => {
+            const service = await serviceWith({
+                ok: false,
+                status: 429,
+                json: () => Promise.resolve({
+                    success: false, error: 'This limit is used up: your daily cost.', budgetExceeded: true,
+                    exceededLimit: 'daily_cost',
+                }),
+            });
+
+            const error = await service.executeTaskStream(request, () => {}).catch((e) => e);
+
+            expect(error.message).toBe('This limit is used up: your daily cost.');
+            expect(error.budgetExceeded).toBe(true);
+            expect(error.status).toBe(429);
+        });
+
+        it('should mark a budget refusal event during the stream', async () => {
+            const service = await serviceWith(streamResponse([
+                'data: {"success":false,"error":"This limit is used up: your daily cost.","budgetExceeded":true}\n\n',
+            ]));
+
+            const error = await service.executeTaskStream(request, () => {}).catch((e) => e);
+
+            expect(error.message).toBe('This limit is used up: your daily cost.');
+            expect(error.budgetExceeded).toBe(true);
+        });
+
+        it('should not mark another error event as a budget refusal', async () => {
+            const service = await serviceWith(streamResponse(['data: {"error":"LLM provider error occurred."}\n\n']));
+
+            const error = await service.executeTaskStream(request, () => {}).catch((e) => e);
+
+            expect(error.budgetExceeded).toBe(false);
+        });
+    });
+
+    describe('budget', () => {
+        async function serviceWithBudgetRoute() {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_budget_status = '/typo3/ajax/cowriter/budget-status';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            return new module.AIService();
+        }
+
+        it('should read the budget status from its route', async () => {
+            const service = await serviceWithBudgetRoute();
+            const status = { hasPersonalLimit: false, today: {}, month: {} };
+            globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true, status }) });
+
+            await expect(service.getBudgetStatus()).resolves.toEqual({ success: true, status });
+            expect(globalThis.fetch).toHaveBeenCalledWith('/typo3/ajax/cowriter/budget-status');
+        });
+
+        it('should throw when the budget status fails', async () => {
+            const service = await serviceWithBudgetRoute();
+            globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({ success: false }) });
+
+            await expect(service.getBudgetStatus()).rejects.toThrow('HTTP 500');
+        });
+
+        it('should throw without the budget status route', async () => {
+            delete globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_budget_status;
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+
+            await expect(new module.AIService().getBudgetStatus()).rejects.toThrow('Budget status route not configured.');
+        });
+
+        it('should mark a budget refusal of a JSON route', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_task_execute = '/typo3/ajax/tx_cowriter_task_execute';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 429,
+                json: () => Promise.resolve({ success: false, error: 'Refused.', budgetExceeded: true }),
+            });
+
+            const error = await new module.AIService().executeTask(1, 'text', 'selection').catch((e) => e);
+
+            expect(error.budgetExceeded).toBe(true);
+            expect(error.status).toBe(429);
+        });
+
+        it('should mark a budget refusal of the completion stream', async () => {
+            globalThis.TYPO3.settings.ajaxUrls.tx_cowriter_stream = '/typo3/ajax/tx_cowriter_stream';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 429,
+                text: () => Promise.resolve('data: {"success":false,"error":"Refused.","budgetExceeded":true}\n\n'),
+            });
+
+            const error = await new module.AIService().completeStream('Hi', {}, () => {}).catch((e) => e);
+
+            expect(error.message).toBe('Refused.');
+            expect(error.budgetExceeded).toBe(true);
+            expect(error.status).toBe(429);
+        });
     });
 
     describe('executeTask extended params', () => {

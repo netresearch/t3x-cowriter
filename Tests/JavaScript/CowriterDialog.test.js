@@ -1270,6 +1270,163 @@ describe('CowriterDialog', () => {
 
     });
 
+    describe('budget', () => {
+        // A limit of 0 is no limit, as nr-llm reports it.
+        const meter = (used, limit, percent) => ({ used, limit, limited: !['0', '$0.00'].includes(limit), percent });
+        const unlimitedStatus = {
+            hasPersonalLimit: false,
+            today: { requests: meter('12', '0', 0), tokens: meter('1,234', '0', 0), cost: meter('$1.25', '$0.00', 0) },
+            month: { requests: meter('40', '0', 0), tokens: meter('3,456', '0', 0), cost: meter('$4.50', '$0.00', 0) },
+        };
+        const limitedStatus = {
+            hasPersonalLimit: true,
+            today: { requests: meter('12', '50', 24), tokens: meter('1,234', '0', 0), cost: meter('$1.25', '$2.00', 62) },
+            month: { requests: meter('40', '0', 0), tokens: meter('3,456', '0', 0), cost: meter('$4.50', '$0.00', 0) },
+        };
+
+        async function openDialog() {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('text', 'full');
+            await vi.waitFor(() => {
+                expect(document.querySelector('[name="execute"]')).not.toBeNull();
+            });
+            // Wrapped: an async function returning the promise would wait for it.
+            return { showPromise };
+        }
+
+        async function close({ showPromise }) {
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        }
+
+        const panel = () => document.querySelector('[data-role="budget"]');
+        const cell = (key) => panel().querySelector(`[data-budget-meter="${key}"]`);
+
+        it('stays hidden while the service offers no budget status', async () => {
+            const opened = await openDialog();
+
+            expect(panel().hidden).toBe(true);
+
+            await close(opened);
+        });
+
+        it('stays hidden when the budget status cannot be read', async () => {
+            mockService.getBudgetStatus = vi.fn().mockRejectedValue(new Error('HTTP 500'));
+            const opened = await openDialog();
+
+            await vi.waitFor(() => expect(mockService.getBudgetStatus).toHaveBeenCalled());
+            expect(panel().hidden).toBe(true);
+
+            await close(opened);
+        });
+
+        it('says there is no personal limit and shows the usage without bars', async () => {
+            mockService.getBudgetStatus = vi.fn().mockResolvedValue({ success: true, status: unlimitedStatus });
+            const opened = await openDialog();
+
+            await vi.waitFor(() => expect(panel().hidden).toBe(false));
+            expect(panel().tagName).toBe('DETAILS');
+            expect(panel().open).toBe(false);
+            expect(panel().querySelector('summary').textContent).toBe('Your AI usage');
+            expect(panel().textContent).toContain('No personal limit is set for you.');
+            expect(cell('today.requests').textContent).toBe('12 (no limit)');
+            expect(cell('month.cost').textContent).toBe('~$4.50 (no limit)');
+            expect(panel().querySelector('progress')).toBeNull();
+
+            await close(opened);
+        });
+
+        it('gives every limited value a bar whose text equivalent is the "x of y" next to it', async () => {
+            mockService.getBudgetStatus = vi.fn().mockResolvedValue({ success: true, status: limitedStatus });
+            const opened = await openDialog();
+
+            await vi.waitFor(() => expect(panel().hidden).toBe(false));
+            expect(panel().textContent).toContain('Every request counts against your personal budget.');
+            const bar = cell('today.requests').querySelector('progress');
+            expect(bar.value).toBe(24);
+            expect(bar.max).toBe(100);
+            expect(bar.getAttribute('aria-label')).toBe('Requests, Today: usage of the limit');
+            const description = document.getElementById(bar.getAttribute('aria-describedby'));
+            expect(description.textContent).toBe('12 of 50');
+            expect(cell('today.cost').querySelector('span').textContent).toBe('~$1.25 of $2.00');
+            expect(cell('month.requests').querySelector('progress')).toBeNull();
+            expect(panel().querySelectorAll('th[scope="col"]')).toHaveLength(3);
+            expect(panel().querySelectorAll('th[scope="row"]')).toHaveLength(3);
+
+            await close(opened);
+        });
+
+        it('reads the usage again after each request', async () => {
+            mockService.getBudgetStatus = vi.fn()
+                .mockResolvedValueOnce({ success: true, status: unlimitedStatus })
+                .mockResolvedValueOnce({ success: true, status: limitedStatus });
+            const opened = await openDialog();
+            await vi.waitFor(() => expect(cell('today.requests').textContent).toBe('12 (no limit)'));
+
+            document.querySelector('[name="execute"]').click();
+
+            await vi.waitFor(() => expect(mockService.getBudgetStatus).toHaveBeenCalledTimes(2));
+            await vi.waitFor(() => expect(cell('today.requests').querySelector('span').textContent).toBe('12 of 50'));
+
+            await close(opened);
+        });
+
+        it('shows an answer overtaken by a later one never', async () => {
+            let answerFirst;
+            mockService.getBudgetStatus = vi.fn()
+                .mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve; }))
+                .mockResolvedValueOnce({ success: true, status: limitedStatus });
+            const opened = await openDialog();
+
+            document.querySelector('[name="execute"]').click();
+            await vi.waitFor(() => expect(cell('today.requests').querySelector('span')?.textContent).toBe('12 of 50'));
+            answerFirst({ success: true, status: unlimitedStatus });
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(cell('today.requests').querySelector('span').textContent).toBe('12 of 50');
+
+            await close(opened);
+        });
+
+        it('shows a budget refusal as a plain notice and opens the usage', async () => {
+            mockService.getBudgetStatus = vi.fn().mockResolvedValue({ success: true, status: limitedStatus });
+            const refusal = Object.assign(
+                new Error('The request was refused. This limit is used up: your daily cost.'),
+                { budgetExceeded: true, status: 429 },
+            );
+            mockService.executeTask.mockRejectedValue(refusal);
+            const opened = await openDialog();
+            await vi.waitFor(() => expect(panel().hidden).toBe(false));
+
+            document.querySelector('[name="execute"]').click();
+
+            const preview = document.querySelector('[data-role="result-preview"]');
+            await vi.waitFor(() => {
+                expect(preview.textContent).toBe('The request was refused. This limit is used up: your daily cost.');
+            });
+            // The preview is the dialog's live region.
+            expect(preview.getAttribute('role')).toBe('status');
+            expect(panel().open).toBe(true);
+
+            await close(opened);
+        });
+
+        it('keeps the error prefix for other failures', async () => {
+            mockService.getBudgetStatus = vi.fn().mockResolvedValue({ success: true, status: limitedStatus });
+            mockService.executeTask.mockRejectedValue(Object.assign(new Error('boom'), { status: 500 }));
+            const opened = await openDialog();
+
+            document.querySelector('[name="execute"]').click();
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="result-preview"]').textContent).toBe('Error: boom');
+            });
+            expect(panel().open).toBe(false);
+
+            await close(opened);
+        });
+    });
+
     describe('cancel', () => {
         it('should reject promise when cancel is clicked', async () => {
             const dialog = new CowriterDialog(mockService);

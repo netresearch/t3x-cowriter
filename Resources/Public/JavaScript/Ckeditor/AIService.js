@@ -50,7 +50,8 @@ import { t } from '@netresearch/t3_cowriter/Labels';
 
 /**
  * Error with optional status URL for configuration issues and the HTTP status
- * of the failed response.
+ * of the failed response. budgetExceeded marks a call the editor's AI budget
+ * refused: the message names the limit and is a notice, not a failure.
  */
 class AIServiceError extends Error {
     /** @type {string|null} */
@@ -59,16 +60,21 @@ class AIServiceError extends Error {
     /** @type {number|null} */
     status = null;
 
+    /** @type {boolean} */
+    budgetExceeded = false;
+
     /**
      * @param {string} message
      * @param {string|null} [statusUrl]
      * @param {number|null} [status]
+     * @param {boolean} [budgetExceeded]
      */
-    constructor(message, statusUrl = null, status = null) {
+    constructor(message, statusUrl = null, status = null, budgetExceeded = false) {
         super(message);
         this.name = 'AIServiceError';
         this.statusUrl = statusUrl;
         this.status = status;
+        this.budgetExceeded = budgetExceeded;
     }
 }
 
@@ -101,7 +107,7 @@ function styleFields(style) {
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, budgetStatus: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
      * @private
      */
     _routes = {
@@ -122,6 +128,7 @@ export class AIService {
         templates: null,
         tools: null,
         pageSearch: null,
+        budgetStatus: null,
         tasksModule: null,
         llmModule: null,
         statusModule: null,
@@ -147,6 +154,7 @@ export class AIService {
             this._routes.templates = TYPO3.settings.ajaxUrls.tx_cowriter_templates || null;
             this._routes.tools = TYPO3.settings.ajaxUrls.tx_cowriter_tools || null;
             this._routes.pageSearch = TYPO3.settings.ajaxUrls.tx_cowriter_page_search || null;
+            this._routes.budgetStatus = TYPO3.settings.ajaxUrls.tx_cowriter_budget_status || null;
             this._routes.tasksModule = TYPO3.settings.ajaxUrls.nrllm_tasks_module || null;
             this._routes.llmModule = TYPO3.settings.ajaxUrls.nrllm_module || null;
             this._routes.statusModule = TYPO3.settings.ajaxUrls.cowriter_status || null;
@@ -186,6 +194,7 @@ export class AIService {
             body.error || `HTTP ${response.status}`,
             body.statusUrl || null,
             response.status,
+            body.budgetExceeded === true,
         );
     }
 
@@ -270,10 +279,12 @@ export class AIService {
             const text = await response.text().catch(() => '');
             let errorMessage = `HTTP ${response.status}`;
             let statusUrl = null;
+            let budgetExceeded = false;
             try {
                 const json = JSON.parse(text);
                 errorMessage = json.error || errorMessage;
                 statusUrl = json.statusUrl || null;
+                budgetExceeded = json.budgetExceeded === true;
             } catch {
                 // Try SSE format: "data: {"error": "..."}\n\n"
                 const match = text.match(/^data:\s*(.+)/m);
@@ -282,10 +293,11 @@ export class AIService {
                         const sseData = JSON.parse(match[1]);
                         errorMessage = sseData.error || errorMessage;
                         statusUrl = sseData.statusUrl || null;
+                        budgetExceeded = sseData.budgetExceeded === true;
                     } catch { /* use HTTP status fallback */ }
                 }
             }
-            throw new AIServiceError(errorMessage, statusUrl);
+            throw new AIServiceError(errorMessage, statusUrl, response.status, budgetExceeded);
         }
 
         return this._readEventStream(response, onChunk);
@@ -324,7 +336,9 @@ export class AIService {
             }
             if (data.error) {
                 // AIServiceError keeps the status page link a configuration error carries.
-                throw new AIServiceError(data.error, data.statusUrl || null, response.status);
+                throw new AIServiceError(
+                    data.error, data.statusUrl || null, response.status, data.budgetExceeded === true,
+                );
             }
             if (data.done) {
                 lastData = data;
@@ -719,6 +733,25 @@ export class AIService {
             await this._throwResponseError(response);
         }
 
+        return response.json();
+    }
+
+    /**
+     * The editor's own AI usage today and this month against the limits of
+     * their budget. The numbers come formatted in the editor's locale.
+     *
+     * @returns {Promise<{success: boolean, status: {hasPersonalLimit: boolean,
+     *     today: Record<string, {used: string, limit: string, limited: boolean, percent: number}>,
+     *     month: Record<string, {used: string, limit: string, limited: boolean, percent: number}>}}>}
+     */
+    async getBudgetStatus() {
+        if (!this._routes.budgetStatus) {
+            throw new Error('Budget status route not configured.');
+        }
+        const response = await fetch(this._routes.budgetStatus);
+        if (!response.ok) {
+            await this._throwResponseError(response);
+        }
         return response.json();
     }
 

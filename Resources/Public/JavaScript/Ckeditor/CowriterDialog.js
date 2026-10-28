@@ -82,6 +82,22 @@ const DIALOG_CSS = `
     color: var(--typo3-text-color-secondary);
     font-style: italic;
 }
+.cowriter-budget summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--typo3-text-color-secondary);
+}
+.cowriter-budget table {
+    font-size: 0.85rem;
+}
+.cowriter-budget-note {
+    color: var(--typo3-text-color-secondary);
+}
+.cowriter-budget progress {
+    display: block;
+    width: 100%;
+    max-width: 10rem;
+}
 @media (forced-colors: active) {
     .cowriter-dialog [role="option"].active {
         forced-color-adjust: none;
@@ -157,6 +173,9 @@ export class CowriterDialog {
      * @private
      */
     _knownImageSources = new Set();
+
+    /** @type {number} Counts budget status requests; only the latest answer is shown */
+    _budgetSequence = 0;
 
     /**
      * @param {import('./AIService.js').AIService} service
@@ -877,6 +896,7 @@ export class CowriterDialog {
             tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid,
         );
         configurationsRequest.then((configurations) => this._offerConfigurations(container, configurations));
+        void this._refreshBudget(container);
         styleRequest.then((options) => this._offerStyleOptions(container, options));
         promptsRequest.then((prompts) => this._offerSavedPrompts(container, prompts));
         container.querySelector('[data-role="prompt-save"]')
@@ -1040,9 +1060,19 @@ export class CowriterDialog {
                         state = 'idle';
                         this._updateButtonVisibility(modal, 'idle');
                         this._setButtonsDisabled(modal, false);
+                        void this._refreshBudget(container);
                         return;
                     }
-                    preview.textContent = t('ckeditor.dialog.error', 'Error: %s', error.message);
+                    if (error?.budgetExceeded) {
+                        // The budget refused the request: a notice, not an error.
+                        preview.textContent = error.message;
+                        const budget = container.querySelector('[data-role="budget"]');
+                        if (budget) {
+                            budget.open = true;
+                        }
+                    } else {
+                        preview.textContent = t('ckeditor.dialog.error', 'Error: %s', error.message);
+                    }
                     if (error.statusUrl) {
                         this._appendStatusLink(preview, error.statusUrl);
                     }
@@ -1054,6 +1084,8 @@ export class CowriterDialog {
                 }
 
                 this._setButtonsDisabled(modal, false);
+                // Every request may have counted against the budget.
+                void this._refreshBudget(container);
             };
 
             const insertTrigger = () => {
@@ -1418,7 +1450,136 @@ export class CowriterDialog {
         workRow.appendChild(resultCol);
         container.appendChild(workRow);
 
+        // The editor's AI usage; shown once the status has arrived.
+        const budget = document.createElement('details');
+        budget.className = 'cowriter-budget mb-2';
+        budget.dataset.role = 'budget';
+        budget.dataset.idPrefix = `cowriter-budget-${++formIdCounter}`;
+        budget.hidden = true;
+        const budgetSummary = document.createElement('summary');
+        budgetSummary.textContent = t('ckeditor.dialog.budget.title', 'Your AI usage');
+        budget.appendChild(budgetSummary);
+        const budgetBody = document.createElement('div');
+        budgetBody.dataset.role = 'budget-body';
+        budget.appendChild(budgetBody);
+        container.appendChild(budget);
+
         return container;
+    }
+
+    /**
+     * Read the editor's AI usage again and show it. The panel stays hidden
+     * while the status is unavailable; an answer overtaken by a later request
+     * is dropped.
+     *
+     * @param {HTMLElement} container
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _refreshBudget(container) {
+        const panel = container.querySelector('[data-role="budget"]');
+        if (!panel || typeof this._service.getBudgetStatus !== 'function') {
+            return;
+        }
+        const sequence = ++this._budgetSequence;
+        let response;
+        try {
+            response = await this._service.getBudgetStatus();
+        } catch {
+            return;
+        }
+        if (sequence !== this._budgetSequence || !response?.success || !response.status) {
+            return;
+        }
+        this._renderBudget(panel, response.status);
+        panel.hidden = false;
+    }
+
+    /**
+     * Fill the usage panel: a table of requests, tokens and cost against the
+     * limits of today and this month. A limited value has a bar whose text
+     * equivalent is the "x of y" next to it; an unlimited one says so.
+     *
+     * @param {HTMLElement} panel
+     * @param {{hasPersonalLimit: boolean,
+     *     today: Record<string, {used: string, limit: string, limited: boolean, percent: number}>,
+     *     month: Record<string, {used: string, limit: string, limited: boolean, percent: number}>}} status
+     * @private
+     */
+    _renderBudget(panel, status) {
+        const body = panel.querySelector('[data-role="budget-body"]');
+        if (!body) {
+            return;
+        }
+        const idPrefix = panel.dataset.idPrefix || 'cowriter-budget';
+        const periods = [
+            ['today', t('ckeditor.dialog.budget.today', 'Today')],
+            ['month', t('ckeditor.dialog.budget.month', 'This month')],
+        ];
+        const axes = [
+            ['requests', t('ckeditor.dialog.budget.requests', 'Requests')],
+            ['tokens', t('ckeditor.dialog.budget.tokens', 'Tokens')],
+            ['cost', t('ckeditor.dialog.budget.cost', 'Cost (USD)')],
+        ];
+
+        const hint = document.createElement('p');
+        hint.className = 'small mb-1';
+        hint.textContent = status.hasPersonalLimit
+            ? t('ckeditor.dialog.budget.limited',
+                'Every request counts against your personal budget. A request is refused once one of its limits is used up.')
+            : t('ckeditor.dialog.budget.unlimited',
+                'No personal limit is set for you. Your requests are counted all the same.');
+
+        const table = document.createElement('table');
+        table.className = 'table table-sm mb-1';
+        const headRow = table.createTHead().insertRow();
+        for (const label of [t('ckeditor.dialog.budget.measure', 'Measure'), ...periods.map(([, name]) => name)]) {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.textContent = label;
+            headRow.appendChild(th);
+        }
+        const tbody = table.createTBody();
+        for (const [axis, axisLabel] of axes) {
+            const row = tbody.insertRow();
+            const th = document.createElement('th');
+            th.scope = 'row';
+            th.textContent = axisLabel;
+            row.appendChild(th);
+            for (const [period, periodLabel] of periods) {
+                const meter = status[period]?.[axis];
+                const cell = row.insertCell();
+                cell.dataset.budgetMeter = `${period}.${axis}`;
+                if (!meter) {
+                    continue;
+                }
+                // Cost is an estimate, as in nr-llm's modules.
+                const used = (axis === 'cost' ? '~' : '') + meter.used;
+                if (!meter.limited) {
+                    cell.textContent = t('ckeditor.dialog.budget.noLimit', '%s (no limit)', used);
+                    continue;
+                }
+                const text = document.createElement('span');
+                text.id = `${idPrefix}-${period}-${axis}`;
+                text.textContent = t('ckeditor.dialog.budget.usedOf', '%s of %s', used, meter.limit);
+                const bar = document.createElement('progress');
+                bar.max = 100;
+                bar.value = Number(meter.percent) || 0;
+                bar.setAttribute('aria-label', t('ckeditor.dialog.budget.barAria', '%s: usage of the limit',
+                    `${axisLabel}, ${periodLabel}`));
+                // Chromium drops aria-valuetext on a native progress element.
+                bar.setAttribute('aria-describedby', text.id);
+                cell.append(text, bar);
+            }
+        }
+
+        const windows = document.createElement('p');
+        // No text-body-secondary: the TYPO3 14.3 backend CSS does not define it.
+        windows.className = 'small mb-0 cowriter-budget-note';
+        windows.textContent = t('ckeditor.dialog.budget.windows',
+            'Today counts from 00:00, this month from the first day of the month, both in server time.');
+
+        body.replaceChildren(hint, table, windows);
     }
 
     /**
