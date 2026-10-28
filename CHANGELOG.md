@@ -2,6 +2,21 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.14.0 (2026-10-28)
+
+### FEATURE
+
+- The Cowriter dialog shows the editor's own AI usage against their personal nr-llm budget, today and this month, in a collapsible section that refreshes after each request and opens when a request is refused (#219).
+- A request the nr-llm budget refuses is answered with HTTP 429 and a message naming the limit that is used up, in the editor's language, on every route that calls a model; before, editors saw a generic error (#219).
+
+### BREAKING
+
+- Requires `netresearch/nr-llm` 0.41.9 or a later 0.41 release (`composer.json` `^0.41.9`, `ext_emconf.php` `0.41.9-0.41.99`): the usage section uses nr-llm's budget status service and its localized number formatting (#219).
+
+### MISC
+
+- CI cancels a pull request's superseded run (#217).
+
 ## 3.13.0 (2026-10-20)
 
 ### FEATURE
