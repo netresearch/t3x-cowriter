@@ -906,7 +906,22 @@ final readonly class AjaxController
         // The event stream opens below, before nr-llm is called, so nr-llm's own
         // budget check would arrive after the 200. Checking first lets a refusal
         // be a 429.
-        $refusal = $this->budgetRefusal->check($this->currentBackendUserId(), $configuration);
+        try {
+            $refusal = $this->budgetRefusal->check($this->currentBackendUserId(), $configuration);
+        } catch (Throwable $e) {
+            $this->logger->error('Task stream budget check error', [
+                'taskUid'   => $dto->taskUid,
+                'exception' => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+
+            return $this->jsonResponseWithRateLimitHeaders(
+                $this->buildErrorResponse($this->labels->get('error.unexpected'), $e),
+                $rateLimitResult,
+                500,
+            );
+        }
+
         if ($refusal instanceof BudgetCheckResult) {
             return $this->budgetRefusedResponse($refusal, $rateLimitResult);
         }

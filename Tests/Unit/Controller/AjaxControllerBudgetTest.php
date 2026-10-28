@@ -125,7 +125,7 @@ final class AjaxControllerBudgetTest extends TestCase
     {
         $llm = $this->createStub(LlmServiceManagerInterface::class);
         $llm->method('streamChatWithConfiguration')->willReturnCallback(static function (): Generator {
-            yield ''; // nr-llm checks the budget once the stream is read
+            yield ''; // a refusal raised while the stream is read
             throw self::refusal();
         });
 
@@ -160,6 +160,23 @@ final class AjaxControllerBudgetTest extends TestCase
     }
 
     #[Test]
+    public function aTaskStreamWhoseBudgetCheckFailsIsAnUnexpectedErrorBeforeTheStreamOpens(): void
+    {
+        $llm = $this->createMock(LlmServiceManagerInterface::class);
+        $llm->expects(self::never())->method('streamChatWithConfiguration');
+        $stream = new RecordingEventStream();
+        $budget = $this->createStub(BudgetServiceInterface::class);
+        $budget->method('check')->willThrowException(new RuntimeException('database gone'));
+
+        $response = $this->taskRouteController($llm, eventStream: $stream, budgetRefusal: new BudgetRefusal($budget))
+            ->executeTaskStreamAction($this->request(self::taskBody()));
+
+        self::assertSame(500, $response->getStatusCode());
+        self::assertArrayNotHasKey('budgetExceeded', $this->json($response));
+        self::assertNull($stream->openedWith);
+    }
+
+    #[Test]
     public function aTaskStreamWithinTheBudgetIsStreamed(): void
     {
         $llm = $this->createStub(LlmServiceManagerInterface::class);
@@ -181,7 +198,7 @@ final class AjaxControllerBudgetTest extends TestCase
     {
         $llm = $this->createStub(LlmServiceManagerInterface::class);
         $llm->method('streamChatWithConfiguration')->willReturnCallback(static function (): Generator {
-            yield ''; // nr-llm checks the budget once the stream is read
+            yield ''; // a refusal raised while the stream is read
             throw self::refusal();
         });
         $stream = new RecordingEventStream();
