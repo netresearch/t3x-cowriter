@@ -33,9 +33,8 @@ final class AjaxControllerVariantsTest extends TestCase
     private LlmServiceManagerInterface&Stub $llm;
 
     /**
-     * nr-llm's own double: it returns the structured answer in the shape of
-     * the installed nr-llm line (an array on 0.38, a StructuredCompletionResponse
-     * from 0.39 on), so these tests run against either.
+     * nr-llm's own double: it returns the structured answer as a
+     * StructuredCompletionResponse, as the real service does.
      */
     private FakeCompletionService $completion;
 
