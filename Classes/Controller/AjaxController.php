@@ -903,8 +903,9 @@ final readonly class AjaxController
 
         ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords] = $prepared;
 
-        // nr-llm checks the budget only once the stream is read, after the
-        // 200 has gone out. The same check before it lets a refusal be a 429.
+        // The event stream opens below, before nr-llm is called, so nr-llm's own
+        // budget check would arrive after the 200. Checking first lets a refusal
+        // be a 429.
         $refusal = $this->budgetRefusal->check($this->currentBackendUserId(), $configuration);
         if ($refusal instanceof BudgetCheckResult) {
             return $this->budgetRefusedResponse($refusal, $rateLimitResult);
