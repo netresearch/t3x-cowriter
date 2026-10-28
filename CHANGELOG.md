@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.14.1 (2026-10-28)
+
+### BUILD
+
+- Requires `netresearch/nr-llm` 0.41.11 or a later 0.41 release (`composer.json` `^0.41.11`, `ext_emconf.php` `0.41.11-0.41.99`). The AI usage section reads the budget status through nr-llm's `UserBudgetStatusService` and `LocalizedNumberFormatter`, which are public API from 0.41.11 on (#222).
+
+### CHANGE
+
+- `StructuredAnswer::payload()` takes nr-llm's `StructuredCompletionResponse` only; the branch for nr-llm 0.38's array answers, unreachable since 3.14.0, is removed (#221).
+
 ## 3.14.0 (2026-10-28)
 
 ### FEATURE
