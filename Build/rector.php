@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
 use Rector\DeadCode\Rector\ClassMethod\RemoveUnusedPublicMethodParameterRector;
-use Rector\Php55\Rector\String_\StringClassNameToClassConstantRector;
 
 $configure = require __DIR__ . '/../.Build/vendor/netresearch/typo3-ci-workflows/config/rector/rector.php';
 
@@ -26,12 +25,5 @@ return static function (RectorConfig $rectorConfig) use ($configure): void {
 
     $rectorConfig->skip([
         RemoveUnusedPublicMethodParameterRector::class,
-        // nr-llm's StructuredCompletionResponse exists from 0.39 on, and the
-        // extension supports 0.38 too. The test names it as a string behind
-        // class_exists() on purpose (see its docblock); Rector proposes
-        // ::class whenever 0.39 or later is installed.
-        StringClassNameToClassConstantRector::class => [
-            __DIR__ . '/../Tests/Unit/Service/StructuredAnswerTest.php',
-        ],
     ]);
 };
