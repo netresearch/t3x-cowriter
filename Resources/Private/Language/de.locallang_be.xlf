@@ -69,6 +69,50 @@
                 <source>Rate limit exceeded. Please try again later.</source>
                 <target>Zu viele Anfragen. Bitte versuchen Sie es später erneut.</target>
             </trans-unit>
+            <trans-unit id="error.budgetExceeded" resname="error.budgetExceeded">
+                <source>The request was refused because a limit of your AI budget is used up.</source>
+                <target>Die Anfrage wurde abgelehnt, weil ein Limit Ihres KI-Budgets aufgebraucht ist.</target>
+            </trans-unit>
+            <trans-unit id="error.budgetExceeded.limit" resname="error.budgetExceeded.limit">
+                <source>The request was refused. This limit is used up: %s.</source>
+                <target>Die Anfrage wurde abgelehnt. Dieses Limit ist aufgebraucht: %s.</target>
+            </trans-unit>
+            <trans-unit id="budget.limit.daily_requests" resname="budget.limit.daily_requests">
+                <source>your daily number of requests</source>
+                <target>Ihre tägliche Anzahl an Anfragen</target>
+            </trans-unit>
+            <trans-unit id="budget.limit.daily_tokens" resname="budget.limit.daily_tokens">
+                <source>your daily number of tokens</source>
+                <target>Ihre tägliche Anzahl an Tokens</target>
+            </trans-unit>
+            <trans-unit id="budget.limit.daily_cost" resname="budget.limit.daily_cost">
+                <source>your daily cost</source>
+                <target>Ihre täglichen Kosten</target>
+            </trans-unit>
+            <trans-unit id="budget.limit.monthly_requests" resname="budget.limit.monthly_requests">
+                <source>your monthly number of requests</source>
+                <target>Ihre monatliche Anzahl an Anfragen</target>
+            </trans-unit>
+            <trans-unit id="budget.limit.monthly_tokens" resname="budget.limit.monthly_tokens">
+                <source>your monthly number of tokens</source>
+                <target>Ihre monatliche Anzahl an Tokens</target>
+            </trans-unit>
+            <trans-unit id="budget.limit.monthly_cost" resname="budget.limit.monthly_cost">
+                <source>your monthly cost</source>
+                <target>Ihre monatlichen Kosten</target>
+            </trans-unit>
+            <trans-unit id="budget.limit.configuration_daily_requests" resname="budget.limit.configuration_daily_requests">
+                <source>the daily number of requests of this configuration, shared by all users</source>
+                <target>die tägliche Anzahl an Anfragen dieser Konfiguration, gemeinsam für alle Benutzer</target>
+            </trans-unit>
+            <trans-unit id="budget.limit.configuration_daily_tokens" resname="budget.limit.configuration_daily_tokens">
+                <source>the daily number of tokens of this configuration, shared by all users</source>
+                <target>die tägliche Anzahl an Tokens dieser Konfiguration, gemeinsam für alle Benutzer</target>
+            </trans-unit>
+            <trans-unit id="budget.limit.configuration_daily_cost" resname="budget.limit.configuration_daily_cost">
+                <source>the daily cost of this configuration, shared by all users</source>
+                <target>die täglichen Kosten dieser Konfiguration, gemeinsam für alle Benutzer</target>
+            </trans-unit>
             <trans-unit id="error.noConfiguration" resname="error.noConfiguration">
                 <source>No LLM configuration available. Please configure the nr_llm extension.</source>
                 <target>Keine LLM-Konfiguration verfügbar. Bitte konfigurieren Sie die Erweiterung nr_llm.</target>
@@ -728,6 +772,58 @@
             <trans-unit id="ckeditor.dialog.copied" resname="ckeditor.dialog.copied">
                 <source>Copied!</source>
                 <target>Kopiert!</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.title" resname="ckeditor.dialog.budget.title">
+                <source>Your AI usage</source>
+                <target>Ihre KI-Nutzung</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.limited" resname="ckeditor.dialog.budget.limited">
+                <source>Every request counts against your personal budget. A request is refused once one of its limits is used up.</source>
+                <target>Jede Anfrage zählt gegen Ihr persönliches Budget. Ist eines seiner Limits aufgebraucht, wird eine Anfrage abgelehnt.</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.unlimited" resname="ckeditor.dialog.budget.unlimited">
+                <source>No personal limit is set for you. Your requests are counted all the same.</source>
+                <target>Für Sie ist kein persönliches Limit festgelegt. Ihre Anfragen werden trotzdem gezählt.</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.measure" resname="ckeditor.dialog.budget.measure">
+                <source>Measure</source>
+                <target>Messgröße</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.today" resname="ckeditor.dialog.budget.today">
+                <source>Today</source>
+                <target>Heute</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.month" resname="ckeditor.dialog.budget.month">
+                <source>This month</source>
+                <target>Diesen Monat</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.requests" resname="ckeditor.dialog.budget.requests">
+                <source>Requests</source>
+                <target>Anfragen</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.tokens" resname="ckeditor.dialog.budget.tokens">
+                <source>Tokens</source>
+                <target>Tokens</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.cost" resname="ckeditor.dialog.budget.cost">
+                <source>Cost (USD)</source>
+                <target>Kosten (USD)</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.usedOf" resname="ckeditor.dialog.budget.usedOf">
+                <source>%s of %s</source>
+                <target>%s von %s</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.noLimit" resname="ckeditor.dialog.budget.noLimit">
+                <source>%s (no limit)</source>
+                <target>%s (kein Limit)</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.barAria" resname="ckeditor.dialog.budget.barAria">
+                <source>%s: usage of the limit</source>
+                <target>%s: Auslastung des Limits</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.dialog.budget.windows" resname="ckeditor.dialog.budget.windows">
+                <source>Today counts from 00:00, this month from the first day of the month, both in server time.</source>
+                <target>„Heute“ zählt ab 00:00 Uhr, „Diesen Monat“ ab dem Ersten des Monats, jeweils in Serverzeit.</target>
             </trans-unit>
             <trans-unit id="tx_cowriter_prompt" resname="tx_cowriter_prompt">
                 <source>Cowriter prompt</source>

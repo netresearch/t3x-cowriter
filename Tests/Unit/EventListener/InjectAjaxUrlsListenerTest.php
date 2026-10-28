@@ -208,6 +208,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $this->assertArrayHasKey('tx_cowriter_task_stream', $decoded);
         $this->assertArrayHasKey('tx_cowriter_context', $decoded);
         $this->assertArrayHasKey('tx_cowriter_page_search', $decoded);
+        $this->assertArrayHasKey('tx_cowriter_budget_status', $decoded);
         $this->assertArrayHasKey('nrllm_tasks_module', $decoded);
     }
 
@@ -245,6 +246,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $this->assertContains('ajax_tx_cowriter_task_stream', $generatedRoutes);
         $this->assertContains('ajax_tx_cowriter_context', $generatedRoutes);
         $this->assertContains('ajax_tx_cowriter_page_search', $generatedRoutes);
+        $this->assertContains('ajax_tx_cowriter_budget_status', $generatedRoutes);
         $this->assertContains('nrllm_tasks', $generatedRoutes);
     }
 
@@ -325,6 +327,7 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $this->assertSame('/typo3/ajax/ajax_tx_cowriter_task_execute', $decoded['tx_cowriter_task_execute']);
         $this->assertSame('/typo3/ajax/ajax_tx_cowriter_context', $decoded['tx_cowriter_context']);
         $this->assertSame('/typo3/ajax/ajax_tx_cowriter_page_search', $decoded['tx_cowriter_page_search']);
+        $this->assertSame('/typo3/ajax/ajax_tx_cowriter_budget_status', $decoded['tx_cowriter_budget_status']);
         $this->assertSame('/typo3/ajax/nrllm_tasks', $decoded['nrllm_tasks_module']);
     }
 

@@ -1,0 +1,7 @@
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,2,0,"editor",0,"",0
+,3,0,"colleague",0,"",0
+"tx_nrllm_user_budget"
+,"uid","pid","be_user","max_requests_per_day","is_active"
+,1,0,2,5,1

@@ -10,8 +10,10 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
 use InvalidArgumentException;
+use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Exception\BudgetExceededException;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Testing\FakeCompletionService;
@@ -170,6 +172,24 @@ final class FieldSuggestionControllerTest extends TestCase
         );
         self::assertSame(FieldSuggestionService::schema(3), $this->completion->completeStructuredForConfigurationCalls[0]['schema']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
+    }
+
+    #[Test]
+    public function aRefusedSuggestionIsA429NamingTheLimit(): void
+    {
+        $this->completion->throwable = new BudgetExceededException(
+            BudgetCheckResult::denied(BudgetCheckResult::LIMIT_CONFIGURATION_DAILY_COST, 5.0, 5.0),
+        );
+
+        $response = $this->subject()->suggestAction($this->request($this->body()));
+
+        self::assertSame(429, $response->getStatusCode());
+        self::assertSame([
+            'success'        => false,
+            'error'          => 'The request was refused. This limit is used up: the daily cost of this configuration, shared by all users.',
+            'budgetExceeded' => true,
+            'exceededLimit'  => BudgetCheckResult::LIMIT_CONFIGURATION_DAILY_COST,
+        ], $this->json($response));
     }
 
     #[Test]

@@ -51,5 +51,8 @@ services:
   Netresearch\T3Cowriter\Controller\SavedPromptController:
     public: true
 
+  Netresearch\T3Cowriter\Controller\BudgetStatusController:
+    public: true
+
   Netresearch\T3Cowriter\Controller\Backend\StatusController:
     public: true

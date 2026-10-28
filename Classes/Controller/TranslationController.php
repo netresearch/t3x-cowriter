@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
+use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
@@ -17,6 +18,7 @@ use Netresearch\NrLlm\Specialized\Translation\LlmTranslator;
 use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
+use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
@@ -53,6 +55,7 @@ final readonly class TranslationController
         // the Symfony container still autowires the shared service.
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
         private BackendLabels $labels = new BackendLabels(),
+        private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
     ) {}
 
     public function translateAction(ServerRequestInterface $request): ResponseInterface
@@ -186,6 +189,11 @@ final readonly class TranslationController
                 usage: $result->usage,
             );
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                return $this->budgetRefusal->response($refusal, $rateLimitResult);
+            }
+
             $this->logger->error('Translation failed', [
                 'exception'      => $e->getMessage(),
                 'targetLanguage' => $translationRequest->targetLanguage,

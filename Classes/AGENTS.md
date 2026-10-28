@@ -31,6 +31,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Controller/TemplateController.php | Prompt template listing |
 | Controller/ToolController.php | LLM function calling |
 | Controller/FieldSuggestionController.php | Field suggestions for FormEngine fields |
+| Controller/BudgetStatusController.php | The session user's own nr-llm budget usage for the dialog |
 | Domain/DTO/CompleteRequest.php | Request DTO with validation |
 | Domain/DTO/CompleteResponse.php | Response DTO; content returned unescaped (see Security) |
 | Domain/DTO/ContextRequest.php | Context preview request DTO |
@@ -54,6 +55,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Service/RateLimiterInterface.php | Rate limiter abstraction for DI |
 | Service/RateLimiterService.php | Sliding window rate limiter implementation |
 | Service/RateLimitResult.php | Rate limit check result DTO |
+| Service/BudgetRefusal.php | 429 answer with a localised message naming the nr-llm budget limit that is used up |
 
 ## PHP 8.2+ Patterns (REQUIRED)
 
@@ -116,6 +118,21 @@ try {
     return $this->buildErrorResponse('LLM provider error occurred.', $e);
 } catch (\Throwable $e) {
     return $this->buildErrorResponse('An unexpected error occurred.', $e);
+}
+```
+
+A call nr-llm's budget refuses throws `BudgetExceededException` (the tool loop
+instead ends with `AgentRunTerminationReason::BUDGET_EXHAUSTED`). Every action
+that calls a model answers it through `BudgetRefusal` — 429, `budgetExceeded:
+true`, the limit named in the editor's language — before the generic error path:
+
+```php
+} catch (Throwable $e) {
+    $refusal = BudgetRefusal::find($e); // also inside a wrapping exception
+    if ($refusal instanceof BudgetCheckResult) {
+        return $this->budgetRefusal->response($refusal, $rateLimitResult);
+    }
+    // ...
 }
 ```
 

@@ -15,7 +15,7 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 
 - **AIService.js** - API client for backend communication (chat, complete, stream)
 - **cowriter.js** - CKEditor 5 plugin integration
-- **CowriterDialog.js** - Task dialog UI (incl. status link on errors)
+- **CowriterDialog.js** - Task dialog UI (incl. status link on errors, the editor's AI usage table, budget refusals as notice)
 - **HtmlSanitizer.js** - Allow-list sanitiser for every model answer shown as markup or inserted (dialog result, variants, stream, translation)
 - **UrlLoader.js** - CSP-compliant AJAX URL injection from data attributes
 - **FormEngine/FieldSuggestions.js** - "Suggest" field control for plain form fields (suggestion list, keyboard, live region)

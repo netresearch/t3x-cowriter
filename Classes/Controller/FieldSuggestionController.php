@@ -10,9 +10,11 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use InvalidArgumentException;
+use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\T3Cowriter\Domain\DTO\FieldSuggestionRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
+use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldKind;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldProfile;
@@ -55,6 +57,7 @@ final readonly class FieldSuggestionController
         private LoggerInterface $logger,
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
         private BackendLabels $labels = new BackendLabels(),
+        private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
     ) {}
 
     public function suggestAction(ServerRequestInterface $request): ResponseInterface
@@ -130,6 +133,11 @@ final readonly class FieldSuggestionController
                 $configuration,
             );
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                return $this->budgetRefusal->response($refusal, $rateLimitResult);
+            }
+
             // Provider messages can carry request details: log them, never return them.
             $this->logger->error('Field suggestion failed', ['exception' => $e->getMessage()]);
 

@@ -9,8 +9,10 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
+use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
+use Netresearch\NrLlm\Exception\BudgetExceededException;
 use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Controller\VisionController;
@@ -187,6 +189,24 @@ final class VisionControllerTest extends TestCase
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
         self::assertStringContainsString('maximum length', $data['error']);
+    }
+
+    #[Test]
+    public function aRefusedAnalysisIsA429NamingTheLimit(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+        $this->visionServiceStub->method('analyzeImageFull')->willThrowException(new BudgetExceededException(
+            BudgetCheckResult::denied(BudgetCheckResult::LIMIT_DAILY_COST, 1.0, 1.0),
+        ));
+
+        $response = $this->subject->analyzeAction($this->createJsonRequest(['imageUrl' => 'https://example.com/a.png']));
+
+        self::assertSame(429, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertSame('The request was refused. This limit is used up: your daily cost.', $data['error']);
+        self::assertTrue($data['budgetExceeded']);
+        self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
     #[Test]
