@@ -9,14 +9,19 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\Controller;
 
+use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
+use Netresearch\NrLlm\Domain\Enum\AgentRunTerminationReason;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
+use Netresearch\NrLlm\Exception\BudgetExceededException;
+use Netresearch\NrLlm\Service\BudgetServiceInterface;
 use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
 use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Controller\ToolController;
+use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
@@ -268,6 +273,76 @@ final class ToolControllerTest extends TestCase
         self::assertSame(404, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
+    }
+
+    #[Test]
+    public function aLoopTheBudgetStoppedIsA429NamingTheLimitTheBudgetReports(): void
+    {
+        $budget = $this->createMock(BudgetServiceInterface::class);
+        $budget->expects(self::once())->method('check')
+            ->with(1, 0.0, self::isInstanceOf(LlmConfiguration::class))
+            ->willReturn(BudgetCheckResult::denied(BudgetCheckResult::LIMIT_DAILY_REQUESTS, 20.0, 20.0));
+
+        $response = $this->budgetStoppedSubject(new BudgetRefusal($budget))
+            ->executeAction($this->createJsonRequest(['prompt' => 'Query']));
+
+        self::assertSame(429, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertSame('The request was refused. This limit is used up: your daily number of requests.', $data['error']);
+        self::assertTrue($data['budgetExceeded']);
+        self::assertSame(BudgetCheckResult::LIMIT_DAILY_REQUESTS, $data['exceededLimit']);
+    }
+
+    #[Test]
+    public function aLoopTheBudgetStoppedIsA429WithoutNamedLimitWhenTheBudgetCannotBeAsked(): void
+    {
+        $response = $this->budgetStoppedSubject(new BudgetRefusal())
+            ->executeAction($this->createJsonRequest(['prompt' => 'Query']));
+
+        self::assertSame(429, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertSame('The request was refused because a limit of your AI budget is used up.', $data['error']);
+    }
+
+    #[Test]
+    public function aRefusalTheLoopThrowsIsA429(): void
+    {
+        $this->allowRateLimit();
+        $loop = $this->createStub(ToolLoopServiceInterface::class);
+        $loop->method('runLoop')->willThrowException(new BudgetExceededException(
+            BudgetCheckResult::denied(BudgetCheckResult::LIMIT_MONTHLY_TOKENS, 1.0, 1.0),
+        ));
+        $context = $this->createStub(Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
+        $response = (new ToolController($loop, ConfigurationAccessDouble::selector($this->configRepositoryStub), $this->rateLimiterStub, $context, new NullLogger()))
+            ->executeAction($this->createJsonRequest(['prompt' => 'Query']));
+
+        self::assertSame(429, $response->getStatusCode());
+        self::assertSame(
+            'The request was refused. This limit is used up: your monthly number of tokens.',
+            json_decode((string) $response->getBody(), true)['error'],
+        );
+    }
+
+    private function budgetStoppedSubject(BudgetRefusal $refusal): ToolController
+    {
+        $this->allowRateLimit();
+        $loop = $this->createStub(ToolLoopServiceInterface::class);
+        $loop->method('runLoop')->willReturn(
+            new ToolLoopResult('', [], 1, true, new UsageStatistics(0, 0, 0), AgentRunTerminationReason::BUDGET_EXHAUSTED),
+        );
+        $context = $this->createStub(Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
+        return new ToolController(
+            $loop,
+            ConfigurationAccessDouble::selector($this->configRepositoryStub),
+            $this->rateLimiterStub,
+            $context,
+            new NullLogger(),
+            budgetRefusal: $refusal,
+        );
     }
 
     private function allowRateLimit(): void

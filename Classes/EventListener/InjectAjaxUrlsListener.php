@@ -157,6 +157,19 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.dialog.debug.contentReturned',
         'ckeditor.dialog.copy',
         'ckeditor.dialog.copied',
+        'ckeditor.dialog.budget.title',
+        'ckeditor.dialog.budget.limited',
+        'ckeditor.dialog.budget.unlimited',
+        'ckeditor.dialog.budget.measure',
+        'ckeditor.dialog.budget.today',
+        'ckeditor.dialog.budget.month',
+        'ckeditor.dialog.budget.requests',
+        'ckeditor.dialog.budget.tokens',
+        'ckeditor.dialog.budget.cost',
+        'ckeditor.dialog.budget.usedOf',
+        'ckeditor.dialog.budget.noLimit',
+        'ckeditor.dialog.budget.barAria',
+        'ckeditor.dialog.budget.windows',
     ];
 
     public function __construct(
@@ -246,6 +259,8 @@ final readonly class InjectAjaxUrlsListener
                 ->buildUriFromRoute('ajax_tx_cowriter_tools'),
             'tx_cowriter_page_search' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_page_search'),
+            'tx_cowriter_budget_status' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_budget_status'),
             'nrllm_tasks_module' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('nrllm_tasks'),
             'nrllm_module' => (string) $this->backendUriBuilder

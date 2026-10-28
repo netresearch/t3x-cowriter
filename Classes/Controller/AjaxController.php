@@ -10,11 +10,14 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Controller;
 
 use JsonException;
+use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
+use Netresearch\NrLlm\Domain\Enum\AgentRunTerminationReason;
 use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
+use Netresearch\NrLlm\Exception\BudgetExceededException;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
 use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
@@ -26,6 +29,7 @@ use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
 use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\BackendLabels;
+use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
@@ -136,6 +140,7 @@ final readonly class AjaxController
         // Optional for the same reason; without it a request with tools is
         // answered without them.
         private ?UnattendedToolRunner $toolRunner = null,
+        private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
     ) {}
 
     /**
@@ -213,6 +218,11 @@ final readonly class AjaxController
                 500,
             );
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                return $this->budgetRefusedResponse($refusal, $rateLimitResult);
+            }
+
             $this->logger->error('Chat action error', [
                 'exception' => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
@@ -306,6 +316,11 @@ final readonly class AjaxController
                 500,
             );
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                return $this->budgetRefusedResponse($refusal, $rateLimitResult);
+            }
+
             $this->logger->error('Cowriter unexpected error', [
                 'exception' => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
@@ -402,6 +417,11 @@ final readonly class AjaxController
 
             return $this->sseErrorResponse($this->labels->get('error.provider'), 500);
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                return $this->sseErrorResponse($this->budgetRefusal->payload($refusal), BudgetRefusal::HTTP_STATUS);
+            }
+
             $this->logger->error('Cowriter streaming unexpected error', [
                 'exception' => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
@@ -620,6 +640,11 @@ final readonly class AjaxController
                 500,
             );
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                return $this->budgetRefusedResponse($refusal, $rateLimitResult);
+            }
+
             $this->logger->error('Task execution unexpected error', [
                 'taskUid'   => $dto->taskUid,
                 'exception' => $e->getMessage(),
@@ -644,12 +669,21 @@ final readonly class AjaxController
      * @return array{response: CompletionResponse, toolIterations: int|null}
      *
      * @throws ToolNeedsApprovalException
+     * @throws BudgetExceededException    when the budget stopped the tool loop
      */
     private function answerTask(ExecuteTaskRequest $dto, ?Task $task, array $messages, LlmConfiguration $configuration): array
     {
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if ($dto->useTools && $this->toolRunner instanceof UnattendedToolRunner && $backendUser instanceof BackendUserAuthentication) {
             $result = $this->toolRunner->run($messages, $configuration, $backendUser);
+            if ($result instanceof ToolLoopResult && $result->terminationReason === AgentRunTerminationReason::BUDGET_EXHAUSTED) {
+                // The tool loop ends a budget refusal without the exception
+                // and without the limit; ask the budget for it.
+                throw new BudgetExceededException(
+                    $this->budgetRefusal->check($this->currentBackendUserId(), $configuration) ?? new BudgetCheckResult(false),
+                );
+            }
+
             if ($result instanceof ToolLoopResult) {
                 return [
                     'response' => new CompletionResponse(
@@ -869,6 +903,13 @@ final readonly class AjaxController
 
         ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords] = $prepared;
 
+        // nr-llm checks the budget only once the stream is read, after the
+        // 200 has gone out. The same check before it lets a refusal be a 429.
+        $refusal = $this->budgetRefusal->check($this->currentBackendUserId(), $configuration);
+        if ($refusal instanceof BudgetCheckResult) {
+            return $this->budgetRefusedResponse($refusal, $rateLimitResult);
+        }
+
         $this->eventStream->open($rateLimitResult->getHeaders());
 
         $content = '';
@@ -920,6 +961,13 @@ final readonly class AjaxController
             // configuration error, the status page link.
             $this->eventStream->send($this->buildErrorResponse($this->labels->get('error.provider'), $e));
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                $this->eventStream->send($this->budgetRefusal->payload($refusal));
+
+                return new NullResponse();
+            }
+
             $this->logger->error('Task stream unexpected error', [
                 'taskUid'   => $dto->taskUid,
                 'exception' => $e->getMessage(),
@@ -1002,6 +1050,11 @@ final readonly class AjaxController
 
             return $this->jsonResponseWithRateLimitHeaders($data, $rateLimitResult);
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                return $this->budgetRefusedResponse($refusal, $rateLimitResult);
+            }
+
             $this->logger->error('Task variants error', [
                 'taskUid'   => $dto->taskUid,
                 'exception' => $e->getMessage(),
@@ -1292,12 +1345,23 @@ final readonly class AjaxController
     }
 
     /**
-     * Create an SSE-formatted error response.
+     * The answer to a call the budget refused (see {@see BudgetRefusal}).
      */
-    private function sseErrorResponse(string $message, int $statusCode): Response
+    private function budgetRefusedResponse(BudgetCheckResult $refusal, RateLimitResult $rateLimitResult): JsonResponse
+    {
+        return $this->budgetRefusal->response($refusal, $rateLimitResult);
+    }
+
+    /**
+     * Create an SSE-formatted error response: the message, or the whole error
+     * payload.
+     *
+     * @param string|array<string, mixed> $error
+     */
+    private function sseErrorResponse(string|array $error, int $statusCode): Response
     {
         try {
-            $json = json_encode(['error' => $message], JSON_THROW_ON_ERROR);
+            $json = json_encode(is_string($error) ? ['error' => $error] : $error, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             $json = '{"error":"An error occurred"}';
         }

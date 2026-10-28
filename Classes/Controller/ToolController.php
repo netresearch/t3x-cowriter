@@ -9,12 +9,15 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
+use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
+use Netresearch\NrLlm\Domain\Enum\AgentRunTerminationReason;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
 use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\T3Cowriter\Domain\DTO\ToolRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
+use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -45,6 +48,7 @@ final readonly class ToolController
         private Context $context,
         private LoggerInterface $logger,
         private BackendLabels $labels = new BackendLabels(),
+        private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
     ) {}
 
     public function executeAction(ServerRequestInterface $request): ResponseInterface
@@ -129,6 +133,15 @@ final readonly class ToolController
                     ->withCallerSource(CallerSource::EXTENSION, 'toolCall'),
             );
 
+            // The loop ends a budget refusal without the exception and
+            // without the limit; ask the budget for it.
+            if ($result->terminationReason === AgentRunTerminationReason::BUDGET_EXHAUSTED) {
+                return $this->budgetRefusal->response(
+                    $this->budgetRefusal->check((int) $userId, $configuration),
+                    $rateLimitResult,
+                );
+            }
+
             return $this->jsonResponseWithRateLimitHeaders([
                 'success'    => true,
                 'content'    => $result->finalContent,
@@ -141,6 +154,11 @@ final readonly class ToolController
                 ],
             ], $rateLimitResult);
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                return $this->budgetRefusal->response($refusal, $rateLimitResult);
+            }
+
             $this->logger->error('Tool execution failed', [
                 'exception' => $e->getMessage(),
             ]);

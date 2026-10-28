@@ -16,6 +16,7 @@ use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -38,6 +39,8 @@ trait TaskRouteControllerTrait
         LlmServiceManagerInterface $llm,
         ?CompletionServiceInterface $completionService = null,
         ?UnattendedToolRunner $toolRunner = null,
+        ?RecordingEventStream $eventStream = null,
+        BudgetRefusal $budgetRefusal = new BudgetRefusal(),
     ): AjaxController {
         $configuration = $this->createStub(LlmConfiguration::class);
         $configuration->method('getIdentifier')->willReturn('default');
@@ -68,9 +71,10 @@ trait TaskRouteControllerTrait
             $this->createStub(ConnectionPool::class),
             $this->createStub(BackendUriBuilder::class),
             $this->createStub(DiagnosticService::class),
-            eventStream: new RecordingEventStream(),
+            eventStream: $eventStream ?? new RecordingEventStream(),
             completionService: $completionService,
             toolRunner: $toolRunner,
+            budgetRefusal: $budgetRefusal,
         );
     }
 }

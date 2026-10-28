@@ -9,10 +9,12 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
+use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Domain\DTO\VisionRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
+use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -36,6 +38,7 @@ final readonly class VisionController
         private Context $context,
         private LoggerInterface $logger,
         private BackendLabels $labels = new BackendLabels(),
+        private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
     ) {}
 
     public function analyzeAction(ServerRequestInterface $request): ResponseInterface
@@ -106,6 +109,11 @@ final readonly class VisionController
                 ],
             ], $rateLimitResult);
         } catch (Throwable $e) {
+            $refusal = BudgetRefusal::find($e);
+            if ($refusal instanceof BudgetCheckResult) {
+                return $this->budgetRefusal->response($refusal, $rateLimitResult);
+            }
+
             $this->logger->error('Vision analysis failed', [
                 'exception' => $e->getMessage(),
                 'imageUrl'  => substr($visionRequest->imageUrl, 0, 100),

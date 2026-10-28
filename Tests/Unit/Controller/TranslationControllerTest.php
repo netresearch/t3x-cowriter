@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
+use Netresearch\NrLlm\Exception\BudgetExceededException;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Provider\Middleware\MiddlewarePipeline;
@@ -326,6 +327,23 @@ final class TranslationControllerTest extends TestCase
         self::assertStringContainsString('failed', $data['error']);
         self::assertSame('20', $response->getHeaderLine('X-RateLimit-Limit'));
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
+    }
+
+    #[Test]
+    public function aRefusedTranslationIsA429NamingTheLimit(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+        $this->translationServiceStub->method('translate')->willThrowException(new BudgetExceededException(
+            BudgetCheckResult::denied(BudgetCheckResult::LIMIT_MONTHLY_REQUESTS, 300.0, 300.0),
+        ));
+
+        $response = $this->subject->translateAction($this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']));
+
+        self::assertSame(429, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertSame('The request was refused. This limit is used up: your monthly number of requests.', $data['error']);
+        self::assertTrue($data['budgetExceeded']);
     }
 
     #[Test]

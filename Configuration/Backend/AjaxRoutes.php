@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Controller\BudgetStatusController;
 use Netresearch\T3Cowriter\Controller\FieldSuggestionController;
 use Netresearch\T3Cowriter\Controller\SavedPromptController;
 use Netresearch\T3Cowriter\Controller\TemplateController;
@@ -98,5 +99,10 @@ return [
     'tx_cowriter_suggestions' => [
         'path'   => '/cowriter/suggestions',
         'target' => FieldSuggestionController::class . '::suggestAction',
+    ],
+    'tx_cowriter_budget_status' => [
+        'path'    => '/cowriter/budget-status',
+        'target'  => BudgetStatusController::class . '::statusAction',
+        'methods' => ['GET'],
     ],
 ];
