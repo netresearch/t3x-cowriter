@@ -1378,6 +1378,60 @@ describe('AIService', () => {
         });
     });
 
+    describe('generateImage', () => {
+        it('should throw when the image route is not configured', async () => {
+            const service = new AIService();
+            expect(service._routes.imageGenerate).toBeNull();
+            await expect(service.generateImage('A lighthouse')).rejects.toThrow(
+                'Image generation route not configured.'
+            );
+        });
+
+        it('should POST only the prompt and hand back the stored image', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_image_generate = '/typo3/ajax/cowriter/image-generate';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+
+            const mockResponse = {
+                success: true,
+                image: { fileUid: 42, fileTable: 'sys_file', url: '/fileadmin/a.png', width: 1024, height: 1024 },
+                alt: 'A lighthouse',
+            };
+            globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
+            const controller = new AbortController();
+
+            const service = new module.AIService();
+            const result = await service.generateImage('A lighthouse', controller.signal);
+
+            expect(globalThis.fetch).toHaveBeenCalledWith('/typo3/ajax/cowriter/image-generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: 'A lighthouse' }),
+                signal: controller.signal,
+            });
+            expect(result).toEqual(mockResponse);
+        });
+
+        it('should throw the server message and mark a budget refusal', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_image_generate = '/typo3/ajax/cowriter/image-generate';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 429,
+                json: () => Promise.resolve({ success: false, error: 'Daily budget used up', budgetExceeded: true }),
+            });
+
+            const service = new module.AIService();
+            await expect(service.generateImage('A lighthouse')).rejects.toMatchObject({
+                message: 'Daily budget used up',
+                status: 429,
+                budgetExceeded: true,
+            });
+        });
+    });
+
     describe('translate', () => {
         it('should throw when translate route is not configured', async () => {
             const service = new AIService();

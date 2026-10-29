@@ -590,6 +590,178 @@ describe('Cowriter Plugin', () => {
             expect(addedComponents).toHaveProperty('cowriterVision');
             expect(addedComponents).toHaveProperty('cowriterTranslate');
             expect(addedComponents).toHaveProperty('cowriterTemplates');
+            // Registered whatever the setting says; the server takes it out of
+            // the toolbar while image generation is off.
+            expect(addedComponents).toHaveProperty('cowriterImage');
+        });
+    });
+
+    describe('cowriterImage button', () => {
+        let plugin;
+        let mockEditor;
+        let componentCallbacks;
+        let dialogShow;
+        /** @type {typeof import('@typo3/backend/notification.js').default} */
+        let Notification;
+        const generated = {
+            success: true,
+            image: {
+                fileUid: 42,
+                fileTable: 'sys_file',
+                url: '/fileadmin/user_upload/a-lighthouse-0a1b2c3d.png',
+                width: 1024,
+                height: 768,
+                mimeType: 'image/png',
+                file: '1:/user_upload/a-lighthouse-0a1b2c3d.png',
+            },
+            alt: 'A lighthouse "at" <dusk>',
+        };
+
+        beforeEach(async () => {
+            vi.resetModules();
+            dialogShow = vi.fn().mockResolvedValue(generated);
+
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
+                AIService: class MockAIService {
+                    getModuleUrl() { return null; }
+                },
+            }));
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
+                CowriterDialog: class MockCowriterDialog {},
+            }));
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/ImageDialog.js', () => ({
+                ImageDialog: class MockImageDialog {
+                    show = dialogShow;
+                },
+            }));
+
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
+            Cowriter = module.Cowriter;
+            Notification = (await import('@typo3/backend/notification.js')).default;
+            Notification.success.mockClear();
+            Notification.warning.mockClear();
+            Notification.error.mockClear();
+
+            componentCallbacks = {};
+            const writer = { createElement: vi.fn((name, attributes) => ({ name, attributes })) };
+            mockEditor = {
+                _writer: writer,
+                model: {
+                    document: { selection: {} },
+                    schema: { isRegistered: vi.fn().mockReturnValue(true) },
+                    change: vi.fn((cb) => cb(writer)),
+                    insertObject: vi.fn(),
+                    insertContent: vi.fn(),
+                },
+                editing: { view: { focus: vi.fn() } },
+                data: {
+                    processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
+                    toModel: vi.fn().mockReturnValue({ childCount: 1 }),
+                },
+                config: { get: vi.fn().mockReturnValue(undefined) },
+                ui: {
+                    componentFactory: {
+                        add: vi.fn((name, callback) => { componentCallbacks[name] = callback; }),
+                    },
+                },
+            };
+
+            plugin = new Cowriter();
+            plugin.editor = mockEditor;
+            await plugin.init();
+        });
+
+        afterEach(() => {
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/ImageDialog.js');
+        });
+
+        it('has a label and an icon', () => {
+            const button = componentCallbacks['cowriterImage']();
+            expect(button.label).toBe('Cowriter - Generate image');
+            expect(button.tooltip).toBe(true);
+            expect(button.icon).toContain('aria-hidden="true"');
+        });
+
+        it('inserts the image as the TYPO3 image plugin\'s own element, keeping the FAL reference', async () => {
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(mockEditor._writer.createElement).toHaveBeenCalledWith('typo3image', {
+                fileUid: '42',
+                fileTable: 'sys_file',
+                src: '/fileadmin/user_upload/a-lighthouse-0a1b2c3d.png',
+                width: '1024',
+                height: '768',
+                class: 'image-block',
+                title: '',
+                alt: 'A lighthouse "at" <dusk>',
+                enableZoom: false,
+                noScale: false,
+                quality: '',
+            });
+            expect(mockEditor.model.insertObject).toHaveBeenCalledWith({ name: 'typo3image', attributes: expect.any(Object) });
+            expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
+            expect(Notification.success).toHaveBeenCalledWith(
+                'Image inserted',
+                expect.stringContaining('1:/user_upload/a-lighthouse-0a1b2c3d.png'),
+                8,
+            );
+        });
+
+        it('inserts a plain img through the data pipeline without the TYPO3 image plugin', async () => {
+            mockEditor.model.schema.isRegistered.mockReturnValue(false);
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            const html = mockEditor.data.processor.toView.mock.calls[0][0];
+            const img = new DOMParser().parseFromString(html, 'text/html').body.firstElementChild;
+            expect(img.tagName).toBe('IMG');
+            expect(img.getAttribute('src')).toBe('/fileadmin/user_upload/a-lighthouse-0a1b2c3d.png');
+            expect(img.getAttribute('alt')).toBe('A lighthouse "at" <dusk>');
+            expect(img.getAttribute('width')).toBe('1024');
+            expect(img.getAttribute('height')).toBe('768');
+            expect(img.attributes.length).toBe(4);
+            expect(mockEditor.model.insertContent).toHaveBeenCalledWith({ childCount: 1 });
+            expect(mockEditor.model.insertObject).not.toHaveBeenCalled();
+        });
+
+        it('says where the file is when the editor keeps no image', async () => {
+            mockEditor.model.schema.isRegistered.mockReturnValue(false);
+            mockEditor.data.toModel.mockReturnValue({ childCount: 0 });
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
+            expect(Notification.success).not.toHaveBeenCalled();
+            expect(Notification.warning).toHaveBeenCalledWith(
+                'Image stored',
+                expect.stringContaining('1:/user_upload/a-lighthouse-0a1b2c3d.png'),
+                0,
+            );
+        });
+
+        it('does nothing when the editor closes the dialog', async () => {
+            dialogShow.mockRejectedValue(new Error('User cancelled'));
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(mockEditor.model.change).not.toHaveBeenCalled();
+            expect(Notification.error).not.toHaveBeenCalled();
+        });
+
+        it('ignores a second click while the dialog is open', async () => {
+            let finish;
+            dialogShow.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+            const button = componentCallbacks['cowriterImage']();
+            const first = button.fire('execute');
+            await button.fire('execute');
+            finish(generated);
+            await first;
+
+            expect(dialogShow).toHaveBeenCalledTimes(1);
+            expect(mockEditor.model.insertObject).toHaveBeenCalledTimes(1);
         });
     });
 
