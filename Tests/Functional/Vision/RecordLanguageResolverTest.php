@@ -27,6 +27,10 @@ use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
 #[CoversClass(RecordLanguageResolver::class)]
 final class RecordLanguageResolverTest extends FunctionalTestCase
 {
+    private const ENGLISH = 'English (United States)';
+
+    private const GERMAN = 'German (Germany)';
+
     protected array $coreExtensionsToLoad = ['rte_ckeditor', 'workspaces'];
 
     protected array $testExtensionsToLoad = [
@@ -58,7 +62,7 @@ final class RecordLanguageResolverTest extends FunctionalTestCase
     {
         $this->setUpBackendUser(1);
 
-        self::assertSame('English (United States)', $this->resolver()->languageName('tt_content', 10));
+        self::assertSame(self::ENGLISH, $this->resolver()->languageName('tt_content', 10));
     }
 
     #[Test]
@@ -66,7 +70,7 @@ final class RecordLanguageResolverTest extends FunctionalTestCase
     {
         $this->setUpBackendUser(1);
 
-        self::assertSame('German (Germany)', $this->resolver()->languageName('tt_content', 11));
+        self::assertSame(self::GERMAN, $this->resolver()->languageName('tt_content', 11));
     }
 
     #[Test]
@@ -75,8 +79,8 @@ final class RecordLanguageResolverTest extends FunctionalTestCase
         // The translation row denies everything; the permissions of its original apply.
         $this->setUpBackendUser(4);
 
-        self::assertSame('German (Germany)', $this->resolver()->languageName('pages', 3));
-        self::assertSame('English (United States)', $this->resolver()->languageName('pages', 2));
+        self::assertSame(self::GERMAN, $this->resolver()->languageName('pages', 3));
+        self::assertSame(self::ENGLISH, $this->resolver()->languageName('pages', 2));
     }
 
     #[Test]
@@ -84,7 +88,7 @@ final class RecordLanguageResolverTest extends FunctionalTestCase
     {
         $this->setUpBackendUser(2);
 
-        self::assertSame('English (United States)', $this->resolver()->languageName('tt_content', 10));
+        self::assertSame(self::ENGLISH, $this->resolver()->languageName('tt_content', 10));
     }
 
     #[Test]
@@ -131,7 +135,7 @@ final class RecordLanguageResolverTest extends FunctionalTestCase
         $backendUser            = $this->setUpBackendUser(5);
         $backendUser->workspace = 1;
 
-        self::assertSame('German (Germany)', $this->resolver()->languageName('tt_content', 17));
+        self::assertSame(self::GERMAN, $this->resolver()->languageName('tt_content', 17));
     }
 
     #[Test]

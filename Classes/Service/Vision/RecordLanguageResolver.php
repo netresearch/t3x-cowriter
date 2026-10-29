@@ -17,6 +17,7 @@ use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Localization\Locale;
+use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Type\Bitmask\Permission;
 
@@ -43,54 +44,74 @@ final readonly class RecordLanguageResolver implements RecordLanguageResolverInt
 
     public function languageName(string $table, int $uid): ?string
     {
+        $record = $this->readableRecord($table, $uid);
+        if ($record === null) {
+            return null;
+        }
+
+        $siteLanguage = $this->siteLanguage($record['pageId'], $record['languageId']);
+
+        return $siteLanguage instanceof SiteLanguage ? self::nameOf($siteLanguage->getLocale()) : null;
+    }
+
+    /**
+     * Language and page of the record, if the current user may read it.
+     *
+     * @return array{languageId: int, pageId: int}|null
+     */
+    private function readableRecord(string $table, int $uid): ?array
+    {
         // Only a table with a language field has a language to resolve. The
         // check is also the allow-list for the table name the client sent.
         $languageField = Tca::languageField($table);
-        if ($languageField === null) {
-            return null;
-        }
-
-        $backendUser = $GLOBALS['BE_USER'] ?? null;
-        if (!$backendUser instanceof BackendUserAuthentication) {
-            return null;
-        }
-
-        if (!$backendUser->isAdmin() && !$backendUser->check('tables_select', $table)) {
+        $backendUser   = $this->reader($table);
+        if ($languageField === null || !$backendUser instanceof BackendUserAuthentication) {
             return null;
         }
 
         $workspaceId = max(0, $backendUser->workspace);
         $record      = $this->recordFinder->findRecord($table, $uid, $workspaceId);
-        if ($record === null) {
-            return null;
-        }
-
-        $languageId = $this->intValue($record[$languageField] ?? 0);
-        if (!$backendUser->checkLanguageAccess($languageId)) {
+        $languageId  = $this->intValue($record[$languageField] ?? 0);
+        if ($record === null || !$backendUser->checkLanguageAccess($languageId)) {
             return null;
         }
 
         $page = $this->page($table, $record, $workspaceId);
-        if ($page === null || !$backendUser->doesUserHaveAccess($page, Permission::PAGE_SHOW)) {
+
+        return $page !== null && $backendUser->doesUserHaveAccess($page, Permission::PAGE_SHOW)
+            ? ['languageId' => $languageId, 'pageId' => $this->intValue($page['uid'] ?? 0)]
+            : null;
+    }
+
+    /**
+     * The current backend user, if there is one and they may read the table.
+     */
+    private function reader(string $table): ?BackendUserAuthentication
+    {
+        $backendUser = $GLOBALS['BE_USER'] ?? null;
+        if (!$backendUser instanceof BackendUserAuthentication) {
             return null;
         }
 
-        // The root line as the user's workspace shows it. The root line
-        // SiteFinder builds on its own misses a page that is new in the
-        // workspace.
-        $pageId = $this->intValue($page['uid'] ?? 0);
+        return $backendUser->isAdmin() || $backendUser->check('tables_select', $table) ? $backendUser : null;
+    }
 
+    /**
+     * The site language of a page; null when the page belongs to no site or
+     * the site has no such language ("all languages", -1, is never one).
+     */
+    private function siteLanguage(int $pageId, int $languageId): ?SiteLanguage
+    {
         try {
-            $siteLanguage = $this->siteFinder
+            // The root line as the user's workspace shows it. The root line
+            // SiteFinder builds on its own misses a page that is new in the
+            // workspace.
+            return $this->siteFinder
                 ->getSiteByPageId($pageId, BackendUtility::BEgetRootLine($pageId, '', true))
                 ->getLanguageById($languageId);
         } catch (SiteNotFoundException|InvalidArgumentException) {
-            // The page belongs to no site, or the site has no such language;
-            // "all languages" (-1) is never a site language.
             return null;
         }
-
-        return self::nameOf($siteLanguage->getLocale());
     }
 
     /**
