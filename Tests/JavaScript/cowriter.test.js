@@ -477,6 +477,31 @@ describe('Cowriter Plugin', () => {
                 configurable: true,
             });
         });
+
+        it('should not take the page id of a new-record URL for a record uid', () => {
+            const plugin = new Cowriter();
+
+            // FormEngine opens a new element with edit[tt_content][<pid>]=new.
+            const origSearch = window.location.search;
+            Object.defineProperty(window, 'location', {
+                value: { ...window.location, search: '?edit[tt_content][42]=new' },
+                writable: true,
+                configurable: true,
+            });
+
+            plugin.editor = {
+                sourceElement: null,
+                editing: { view: { getDomRoot: () => null } },
+            };
+
+            expect(plugin._getRecordContext()).toBeNull();
+
+            Object.defineProperty(window, 'location', {
+                value: { ...window.location, search: origSearch },
+                writable: true,
+                configurable: true,
+            });
+        });
     });
 
     describe('init', () => {
