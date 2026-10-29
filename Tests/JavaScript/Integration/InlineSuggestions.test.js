@@ -30,6 +30,8 @@ function ckeditorModule(name) {
 const TEXT = 'The lighthouse keeper climbed the stairs every evening';
 const SUGGESTION = ' to light the lamp before dusk.';
 const DELAY = 1000;
+// InlineSuggestions.js TAB_GUARD: a Tab sooner than this leaves the field.
+const TAB_GUARD = 800;
 
 describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
     let modules;
@@ -52,6 +54,8 @@ describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
             ...(await ckeditorModule('essentials')),
             ...(await ckeditorModule('paragraph')),
             ...(await ckeditorModule('basic-styles')),
+            ...(await ckeditorModule('list')),
+            ...(await ckeditorModule('table')),
             InlineSuggestions: (await import('../../../Resources/Public/JavaScript/Ckeditor/InlineSuggestions.js'))
                 .InlineSuggestions,
             Cowriter: (await import('../../../Resources/Public/JavaScript/Ckeditor/cowriter.js')).Cowriter,
@@ -91,14 +95,14 @@ describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
         delete globalThis.TYPO3;
     });
 
-    async function createEditor({ enabled = true, data = `<p>${TEXT}</p>` } = {}) {
+    async function createEditor({ enabled = true, data = `<p>${TEXT}</p>`, userId = 7 } = {}) {
         const element = document.createElement('div');
         document.body.appendChild(element);
         const editor = await modules.ClassicEditor.create(element, {
             licenseKey: 'GPL',
-            plugins: [modules.Essentials, modules.Paragraph, modules.Bold, modules.Cowriter],
+            plugins: [modules.Essentials, modules.Paragraph, modules.Bold, modules.List, modules.Table, modules.Cowriter],
             toolbar: ['cowriterInlineSuggestions'],
-            cowriter: enabled ? { inlineSuggestions: { enabled: true, delay: DELAY, minChars: 20, userId: 7 } } : {},
+            cowriter: enabled ? { inlineSuggestions: { enabled: true, delay: DELAY, minChars: 20, userId } } : {},
         });
         editors.push(editor);
         editor.setData(data);
@@ -180,6 +184,7 @@ describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
         await showSuggestion(editor);
         let dataChanges = 0;
         editor.model.document.on('change:data', () => dataChanges++);
+        await vi.advanceTimersByTimeAsync(TAB_GUARD);
 
         const event = key(editor, 'Tab', 9);
 
@@ -197,11 +202,67 @@ describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
         type(editor, '.');
         await vi.advanceTimersByTimeAsync(DELAY);
         requests[0].resolve(' <b>bold</b> & <img src=x onerror=alert(1)>');
-        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(TAB_GUARD);
 
         key(editor, 'Tab', 9);
 
         expect(editor.getData()).toBe(`<p>${TEXT}. &lt;b&gt;bold&lt;/b&gt; &amp; &lt;img src=x onerror=alert(1)&gt;</p>`);
+    });
+
+    it('lets a Tab right after the suggestion appeared leave the field and discards the suggestion', async () => {
+        const editor = await createEditor();
+        await showSuggestion(editor);
+        await vi.advanceTimersByTimeAsync(TAB_GUARD - 1);
+
+        const event = key(editor, 'Tab', 9);
+
+        expect(event.defaultPrevented).toBe(false);
+        expect(ghost(editor)).toBeNull();
+        expect(editor.getData()).toBe(`<p>${TEXT}.</p>`);
+    });
+
+    it('accepts with Tab once the guard time has passed', async () => {
+        const editor = await createEditor();
+        await showSuggestion(editor);
+        await vi.advanceTimersByTimeAsync(TAB_GUARD);
+
+        const event = key(editor, 'Tab', 9);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(editor.getData()).toBe(`<p>${TEXT}.${SUGGESTION}</p>`);
+    });
+
+    it('leaves Shift+Tab alone and discards the suggestion', async () => {
+        const editor = await createEditor();
+        await showSuggestion(editor);
+        await vi.advanceTimersByTimeAsync(TAB_GUARD);
+
+        const event = new KeyboardEvent('keydown', { key: 'Tab', keyCode: 9, shiftKey: true, bubbles: true, cancelable: true });
+        editor.editing.view.getDomRoot().dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(false);
+        expect(ghost(editor)).toBeNull();
+        expect(editor.getData()).toBe(`<p>${TEXT}.</p>`);
+    });
+
+    it('does not ask in a list item or a table cell, where Tab indents or moves to the next cell', async () => {
+        for (const data of [`<ul><li>${TEXT}</li></ul>`, `<figure class="table"><table><tbody><tr><td>${TEXT}</td><td>x</td></tr></tbody></table></figure>`]) {
+            const editor = await createEditor({ data });
+            const root = editor.model.document.getRoot();
+            const block = editor.model.createRangeIn(root).getItems();
+            let last = null;
+            for (const item of block) {
+                if (item.is('element') && editor.model.schema.checkChild(item, '$text') && item.childCount > 0) {
+                    last = last ?? item;
+                }
+            }
+            editor.model.change((writer) => writer.setSelection(last, 'end'));
+
+            type(editor, '.');
+            await vi.advanceTimersByTimeAsync(DELAY * 10);
+        }
+
+        expect(requests).toHaveLength(0);
     });
 
     it('leaves Tab alone when no suggestion is shown', async () => {
@@ -266,6 +327,19 @@ describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
         await vi.advanceTimersByTimeAsync(5000);
         expect(requests).toHaveLength(2);
         expect(requests[1].body.text).toBe(`${'x'.repeat(999)}y`);
+    });
+
+    it('never splits a character that takes two code units when it cuts the text', async () => {
+        const emoji = '\u{1F600}';
+        // 1001 code points, 1002 code units: cutting code units would keep
+        // only the second half of the emoji.
+        const editor = await createEditor({ data: `<p>a${emoji}${'x'.repeat(998)}</p>` });
+
+        type(editor, 'y');
+        await vi.advanceTimersByTimeAsync(DELAY);
+
+        expect(requests[0].body.text).toBe(`${emoji}${'x'.repeat(998)}y`);
+        expect(Array.from(requests[0].body.text)).toHaveLength(1000);
     });
 
     it('discards the suggestion when the editor leaves the editor', async () => {
@@ -390,5 +464,57 @@ describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
 
         const reopened = await createEditor();
         expect(reopened.plugins.get('cowriterInlineSuggestions').isOn).toBe(false);
+    });
+
+    it('switches off every rich text field of the user on the page, not only the clicked one', async () => {
+        const first = await createEditor();
+        const second = await createEditor();
+        const otherUser = await createEditor({ userId: 8 });
+        const toggleOf = (editor) => editor.ui.view.toolbar.items.find((item) => item.label === 'Cowriter - Inline suggestions');
+
+        toggleOf(first).fire('execute');
+
+        expect(second.plugins.get('cowriterInlineSuggestions').isOn).toBe(false);
+        expect(toggleOf(second).element.getAttribute('aria-pressed')).toBe('false');
+        expect(otherUser.plugins.get('cowriterInlineSuggestions').isOn).toBe(true);
+
+        second.editing.view.document.isFocused = true;
+        second.model.change((writer) => writer.setSelection(second.model.document.getRoot().getChild(0), 'end'));
+        type(second, '.');
+        await vi.advanceTimersByTimeAsync(DELAY * 10);
+        expect(requests).toHaveLength(0);
+
+        toggleOf(second).fire('execute');
+        expect(first.plugins.get('cowriterInlineSuggestions').isOn).toBe(true);
+        expect(second.plugins.get('cowriterInlineSuggestions').isOn).toBe(true);
+    });
+
+    it('follows the choice made in another tab through the storage event', async () => {
+        const editor = await createEditor();
+        const plugin = editor.plugins.get('cowriterInlineSuggestions');
+        await showSuggestion(editor);
+
+        window.dispatchEvent(new StorageEvent('storage', { key: 't3_cowriter.inlineSuggestions.7', newValue: 'off' }));
+        expect(plugin.isOn).toBe(false);
+        expect(ghost(editor)).toBeNull();
+
+        window.dispatchEvent(new StorageEvent('storage', { key: 't3_cowriter.inlineSuggestions.8', newValue: 'on' }));
+        expect(plugin.isOn).toBe(false);
+
+        window.dispatchEvent(new StorageEvent('storage', { key: 't3_cowriter.inlineSuggestions.7', newValue: 'on' }));
+        expect(plugin.isOn).toBe(true);
+    });
+
+    it('forgets a destroyed editor', async () => {
+        const first = await createEditor();
+        const second = await createEditor();
+        const plugin = second.plugins.get('cowriterInlineSuggestions');
+        editors.splice(editors.indexOf(second), 1);
+        await second.destroy();
+
+        first.plugins.get('cowriterInlineSuggestions').setUserChoice(false);
+        window.dispatchEvent(new StorageEvent('storage', { key: 't3_cowriter.inlineSuggestions.7', newValue: 'off' }));
+
+        expect(plugin.isOn).toBe(true);
     });
 });

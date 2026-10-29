@@ -35,6 +35,26 @@ export const FAILURE_PAUSE = 30000;
 export const MAX_CONTEXT = 1000;
 
 /**
+ * Milliseconds after a suggestion appears during which Tab does not accept
+ * it but keeps its normal job (leaving the field) and discards the
+ * suggestion. A Tab within this time was planned before the editor could
+ * have seen or heard the suggestion: reacting to a visual change alone takes
+ * about 250 ms, reading a few words takes longer, and a screen reader speaks
+ * a polite announcement only after its current utterance. 800 ms covers an
+ * already planned key press without making a deliberate accept wait
+ * noticeably.
+ */
+export const TAB_GUARD = 800;
+
+/**
+ * Every live plugin instance on this page, so the editor's own on/off choice
+ * reaches all rich text fields at once.
+ *
+ * @type {Set<InlineSuggestions>}
+ */
+const instances = new Set();
+
+/**
  * Keys that only modify another key; pressing one keeps a suggestion shown.
  */
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'CapsLock', 'Fn', 'OS']);
@@ -265,6 +285,9 @@ export class InlineSuggestions extends Plugin {
 
         this.set('isOn', available && readUserChoice(this._userId));
 
+        /** @type {number} */
+        this._shownAt = Number.NEGATIVE_INFINITY;
+
         editor.ui.componentFactory.add(InlineSuggestions.pluginName, () => {
             const button = new ButtonView();
             button.set({
@@ -299,10 +322,21 @@ export class InlineSuggestions extends Plugin {
 
         this._setUpConversion();
         this._setUpListeners();
+
+        // The choice made in another tab or window of the backend.
+        this._onStorage = (event) => {
+            if (event.key === storageKey(this._userId)) {
+                this._applyUserChoice(event.newValue !== 'off');
+            }
+        };
+        globalThis.addEventListener?.('storage', this._onStorage);
+        instances.add(this);
     }
 
     /**
-     * Switch suggestions on or off for this editor and remember the choice.
+     * Switch suggestions on or off for the editor's user, remember the
+     * choice, and apply it to every rich text field on this page. Other tabs
+     * and windows follow through the storage event.
      *
      * @param {boolean} on
      */
@@ -310,8 +344,20 @@ export class InlineSuggestions extends Plugin {
         if (this._scheduler === null) {
             return;
         }
-        this.isOn = on;
         writeUserChoice(this._userId, on);
+        for (const instance of instances) {
+            if (instance._userId === this._userId) {
+                instance._applyUserChoice(on);
+            }
+        }
+    }
+
+    /**
+     * @param {boolean} on
+     * @private
+     */
+    _applyUserChoice(on) {
+        this.isOn = on;
         if (!on) {
             this._scheduler.cancel();
             this._hideSuggestion();
@@ -327,6 +373,10 @@ export class InlineSuggestions extends Plugin {
     }
 
     destroy() {
+        instances.delete(this);
+        if (this._onStorage) {
+            globalThis.removeEventListener?.('storage', this._onStorage);
+        }
         this._scheduler?.cancel();
         this._liveRegion?.remove();
         this._liveRegion = null;
@@ -390,17 +440,19 @@ export class InlineSuggestions extends Plugin {
             }
         });
 
-        // Ahead of every other keydown handler (lists and tables bind Tab):
-        // only while a suggestion is shown, Tab accepts and Escape discards;
-        // any other key discards and goes on as usual. Without a suggestion
-        // nothing is touched, so Tab keeps its own behaviour.
+        // Ahead of every other keydown handler: only while a suggestion is
+        // shown, Tab accepts and Escape discards; any other key discards and
+        // goes on as usual. Without a suggestion nothing is touched, so Tab
+        // keeps its own behaviour. A Tab right after the suggestion appeared
+        // was meant to leave the field (TAB_GUARD): it discards and goes on.
         this.listenTo(viewDocument, 'keydown', (evt, data) => {
             if (this._suggestion === null) {
                 return;
             }
             const key = data.domEvent?.key;
             const plain = !data.shiftKey && !data.ctrlKey && !data.altKey && !data.metaKey;
-            if ((key === 'Tab' || data.keyCode === 9) && plain) {
+            const isTab = key === 'Tab' || data.keyCode === 9;
+            if (isTab && plain && Date.now() - this._shownAt >= TAB_GUARD) {
                 this._acceptSuggestion();
                 data.preventDefault();
                 evt.stop();
@@ -436,10 +488,15 @@ export class InlineSuggestions extends Plugin {
      * What to ask for now, or null when no suggestion fits: suggestions
      * switched off, a selection, a composition (IME) in progress, the editor
      * not focused or read-only, source editing, the cursor not at the end of
-     * a text block, or fewer than minChars characters in that block.
+     * a text block, a list item or table cell, or fewer than minChars
+     * characters in that block.
+     *
+     * Not in list items and table cells: there Tab indents the item or moves
+     * to the next cell, so a suggestion would compete with it.
      *
      * The text is the block's, after up to the preceding blocks' text, cut to
-     * the last MAX_CONTEXT characters.
+     * the last MAX_CONTEXT characters (code points, so a surrogate pair is
+     * never split).
      *
      * @returns {{text: string, isCurrent: function(): boolean}|null}
      * @private
@@ -457,7 +514,9 @@ export class InlineSuggestions extends Plugin {
 
         const position = selection.getFirstPosition();
         const block = position?.parent;
-        if (!block || !block.is('element') || !model.schema.checkChild(block, '$text') || !position.isAtEnd) {
+        if (!block || !block.is('element') || !model.schema.checkChild(block, '$text') || !position.isAtEnd
+            || block.is('element', 'listItem') || block.hasAttribute('listItemId')
+            || block.findAncestor('tableCell') !== null) {
             return null;
         }
 
@@ -472,8 +531,9 @@ export class InlineSuggestions extends Plugin {
                 text = `${textOf(model, sibling)}\n\n${text}`;
             }
         }
-        if (text.length > MAX_CONTEXT) {
-            text = text.slice(-MAX_CONTEXT);
+        const characters = Array.from(text);
+        if (characters.length > MAX_CONTEXT) {
+            text = characters.slice(-MAX_CONTEXT).join('');
         }
 
         // The text cannot have changed by the time the answer arrives: every
@@ -492,6 +552,7 @@ export class InlineSuggestions extends Plugin {
         const model = this.editor.model;
         this._hideSuggestion();
         this._suggestion = suggestion;
+        this._shownAt = Date.now();
         model.enqueueChange({ isUndoable: false }, (writer) => {
             writer.addMarker(MARKER_NAME, {
                 range: model.createRange(model.document.selection.getFirstPosition()),
