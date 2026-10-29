@@ -11,6 +11,7 @@ import { ButtonView, createDropdown, addListToDropdown, ViewModel } from "@ckedi
 import { Collection } from "@ckeditor/ckeditor5-utils";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
+import { ImageDialog } from "@netresearch/t3_cowriter/ImageDialog";
 import { t } from "@netresearch/t3_cowriter/Labels";
 import { imageSourcesOf, sanitizeHtml } from "@netresearch/t3_cowriter/HtmlSanitizer";
 import Notification from "@typo3/backend/notification.js";
@@ -247,6 +248,96 @@ export class Cowriter extends Plugin {
         }));
     }
 
+    /**
+     * Whether a generated image can be inserted so that it survives saving:
+     * only as the `typo3image` element of the TYPO3 image plugin
+     * (netresearch/rte-ckeditor-image), which keeps the FAL reference
+     * (data-htmlarea-file-uid). TYPO3's CKEditor loads no image plugin of its
+     * own, and its RTE processing (Processing.yaml, `denyTags: img`) removes a
+     * plain <img> on save.
+     *
+     * @returns {boolean}
+     * @private
+     */
+    _canInsertImage() {
+        return this.editor.model?.schema?.isRegistered?.('typo3image') === true;
+    }
+
+    /**
+     * Insert a generated and stored image at the selection as the
+     * `typo3image` element, built as the TYPO3 image plugin builds a newly
+     * inserted image.
+     *
+     * @param {{image: {fileUid: number, fileTable: string, url: string, width: number, height: number}, alt: string}} result
+     * @param {object|null} [insertionPoint] marker from _rememberInsertionPoint(); without one, the selection
+     * @private
+     */
+    _insertGeneratedImage(result, insertionPoint = null) {
+        const model = this.editor.model;
+        const { image } = result;
+
+        model.change((writer) => {
+            const element = writer.createElement('typo3image', {
+                fileUid: String(image.fileUid),
+                fileTable: image.fileTable || 'sys_file',
+                src: image.url,
+                width: String(image.width),
+                height: String(image.height),
+                class: 'image-block',
+                title: '',
+                alt: typeof result.alt === 'string' ? result.alt : '',
+                enableZoom: false,
+                noScale: false,
+                quality: '',
+            });
+            // Where the cursor was when the editor asked for the image. The
+            // marker moves with edits made while the image was generated; if
+            // its text was deleted, the current selection is used instead.
+            const position = insertionPoint?.getStart?.();
+            if (position && position.root?.rootName !== '$graveyard') {
+                model.insertObject(element, position);
+            } else {
+                model.insertObject(element);
+            }
+        });
+    }
+
+    /**
+     * Remember the cursor position for an image that is inserted later, as
+     * a marker, which moves along with edits made in the meantime.
+     *
+     * @returns {object|null} the marker, null without a selection
+     * @private
+     */
+    _rememberInsertionPoint() {
+        const model = this.editor.model;
+        const position = model.document.selection.getFirstPosition();
+        if (!position) {
+            return null;
+        }
+
+        let marker = null;
+        model.change((writer) => {
+            marker = writer.addMarker(`cowriter:image:${Date.now()}:${Math.random().toString(36).slice(2)}`, {
+                range: model.createRange(position),
+                usingOperation: false,
+                affectsData: false,
+            });
+        });
+        return marker;
+    }
+
+    /**
+     * @param {object|null} marker
+     * @private
+     */
+    _forgetInsertionPoint(marker) {
+        const model = this.editor.model;
+        if (marker && this.editor.state !== 'destroyed' && model.markers.has(marker)) {
+            model.change((writer) => writer.removeMarker(marker));
+        }
+    }
+
     async init() {
         // Initialize the AIService (now uses TYPO3 AJAX backend)
         this._service = new AIService();
@@ -396,6 +487,73 @@ export class Cowriter extends Plugin {
                     );
                     console.error('[Cowriter Vision]', error);
                 } finally {
+                    this._isProcessing = false;
+                }
+            });
+
+            return button;
+        });
+
+        // Image button — generate an image from a description and insert it.
+        // Registered in every case; RemoveDisabledImageButtonListener takes it
+        // out of the toolbar while the setting image.enable is off. Without the
+        // TYPO3 image plugin the button is disabled and says why: an image
+        // could not be kept, so none may be paid for.
+        editor.ui.componentFactory.add('cowriterImage', () => {
+            const button = new ButtonView();
+            const insertable = this._canInsertImage();
+
+            button.set({
+                label: insertable
+                    ? t('ckeditor.button.image', 'Cowriter - Generate image')
+                    : t('ckeditor.image.unavailable', 'Cowriter - Generate image: needs the image plugin of rte-ckeditor-image'),
+                isEnabled: insertable,
+                tooltip: true,
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v7h2V5c0-1.1-.9-2-2-2zm-5 8-3 3.72L9 12.5 6 16.5h9l-1-1.33V11zm6 3-1 2.5-2.5 1 2.5 1 1 2.5 1-2.5 2.5-1-2.5-1L20 14z"/></svg>',
+            });
+
+            button.on('execute', async () => {
+                if (this._isProcessing || !this._canInsertImage()) return;
+                this._isProcessing = true;
+                const insertionPoint = this._rememberInsertionPoint();
+
+                try {
+                    const dialog = new ImageDialog(this._service, {
+                        returnFocus: () => editor.editing.view.focus(),
+                    });
+                    // Also resolves when the editor closed the dialog while the
+                    // image was generated: the image is paid for and stored.
+                    const result = await dialog.show();
+                    const file = result.image?.file || '';
+
+                    if (editor.state === 'destroyed') {
+                        Notification.warning(
+                            t('ckeditor.image.stored.title', 'Image stored'),
+                            t('ckeditor.image.stored.message', 'Stored as %s. The editor was closed before the image was ready, so it was not inserted.', file),
+                            0,
+                        );
+                        return;
+                    }
+
+                    this._insertGeneratedImage(result, insertionPoint);
+                    Notification.success(
+                        t('ckeditor.image.done.title', 'Image inserted'),
+                        t('ckeditor.image.done.message', 'Stored as %s. Check the alternative text: it is your description, not a description of the generated image.', file),
+                        8,
+                    );
+                } catch (error) {
+                    if (error?.message && error.message !== 'User cancelled') {
+                        const msg = error.message || t('ckeditor.unknownError', 'Unknown error');
+                        Notification.error(
+                            t('ckeditor.image.failed', 'Image generation failed'),
+                            msg,
+                            0,
+                            errorActions(msg, this._service, error?.status ?? null),
+                        );
+                        console.error('[Cowriter Image]', error);
+                    }
+                } finally {
+                    this._forgetInsertionPoint(insertionPoint);
                     this._isProcessing = false;
                 }
             });

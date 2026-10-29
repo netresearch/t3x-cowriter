@@ -1378,6 +1378,98 @@ describe('AIService', () => {
         });
     });
 
+    describe('generateImage', () => {
+        const interrupted = 'The image request timed out or failed on the way. The image may already be in your upload folder: '
+            + 'look there before you generate it again.';
+
+        async function serviceWithRoute() {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_image_generate = '/typo3/ajax/cowriter/image-generate';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            return new module.AIService();
+        }
+
+        function respond(status, body) {
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: status >= 200 && status < 300,
+                status,
+                json: () => (body instanceof Error ? Promise.reject(body) : Promise.resolve(body)),
+            });
+        }
+
+        it('should throw when the image route is not configured', async () => {
+            const service = new AIService();
+            expect(service._routes.imageGenerate).toBeNull();
+            await expect(service.generateImage('A lighthouse')).rejects.toThrow(
+                'Image generation route not configured.'
+            );
+        });
+
+        it('should POST only the prompt and hand back the stored image', async () => {
+            const service = await serviceWithRoute();
+            const mockResponse = {
+                success: true,
+                image: { fileUid: 42, fileTable: 'sys_file', url: '/fileadmin/a.png', width: 1024, height: 1024 },
+                alt: 'A lighthouse',
+            };
+            respond(200, mockResponse);
+
+            const result = await service.generateImage('A lighthouse');
+
+            expect(globalThis.fetch).toHaveBeenCalledWith('/typo3/ajax/cowriter/image-generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: 'A lighthouse' }),
+            });
+            expect(result).toEqual(mockResponse);
+        });
+
+        it('should throw the route\'s message and mark a budget refusal', async () => {
+            const service = await serviceWithRoute();
+            respond(429, { success: false, error: 'Daily budget used up', budgetExceeded: true });
+
+            await expect(service.generateImage('A lighthouse')).rejects.toMatchObject({
+                message: 'Daily budget used up',
+                status: 429,
+                budgetExceeded: true,
+            });
+        });
+
+        it('should keep the route\'s own message for a rejected image', async () => {
+            const service = await serviceWithRoute();
+            respond(502, { success: false, error: 'The model returned no usable image. Nothing was stored.' });
+
+            await expect(service.generateImage('A lighthouse')).rejects.toMatchObject({
+                message: 'The model returned no usable image. Nothing was stored.',
+                status: 502,
+            });
+        });
+
+        it.each([
+            ['a gateway timeout with an HTML page', 504, new SyntaxError('Unexpected token <')],
+            ['a gateway timeout with JSON', 504, { message: 'timeout' }],
+            ['a bad gateway with an HTML page', 502, new SyntaxError('Unexpected token <')],
+            ['an error without the route\'s message', 500, { foo: 'bar' }],
+            ['a success that is no JSON', 200, new SyntaxError('Unexpected end of JSON input')],
+            ['an empty success', 200, {}],
+            ['a success that is not marked as one', 200, { success: false, image: { fileUid: 42, url: '/fileadmin/a.png' } }],
+            ['a success without a file uid', 200, { success: true, image: { url: '/fileadmin/a.png' } }],
+            ['a success without a URL', 200, { success: true, image: { fileUid: 42, url: '' } }],
+        ])('should point to the upload folder for %s', async (_name, status, body) => {
+            const service = await serviceWithRoute();
+            respond(status, body);
+
+            await expect(service.generateImage('A lighthouse')).rejects.toMatchObject({ message: interrupted, status });
+        });
+
+        it('should point to the upload folder when the connection is lost', async () => {
+            const service = await serviceWithRoute();
+            globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+            await expect(service.generateImage('A lighthouse')).rejects.toMatchObject({ message: interrupted, status: null });
+        });
+    });
+
     describe('translate', () => {
         it('should throw when translate route is not configured', async () => {
             const service = new AIService();

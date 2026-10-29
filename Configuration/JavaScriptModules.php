@@ -18,6 +18,7 @@ return [
         '@netresearch/t3_cowriter/CowriterDialog'   => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/CowriterDialog.js',
         '@netresearch/t3_cowriter/Labels'           => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/Labels.js',
         '@netresearch/t3_cowriter/HtmlSanitizer'    => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/HtmlSanitizer.js',
+        '@netresearch/t3_cowriter/ImageDialog'      => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/ImageDialog.js',
         '@netresearch/t3_cowriter/FieldSuggestions' => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/FieldSuggestions.js',
     ],
 ];

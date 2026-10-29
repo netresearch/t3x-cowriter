@@ -248,6 +248,29 @@ contain is set by the administrator
     This is useful for accessibility compliance — generate descriptive
     alt text for images without leaving the editor.
 
+Image generation
+================
+
+The **Generate image** button (picture with a sparkle) creates an image
+from a description. It is shown only when the administrator switched the
+feature on (:ref:`configuration <configuration-image-generation>`), and it
+is disabled in an editor without the image plugin of rte-ckeditor-image.
+
+1.  Place the cursor where the image should go
+2.  Click the Generate image button
+3.  Describe the image (up to 1000 characters) and click
+    :guilabel:`Generate`
+4.  Wait while the image is generated; this can take one or two minutes
+5.  The image is stored in your upload folder and inserted at the cursor
+
+The description becomes the image's alternative text. It says what you
+asked for, not what the model drew: check it and correct it where needed.
+You can close the dialog while the image is generated and go on editing:
+the image is still inserted when it is ready, where the cursor was when you
+clicked the button. If the request is cut off, for example by a
+timeout, a message says so; the image may then already be in your upload
+folder.
+
 Tasks shortcut
 ==============
 

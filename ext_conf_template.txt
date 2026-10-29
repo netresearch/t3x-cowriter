@@ -18,3 +18,9 @@ translation.polish = 0
 
 # cat=Translation; type=string; label=Revision instruction: An additional instruction for the revising language model, e.g. "Address the reader directly." Leave empty for nr-llm's built-in instruction alone.
 translation.polishInstruction =
+
+# cat=Image generation; type=boolean; label=Generate images from a prompt in the editor: Adds the toolbar button "Cowriter - Generate image" to the rich text editor. An editor describes the image, nr-llm's OpenAI image service generates it, and the file is stored in the editor's default upload folder with the editor's file permissions. Needs an OpenAI API key in the nr-llm extension configuration. Each image counts against the editor's nr-llm budget.
+image.enable = 0
+
+# cat=Image generation; type=string; label=Image model: The OpenAI image model, e.g. gpt-image-2 or gpt-image-2.5-flare. Leave empty to use the active image model nr-llm marks as default (Admin Tools > LLM > Models), or gpt-image-2 when there is none. nr-llm 0.41 has no price for the gpt-image-2.5 models: unless their nr-llm model record carries a price, their images count with cost 0 against a cost limit of the nr-llm budget.
+image.model =

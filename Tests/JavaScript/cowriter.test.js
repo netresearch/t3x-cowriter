@@ -590,6 +590,248 @@ describe('Cowriter Plugin', () => {
             expect(addedComponents).toHaveProperty('cowriterVision');
             expect(addedComponents).toHaveProperty('cowriterTranslate');
             expect(addedComponents).toHaveProperty('cowriterTemplates');
+            // Registered whatever the setting says; the server takes it out of
+            // the toolbar while image generation is off.
+            expect(addedComponents).toHaveProperty('cowriterImage');
+        });
+    });
+
+    describe('cowriterImage button', () => {
+        let plugin;
+        let mockEditor;
+        let componentCallbacks;
+        let dialogShow;
+        let cursor;
+        let marker;
+        /** Where the remembered insertion point is when the image arrives. */
+        let markerStart;
+        /** @type {typeof import('@typo3/backend/notification.js').default} */
+        let Notification;
+        const generated = {
+            success: true,
+            image: {
+                fileUid: 42,
+                fileTable: 'sys_file',
+                url: '/fileadmin/user_upload/a-lighthouse-0a1b2c3d.png',
+                width: 1024,
+                height: 768,
+                mimeType: 'image/png',
+                file: '1:/user_upload/a-lighthouse-0a1b2c3d.png',
+            },
+            alt: 'A lighthouse "at" <dusk>',
+        };
+
+        beforeEach(async () => {
+            vi.resetModules();
+            dialogShow = vi.fn().mockResolvedValue(generated);
+            marker = null;
+            markerStart = undefined;
+
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
+                AIService: class MockAIService {
+                    getModuleUrl() { return null; }
+                },
+            }));
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js', () => ({
+                CowriterDialog: class MockCowriterDialog {},
+            }));
+            vi.doMock('../../Resources/Public/JavaScript/Ckeditor/ImageDialog.js', () => ({
+                ImageDialog: class MockImageDialog {
+                    show = dialogShow;
+                },
+            }));
+
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/cowriter.js');
+            Cowriter = module.Cowriter;
+            Notification = (await import('@typo3/backend/notification.js')).default;
+            Notification.success.mockClear();
+            Notification.warning.mockClear();
+            Notification.error.mockClear();
+
+            componentCallbacks = {};
+            cursor = { root: { rootName: 'main' }, path: [0, 3] };
+            const writer = {
+                createElement: vi.fn((name, attributes) => ({ name, attributes })),
+                addMarker: vi.fn((name) => {
+                    marker = { name, getStart: () => markerStart };
+                    return marker;
+                }),
+                removeMarker: vi.fn(),
+            };
+            mockEditor = {
+                _writer: writer,
+                model: {
+                    document: { selection: { getFirstPosition: vi.fn(() => cursor) } },
+                    schema: { isRegistered: vi.fn().mockReturnValue(true) },
+                    change: vi.fn((cb) => cb(writer)),
+                    createRange: vi.fn((position) => ({ start: position })),
+                    insertObject: vi.fn(),
+                    markers: { has: vi.fn(() => true) },
+                },
+                editing: { view: { focus: vi.fn() } },
+                state: 'ready',
+                config: { get: vi.fn().mockReturnValue(undefined) },
+                ui: {
+                    componentFactory: {
+                        add: vi.fn((name, callback) => { componentCallbacks[name] = callback; }),
+                    },
+                },
+            };
+
+            markerStart = cursor;
+
+            plugin = new Cowriter();
+            plugin.editor = mockEditor;
+            await plugin.init();
+        });
+
+        afterEach(() => {
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/CowriterDialog.js');
+            vi.doUnmock('../../Resources/Public/JavaScript/Ckeditor/ImageDialog.js');
+        });
+
+        it('has a label and an icon', () => {
+            const button = componentCallbacks['cowriterImage']();
+            expect(button.label).toBe('Cowriter - Generate image');
+            expect(button.tooltip).toBe(true);
+            expect(button.icon).toContain('aria-hidden="true"');
+        });
+
+        it('inserts the image as the TYPO3 image plugin\'s own element, keeping the FAL reference', async () => {
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(mockEditor._writer.createElement).toHaveBeenCalledWith('typo3image', {
+                fileUid: '42',
+                fileTable: 'sys_file',
+                src: '/fileadmin/user_upload/a-lighthouse-0a1b2c3d.png',
+                width: '1024',
+                height: '768',
+                class: 'image-block',
+                title: '',
+                alt: 'A lighthouse "at" <dusk>',
+                enableZoom: false,
+                noScale: false,
+                quality: '',
+            });
+            expect(mockEditor.model.insertObject).toHaveBeenCalledWith({ name: 'typo3image', attributes: expect.any(Object) }, cursor);
+            expect(Notification.success).toHaveBeenCalledWith(
+                'Image inserted',
+                expect.stringContaining('1:/user_upload/a-lighthouse-0a1b2c3d.png'),
+                8,
+            );
+        });
+
+        it('is disabled and says why without the TYPO3 image plugin, and sends nothing', async () => {
+            mockEditor.model.schema.isRegistered.mockReturnValue(false);
+            const button = componentCallbacks['cowriterImage']();
+
+            expect(button.isEnabled).toBe(false);
+            expect(button.label).toBe('Cowriter - Generate image: needs the image plugin of rte-ckeditor-image');
+            expect(mockEditor.model.schema.isRegistered).toHaveBeenCalledWith('typo3image');
+
+            await button.fire('execute');
+            expect(dialogShow).not.toHaveBeenCalled();
+            expect(mockEditor.model.insertObject).not.toHaveBeenCalled();
+        });
+
+        it('remembers the cursor before asking and inserts there, wherever the cursor went meanwhile', async () => {
+            let finish;
+            dialogShow.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+            const button = componentCallbacks['cowriterImage']();
+            const running = button.fire('execute');
+
+            expect(mockEditor._writer.addMarker).toHaveBeenCalledWith(expect.stringMatching(/^cowriter:image:/), {
+                range: { start: cursor },
+                usingOperation: false,
+                affectsData: false,
+            });
+            // The editor typed on; the marker moved with the text.
+            const moved = { root: { rootName: 'main' }, path: [0, 9] };
+            markerStart = moved;
+            mockEditor.model.document.selection.getFirstPosition.mockReturnValue({ root: { rootName: 'main' }, path: [5, 0] });
+            finish(generated);
+            await running;
+
+            expect(mockEditor.model.insertObject).toHaveBeenCalledWith(expect.objectContaining({ name: 'typo3image' }), moved);
+            expect(mockEditor._writer.removeMarker).toHaveBeenCalledWith(marker);
+        });
+
+        it('falls back to the selection when the remembered text was deleted', async () => {
+            markerStart = { root: { rootName: '$graveyard' }, path: [0] };
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(mockEditor.model.insertObject).toHaveBeenCalledWith(expect.objectContaining({ name: 'typo3image' }));
+            expect(mockEditor.model.insertObject.mock.calls[0]).toHaveLength(1);
+        });
+
+        it('forgets the remembered cursor when the dialog is cancelled', async () => {
+            dialogShow.mockRejectedValue(new Error('User cancelled'));
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(mockEditor._writer.removeMarker).toHaveBeenCalledWith(marker);
+        });
+
+        it('is enabled with the TYPO3 image plugin', () => {
+            const button = componentCallbacks['cowriterImage']();
+
+            expect(button.isEnabled).toBe(true);
+        });
+
+        it('inserts nothing into an editor that is gone, and names the stored file', async () => {
+            let finish;
+            dialogShow.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+            const button = componentCallbacks['cowriterImage']();
+            const running = button.fire('execute');
+            mockEditor.state = 'destroyed';
+            finish(generated);
+            await running;
+
+            expect(mockEditor.model.insertObject).not.toHaveBeenCalled();
+            expect(Notification.success).not.toHaveBeenCalled();
+            expect(Notification.warning).toHaveBeenCalledWith(
+                'Image stored',
+                expect.stringContaining('1:/user_upload/a-lighthouse-0a1b2c3d.png'),
+                0,
+            );
+        });
+
+        it('reports a failure the dialog hands over after it was closed', async () => {
+            dialogShow.mockRejectedValue(new Error('The image request timed out'));
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(Notification.error).toHaveBeenCalledWith(
+                'Image generation failed',
+                'The image request timed out',
+                0,
+                expect.any(Array),
+            );
+        });
+
+        it('does nothing when the editor closes the dialog', async () => {
+            dialogShow.mockRejectedValue(new Error('User cancelled'));
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(mockEditor.model.insertObject).not.toHaveBeenCalled();
+            expect(Notification.error).not.toHaveBeenCalled();
+        });
+
+        it('ignores a second click while the dialog is open', async () => {
+            let finish;
+            dialogShow.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+            const button = componentCallbacks['cowriterImage']();
+            const first = button.fire('execute');
+            await button.fire('execute');
+            finish(generated);
+            await first;
+
+            expect(dialogShow).toHaveBeenCalledTimes(1);
+            expect(mockEditor.model.insertObject).toHaveBeenCalledTimes(1);
         });
     });
 

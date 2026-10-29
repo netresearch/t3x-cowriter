@@ -37,9 +37,10 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 - **Task-based dialog**: Select from predefined tasks (Improve, Summarize, Extend, Fix Grammar, Translate) with result preview before inserting
 - **Vision / Alt Text**: Analyze images and generate descriptive alt text via the CKEditor toolbar
 - **Translation**: Translate selected text into 10+ languages directly from the toolbar dropdown
+- **Image generation** (off by default): Describe an image, an OpenAI image model generates it via nr-llm, and it is stored in the editor's upload folder and inserted. Switch it on with the extension setting `image.enable`; `image.model` chooses the model. Requires the image plugin of [netresearch/rte-ckeditor-image](https://github.com/netresearch/t3x-rte_ckeditor_image) in the editor configuration
 - **Prompt Templates**: Load reusable prompt presets from the backend for consistent content generation
 - **Tool Calling**: Structured function calling that lets the LLM query TYPO3 content during conversations
-- **CKEditor Integration**: Four toolbar components — main dialog, vision, translation, and templates
+- **CKEditor Integration**: Five toolbar components — main dialog, vision, translation, templates, and image generation
 - **Multi-Provider Support**: Works with all LLM providers supported by nr-llm (OpenAI, Claude, Gemini, etc.)
 - **Secure Backend Proxy**: API keys never exposed to frontend — all requests proxied through TYPO3 backend
 - **Context control**: Choose between selected text or full content element as context
@@ -98,6 +99,7 @@ editor:
         - cowriterVision
         - cowriterTranslate
         - cowriterTemplates
+        - cowriterImage
 ```
 
 ## Usage
@@ -134,6 +136,7 @@ CKEditor Toolbar
   ├─ cowriterVision   → AIService.js     ──────────────→ VisionController
   ├─ cowriterTranslate→ AIService.js     ──────────────→ TranslationController
   ├─ cowriterTemplates→ AIService.js     ──────────────→ TemplateController
+  ├─ cowriterImage    → [ImageDialog]    → AIService.js → ImageGenerationController → DallEImageService (nr-llm), FAL
   └─ (tool calling)   → AIService.js     ──────────────→ ToolController
                                                               ↓
                                                    [LlmServiceManagerInterface]

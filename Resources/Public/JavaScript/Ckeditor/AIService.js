@@ -107,7 +107,7 @@ function styleFields(style) {
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, budgetStatus: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, budgetStatus: string|null, imageGenerate: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
      * @private
      */
     _routes = {
@@ -129,6 +129,7 @@ export class AIService {
         tools: null,
         pageSearch: null,
         budgetStatus: null,
+        imageGenerate: null,
         tasksModule: null,
         llmModule: null,
         statusModule: null,
@@ -155,6 +156,7 @@ export class AIService {
             this._routes.tools = TYPO3.settings.ajaxUrls.tx_cowriter_tools || null;
             this._routes.pageSearch = TYPO3.settings.ajaxUrls.tx_cowriter_page_search || null;
             this._routes.budgetStatus = TYPO3.settings.ajaxUrls.tx_cowriter_budget_status || null;
+            this._routes.imageGenerate = TYPO3.settings.ajaxUrls.tx_cowriter_image_generate || null;
             this._routes.tasksModule = TYPO3.settings.ajaxUrls.nrllm_tasks_module || null;
             this._routes.llmModule = TYPO3.settings.ajaxUrls.nrllm_module || null;
             this._routes.statusModule = TYPO3.settings.ajaxUrls.cowriter_status || null;
@@ -695,6 +697,69 @@ export class AIService {
         }
 
         return response.json();
+    }
+
+    /**
+     * Generate an image from a description. The server stores it in FAL as the
+     * editor and answers with the stored file.
+     *
+     * A generation takes minutes, so a proxy or PHP-FPM may cut the request
+     * off after the image was paid for and stored. A gateway timeout (504), a
+     * lost connection and an answer that is not this route's JSON therefore
+     * say so with their own message, which points to the upload folder. A
+     * refusal of the route itself keeps the route's message.
+     *
+     * @param {string} prompt - Description of the image
+     * @returns {Promise<{success: boolean, image: {fileUid: number, fileTable: string, url: string, width: number, height: number, mimeType: string, file: string}, alt: string}>}
+     */
+    async generateImage(prompt) {
+        if (!this._routes.imageGenerate) {
+            throw new Error('Image generation route not configured.');
+        }
+
+        const interrupted = (status) => new AIServiceError(
+            t(
+                'ckeditor.image.interrupted',
+                'The image request timed out or failed on the way. The image may already be in your upload folder: '
+                + 'look there before you generate it again.',
+            ),
+            null,
+            status,
+        );
+
+        let response;
+        try {
+            response = await fetch(this._routes.imageGenerate, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt }),
+            });
+        } catch {
+            throw interrupted(null);
+        }
+
+        const body = await response.json().catch(() => null);
+        if (body === null || typeof body !== 'object' || response.status === 504) {
+            throw interrupted(response.status);
+        }
+
+        if (!response.ok) {
+            if (typeof body.error !== 'string' || body.error === '') {
+                throw interrupted(response.status);
+            }
+            throw new AIServiceError(body.error, body.statusUrl || null, response.status, body.budgetExceeded === true);
+        }
+
+        // A success without the stored file is no answer of this route either;
+        // the image may have been stored all the same.
+        const image = body.image;
+        if (body.success !== true || typeof image !== 'object' || image === null
+            || !Number.isInteger(image.fileUid) || image.fileUid <= 0
+            || typeof image.url !== 'string' || image.url === '') {
+            throw interrupted(response.status);
+        }
+
+        return body;
     }
 
     /**

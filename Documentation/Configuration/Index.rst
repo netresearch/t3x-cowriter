@@ -86,8 +86,9 @@ If you have your own RTE configuration file
             - cowriterVision
             - cowriterTranslate
             - cowriterTemplates
+            - cowriterImage
 
-The four toolbar items are:
+The five toolbar items are:
 
 ``cowriter``
     Main dialog — task-based content generation with preview
@@ -102,6 +103,12 @@ The four toolbar items are:
 ``cowriterTemplates``
     Open the Cowriter dialog with a task pre-selected
 
+``cowriterImage``
+    Generate an image from a description and insert it, see
+    :ref:`configuration-image-generation`. The button appears only while
+    ``image.enable`` is on, and it works only together with the image
+    plugin of ``netresearch/rte-ckeditor-image``.
+
 ..  tip::
 
     You can include only the toolbar items you need. For example, if you
@@ -112,7 +119,7 @@ The four toolbar items are:
 
     An explicit ``toolbar.items`` list REPLACES the toolbar, it does not add
     to it. Importing the module and then listing only ``cowriter`` gives you
-    exactly one button — the other three are registered but have nowhere to
+    exactly one button — the other four are registered but have nowhere to
     appear. If buttons are missing, check this list before suspecting the
     extension.
 
@@ -251,6 +258,99 @@ The response of the translate route carries ``polished`` (``true`` or
 translated, and ``polishReason`` with nr-llm's reason when the revision was
 not applied (for example ``budget_refused`` or ``markup_changed``). Without
 the setting the response is unchanged.
+
+..  _configuration-image-generation:
+
+Image generation
+================
+
+With :guilabel:`Cowriter - Generate image` an editor describes an image,
+nr-llm's OpenAI image service generates it, and the Cowriter stores it as a
+file and inserts it into the text. The feature is off until an administrator
+switches it on in the extension configuration (:guilabel:`Admin Tools` >
+:guilabel:`Settings` > :guilabel:`Extension Configuration` >
+``t3_cowriter``). A request from the editor cannot switch it on or choose
+the model.
+
+..  confval:: image.enable
+    :name: t3-cowriter-image-enable
+    :type: boolean
+    :default: ``0``
+
+    Shows the toolbar button and opens the route. While it is off, the
+    button is removed from every CKEditor toolbar and the route answers
+    with HTTP 403.
+
+..  confval:: image.model
+    :name: t3-cowriter-image-model
+    :type: string
+    :default: empty
+
+    The OpenAI image model, for example ``gpt-image-2`` or
+    ``gpt-image-2.5-flare``. Empty uses the active image model that nr-llm
+    marks as default in its model list (:guilabel:`Admin Tools` >
+    :guilabel:`LLM` > :guilabel:`Models`), or ``gpt-image-2`` when there is
+    none. The Cowriter does not read nr-llm's setting
+    ``image.dalle.defaultModel``.
+
+Requirements and behaviour:
+
+*   The image plugin of ``netresearch/rte-ckeditor-image`` (extension key
+    ``rte_ckeditor_image``) must be loaded in the editor configuration, for
+    example by importing its plugin configuration into the preset:
+
+    ..  code-block:: yaml
+
+        imports:
+          - { resource: 'EXT:rte_ckeditor_image/Configuration/RTE/Plugin.yaml' }
+
+    The image is inserted as that plugin's image with its file reference
+    (``data-htmlarea-file-uid``), like an image chosen in the file browser.
+    TYPO3's CKEditor has no image plugin of its own, and the core RTE
+    processing removes a plain ``<img>`` on save (``denyTags: img`` in
+    :file:`EXT:rte_ckeditor/Configuration/RTE/Processing.yaml`). Without
+    the plugin the button is shown disabled, says why, and requests
+    nothing.
+*   An OpenAI API key in the nr-llm extension configuration
+    (``providers.openai.apiKeyIdentifier``).
+*   The editor needs a folder to store the image in: the folder TYPO3 uses
+    for the editor's uploads (user TSconfig ``options.defaultUploadFolder``,
+    otherwise the first default folder of a storage the editor may write
+    to). The storage must be public. Without such a folder the request is
+    refused before the image is generated, so nothing is paid for.
+*   The file is added with the editor's own file permissions and file
+    mounts. Its name is made from the first words of the description and a
+    random suffix, for example :file:`a-lighthouse-at-dusk-3f9c2a1b.png`.
+*   Only the image data the model returns is stored, never a URL. It must be
+    a PNG, JPEG or WebP image of at most 10 MB; anything else is refused.
+*   Each image counts against the editor's
+    :ref:`nr-llm budget <nrllm:administration-user-budgets>`. nr-llm 0.41
+    has prices for ``gpt-image-2``, ``gpt-image-1.5``, ``gpt-image-1-mini``,
+    ``gpt-image-1`` and the DALL·E models, but none for the
+    ``gpt-image-2.5`` models. Unless their record in nr-llm's model list
+    carries a price, their images count with cost 0 against a cost limit;
+    request limits apply in every case.
+*   A generation can take one to two minutes; nr-llm waits up to 300
+    seconds for OpenAI. What cuts such a request off is PHP-FPM's
+    `request_terminate_timeout
+    <https://www.php.net/manual/en/install.fpm.configuration.php>`__ and the
+    read timeouts of the web server and of proxies in front of TYPO3; allow
+    them more than that. PHP's ``max_execution_time`` does not count the
+    wait on Linux, because it measures only the script's own execution and
+    not stream operations such as the request to OpenAI (`PHP manual,
+    set_time_limit() <https://www.php.net/manual/en/function.set-time-limit.php>`__;
+    on Windows the real time counts). A request that is cut off inserts
+    nothing. Whether the image was stored depends on when it was cut off:
+    after the image was generated and stored, the file is in the upload
+    folder; before that, there is none. The editor's message says that the
+    image may already be in the upload folder.
+*   The editor may close the dialog while the image is generated. The
+    request goes on, and the image is inserted where the cursor was when
+    the editor clicked the button, also when the text was edited in the
+    meantime.
+*   The description becomes the image's alternative text and the editor is
+    told to check it. Extensions that react to new files, such as one that
+    writes alternative texts on upload, also run for a generated image.
 
 Task configuration
 ==================

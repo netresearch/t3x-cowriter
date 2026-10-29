@@ -213,6 +213,42 @@
                 <source>Translation failed. Check the TYPO3 system log for details.</source>
                 <target>Die Übersetzung ist fehlgeschlagen. Details stehen im TYPO3-Systemprotokoll.</target>
             </trans-unit>
+            <trans-unit id="error.image.disabled" resname="error.image.disabled">
+                <source>Generating images is switched off. An administrator can switch it on in the extension configuration of t3_cowriter (image.enable).</source>
+                <target>Die Bilderzeugung ist ausgeschaltet. Ein Administrator kann sie in der Extension-Konfiguration von t3_cowriter einschalten (image.enable).</target>
+            </trans-unit>
+            <trans-unit id="error.image.noPrompt" resname="error.image.noPrompt">
+                <source>Describe the image first.</source>
+                <target>Beschreiben Sie zuerst das Bild.</target>
+            </trans-unit>
+            <trans-unit id="error.image.promptTooLong" resname="error.image.promptTooLong">
+                <source>The description is too long (at most %d characters).</source>
+                <target>Die Beschreibung ist zu lang (höchstens %d Zeichen).</target>
+            </trans-unit>
+            <trans-unit id="error.image.noFolder" resname="error.image.noFolder">
+                <source>There is no folder you may store the image in. Ask an administrator for a file mount you may add files to.</source>
+                <target>Es gibt keinen Ordner, in dem Sie das Bild speichern dürfen. Bitten Sie einen Administrator um eine Dateifreigabe, in der Sie Dateien anlegen dürfen.</target>
+            </trans-unit>
+            <trans-unit id="error.image.invalidModel" resname="error.image.invalidModel">
+                <source>The image model "%s" in the extension configuration of t3_cowriter is not an OpenAI image model.</source>
+                <target>Das Bildmodell „%s“ in der Extension-Konfiguration von t3_cowriter ist kein OpenAI-Bildmodell.</target>
+            </trans-unit>
+            <trans-unit id="error.image.notConfigured" resname="error.image.notConfigured">
+                <source>Generating images needs an OpenAI API key in the extension configuration of nr_llm.</source>
+                <target>Für die Bilderzeugung wird ein OpenAI-API-Schlüssel in der Extension-Konfiguration von nr_llm benötigt.</target>
+            </trans-unit>
+            <trans-unit id="error.image.failed" resname="error.image.failed">
+                <source>The image could not be generated. Check the TYPO3 system log for details.</source>
+                <target>Das Bild konnte nicht erzeugt werden. Details stehen im TYPO3-Systemprotokoll.</target>
+            </trans-unit>
+            <trans-unit id="error.image.rejected" resname="error.image.rejected">
+                <source>The model returned no usable image (PNG, JPEG or WebP, at most 10 MB). Nothing was stored.</source>
+                <target>Das Modell hat kein verwendbares Bild geliefert (PNG, JPEG oder WebP, höchstens 10 MB). Es wurde nichts gespeichert.</target>
+            </trans-unit>
+            <trans-unit id="error.image.storeFailed" resname="error.image.storeFailed">
+                <source>The image was generated but could not be stored. Check the TYPO3 system log for details.</source>
+                <target>Das Bild wurde erzeugt, konnte aber nicht gespeichert werden. Details stehen im TYPO3-Systemprotokoll.</target>
+            </trans-unit>
             <trans-unit id="diagnostic.provider_exists.passed" resname="diagnostic.provider_exists.passed">
                 <source>%d provider(s) configured.</source>
                 <target>%d Anbieter konfiguriert.</target>
@@ -420,6 +456,62 @@
             <trans-unit id="ckeditor.translate.failed" resname="ckeditor.translate.failed">
                 <source>Translation failed</source>
                 <target>Übersetzung fehlgeschlagen</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.button.image" resname="ckeditor.button.image">
+                <source>Cowriter - Generate image</source>
+                <target>Cowriter - Bild erzeugen</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.dialog.title" resname="ckeditor.image.dialog.title">
+                <source>Generate image</source>
+                <target>Bild erzeugen</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.dialog.prompt" resname="ckeditor.image.dialog.prompt">
+                <source>Describe the image</source>
+                <target>Bild beschreiben</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.dialog.promptHelp" resname="ckeditor.image.dialog.promptHelp">
+                <source>The image is stored in your upload folder and inserted at the cursor. Your description becomes its alternative text: check it after inserting.</source>
+                <target>Das Bild wird in Ihrem Upload-Ordner gespeichert und an der Cursorposition eingefügt. Ihre Beschreibung wird sein Alternativtext. Prüfen Sie ihn nach dem Einfügen.</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.dialog.generate" resname="ckeditor.image.dialog.generate">
+                <source>Generate</source>
+                <target>Erzeugen</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.dialog.generating" resname="ckeditor.image.dialog.generating">
+                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still inserted when it is ready.</source>
+                <target>Das Bild wird erzeugt. Das kann ein bis zwei Minuten dauern. Wenn Sie diesen Dialog schließen, wird das Bild trotzdem eingefügt, sobald es fertig ist.</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.dialog.noPrompt" resname="ckeditor.image.dialog.noPrompt">
+                <source>Describe the image first.</source>
+                <target>Beschreiben Sie zuerst das Bild.</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.done.title" resname="ckeditor.image.done.title">
+                <source>Image inserted</source>
+                <target>Bild eingefügt</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.done.message" resname="ckeditor.image.done.message">
+                <source>Stored as %s. Check the alternative text: it is your description, not a description of the generated image.</source>
+                <target>Gespeichert als %s. Prüfen Sie den Alternativtext: Er ist Ihre Beschreibung, keine Beschreibung des erzeugten Bildes.</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.stored.title" resname="ckeditor.image.stored.title">
+                <source>Image stored</source>
+                <target>Bild gespeichert</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.stored.message" resname="ckeditor.image.stored.message">
+                <source>Stored as %s. The editor was closed before the image was ready, so it was not inserted.</source>
+                <target>Gespeichert als %s. Der Editor wurde geschlossen, bevor das Bild fertig war, deshalb wurde es nicht eingefügt.</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.failed" resname="ckeditor.image.failed">
+                <source>Image generation failed</source>
+                <target>Bilderzeugung fehlgeschlagen</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.unavailable" resname="ckeditor.image.unavailable">
+                <source>Cowriter - Generate image: needs the image plugin of rte-ckeditor-image</source>
+                <target>Cowriter - Bild erzeugen: braucht das Bild-Plugin von rte-ckeditor-image</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.interrupted" resname="ckeditor.image.interrupted">
+                <source>The image request timed out or failed on the way. The image may already be in your upload folder: look there before you generate it again.</source>
+                <target>Die Bildanfrage wurde wegen Zeitüberschreitung oder auf dem Weg abgebrochen. Das Bild liegt möglicherweise schon in Ihrem Upload-Ordner: Sehen Sie dort nach, bevor Sie es erneut erzeugen.</target>
             </trans-unit>
             <trans-unit id="ckeditor.tasks.none.title" resname="ckeditor.tasks.none.title">
                 <source>No tasks configured</source>
