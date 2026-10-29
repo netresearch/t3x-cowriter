@@ -56,6 +56,16 @@ final class SuggestionTextTest extends TestCase
         yield 'typographic quotes around the answer' => ['„every evening“', ' every evening'];
         yield 'closing punctuation takes no space' => [', every evening.', ', every evening.'];
         yield 'a full stop takes no space' => ['.', '.'];
+        yield 'abbreviations with single letters' => ['z. B. bei Regen und Wind.', ' z. B. bei Regen und Wind.'];
+        yield 'a number after an abbreviation' => ['ca. 3 km entfernt. Dann mehr.', ' ca. 3 km entfernt.'];
+        yield 'a title before a name' => ['Dr. Müller kam. Dann ging er.', ' Dr. Müller kam.'];
+        yield 'single initial before a name' => ['J. Smith came. Then he left.', ' J. Smith came.'];
+        yield 'a lower-case word after a full stop' => ['every evening. then more', ' every evening. then more'];
+        yield 'the next sentence opens with a quote' => ['sagte er. „Gut.“', ' sagte er.'];
+        yield 'less-than in text' => ['wenn a<b gilt.', ' wenn a<b gilt.'];
+        yield 'comparison with spaces' => ['x < 3 and y > 2', ' x < 3 and y > 2'];
+        yield 'HTML comment' => ['every<!-- note --> evening', ' every evening'];
+        yield 'two quoted parts keep their quotes' => ['"A" und "B"', ' "A" und "B"'];
         yield 'empty' => ['', ''];
         yield 'only whitespace and markup' => [" <br> \n ", ''];
     }
