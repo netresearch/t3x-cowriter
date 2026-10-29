@@ -461,16 +461,19 @@ When a suggestion is asked for:
 
 *   Only after typing. Pasting, undo, a dialog's result or an accepted
     suggestion do not trigger one.
-*   Only when the cursor is at the end of a paragraph, heading or list item
-    without a selection, the editor has the focus, is not read-only and not
-    in source mode, and no input method composition (IME) is in progress.
+*   Only when the cursor is at the end of a paragraph or heading without a
+    selection, the editor has the focus, is not read-only and not in source
+    mode, and no input method composition (IME) is in progress. Never in a
+    list item or a table cell: there :kbd:`Tab` indents the item or moves to
+    the next cell, and a suggestion would compete with it.
 *   Each new key cancels the wait and aborts a running request; an answer
     that arrives after the text or the cursor changed is dropped.
-*   At most one request every five seconds per editor. The route allows 12
-    per minute and editor, counted apart from the other Cowriter actions, so
-    typing cannot use up their limit. After a refusal for the rate limit the
-    editor waits as long as the route says (``Retry-After``); after another
-    failure it waits 30 seconds. Failures are not shown to the editor.
+*   Each rich text field sends at most one request every five seconds. The
+    route allows 12 per minute per backend user, across all fields and tabs,
+    counted apart from the other Cowriter actions, so typing cannot use up
+    their limit. After a refusal for the rate limit the field waits as long
+    as the route says (``Retry-After``); after another failure it waits 30
+    seconds. Failures are not shown to the editor.
 
 What is sent and returned:
 
@@ -484,7 +487,10 @@ What is sent and returned:
     tokens, temperature 0.3, stopping at a line break). The route strips
     markup, entities, line breaks, control and direction characters and
     Markdown markers, keeps the first sentence and at most 200 characters,
-    and puts a space in front when the text does not end in one.
+    and puts a space in front when the text does not end in one. Only what
+    looks like a tag is removed, so ``a<b`` stays; a sentence ends at
+    ``.``, ``!``, ``?`` or ``…`` followed by an upper-case word, and not
+    after an abbreviation such as ``z. B.``, ``ca.`` or ``Dr.``.
 *   The suggestion is inserted as text, never as markup.
 
 Costs:
@@ -493,9 +499,9 @@ Costs:
     the editor's :ref:`nr-llm budget <nrllm:administration-user-budgets>`,
     whether the editor takes it or not. A request that is aborted because
     the editor typed on has already reached the server and is paid for when
-    the provider answered. With the defaults, an editor who keeps pausing
-    can cause up to 12 requests per minute; each carries up to 1000
-    characters of text and returns up to 60 tokens.
+    the provider answered. A backend user who keeps pausing can cause up to
+    12 requests per minute, however many fields are open; each carries up to
+    1000 characters of text and returns up to 60 tokens.
 *   When the budget refuses a suggestion, the editor stops asking until the
     page is reloaded. The refusal is not shown while typing; the Cowriter
     dialog shows the editor's usage and limits.
@@ -505,13 +511,19 @@ Accessibility:
 *   The grey text is hidden from screen readers. A polite live region next
     to the editor announces "Suggestion available, press Tab to accept"
     followed by the suggestion, and is cleared when the suggestion goes.
-*   :kbd:`Tab` is taken over only while a suggestion is shown. Otherwise it
-    keeps its normal behaviour, for example moving the focus out of the
-    editor or indenting a list item.
+*   :kbd:`Tab` is taken over only while a suggestion is shown, and not in
+    the first 800 milliseconds after it appeared: a :kbd:`Tab` that soon was
+    planned before the suggestion could be seen or heard, so it keeps its
+    normal behaviour (moving the focus out of the editor) and discards the
+    suggestion. A screen reader may announce the suggestion later than
+    that; to leave the field while a suggestion is shown, press
+    :kbd:`Escape`, then :kbd:`Tab`. :kbd:`Shift+Tab` is never taken over.
 *   The toggle button (:guilabel:`Cowriter - Inline suggestions`) is a
-    toggle with ``aria-pressed``. The choice is kept in the browser's local
-    storage per backend user; where the browser does not allow local
-    storage, suggestions are on again after reloading.
+    toggle with ``aria-pressed``. The choice applies at once to every rich
+    text field of the page and, through the browser's storage event, to the
+    backend in other tabs. It is kept in the browser's local storage per
+    backend user; where the browser does not allow local storage,
+    suggestions are on again after reloading.
 
 Task configuration
 ==================

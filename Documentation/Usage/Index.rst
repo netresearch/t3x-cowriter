@@ -314,15 +314,20 @@ proposes how your text goes on while you write:
 :kbd:`Escape`, any other key, a click or leaving the editor removes the
 suggestion. Nothing is inserted unless you press :kbd:`Tab`, and the grey
 text is never saved. :kbd:`Tab` inserts the suggestion only while one is
-shown; otherwise it works as usual. :kbd:`Ctrl+Z` takes an inserted
-suggestion back.
+shown; otherwise it works as usual. A :kbd:`Tab` pressed within a moment
+of the suggestion appearing also works as usual and removes the
+suggestion. To leave the field while a suggestion is shown, press
+:kbd:`Escape`, then :kbd:`Tab`. :kbd:`Ctrl+Z` takes an inserted suggestion
+back.
 
-Suggestions appear only at the end of a paragraph with enough text (by
-default 30 characters) and never while text is selected. A screen reader
-announces "Suggestion available, press Tab to accept" with the suggestion.
+Suggestions appear only at the end of a paragraph or heading with enough
+text (by default 30 characters), never in list items or table cells, and
+never while text is selected. A screen reader announces "Suggestion
+available, press Tab to accept" with the suggestion.
 
 The **Inline suggestions** button in the toolbar switches suggestions off
-for you and on again; your choice is kept in this browser. Each suggestion
+for you and on again, in every rich text field of the backend; your choice
+is kept in this browser. Each suggestion
 counts against your AI budget, also one you do not take.
 
 Tasks shortcut
