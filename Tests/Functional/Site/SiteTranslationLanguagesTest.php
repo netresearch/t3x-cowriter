@@ -25,7 +25,7 @@ use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
 /**
  * A site configuration file as TYPO3 reads it: the custom formality key on a
  * language reaches the RTE configuration through the registered listener, and
- * the Sites module knows the key as a field, so saving there keeps it.
+ * the site_language TCA of the Sites module carries a field for the key.
  */
 #[CoversClass(InjectTranslationLanguagesListener::class)]
 #[CoversClass(SiteTranslationLanguages::class)]

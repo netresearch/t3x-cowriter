@@ -49,7 +49,7 @@ final class SiteTranslationLanguagesTest extends TestCase
     }
 
     #[Test]
-    public function aLanguageDisabledForTheFrontendIsLeftOut(): void
+    public function aLanguageHiddenFromTheFrontendIsOffered(): void
     {
         $site = self::site([
             ['languageId' => 0, 'title' => 'English', 'locale' => 'en_GB.UTF-8', 'base' => '/'],
@@ -57,7 +57,7 @@ final class SiteTranslationLanguagesTest extends TestCase
         ]);
 
         self::assertSame(
-            ['en-GB'],
+            ['en-GB', 'fr'],
             array_column((new SiteTranslationLanguages())->forSite($site), 'code'),
         );
     }
@@ -118,11 +118,22 @@ final class SiteTranslationLanguagesTest extends TestCase
         yield 'other English regions fall back to en' => ['en_AU.UTF-8', 'en'];
         yield 'Brazilian Portuguese keeps its region' => ['pt_BR.UTF-8', 'pt-BR'];
         yield 'European Portuguese keeps its region' => ['pt_PT.UTF-8', 'pt-PT'];
-        yield 'Traditional Chinese is plain zh' => ['zh_TW.UTF-8', 'zh'];
+        yield 'Simplified Chinese' => ['zh_CN.UTF-8', 'zh'];
+        yield 'Chinese without region' => ['zh', 'zh'];
+        yield 'Traditional Chinese, Taiwan' => ['zh_TW.UTF-8', 'zh-TW'];
+        yield 'Traditional Chinese, Hong Kong' => ['zh_HK.UTF-8', 'zh-HK'];
+        yield 'Traditional Chinese, Macau' => ['zh_MO.UTF-8', 'zh-MO'];
+        yield 'Traditional script with region' => ['zh-Hant-HK', 'zh-HK'];
+        yield 'Traditional script without region' => ['zh-Hant', 'zh-TW'];
+        yield 'Simplified script in a Traditional region' => ['zh-Hans-HK', 'zh'];
+        yield 'Simplified Chinese, Singapore' => ['zh_SG.UTF-8', 'zh'];
         yield 'locale without region' => ['nl', 'nl'];
         yield 'hyphenated locale' => ['fr-CA', 'fr'];
         yield 'mixed case' => ['EN_gb.UTF-8', 'en-GB'];
         yield 'three-letter language' => ['fil_PH.UTF-8', null];
+        yield 'C locale' => ['C', null];
+        yield 'C locale with code set' => ['C.UTF-8', null];
+        yield 'POSIX locale' => ['POSIX', null];
     }
 
     #[Test]

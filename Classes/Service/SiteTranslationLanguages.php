@@ -16,16 +16,19 @@ use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
 
 /**
  * The target languages of the RTE translate menu, read from a site's
- * languages: one entry per enabled language, labelled with its title and
- * carrying the formality set on it.
+ * languages: one entry per configured language, labelled with its title and
+ * carrying the formality set on it. Languages hidden from the frontend are
+ * included, because editors translate into a language before it goes live.
  *
  * Target code rule: the lower-case ISO 639-1 code of the language's locale
  * ("de_DE.UTF-8" becomes "de"). The region is kept only where the
  * translators distinguish written variants by it: English (en-GB, en-US) and
- * Portuguese (pt-BR, pt-PT), which DeepL lists as targets of their own. Any
- * other region is dropped, because a code such as "de-DE" is not in DeepL's
- * list and would route the request away from DeepL. A language whose code has
- * no two-letter form is left out: nr-llm accepts only "xx" or "xx-YY".
+ * Portuguese (pt-BR, pt-PT), which DeepL lists as targets of their own, and
+ * Traditional Chinese (zh-TW, zh-HK, zh-MO). Any other region is dropped,
+ * because a code such as "de-DE" is not in DeepL's list and would route the
+ * request away from DeepL. A language whose code has no two-letter form is
+ * left out: nr-llm accepts only "xx" or "xx-YY". So is the C/POSIX locale,
+ * which TYPO3 reads as English although it names no language.
  */
 final readonly class SiteTranslationLanguages
 {
@@ -49,7 +52,17 @@ final readonly class SiteTranslationLanguages
     private const REGIONAL_TARGETS = [
         'en' => ['GB', 'US'],
         'pt' => ['BR', 'PT'],
+        'zh' => self::TRADITIONAL_CHINESE_REGIONS,
     ];
+
+    /**
+     * Regions that write Traditional Chinese. "zh" alone becomes Simplified
+     * Chinese at DeepL (nr-llm maps it to ZH-HANS); "zh-TW" is not in DeepL's
+     * list, so nr-llm routes it to the language model, which writes the
+     * Traditional variant. "zh-Hant" itself does not pass nr-llm's "xx-YY"
+     * check.
+     */
+    private const TRADITIONAL_CHINESE_REGIONS = ['TW', 'HK', 'MO'];
 
     /**
      * The site's translation targets; empty when the record belongs to no site.
@@ -67,7 +80,7 @@ final readonly class SiteTranslationLanguages
         }
 
         $languages = [];
-        foreach ($site->getLanguages() as $language) {
+        foreach ($site->getAllLanguages() as $language) {
             $code = self::targetCode($language->getLocale());
             if ($code === null) {
                 continue;
@@ -89,6 +102,12 @@ final readonly class SiteTranslationLanguages
      */
     public static function targetCode(Locale $locale): ?string
     {
+        // "C" and "POSIX" come back as language "en"; only the code set tells
+        // them apart from a real English locale.
+        if (in_array($locale->getPosixCodeSet(), ['C', 'POSIX'], true)) {
+            return null;
+        }
+
         // Locale has already lower-cased the language and upper-cased the
         // country ("de_de" and "DE-de" both give "de" and "DE").
         $language = $locale->getLanguageCode();
@@ -96,9 +115,19 @@ final readonly class SiteTranslationLanguages
             return null;
         }
 
+        $script  = $locale->getLanguageScriptCode();
         $country = $locale->getCountryCode() ?? '';
+        if ($language === 'zh' && $script === 'Hans') {
+            return 'zh';
+        }
+
         if (in_array($country, self::REGIONAL_TARGETS[$language] ?? [], true)) {
             return $language . '-' . $country;
+        }
+
+        // A Traditional script without one of its regions (zh-Hant).
+        if ($language === 'zh' && $script === 'Hant') {
+            return 'zh-' . self::TRADITIONAL_CHINESE_REGIONS[0];
         }
 
         return $language;

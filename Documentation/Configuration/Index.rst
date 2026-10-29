@@ -122,8 +122,10 @@ Translation languages and formality
 ===================================
 
 The **Translate** dropdown offers the languages of the site the edited
-record belongs to: every language of the site configuration that is enabled
-for the frontend, labelled with its title. When the record belongs to no
+record belongs to: every language of the site configuration, labelled with
+its title. Languages hidden from the frontend (``enabled: false``) are
+included, so editors can translate into a language before it goes live.
+When the record belongs to no
 site (a record on the root page, pid 0, or in a folder outside every site),
 the dropdown keeps its fixed list: German, English, French, Spanish,
 Italian, Dutch, Portuguese, Polish, Japanese and Chinese.
@@ -136,9 +138,14 @@ The target language is taken from the language's ``locale``:
     their regional variants: ``en_GB`` gives ``en-GB``, ``en_US`` gives
     ``en-US``, ``pt_BR`` gives ``pt-BR``, ``pt_PT`` gives ``pt-PT``. Other
     regions of these languages (``en_AU``) give ``en`` or ``pt``.
-*   Chinese is always ``zh`` (Simplified Chinese with DeepL); a translation
-    into Traditional Chinese cannot be selected through the site language.
-*   A language without a two-letter code (``fil_PH``) is not offered.
+*   Chinese gives ``zh`` (Simplified Chinese, translated by DeepL when it is
+    configured). The regions that write Traditional Chinese keep their
+    region: ``zh_TW`` gives ``zh-TW``, ``zh_HK`` gives ``zh-HK``, ``zh_MO``
+    gives ``zh-MO``; a locale with the script ``Hant`` and no region gives
+    ``zh-TW``, one with the script ``Hans`` gives ``zh``. DeepL has no target
+    for these codes, so nr-llm translates them with the language model.
+*   A language without a two-letter code (``fil_PH``) is not offered, nor
+    is the ``C`` or ``POSIX`` locale.
 
 Formality
 ---------
