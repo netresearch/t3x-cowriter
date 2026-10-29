@@ -18,10 +18,11 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | API client | `Resources/Public/JavaScript/Ckeditor/AIService.js` | Fetch wrapper for all AJAX routes, `AIServiceError` |
 | URL loader | `Resources/Public/JavaScript/Ckeditor/UrlLoader.js` | CSP-compliant AJAX URL injection |
 | Field suggestions (JS) | `Resources/Public/JavaScript/FormEngine/FieldSuggestions.js` | FormEngine field control: suggestion list, pick fills the field |
-| AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 19 route definitions (see table below) |
+| AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 20 route definitions (see table below) |
 | Main controller | `Classes/Controller/AjaxController.php` | Chat, complete, stream (SSE), configurations, style options, tasks, task execution (plain and SSE), context, page search |
 | Vision controller | `Classes/Controller/VisionController.php`, `Classes/Service/Vision/` | Image analysis / alt-text generation; the instruction from `altText.prompt` plus the edited record's language, resolved server-side with read checks (`RecordLanguageResolver`) |
 | Translation controller | `Classes/Controller/TranslationController.php` | Content translation |
+| Image generation | `Classes/Controller/ImageGenerationController.php`, `Classes/Service/Image/`, `Classes/EventListener/RemoveDisabledImageButtonListener.php`, `Resources/Public/JavaScript/Ckeditor/ImageDialog.js` | "Image by prompt": nr-llm's `DallEImageService` generates the image (settings `image.enable`, `image.model`), `GeneratedImageStorage` stores the returned bytes in the editor's default upload folder through FAL with the editor's permissions; the plugin inserts it as the `typo3image` element of rte-ckeditor-image. The toolbar button is removed while the setting is off |
 | Template controller | `Classes/Controller/TemplateController.php` | Prompt template listing |
 | Tool controller | `Classes/Controller/ToolController.php` | LLM tool/function calling |
 | Saved prompt controller | `Classes/Controller/SavedPromptController.php`, `Classes/Service/Prompt/` | List, save and delete the editor's saved prompts (`tx_cowriter_prompt`), sharing with optional admin approval |
@@ -62,6 +63,7 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | `tx_cowriter_tools` | `ToolController::executeAction` |
 | `tx_cowriter_suggestions` | `FieldSuggestionController::suggestAction` |
 | `tx_cowriter_budget_status` | `BudgetStatusController::statusAction` (GET) |
+| `tx_cowriter_image_generate` | `ImageGenerationController::generateAction` (POST) |
 
 ## Data Flow
 
@@ -70,7 +72,8 @@ CKEditor Toolbar
   ├─ cowriter          → CowriterDialog → AIService.js → AjaxController
   ├─ cowriterVision    → AIService.js ─────────────────→ VisionController
   ├─ cowriterTranslate → AIService.js ─────────────────→ TranslationController
-  └─ cowriterTemplates → AIService.js ─────────────────→ TemplateController
+  ├─ cowriterTemplates → AIService.js ─────────────────→ TemplateController
+  └─ cowriterImage     → ImageDialog → AIService.js ───→ ImageGenerationController → DallEImageService (nr-llm), FAL
 FormEngine field control
   └─ FieldSuggestions.js → AjaxRequest ────────────────→ FieldSuggestionController
                                                                ↓
