@@ -188,6 +188,33 @@
             <trans-unit id="error.image.storeFailed" resname="error.image.storeFailed">
                 <source>The image was generated but could not be stored. Check the TYPO3 system log for details.</source>
             </trans-unit>
+            <trans-unit id="fileControl.image.button" resname="fileControl.image.button">
+                <source>Generate image</source>
+            </trans-unit>
+            <trans-unit id="fileControl.image.dialog.promptHelp" resname="fileControl.image.dialog.promptHelp">
+                <source>The image is stored in your upload folder and added to this field. Save the record to keep it.</source>
+            </trans-unit>
+            <trans-unit id="fileControl.image.dialog.generating" resname="fileControl.image.dialog.generating">
+                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still added to the field when it is ready.</source>
+            </trans-unit>
+            <trans-unit id="fileControl.image.full.title" resname="fileControl.image.full.title">
+                <source>The field is full</source>
+            </trans-unit>
+            <trans-unit id="fileControl.image.full.message" resname="fileControl.image.full.message">
+                <source>Remove a file from the field before you generate an image for it.</source>
+            </trans-unit>
+            <trans-unit id="fileControl.image.notAccepted" resname="fileControl.image.notAccepted">
+                <source>Stored as %s. This field does not accept .%s files, so the image was not added to it.</source>
+            </trans-unit>
+            <trans-unit id="fileControl.image.notAdded" resname="fileControl.image.notAdded">
+                <source>Stored as %s. The field is full by now, so the image was not added to it.</source>
+            </trans-unit>
+            <trans-unit id="fileControl.image.done.title" resname="fileControl.image.done.title">
+                <source>Image added</source>
+            </trans-unit>
+            <trans-unit id="fileControl.image.done.message" resname="fileControl.image.done.message">
+                <source>Stored as %s and added to the field. Save the record to keep it.</source>
+            </trans-unit>
             <trans-unit id="diagnostic.provider_exists.passed" resname="diagnostic.provider_exists.passed">
                 <source>%d provider(s) configured.</source>
             </trans-unit>

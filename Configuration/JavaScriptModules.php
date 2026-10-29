@@ -20,5 +20,6 @@ return [
         '@netresearch/t3_cowriter/HtmlSanitizer'    => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/HtmlSanitizer.js',
         '@netresearch/t3_cowriter/ImageDialog'      => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/ImageDialog.js',
         '@netresearch/t3_cowriter/FieldSuggestions' => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/FieldSuggestions.js',
+        '@netresearch/t3_cowriter/ImageFileControl' => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/ImageFileControl.js',
     ],
 ];
