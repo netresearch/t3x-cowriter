@@ -2,6 +2,12 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.17.0 (2026-10-29)
+
+### FEATURE
+
+- Editors can generate an image from a prompt in the rich text editor: the **Generate image** button sends the prompt to nr-llm's OpenAI image service, stores the returned image as a file in the editor's default upload folder with the editor's file permissions, and inserts it where the cursor was. Off by default; admins turn it on with the extension setting `image.enable` and can name a model in `image.model` (empty: nr-llm's registry default, else `gpt-image-2`). Insertion needs netresearch/rte-ckeditor-image; without its image plugin the button is disabled and nothing is requested. The prompt becomes the proposed alt text, marked for review. Every check that costs nothing (rate limit, setting, prompt, configuration, writable folder) runs before the paid request, which counts against the editor's nr-llm budget (#229).
+
 ## 3.16.0 (2026-10-29)
 
 ### FEATURE
