@@ -49,6 +49,7 @@ editor:
         - cowriterVision
         - cowriterTranslate
         - cowriterTemplates
+        - cowriterImage
 
     heading:
       options:

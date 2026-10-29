@@ -61,6 +61,10 @@ export default defineConfig({
                 __dirname,
                 'Resources/Public/JavaScript/Ckeditor/HtmlSanitizer.js'
             ),
+            '@netresearch/t3_cowriter/ImageDialog': resolve(
+                __dirname,
+                'Resources/Public/JavaScript/Ckeditor/ImageDialog.js'
+            ),
         },
     },
     test: {

@@ -11,6 +11,7 @@ import { ButtonView, createDropdown, addListToDropdown, ViewModel } from "@ckedi
 import { Collection } from "@ckeditor/ckeditor5-utils";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
+import { ImageDialog } from "@netresearch/t3_cowriter/ImageDialog";
 import { t } from "@netresearch/t3_cowriter/Labels";
 import { imageSourcesOf, sanitizeHtml } from "@netresearch/t3_cowriter/HtmlSanitizer";
 import Notification from "@typo3/backend/notification.js";
@@ -247,6 +248,62 @@ export class Cowriter extends Plugin {
         }));
     }
 
+    /**
+     * Insert a generated and stored image at the selection.
+     *
+     * With the TYPO3 image plugin (netresearch/rte-ckeditor-image) the image
+     * becomes its `typo3image` model element, built as the plugin itself
+     * builds a newly inserted image, so it keeps its FAL reference
+     * (data-htmlarea-file-uid) through every save. Without it, a plain <img>
+     * goes through the editor's data pipeline; when the editor has nothing
+     * that keeps an image, nothing is inserted.
+     *
+     * @param {{image: {fileUid: number, fileTable: string, url: string, width: number, height: number}, alt: string}} result
+     * @returns {boolean} whether an image was inserted
+     * @private
+     */
+    _insertGeneratedImage(result) {
+        const editor = this.editor;
+        const model = editor.model;
+        const { image } = result;
+        const alt = typeof result.alt === 'string' ? result.alt : '';
+
+        if (model.schema.isRegistered('typo3image')) {
+            model.change((writer) => {
+                const element = writer.createElement('typo3image', {
+                    fileUid: String(image.fileUid),
+                    fileTable: image.fileTable || 'sys_file',
+                    src: image.url,
+                    width: String(image.width),
+                    height: String(image.height),
+                    class: 'image-block',
+                    title: '',
+                    alt,
+                    enableZoom: false,
+                    noScale: false,
+                    quality: '',
+                });
+                model.insertObject(element);
+            });
+            return true;
+        }
+
+        const img = document.createElement('img');
+        img.setAttribute('src', image.url);
+        img.setAttribute('alt', alt);
+        img.setAttribute('width', String(image.width));
+        img.setAttribute('height', String(image.height));
+        const modelFragment = editor.data.toModel(editor.data.processor.toView(img.outerHTML));
+        if (!modelFragment || modelFragment.childCount === 0) {
+            return false;
+        }
+
+        model.change(() => {
+            model.insertContent(modelFragment);
+        });
+        return true;
+    }
+
     async init() {
         // Initialize the AIService (now uses TYPO3 AJAX backend)
         this._service = new AIService();
@@ -395,6 +452,61 @@ export class Cowriter extends Plugin {
                         errorActions(msg, this._service, error?.status ?? null),
                     );
                     console.error('[Cowriter Vision]', error);
+                } finally {
+                    this._isProcessing = false;
+                }
+            });
+
+            return button;
+        });
+
+        // Image button — generate an image from a description and insert it.
+        // Registered in every case; RemoveDisabledImageButtonListener takes it
+        // out of the toolbar while the setting image.enable is off.
+        editor.ui.componentFactory.add('cowriterImage', () => {
+            const button = new ButtonView();
+
+            button.set({
+                label: t('ckeditor.button.image', 'Cowriter - Generate image'),
+                tooltip: true,
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v7h2V5c0-1.1-.9-2-2-2zm-5 8-3 3.72L9 12.5 6 16.5h9l-1-1.33V11zm6 3-1 2.5-2.5 1 2.5 1 1 2.5 1-2.5 2.5-1-2.5-1L20 14z"/></svg>',
+            });
+
+            button.on('execute', async () => {
+                if (this._isProcessing) return;
+                this._isProcessing = true;
+
+                try {
+                    const dialog = new ImageDialog(this._service, {
+                        returnFocus: () => editor.editing.view.focus(),
+                    });
+                    const result = await dialog.show();
+                    const file = result.image?.file || '';
+
+                    if (this._insertGeneratedImage(result)) {
+                        Notification.success(
+                            t('ckeditor.image.done.title', 'Image inserted'),
+                            t('ckeditor.image.done.message', 'Stored as %s. Check the alternative text: it is your description, not a description of the generated image.', file),
+                            8,
+                        );
+                    } else {
+                        Notification.warning(
+                            t('ckeditor.image.stored.title', 'Image stored'),
+                            t('ckeditor.image.stored.message', 'Stored as %s. This editor cannot show images, so nothing was inserted.', file),
+                            0,
+                        );
+                    }
+                } catch (error) {
+                    if (error?.message && error.message !== 'User cancelled') {
+                        const msg = error.message || t('ckeditor.unknownError', 'Unknown error');
+                        Notification.error(
+                            t('ckeditor.image.failed', 'Image generation failed'),
+                            msg,
+                            0,
+                            errorActions(msg, this._service, error?.status ?? null),
+                        );
+                        console.error('[Cowriter Image]', error);
+                    }
                 } finally {
                     this._isProcessing = false;
                 }

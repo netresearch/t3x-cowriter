@@ -107,7 +107,7 @@ function styleFields(style) {
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, budgetStatus: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, budgetStatus: string|null, imageGenerate: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
      * @private
      */
     _routes = {
@@ -129,6 +129,7 @@ export class AIService {
         tools: null,
         pageSearch: null,
         budgetStatus: null,
+        imageGenerate: null,
         tasksModule: null,
         llmModule: null,
         statusModule: null,
@@ -155,6 +156,7 @@ export class AIService {
             this._routes.tools = TYPO3.settings.ajaxUrls.tx_cowriter_tools || null;
             this._routes.pageSearch = TYPO3.settings.ajaxUrls.tx_cowriter_page_search || null;
             this._routes.budgetStatus = TYPO3.settings.ajaxUrls.tx_cowriter_budget_status || null;
+            this._routes.imageGenerate = TYPO3.settings.ajaxUrls.tx_cowriter_image_generate || null;
             this._routes.tasksModule = TYPO3.settings.ajaxUrls.nrllm_tasks_module || null;
             this._routes.llmModule = TYPO3.settings.ajaxUrls.nrllm_module || null;
             this._routes.statusModule = TYPO3.settings.ajaxUrls.cowriter_status || null;
@@ -688,6 +690,34 @@ export class AIService {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text, targetLanguage, ...options }),
+        });
+
+        if (!response.ok) {
+            await this._throwResponseError(response);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Generate an image from a description. The server stores it in FAL as the
+     * editor and answers with the stored file; an aborted request may still
+     * have produced and stored the image on the server.
+     *
+     * @param {string} prompt - Description of the image
+     * @param {AbortSignal} [signal] - Cancels the wait for the answer
+     * @returns {Promise<{success: boolean, image: {fileUid: number, fileTable: string, url: string, width: number, height: number, mimeType: string, file: string}, alt: string, revisedPrompt?: string}>}
+     */
+    async generateImage(prompt, signal = undefined) {
+        if (!this._routes.imageGenerate) {
+            throw new Error('Image generation route not configured.');
+        }
+
+        const response = await fetch(this._routes.imageGenerate, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt }),
+            signal,
         });
 
         if (!response.ok) {
