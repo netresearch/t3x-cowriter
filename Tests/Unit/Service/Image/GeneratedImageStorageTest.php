@@ -23,6 +23,7 @@ use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Resource\DefaultUploadFolderResolver;
 use TYPO3\CMS\Core\Resource\Folder;
 use TYPO3\CMS\Core\Resource\ResourceStorage;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
  * The checks of the image storage that run before FAL is touched. Writing
@@ -72,12 +73,7 @@ final class GeneratedImageStorageTest extends TestCase
     {
         unset($GLOBALS['BE_USER']);
         $this->initializeEnvironment($this->environment['varPath']);
-        foreach (glob($this->varPath . '/transient/*') ?: [] as $file) {
-            unlink($file);
-        }
-
-        rmdir($this->varPath . '/transient');
-        rmdir($this->varPath);
+        GeneralUtility::rmdir($this->varPath, true);
         parent::tearDown();
     }
 
