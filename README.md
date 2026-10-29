@@ -37,7 +37,7 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 - **Task-based dialog**: Select from predefined tasks (Improve, Summarize, Extend, Fix Grammar, Translate) with result preview before inserting
 - **Vision / Alt Text**: Analyze images and generate descriptive alt text via the CKEditor toolbar
 - **Translation**: Translate selected text into 10+ languages directly from the toolbar dropdown
-- **Image generation** (off by default): Describe an image, an OpenAI image model generates it via nr-llm, and it is stored in the editor's upload folder and inserted. Switch it on with the extension setting `image.enable`; `image.model` chooses the model
+- **Image generation** (off by default): Describe an image, an OpenAI image model generates it via nr-llm, and it is stored in the editor's upload folder and inserted. Switch it on with the extension setting `image.enable`; `image.model` chooses the model. Requires the image plugin of [netresearch/rte-ckeditor-image](https://github.com/netresearch/t3x-rte_ckeditor_image) in the editor configuration
 - **Prompt Templates**: Load reusable prompt presets from the backend for consistent content generation
 - **Tool Calling**: Structured function calling that lets the LLM query TYPO3 content during conversations
 - **CKEditor Integration**: Five toolbar components — main dialog, vision, translation, templates, and image generation

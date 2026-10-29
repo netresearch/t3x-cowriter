@@ -106,7 +106,8 @@ The five toolbar items are:
 ``cowriterImage``
     Generate an image from a description and insert it, see
     :ref:`configuration-image-generation`. The button appears only while
-    ``image.enable`` is on.
+    ``image.enable`` is on, and it works only together with the image
+    plugin of ``netresearch/rte-ckeditor-image``.
 
 ..  tip::
 
@@ -294,6 +295,22 @@ the model.
 
 Requirements and behaviour:
 
+*   The image plugin of ``netresearch/rte-ckeditor-image`` (extension key
+    ``rte_ckeditor_image``) must be loaded in the editor configuration, for
+    example by importing its plugin configuration into the preset:
+
+    ..  code-block:: yaml
+
+        imports:
+          - { resource: 'EXT:rte_ckeditor_image/Configuration/RTE/Plugin.yaml' }
+
+    The image is inserted as that plugin's image with its file reference
+    (``data-htmlarea-file-uid``), like an image chosen in the file browser.
+    TYPO3's CKEditor has no image plugin of its own, and the core RTE
+    processing removes a plain ``<img>`` on save (``denyTags: img`` in
+    :file:`EXT:rte_ckeditor/Configuration/RTE/Processing.yaml`). Without
+    the plugin the button is shown disabled, says why, and requests
+    nothing.
 *   An OpenAI API key in the nr-llm extension configuration
     (``providers.openai.apiKeyIdentifier``).
 *   The editor needs a folder to store the image in: the folder TYPO3 uses
@@ -313,19 +330,23 @@ Requirements and behaviour:
     ``gpt-image-2.5`` models. Unless their record in nr-llm's model list
     carries a price, their images count with cost 0 against a cost limit;
     request limits apply in every case.
-*   A generation can take one to two minutes. nr-llm waits up to 300
-    seconds for OpenAI; PHP's ``max_execution_time`` and the timeouts of
-    proxies in front of TYPO3 must allow that, or the request is cut off
-    after the image was paid for.
+*   A generation can take one to two minutes; nr-llm waits up to 300
+    seconds for OpenAI. What cuts such a request off is PHP-FPM's
+    `request_terminate_timeout
+    <https://www.php.net/manual/en/install.fpm.configuration.php>`__ and the
+    read timeouts of the web server and of proxies in front of TYPO3; allow
+    them more than that. PHP's ``max_execution_time`` does not count the
+    wait on Linux, because it measures only the script's own execution and
+    not stream operations such as the request to OpenAI (`PHP manual,
+    set_time_limit() <https://www.php.net/manual/en/function.set-time-limit.php>`__;
+    on Windows the real time counts). A request cut off after the image was
+    generated leaves the file in the upload folder without inserting it;
+    the editor gets a message that says so.
+*   The editor may close the dialog while the image is generated. The
+    request goes on, and the image is inserted when it is ready.
 *   The description becomes the image's alternative text and the editor is
     told to check it. Extensions that react to new files, such as one that
     writes alternative texts on upload, also run for a generated image.
-
-With the TYPO3 image plugin (``netresearch/rte-ckeditor-image``) the image is
-inserted with its file reference (``data-htmlarea-file-uid``) like an image
-chosen in the file browser. Without that plugin a plain ``<img>`` is
-inserted when the editor configuration allows one; otherwise the editor is
-told where the file was stored.
 
 Task configuration
 ==================

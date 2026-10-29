@@ -133,6 +133,7 @@ Tests/
 │   ├── *.spec.ts       # Playwright specs (toolbar, dialog, tasks, translate, vision, context zoom)
 │   └── fixtures/       # Playwright auth fixture
 ├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, ImageDialog, HtmlSanitizer, UrlLoader, FieldSuggestions (+ __mocks__/)
+│   └── Integration/    # Vitest project "ckeditor": TYPO3's real CKEditor build + rte-ckeditor-image from .Build/vendor (skipped without composer install)
 └── Support/            # TestQueryResult.php, TaskStubTrait.php, XliffFile.php (reads the language files)
 ```
 

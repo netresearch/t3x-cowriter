@@ -253,7 +253,8 @@ Image generation
 
 The **Generate image** button (picture with a sparkle) creates an image
 from a description. It is shown only when the administrator switched the
-feature on (:ref:`configuration <configuration-image-generation>`).
+feature on (:ref:`configuration <configuration-image-generation>`), and it
+is disabled in an editor without the image plugin of rte-ckeditor-image.
 
 1.  Place the cursor where the image should go
 2.  Click the Generate image button
@@ -264,8 +265,10 @@ feature on (:ref:`configuration <configuration-image-generation>`).
 
 The description becomes the image's alternative text. It says what you
 asked for, not what the model drew: check it and correct it where needed.
-Closing the dialog while the image is generated stops the waiting; the
-image may still be generated and stored.
+You can close the dialog while the image is generated: the image is still
+inserted when it is ready. If the request is cut off, for example by a
+timeout, a message says so; the image may then already be in your upload
+folder.
 
 Tasks shortcut
 ==============
