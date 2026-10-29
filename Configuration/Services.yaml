@@ -75,5 +75,8 @@ services:
     arguments:
       $rateLimiter: '@cowriter.rateLimiter.inlineSuggestions'
 
+  Netresearch\T3Cowriter\Controller\PresentationController:
+    public: true
+
   Netresearch\T3Cowriter\Controller\Backend\StatusController:
     public: true

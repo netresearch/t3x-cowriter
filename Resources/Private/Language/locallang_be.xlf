@@ -776,6 +776,87 @@
             <trans-unit id="tx_cowriter_prompt.tab.access" resname="tx_cowriter_prompt.tab.access">
                 <source>Access</source>
             </trans-unit>
+            <trans-unit id="presentation.button" resname="presentation.button">
+                <source>Present as tabs or accordion</source>
+            </trans-unit>
+            <trans-unit id="presentation.heading" resname="presentation.heading">
+                <source>Present as tabs or accordion</source>
+            </trans-unit>
+            <trans-unit id="presentation.loading" resname="presentation.loading">
+                <source>Dividing the saved text into sections…</source>
+            </trans-unit>
+            <trans-unit id="presentation.proposedHeadings" resname="presentation.proposedHeadings">
+                <source>The saved text was divided at its headings. Check the sections, then create the new element.</source>
+            </trans-unit>
+            <trans-unit id="presentation.proposedModel" resname="presentation.proposedModel">
+                <source>The language model proposed these sections for the saved text. Check the titles, then create the new element.</source>
+            </trans-unit>
+            <trans-unit id="presentation.layout" resname="presentation.layout">
+                <source>Present as</source>
+            </trans-unit>
+            <trans-unit id="presentation.layoutTab" resname="presentation.layoutTab">
+                <source>Tabs</source>
+            </trans-unit>
+            <trans-unit id="presentation.layoutAccordion" resname="presentation.layoutAccordion">
+                <source>Accordion</source>
+            </trans-unit>
+            <trans-unit id="presentation.sectionTitle" resname="presentation.sectionTitle">
+                <source>Title of section %d</source>
+            </trans-unit>
+            <trans-unit id="presentation.noText" resname="presentation.noText">
+                <source>(no text, only the heading)</source>
+            </trans-unit>
+            <trans-unit id="presentation.original" resname="presentation.original">
+                <source>A new element is created directly after this one. This element stays unchanged: delete or hide it yourself once the new element is right. Changes in this form that are not saved yet are not included.</source>
+            </trans-unit>
+            <trans-unit id="presentation.create" resname="presentation.create">
+                <source>Create element</source>
+            </trans-unit>
+            <trans-unit id="presentation.creating" resname="presentation.creating">
+                <source>Creating the element…</source>
+            </trans-unit>
+            <trans-unit id="presentation.created" resname="presentation.created">
+                <source>The new element was created directly after this one. This element is unchanged: delete or hide it yourself.</source>
+            </trans-unit>
+            <trans-unit id="presentation.open" resname="presentation.open">
+                <source>Open the new element</source>
+            </trans-unit>
+            <trans-unit id="presentation.cancel" resname="presentation.cancel">
+                <source>Cancel</source>
+            </trans-unit>
+            <trans-unit id="presentation.error" resname="presentation.error">
+                <source>The sections could not be proposed.</source>
+            </trans-unit>
+            <trans-unit id="presentation.titleRequired" resname="presentation.titleRequired">
+                <source>Every section needs a title.</source>
+            </trans-unit>
+            <trans-unit id="presentation.introduction" resname="presentation.introduction">
+                <source>Introduction</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.disabled" resname="presentation.error.disabled">
+                <source>Presenting a text as tabs or accordion is switched off.</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.notAvailable" resname="presentation.error.notAvailable">
+                <source>This element cannot be presented as tabs or accordion, or you may not create such an element on this page.</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.tooShort" resname="presentation.error.tooShort">
+                <source>The saved text is too short to be divided into sections. If you changed the text, save the element first.</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.tooLong" resname="presentation.error.tooLong">
+                <source>The saved text is too long to be divided without headings. Add headings (level 2) where the sections begin, save, and try again.</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.noSplit" resname="presentation.error.noSplit">
+                <source>No usable division into sections was proposed. Try again, or add headings (level 2) where the sections begin.</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.changed" resname="presentation.error.changed">
+                <source>The saved text changed after the sections were proposed. Let the sections be proposed again.</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.invalidSections" resname="presentation.error.invalidSections">
+                <source>The sections do not fit the saved text. Let the sections be proposed again.</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.createFailed" resname="presentation.error.createFailed">
+                <source>The new element could not be created. Nothing was changed.</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

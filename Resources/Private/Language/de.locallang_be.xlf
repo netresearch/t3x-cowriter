@@ -1033,6 +1033,114 @@
                 <source>Access</source>
                 <target>Zugriff</target>
             </trans-unit>
+            <trans-unit id="presentation.button" resname="presentation.button">
+                <source>Present as tabs or accordion</source>
+                <target>Als Tabs oder Akkordeon darstellen</target>
+            </trans-unit>
+            <trans-unit id="presentation.heading" resname="presentation.heading">
+                <source>Present as tabs or accordion</source>
+                <target>Als Tabs oder Akkordeon darstellen</target>
+            </trans-unit>
+            <trans-unit id="presentation.loading" resname="presentation.loading">
+                <source>Dividing the saved text into sections…</source>
+                <target>Der gespeicherte Text wird in Abschnitte geteilt…</target>
+            </trans-unit>
+            <trans-unit id="presentation.proposedHeadings" resname="presentation.proposedHeadings">
+                <source>The saved text was divided at its headings. Check the sections, then create the new element.</source>
+                <target>Der gespeicherte Text wurde an seinen Überschriften geteilt. Prüfen Sie die Abschnitte und legen Sie dann das neue Element an.</target>
+            </trans-unit>
+            <trans-unit id="presentation.proposedModel" resname="presentation.proposedModel">
+                <source>The language model proposed these sections for the saved text. Check the titles, then create the new element.</source>
+                <target>Das Sprachmodell hat diese Abschnitte für den gespeicherten Text vorgeschlagen. Prüfen Sie die Titel und legen Sie dann das neue Element an.</target>
+            </trans-unit>
+            <trans-unit id="presentation.layout" resname="presentation.layout">
+                <source>Present as</source>
+                <target>Darstellen als</target>
+            </trans-unit>
+            <trans-unit id="presentation.layoutTab" resname="presentation.layoutTab">
+                <source>Tabs</source>
+                <target>Tabs</target>
+            </trans-unit>
+            <trans-unit id="presentation.layoutAccordion" resname="presentation.layoutAccordion">
+                <source>Accordion</source>
+                <target>Akkordeon</target>
+            </trans-unit>
+            <trans-unit id="presentation.sectionTitle" resname="presentation.sectionTitle">
+                <source>Title of section %d</source>
+                <target>Titel von Abschnitt %d</target>
+            </trans-unit>
+            <trans-unit id="presentation.noText" resname="presentation.noText">
+                <source>(no text, only the heading)</source>
+                <target>(kein Text, nur die Überschrift)</target>
+            </trans-unit>
+            <trans-unit id="presentation.original" resname="presentation.original">
+                <source>A new element is created directly after this one. This element stays unchanged: delete or hide it yourself once the new element is right. Changes in this form that are not saved yet are not included.</source>
+                <target>Direkt nach diesem Element wird ein neues Element angelegt. Dieses Element bleibt unverändert: Löschen oder verbergen Sie es selbst, sobald das neue Element stimmt. Noch nicht gespeicherte Änderungen in diesem Formular werden nicht übernommen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.create" resname="presentation.create">
+                <source>Create element</source>
+                <target>Element anlegen</target>
+            </trans-unit>
+            <trans-unit id="presentation.creating" resname="presentation.creating">
+                <source>Creating the element…</source>
+                <target>Das Element wird angelegt…</target>
+            </trans-unit>
+            <trans-unit id="presentation.created" resname="presentation.created">
+                <source>The new element was created directly after this one. This element is unchanged: delete or hide it yourself.</source>
+                <target>Das neue Element wurde direkt nach diesem angelegt. Dieses Element ist unverändert: Löschen oder verbergen Sie es selbst.</target>
+            </trans-unit>
+            <trans-unit id="presentation.open" resname="presentation.open">
+                <source>Open the new element</source>
+                <target>Neues Element öffnen</target>
+            </trans-unit>
+            <trans-unit id="presentation.cancel" resname="presentation.cancel">
+                <source>Cancel</source>
+                <target>Abbrechen</target>
+            </trans-unit>
+            <trans-unit id="presentation.error" resname="presentation.error">
+                <source>The sections could not be proposed.</source>
+                <target>Die Abschnitte konnten nicht vorgeschlagen werden.</target>
+            </trans-unit>
+            <trans-unit id="presentation.titleRequired" resname="presentation.titleRequired">
+                <source>Every section needs a title.</source>
+                <target>Jeder Abschnitt braucht einen Titel.</target>
+            </trans-unit>
+            <trans-unit id="presentation.introduction" resname="presentation.introduction">
+                <source>Introduction</source>
+                <target>Einleitung</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.disabled" resname="presentation.error.disabled">
+                <source>Presenting a text as tabs or accordion is switched off.</source>
+                <target>Das Darstellen eines Textes als Tabs oder Akkordeon ist ausgeschaltet.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.notAvailable" resname="presentation.error.notAvailable">
+                <source>This element cannot be presented as tabs or accordion, or you may not create such an element on this page.</source>
+                <target>Dieses Element kann nicht als Tabs oder Akkordeon dargestellt werden, oder Sie dürfen auf dieser Seite kein solches Element anlegen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.tooShort" resname="presentation.error.tooShort">
+                <source>The saved text is too short to be divided into sections. If you changed the text, save the element first.</source>
+                <target>Der gespeicherte Text ist zu kurz, um ihn in Abschnitte zu teilen. Wenn Sie den Text geändert haben, speichern Sie das Element zuerst.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.tooLong" resname="presentation.error.tooLong">
+                <source>The saved text is too long to be divided without headings. Add headings (level 2) where the sections begin, save, and try again.</source>
+                <target>Der gespeicherte Text ist zu lang, um ihn ohne Überschriften zu teilen. Fügen Sie Überschriften der Ebene 2 dort ein, wo die Abschnitte beginnen, speichern Sie und versuchen Sie es erneut.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.noSplit" resname="presentation.error.noSplit">
+                <source>No usable division into sections was proposed. Try again, or add headings (level 2) where the sections begin.</source>
+                <target>Es wurde keine brauchbare Teilung in Abschnitte vorgeschlagen. Versuchen Sie es erneut oder fügen Sie Überschriften der Ebene 2 dort ein, wo die Abschnitte beginnen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.changed" resname="presentation.error.changed">
+                <source>The saved text changed after the sections were proposed. Let the sections be proposed again.</source>
+                <target>Der gespeicherte Text hat sich geändert, nachdem die Abschnitte vorgeschlagen wurden. Lassen Sie die Abschnitte erneut vorschlagen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.invalidSections" resname="presentation.error.invalidSections">
+                <source>The sections do not fit the saved text. Let the sections be proposed again.</source>
+                <target>Die Abschnitte passen nicht zum gespeicherten Text. Lassen Sie die Abschnitte erneut vorschlagen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.createFailed" resname="presentation.error.createFailed">
+                <source>The new element could not be created. Nothing was changed.</source>
+                <target>Das neue Element konnte nicht angelegt werden. Es wurde nichts geändert.</target>
+            </trans-unit>
         </body>
     </file>
 </xliff>

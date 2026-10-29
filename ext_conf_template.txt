@@ -36,3 +36,6 @@ inlineSuggestions.minChars = 30
 
 # cat=Inline suggestions; type=string; label=LLM configuration: The identifier of the nr-llm configuration that answers (Admin Tools > LLM > Configurations). A fast, inexpensive model suits inline suggestions best. Leave empty to use the default configuration.
 inlineSuggestions.configuration =
+
+# cat=Alternative presentation; type=boolean; label=Present a text element as tabs or as an accordion: Adds the button "Present as tabs or accordion" next to the rich text of a text element (Text, Text & Images, Text & Media). It cuts the saved text into sections and, after the editor confirmed the preview, creates a new Tabs or Accordion element of bootstrap_package directly after the original, with one item per section. The original element stays unchanged; the editor deletes or hides it. A text with h2 or h3 headings is cut at them without a request to the language model; a text without them is split by the language model, which counts against the editor's nr-llm budget. Needs bootstrap_package; the button is shown only to editors who may create these elements on the page.
+presentation.enable = 0

@@ -52,12 +52,14 @@
     },
     "require": {
         "php": "^8.2",
+        "masterminds/html5": "^2.9",
         "typo3/cms-core": "^13.4 || ^14.3",
         "typo3/cms-backend": "^13.4 || ^14.3",
         "typo3/cms-rte-ckeditor": "^13.4 || ^14.3",
         "netresearch/nr-llm": "^0.41.14"
     },
     "require-dev": {
+        "bk2k/bootstrap-package": "^16.0.1",
         "netresearch/rte-ckeditor-image": "^13.10.3",
         "netresearch/typo3-ci-workflows": "^2.0.3",
         "typo3/cms-seo": "^13.4 || ^14.3",
