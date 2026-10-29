@@ -167,6 +167,18 @@
             <trans-unit id="error.image.noPrompt" resname="error.image.noPrompt">
                 <source>Describe the image first.</source>
             </trans-unit>
+            <trans-unit id="error.inlineSuggestion.disabled" resname="error.inlineSuggestion.disabled">
+                <source>Inline suggestions are switched off. An administrator can switch them on in the extension configuration of t3_cowriter (inlineSuggestions.enable).</source>
+            </trans-unit>
+            <trans-unit id="error.inlineSuggestion.tooShort" resname="error.inlineSuggestion.tooShort">
+                <source>The text is too short for a suggestion (at least %d characters).</source>
+            </trans-unit>
+            <trans-unit id="error.inlineSuggestion.tooLong" resname="error.inlineSuggestion.tooLong">
+                <source>The text for a suggestion is too long (at most %d characters).</source>
+            </trans-unit>
+            <trans-unit id="error.inlineSuggestion.failed" resname="error.inlineSuggestion.failed">
+                <source>No suggestion could be created.</source>
+            </trans-unit>
             <trans-unit id="error.image.promptTooLong" resname="error.image.promptTooLong">
                 <source>The description is too long (at most %d characters).</source>
             </trans-unit>
@@ -412,6 +424,12 @@
             </trans-unit>
             <trans-unit id="ckeditor.image.interrupted" resname="ckeditor.image.interrupted">
                 <source>The image request timed out or failed on the way. The image may already be in your upload folder: look there before you generate it again.</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.button.inlineSuggestions" resname="ckeditor.button.inlineSuggestions">
+                <source>Cowriter - Inline suggestions</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.inlineSuggestion.available" resname="ckeditor.inlineSuggestion.available">
+                <source>Suggestion available, press Tab to accept: %s</source>
             </trans-unit>
             <trans-unit id="ckeditor.tasks.none.title" resname="ckeditor.tasks.none.title">
                 <source>No tasks configured</source>

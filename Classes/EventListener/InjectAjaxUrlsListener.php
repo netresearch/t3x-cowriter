@@ -78,6 +78,8 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.image.failed',
         'ckeditor.image.unavailable',
         'ckeditor.image.interrupted',
+        'ckeditor.button.inlineSuggestions',
+        'ckeditor.inlineSuggestion.available',
         'ckeditor.tasks.none.title',
         'ckeditor.tasks.none.message',
         'ckeditor.tasks.loadFailed',
@@ -278,6 +280,8 @@ final readonly class InjectAjaxUrlsListener
                 ->buildUriFromRoute('ajax_tx_cowriter_budget_status'),
             'tx_cowriter_image_generate' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_image_generate'),
+            'tx_cowriter_inline_suggestion' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_inline_suggestion'),
             'nrllm_tasks_module' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('nrllm_tasks'),
             'nrllm_module' => (string) $this->backendUriBuilder
