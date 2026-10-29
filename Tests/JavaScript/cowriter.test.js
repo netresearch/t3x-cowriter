@@ -912,6 +912,30 @@ describe('Cowriter Plugin', () => {
             expect(Notification.success).toHaveBeenCalledWith('Translation complete', 'Translated to German', 3);
         });
 
+        it('says the translation was revised by AI when the response is polished', async () => {
+            mockTranslate.mockResolvedValue({ success: true, translation: '<p>Hallo Welt</p>', translator: 'Deepl', polished: true });
+            const dropdown = componentCallbacks['cowriterTranslate']();
+
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            expect(Notification.success).toHaveBeenCalledWith('Translation complete', 'Translated to German and revised by AI', 3);
+        });
+
+        it('adds no hint when the revision was not applied', async () => {
+            mockTranslate.mockResolvedValue({
+                success: true,
+                translation: '<p>Hallo Welt</p>',
+                translator: 'Deepl',
+                polished: false,
+                polishReason: 'budget_refused',
+            });
+            const dropdown = componentCallbacks['cowriterTranslate']();
+
+            await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
+
+            expect(Notification.success).toHaveBeenCalledWith('Translation complete', 'Translated to German', 3);
+        });
+
         it('passes the translation through the allow-list before inserting it', async () => {
             mockTranslate.mockResolvedValue({
                 success: true,
@@ -1121,6 +1145,7 @@ describe('Cowriter Plugin', () => {
                     'ckeditor.translate.running.message': 'Zielsprache: %s',
                     'ckeditor.translate.done.title': 'Übersetzung abgeschlossen',
                     'ckeditor.translate.done.message': 'Übersetzt, Zielsprache: %s',
+                    'ckeditor.translate.done.polishedMessage': 'Übersetzt und von KI überarbeitet, Zielsprache: %s',
                     'ckeditor.translate.failed': 'Übersetzung fehlgeschlagen',
                     'ckeditor.action.openLlmSettings': 'LLM-Einstellungen öffnen',
                 });
@@ -1143,6 +1168,19 @@ describe('Cowriter Plugin', () => {
 
                 expect(Notification.info).toHaveBeenCalledWith('Wird übersetzt...', 'Zielsprache: Deutsch', 15);
                 expect(Notification.success).toHaveBeenCalledWith('Übersetzung abgeschlossen', 'Übersetzt, Zielsprache: Deutsch', 3);
+            });
+
+            it('labels the hint for a revised translation with them', async () => {
+                mockTranslate.mockResolvedValue({ success: true, translation: '<p>Hallo Welt</p>', polished: true });
+                const dropdown = componentCallbacks['cowriterTranslate']();
+
+                await dropdown.fire('execute', { source: { languageCode: 'de', label: 'Deutsch' } });
+
+                expect(Notification.success).toHaveBeenCalledWith(
+                    'Übersetzung abgeschlossen',
+                    'Übersetzt und von KI überarbeitet, Zielsprache: Deutsch',
+                    3,
+                );
             });
 
             it('labels the error notification and its settings action with them', async () => {

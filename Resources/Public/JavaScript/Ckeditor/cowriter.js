@@ -472,9 +472,14 @@ export class Cowriter extends Plugin {
                             editor.model.insertContent(modelFragment);
                         });
 
+                        // A language model revised the translator's text (the
+                        // admin setting translation.polish); say so. Nothing is
+                        // added when the revision was not applied.
                         Notification.success(
                             t('ckeditor.translate.done.title', 'Translation complete'),
-                            t('ckeditor.translate.done.message', 'Translated to %s', langLabel),
+                            result.polished === true
+                                ? t('ckeditor.translate.done.polishedMessage', 'Translated to %s and revised by AI', langLabel)
+                                : t('ckeditor.translate.done.message', 'Translated to %s', langLabel),
                             3,
                         );
                     } else {

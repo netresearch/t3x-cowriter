@@ -62,6 +62,7 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.translate.running.message',
         'ckeditor.translate.done.title',
         'ckeditor.translate.done.message',
+        'ckeditor.translate.done.polishedMessage',
         'ckeditor.translate.failed',
         'ckeditor.tasks.none.title',
         'ckeditor.tasks.none.message',
