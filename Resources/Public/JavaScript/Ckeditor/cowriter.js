@@ -39,7 +39,7 @@ const TRANSLATION_LANGUAGES = [
  * Formality values the translation endpoint accepts.
  * @type {ReadonlyArray<string>}
  */
-const FORMALITIES = ['default', 'formal', 'informal'];
+const FORMALITIES = new Set(['default', 'formal', 'informal']);
 
 /**
  * Build a TYPO3 Notification action that opens the LLM module.
@@ -232,7 +232,7 @@ export class Cowriter extends Plugin {
                 .map((lang) => ({
                     code: lang.code,
                     label: typeof lang.label === 'string' && lang.label !== '' ? lang.label : lang.code,
-                    formality: FORMALITIES.includes(lang.formality) ? lang.formality : 'default',
+                    formality: FORMALITIES.has(lang.formality) ? lang.formality : 'default',
                 }));
             if (languages.length > 0) {
                 return languages;

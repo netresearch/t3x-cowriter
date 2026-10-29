@@ -102,6 +102,16 @@ final readonly class SiteTranslationLanguages
      */
     public static function targetCode(Locale $locale): ?string
     {
+        $language = self::languageCode($locale);
+
+        return $language === null ? null : (self::regionalCode($language, $locale) ?? $language);
+    }
+
+    /**
+     * The two-letter language of a locale, or null when it has none.
+     */
+    private static function languageCode(Locale $locale): ?string
+    {
         // "C" and "POSIX" come back as language "en"; only the code set tells
         // them apart from a real English locale.
         if (in_array($locale->getPosixCodeSet(), ['C', 'POSIX'], true)) {
@@ -111,14 +121,20 @@ final readonly class SiteTranslationLanguages
         // Locale has already lower-cased the language and upper-cased the
         // country ("de_de" and "DE-de" both give "de" and "DE").
         $language = $locale->getLanguageCode();
-        if (preg_match('/^[a-z]{2}$/', $language) !== 1) {
-            return null;
-        }
 
+        return preg_match('/^[a-z]{2}$/', $language) === 1 ? $language : null;
+    }
+
+    /**
+     * The code with its region where the target depends on it, or null when
+     * the plain language code is the target.
+     */
+    private static function regionalCode(string $language, Locale $locale): ?string
+    {
         $script  = $locale->getLanguageScriptCode();
         $country = $locale->getCountryCode() ?? '';
         if ($language === 'zh' && $script === 'Hans') {
-            return 'zh';
+            return null;
         }
 
         if (in_array($country, self::REGIONAL_TARGETS[$language] ?? [], true)) {
@@ -126,11 +142,7 @@ final readonly class SiteTranslationLanguages
         }
 
         // A Traditional script without one of its regions (zh-Hant).
-        if ($language === 'zh' && $script === 'Hant') {
-            return 'zh-' . self::TRADITIONAL_CHINESE_REGIONS[0];
-        }
-
-        return $language;
+        return $language === 'zh' && $script === 'Hant' ? 'zh-' . self::TRADITIONAL_CHINESE_REGIONS[0] : null;
     }
 
     /**
