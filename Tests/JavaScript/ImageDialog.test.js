@@ -58,6 +58,32 @@ describe('ImageDialog', () => {
         expect(status().hidden).toBe(true);
     });
 
+    it('says where the image goes in the texts its caller passes', async () => {
+        let finish;
+        service.generateImage.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+        const result = new ImageDialog(service, {
+            promptHelp: 'Added to this field.',
+            generating: 'Generating for this field.',
+        }).show();
+
+        expect(modal().querySelector('#cowriter-image-prompt-help').textContent).toBe('Added to this field.');
+
+        textarea().value = 'A lighthouse';
+        button('generate').click();
+        await flush();
+
+        expect(status().textContent).toBe('Generating for this field.');
+
+        finish(generated);
+        await expect(result).resolves.toEqual(generated);
+    });
+
+    it('speaks of the rich text editor without such texts', () => {
+        void new ImageDialog(service).show().catch(() => {});
+
+        expect(modal().querySelector('#cowriter-image-prompt-help').textContent).toContain('inserted at the cursor');
+    });
+
     it('does not call the server for an empty description', async () => {
         void new ImageDialog(service).show().catch(() => {});
         textarea().value = '   ';
@@ -131,7 +157,7 @@ describe('ImageDialog', () => {
         textarea().value = 'A lighthouse';
         button('generate').click();
         await flush();
-        expect(status().textContent).toContain('If you close this dialog, the image is still inserted');
+        expect(status().textContent).toContain('as long as this record stays open; otherwise it is in your upload folder.');
 
         button('cancel').click();
         await flush();

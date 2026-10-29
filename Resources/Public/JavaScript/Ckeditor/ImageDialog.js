@@ -31,11 +31,15 @@ export const MAX_PROMPT_LENGTH = 1000;
 export class ImageDialog {
     /**
      * @param {import('./AIService.js').AIService} service
-     * @param {{returnFocus?: function(): void}} [options]
+     * @param {{returnFocus?: function(): void, promptHelp?: string, generating?: string}} [options]
+     *     promptHelp and generating replace the texts that say where the image
+     *     goes; without them the dialog speaks of the rich text editor.
      */
     constructor(service, options = {}) {
         this._service = service;
         this._returnFocus = options.returnFocus ?? null;
+        this._promptHelp = options.promptHelp ?? null;
+        this._generating = options.generating ?? null;
     }
 
     /**
@@ -89,10 +93,11 @@ export class ImageDialog {
 
                 setBusy(true);
                 showStatus(
-                    t(
+                    this._generating ?? t(
                         'ckeditor.image.dialog.generating',
                         'Generating the image. This can take one or two minutes. '
-                        + 'If you close this dialog, the image is still inserted when it is ready.',
+                        + 'If you close this dialog, the image is still inserted when it is ready, '
+                        + 'as long as this record stays open; otherwise it is in your upload folder.',
                     ),
                     'busy',
                 );
@@ -184,7 +189,7 @@ export class ImageDialog {
         const help = document.createElement('p');
         help.id = 'cowriter-image-prompt-help';
         help.className = 'form-text';
-        help.textContent = t(
+        help.textContent = this._promptHelp ?? t(
             'ckeditor.image.dialog.promptHelp',
             'The image is stored in your upload folder and inserted at the cursor. '
             + 'Your description becomes its alternative text: check it after inserting.',

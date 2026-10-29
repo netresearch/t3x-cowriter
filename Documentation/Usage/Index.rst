@@ -267,9 +267,36 @@ The description becomes the image's alternative text. It says what you
 asked for, not what the model drew: check it and correct it where needed.
 You can close the dialog while the image is generated and go on editing:
 the image is still inserted when it is ready, where the cursor was when you
-clicked the button. If the request is cut off, for example by a
+clicked the button, as long as the record stays open. If you save and
+close the record or leave the page in the meantime, nothing is inserted;
+the image is then in your upload folder. If the request is cut off, for example by a
 timeout, a message says so; the image may then already be in your upload
 folder.
+
+..  _usage-image-generation-file-fields:
+
+Generating an image for a file field
+------------------------------------
+
+File fields, such as :guilabel:`Images` or :guilabel:`Media` of a content
+element, have a **Generate image** button below the list of files when
+the administrator switched the feature on.
+
+1.  Click :guilabel:`Generate image` below the field
+2.  Describe the image (up to 1000 characters) and click
+    :guilabel:`Generate`
+3.  Wait while the image is generated; this can take one or two minutes
+4.  The image is stored in your upload folder and added to the field as a
+    new file
+5.  Save the record to keep it
+
+You can close the dialog while the image is generated: the image is still
+added to the field when it is ready, as long as the record stays open. If
+you save and close the record or leave the page in the meantime, it is not
+added; it is then in your upload folder. When the field is full, the button is
+hidden until you remove a file. Fields that do not accept PNG files have
+no button. The new file has no alternative text of its own: enter one
+in the file's :guilabel:`Alternative` field where needed.
 
 Tasks shortcut
 ==============
