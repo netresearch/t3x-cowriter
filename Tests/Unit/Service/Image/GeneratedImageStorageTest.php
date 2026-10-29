@@ -18,6 +18,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Charset\CharsetConverter;
+use TYPO3\CMS\Core\Core\ApplicationContext;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Resource\DefaultUploadFolderResolver;
 use TYPO3\CMS\Core\Resource\Folder;
@@ -33,9 +34,50 @@ final class GeneratedImageStorageTest extends TestCase
 {
     private const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
+    /**
+     * The environment the test runner set up, restored after each test.
+     *
+     * @var array{context: ApplicationContext, cli: bool, composerMode: bool, projectPath: string, publicPath: string, varPath: string, configPath: string, currentScript: string, os: string}
+     */
+    private array $environment;
+
+    private string $varPath;
+
+    /**
+     * The temporary file goes to Environment::getVarPath()/transient. Each test
+     * gets a var directory of its own, so it neither depends on the runner's
+     * project directory being writable nor sees files of another run.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->environment = [
+            'context'       => Environment::getContext(),
+            'cli'           => Environment::isCli(),
+            'composerMode'  => Environment::isComposerMode(),
+            'projectPath'   => Environment::getProjectPath(),
+            'publicPath'    => Environment::getPublicPath(),
+            'varPath'       => Environment::getVarPath(),
+            'configPath'    => Environment::getConfigPath(),
+            'currentScript' => Environment::getCurrentScript(),
+            'os'            => Environment::isWindows() ? 'WINDOWS' : 'UNIX',
+        ];
+
+        $this->varPath = sys_get_temp_dir() . '/cowriter-image-test-' . bin2hex(random_bytes(6));
+        self::assertTrue(mkdir($this->varPath . '/transient', 0o700, true));
+        $this->initializeEnvironment($this->varPath);
+    }
+
     protected function tearDown(): void
     {
         unset($GLOBALS['BE_USER']);
+        $this->initializeEnvironment($this->environment['varPath']);
+        foreach (glob($this->varPath . '/transient/*') ?: [] as $file) {
+            unlink($file);
+        }
+
+        rmdir($this->varPath . '/transient');
+        rmdir($this->varPath);
         parent::tearDown();
     }
 
@@ -147,13 +189,12 @@ final class GeneratedImageStorageTest extends TestCase
     #[Test]
     public function theTemporaryFileIsRemovedWhenFalFails(): void
     {
-        $pattern = Environment::getVarPath() . '/transient/cowriter_image_*';
-        $before  = glob($pattern) ?: [];
-
         $handedOver = null;
+        $content    = null;
         $storage    = $this->createStub(ResourceStorage::class);
-        $storage->method('addFile')->willReturnCallback(static function (string $path) use (&$handedOver): never {
+        $storage->method('addFile')->willReturnCallback(static function (string $path) use (&$handedOver, &$content): never {
             $handedOver = $path;
+            $content    = file_get_contents($path);
 
             throw new RuntimeException('refused');
         });
@@ -168,8 +209,10 @@ final class GeneratedImageStorageTest extends TestCase
         }
 
         self::assertIsString($handedOver);
+        self::assertStringStartsWith($this->varPath . '/transient/cowriter_image_', $handedOver);
+        self::assertSame(base64_decode(self::PNG_BASE64, true), $content, 'FAL gets the decoded image');
         self::assertFileDoesNotExist($handedOver);
-        self::assertSame($before, glob($pattern) ?: []);
+        self::assertSame([], glob($this->varPath . '/transient/*') ?: []);
     }
 
     #[Test]
@@ -242,6 +285,21 @@ final class GeneratedImageStorageTest extends TestCase
         $folder->method('checkActionPermission')->willReturnMap([['write', $mayWrite]]);
 
         return $folder;
+    }
+
+    private function initializeEnvironment(string $varPath): void
+    {
+        Environment::initialize(
+            $this->environment['context'],
+            $this->environment['cli'],
+            $this->environment['composerMode'],
+            $this->environment['projectPath'],
+            $this->environment['publicPath'],
+            $varPath,
+            $this->environment['configPath'],
+            $this->environment['currentScript'],
+            $this->environment['os'],
+        );
     }
 
     private function storage(?DefaultUploadFolderResolver $resolver = null): GeneratedImageStorage

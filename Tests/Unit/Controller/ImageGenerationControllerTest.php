@@ -670,11 +670,12 @@ final class ImageGenerationControllerTest extends TestCase
             $this->capturedContext = $context;
         };
 
-        return new readonly class ($capture) implements ProviderMiddlewareInterface {
+        // No `readonly class`: anonymous readonly classes need PHP 8.3.
+        return new class ($capture) implements ProviderMiddlewareInterface {
             /**
              * @param Closure(ProviderCallContext): void $capture
              */
-            public function __construct(private Closure $capture) {}
+            public function __construct(private readonly Closure $capture) {}
 
             public function handle(ProviderCallContext $context, callable $next): mixed
             {
