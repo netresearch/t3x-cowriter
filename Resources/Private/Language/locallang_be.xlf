@@ -254,6 +254,21 @@
             <trans-unit id="ckeditor.language.zh" resname="ckeditor.language.zh">
                 <source>Chinese</source>
             </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality" resname="siteLanguage.cowriterFormality">
+                <source>Cowriter: formality of translations</source>
+            </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality.description" resname="siteLanguage.cowriterFormality.description">
+                <source>Tone of the Cowriter translations into this language. "Formal" and "informal" reach DeepL for the languages it supports formality for, and the language model as an instruction.</source>
+            </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality.default" resname="siteLanguage.cowriterFormality.default">
+                <source>Default</source>
+            </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality.formal" resname="siteLanguage.cowriterFormality.formal">
+                <source>Formal</source>
+            </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality.informal" resname="siteLanguage.cowriterFormality.informal">
+                <source>Informal</source>
+            </trans-unit>
             <trans-unit id="ckeditor.action.openLlmSettings" resname="ckeditor.action.openLlmSettings">
                 <source>Open LLM Settings</source>
             </trans-unit>

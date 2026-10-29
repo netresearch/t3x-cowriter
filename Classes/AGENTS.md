@@ -43,6 +43,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Domain/DTO/VisionRequest.php | Vision/alt-text request DTO |
 | EventListener/InjectAjaxUrlsListener.php | AJAX URL injection for frontend |
 | EventListener/RegisterFieldSuggestionControlsListener.php | Adds the suggestion field control to configured TCA fields |
+| EventListener/InjectTranslationLanguagesListener.php | Site languages and their formality for the RTE translate menu (`SiteTranslationLanguages`) |
 | Form/FieldControl/FieldSuggestionsControl.php | FormEngine node rendering the "Suggest" button |
 | Service/FieldSuggestion/ | Field suggestions: permission-checked record context (`RecordContextReader`, `RecordFinder`), prompt + schema (`FieldSuggestionService`), limits (`SuggestionNormalizer`, `FieldProfile`), slugs (`SlugSuggestionBuilder`) |
 | Service/CallerSource.php | Extension key + pipeline metadata naming this extension to nr-llm telemetry |

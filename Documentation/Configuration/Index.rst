@@ -96,7 +96,8 @@ The four toolbar items are:
     Generate image alt text via LLM vision analysis
 
 ``cowriterTranslate``
-    Inline translation dropdown (10 languages)
+    Inline translation dropdown with the languages of the record's site,
+    see :ref:`configuration-translation-languages`
 
 ``cowriterTemplates``
     Open the Cowriter dialog with a task pre-selected
@@ -114,6 +115,79 @@ The four toolbar items are:
     exactly one button — the other three are registered but have nowhere to
     appear. If buttons are missing, check this list before suspecting the
     extension.
+
+..  _configuration-translation-languages:
+
+Translation languages and formality
+===================================
+
+The **Translate** dropdown offers the languages of the site the edited
+record belongs to: every language of the site configuration that is enabled
+for the frontend, labelled with its title. When the record belongs to no
+site (a record on the root page, pid 0, or in a folder outside every site),
+the dropdown keeps its fixed list: German, English, French, Spanish,
+Italian, Dutch, Portuguese, Polish, Japanese and Chinese.
+
+The target language is taken from the language's ``locale``:
+
+*   The two-letter language code is used, the region is dropped:
+    ``de_DE.UTF-8`` and ``de_CH.UTF-8`` both translate into ``de``.
+*   English and Portuguese keep the region, because DeepL translates into
+    their regional variants: ``en_GB`` gives ``en-GB``, ``en_US`` gives
+    ``en-US``, ``pt_BR`` gives ``pt-BR``, ``pt_PT`` gives ``pt-PT``. Other
+    regions of these languages (``en_AU``) give ``en`` or ``pt``.
+*   Chinese is always ``zh`` (Simplified Chinese with DeepL); a translation
+    into Traditional Chinese cannot be selected through the site language.
+*   A language without a two-letter code (``fil_PH``) is not offered.
+
+Formality
+---------
+
+Each site language can set the formality of translations into it with the
+key ``cowriterFormality``:
+
+``default``
+    No preference (the default when the key is missing).
+
+``formal``
+    Formal address, for German the "Sie" form.
+
+``informal``
+    Informal address, for German the "du" form.
+
+Any other value counts as ``default``. DeepL applies the formality for the
+languages it supports it for (with nr-llm 0.41: German, French, Italian,
+Spanish, Dutch, Polish, Portuguese, Russian, Japanese) and ignores it for
+the others; with
+a language model as translator it becomes an instruction to keep that tone.
+
+Set the key in the Sites module (:guilabel:`Site Management` >
+:guilabel:`Sites`, the language's field
+:guilabel:`Cowriter: formality of translations`) or directly in the site
+configuration:
+
+..  code-block:: yaml
+    :caption: config/sites/<identifier>/config.yaml
+
+    languages:
+      - languageId: 0
+        title: English
+        locale: en_US.UTF-8
+        base: /
+      - languageId: 1
+        title: Deutsch
+        locale: de_DE.UTF-8
+        base: /de/
+        cowriterFormality: formal
+
+With this configuration the dropdown offers "English" (``en-US``) and
+"Deutsch" (``de``), and German translations use the formal address.
+
+..  note::
+
+    Saving a site in the Sites module keeps only the language keys that
+    have a field in the module. The extension adds a field for
+    ``cowriterFormality``, so the setting survives an edit there.
 
 Task configuration
 ==================

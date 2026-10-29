@@ -186,10 +186,12 @@ selected text without opening the full dialog.
 4.  A notification confirms the translation is in progress
 5.  The selected text is replaced with the translation
 
-Supported languages:
-
-*   German, English, French, Spanish, Italian
-*   Dutch, Portuguese, Polish, Japanese, Chinese
+The dropdown lists the languages of the site the record belongs to, with
+the titles of the site configuration. Translations into a language use the
+formality configured for it, for example the formal address for German.
+Records outside every site get a fixed list: German, English, French,
+Spanish, Italian, Dutch, Portuguese, Polish, Japanese and Chinese. See
+:ref:`configuration-translation-languages`.
 
 The translation uses the default
 :ref:`LLM configuration <nrllm:configuration-llm>` from the

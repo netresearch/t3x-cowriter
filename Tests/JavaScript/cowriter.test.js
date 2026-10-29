@@ -516,6 +516,9 @@ describe('Cowriter Plugin', () => {
                     document: { selection: {} },
                     change: vi.fn(),
                 },
+                // A CKEditor instance always has a configuration; the
+                // translate dropdown reads its languages from it.
+                config: { get: vi.fn().mockReturnValue(undefined) },
                 view: {},
                 ui: {
                     componentFactory: {
@@ -855,7 +858,7 @@ describe('Cowriter Plugin', () => {
             // Simulate selecting German from dropdown
             await dropdown.fire('execute', { source: { languageCode: 'de', label: 'German' } });
 
-            expect(mockTranslate).toHaveBeenCalledWith('<p>Hello World</p>', 'de');
+            expect(mockTranslate).toHaveBeenCalledWith('<p>Hello World</p>', 'de', { formality: 'default' });
             expect(mockEditor.model.insertContent).toHaveBeenCalled();
             expect(Notification.info).toHaveBeenCalledWith('Translating...', 'Translating to German', 15);
             expect(Notification.success).toHaveBeenCalledWith('Translation complete', 'Translated to German', 3);
@@ -970,6 +973,91 @@ describe('Cowriter Plugin', () => {
             await dropdown.fire('execute', { source: { languageCode: 'de', label: 'Deutsch' } });
 
             expect(Notification.error.mock.calls[0][3]).toHaveLength(0);
+        });
+
+        describe('languages of the edited record\'s site', () => {
+            /** @param {unknown} cowriterConfig */
+            const withCowriterConfig = (cowriterConfig) => {
+                mockEditor.config.get.mockImplementation((key) => (key === 'cowriter' ? cowriterConfig : undefined));
+            };
+            const menu = (dropdown) => [...dropdown._items].map((item) => ({
+                label: item.model.label,
+                languageCode: item.model.languageCode,
+                formality: item.model.formality,
+            }));
+
+            it('builds the menu from the injected languages, labelled with their titles', () => {
+                withCowriterConfig({
+                    translationLanguages: [
+                        { code: 'en-US', label: 'English', formality: 'default' },
+                        { code: 'de', label: 'Deutsch', formality: 'formal' },
+                    ],
+                });
+
+                const dropdown = componentCallbacks['cowriterTranslate']();
+
+                expect(mockEditor.config.get).toHaveBeenCalledWith('cowriter');
+                expect(menu(dropdown)).toEqual([
+                    { label: 'English', languageCode: 'en-US', formality: 'default' },
+                    { label: 'Deutsch', languageCode: 'de', formality: 'formal' },
+                ]);
+            });
+
+            it('sends the formality of the chosen language with the request', async () => {
+                withCowriterConfig({ translationLanguages: [{ code: 'de', label: 'Deutsch', formality: 'formal' }] });
+                const dropdown = componentCallbacks['cowriterTranslate']();
+                const [german] = [...dropdown._items].map((item) => item.model);
+
+                await dropdown.fire('execute', { source: german });
+
+                expect(mockTranslate).toHaveBeenCalledWith('<p>Hello World</p>', 'de', { formality: 'formal' });
+                expect(Notification.success).toHaveBeenCalledWith('Translation complete', 'Translated to Deutsch', 3);
+            });
+
+            it('sends the default formality for an item that carries none', async () => {
+                const dropdown = componentCallbacks['cowriterTranslate']();
+
+                await dropdown.fire('execute', { source: { languageCode: 'fr', label: 'French' } });
+
+                expect(mockTranslate).toHaveBeenCalledWith('<p>Hello World</p>', 'fr', { formality: 'default' });
+            });
+
+            it('replaces an unknown formality with the default and a missing title with the code', () => {
+                withCowriterConfig({
+                    translationLanguages: [
+                        { code: 'pt-BR', formality: 'very formal' },
+                        { code: 'nl', label: '', formality: 'informal' },
+                    ],
+                });
+
+                expect(menu(componentCallbacks['cowriterTranslate']())).toEqual([
+                    { label: 'pt-BR', languageCode: 'pt-BR', formality: 'default' },
+                    { label: 'nl', languageCode: 'nl', formality: 'informal' },
+                ]);
+            });
+
+            it('skips entries without a code', () => {
+                withCowriterConfig({
+                    translationLanguages: [null, { label: 'No code' }, { code: '', label: 'Empty' }, { code: 'it', label: 'Italiano' }],
+                });
+
+                expect(menu(componentCallbacks['cowriterTranslate']()).map((item) => item.languageCode)).toEqual(['it']);
+            });
+
+            it.each([
+                ['no cowriter configuration', undefined],
+                ['no language list', {}],
+                ['an empty language list', { translationLanguages: [] }],
+                ['a list without usable entries', { translationLanguages: [{ label: 'No code' }] }],
+                ['a language list that is not an array', { translationLanguages: 'de' }],
+            ])('falls back to the fixed list with %s', (_case, cowriterConfig) => {
+                withCowriterConfig(cowriterConfig);
+
+                const items = menu(componentCallbacks['cowriterTranslate']());
+
+                expect(items.map((item) => item.languageCode)).toEqual(['de', 'en', 'fr', 'es', 'it', 'nl', 'pt', 'pl', 'ja', 'zh']);
+                expect(items[0]).toEqual({ label: 'German', languageCode: 'de', formality: 'default' });
+            });
         });
 
         describe('with labels injected by the backend', () => {

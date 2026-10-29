@@ -337,6 +337,26 @@
                 <source>Chinese</source>
                 <target>Chinesisch</target>
             </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality" resname="siteLanguage.cowriterFormality">
+                <source>Cowriter: formality of translations</source>
+                <target>Cowriter: Formalität der Übersetzungen</target>
+            </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality.description" resname="siteLanguage.cowriterFormality.description">
+                <source>Tone of the Cowriter translations into this language. "Formal" and "informal" reach DeepL for the languages it supports formality for, and the language model as an instruction.</source>
+                <target>Tonfall der Cowriter-Übersetzungen in diese Sprache. „Förmlich“ und „informell“ gehen an DeepL, sofern DeepL für die Sprache eine Formalität kennt, und als Anweisung an das Sprachmodell.</target>
+            </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality.default" resname="siteLanguage.cowriterFormality.default">
+                <source>Default</source>
+                <target>Standard</target>
+            </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality.formal" resname="siteLanguage.cowriterFormality.formal">
+                <source>Formal</source>
+                <target>Förmlich</target>
+            </trans-unit>
+            <trans-unit id="siteLanguage.cowriterFormality.informal" resname="siteLanguage.cowriterFormality.informal">
+                <source>Informal</source>
+                <target>Informell</target>
+            </trans-unit>
             <trans-unit id="ckeditor.action.openLlmSettings" resname="ckeditor.action.openLlmSettings">
                 <source>Open LLM Settings</source>
                 <target>LLM-Einstellungen öffnen</target>
