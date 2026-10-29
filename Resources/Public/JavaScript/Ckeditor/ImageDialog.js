@@ -18,7 +18,6 @@ export const MAX_PROMPT_LENGTH = 1000;
  * @typedef {Object} GeneratedImage
  * @property {{fileUid: number, fileTable: string, url: string, width: number, height: number, mimeType: string, file: string}} image
  * @property {string} alt
- * @property {string} [revisedPrompt]
  */
 
 /**
@@ -40,7 +39,11 @@ export class ImageDialog {
     }
 
     /**
-     * @returns {Promise<GeneratedImage>} rejects with "User cancelled" when the dialog is closed
+     * @returns {Promise<GeneratedImage>} rejects with "User cancelled" when the
+     *     dialog is closed before an image was requested. Closed while the image
+     *     is generated, the dialog keeps waiting, because the image is paid for
+     *     and stored anyway: the promise then resolves with the image, or
+     *     rejects with the error, once the server answered.
      */
     show() {
         const container = this._buildContent();
@@ -50,10 +53,8 @@ export class ImageDialog {
         return new Promise((resolve, reject) => {
             /** @type {any} */
             let modal;
-            let settled = false;
             let busy = false;
-            /** @type {AbortController|null} */
-            let request = null;
+            let closed = false;
 
             const setBusy = (value) => {
                 busy = value;
@@ -87,23 +88,32 @@ export class ImageDialog {
                 }
 
                 setBusy(true);
-                showStatus(t('ckeditor.image.dialog.generating', 'Generating the image. This can take one or two minutes.'), 'busy');
-                request = new AbortController();
+                showStatus(
+                    t(
+                        'ckeditor.image.dialog.generating',
+                        'Generating the image. This can take one or two minutes. '
+                        + 'If you close this dialog, the image is still inserted when it is ready.',
+                    ),
+                    'busy',
+                );
                 try {
-                    const result = await this._service.generateImage(prompt, request.signal);
+                    const result = await this._service.generateImage(prompt);
                     if (result?.success && result.image?.url) {
-                        settled = true;
-                        modal.hideModal();
+                        if (!closed) {
+                            closed = true;
+                            modal.hideModal();
+                        }
                         resolve(result);
                         return;
                     }
-                    showStatus(result?.error || t('ckeditor.unknownError', 'Unknown error'), 'error');
+                    throw new Error(result?.error || t('ckeditor.unknownError', 'Unknown error'));
                 } catch (error) {
-                    if (error?.name === 'AbortError') return;
+                    if (closed) {
+                        reject(error);
+                        return;
+                    }
                     showStatus(error?.message || t('ckeditor.unknownError', 'Unknown error'), 'error');
-                } finally {
-                    request = null;
-                    if (!settled) setBusy(false);
+                    setBusy(false);
                 }
             };
 
@@ -130,9 +140,11 @@ export class ImageDialog {
             });
 
             modal?.addEventListener?.('typo3-modal-hidden', () => {
-                request?.abort();
-                if (!settled) {
-                    settled = true;
+                const wasClosed = closed;
+                closed = true;
+                // Nothing requested yet: nothing to wait for. While an image is
+                // generated, the request goes on and settles the promise.
+                if (!wasClosed && !busy) {
                     reject(new Error('User cancelled'));
                 }
                 try {

@@ -76,6 +76,8 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.image.stored.title',
         'ckeditor.image.stored.message',
         'ckeditor.image.failed',
+        'ckeditor.image.unavailable',
+        'ckeditor.image.interrupted',
         'ckeditor.tasks.none.title',
         'ckeditor.tasks.none.message',
         'ckeditor.tasks.loadFailed',

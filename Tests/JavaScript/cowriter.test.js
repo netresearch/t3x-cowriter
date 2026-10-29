@@ -651,13 +651,9 @@ describe('Cowriter Plugin', () => {
                     schema: { isRegistered: vi.fn().mockReturnValue(true) },
                     change: vi.fn((cb) => cb(writer)),
                     insertObject: vi.fn(),
-                    insertContent: vi.fn(),
                 },
                 editing: { view: { focus: vi.fn() } },
-                data: {
-                    processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
-                    toModel: vi.fn().mockReturnValue({ childCount: 1 }),
-                },
+                state: 'ready',
                 config: { get: vi.fn().mockReturnValue(undefined) },
                 ui: {
                     componentFactory: {
@@ -702,7 +698,6 @@ describe('Cowriter Plugin', () => {
                 quality: '',
             });
             expect(mockEditor.model.insertObject).toHaveBeenCalledWith({ name: 'typo3image', attributes: expect.any(Object) });
-            expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
             expect(Notification.success).toHaveBeenCalledWith(
                 'Image inserted',
                 expect.stringContaining('1:/user_upload/a-lighthouse-0a1b2c3d.png'),
@@ -710,35 +705,53 @@ describe('Cowriter Plugin', () => {
             );
         });
 
-        it('inserts a plain img through the data pipeline without the TYPO3 image plugin', async () => {
+        it('is disabled and says why without the TYPO3 image plugin, and sends nothing', async () => {
             mockEditor.model.schema.isRegistered.mockReturnValue(false);
             const button = componentCallbacks['cowriterImage']();
-            await button.fire('execute');
 
-            const html = mockEditor.data.processor.toView.mock.calls[0][0];
-            const img = new DOMParser().parseFromString(html, 'text/html').body.firstElementChild;
-            expect(img.tagName).toBe('IMG');
-            expect(img.getAttribute('src')).toBe('/fileadmin/user_upload/a-lighthouse-0a1b2c3d.png');
-            expect(img.getAttribute('alt')).toBe('A lighthouse "at" <dusk>');
-            expect(img.getAttribute('width')).toBe('1024');
-            expect(img.getAttribute('height')).toBe('768');
-            expect(img.attributes.length).toBe(4);
-            expect(mockEditor.model.insertContent).toHaveBeenCalledWith({ childCount: 1 });
-            expect(mockEditor.model.insertObject).not.toHaveBeenCalled();
+            expect(button.isEnabled).toBe(false);
+            expect(button.label).toBe('Cowriter - Generate image: needs the image plugin of rte-ckeditor-image');
+            expect(mockEditor.model.schema.isRegistered).toHaveBeenCalledWith('typo3image');
+
+            await button.fire('execute');
+            expect(dialogShow).not.toHaveBeenCalled();
+            expect(mockEditor.model.change).not.toHaveBeenCalled();
         });
 
-        it('says where the file is when the editor keeps no image', async () => {
-            mockEditor.model.schema.isRegistered.mockReturnValue(false);
-            mockEditor.data.toModel.mockReturnValue({ childCount: 0 });
+        it('is enabled with the TYPO3 image plugin', () => {
             const button = componentCallbacks['cowriterImage']();
-            await button.fire('execute');
 
-            expect(mockEditor.model.insertContent).not.toHaveBeenCalled();
+            expect(button.isEnabled).toBe(true);
+        });
+
+        it('inserts nothing into an editor that is gone, and names the stored file', async () => {
+            let finish;
+            dialogShow.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+            const button = componentCallbacks['cowriterImage']();
+            const running = button.fire('execute');
+            mockEditor.state = 'destroyed';
+            finish(generated);
+            await running;
+
+            expect(mockEditor.model.change).not.toHaveBeenCalled();
             expect(Notification.success).not.toHaveBeenCalled();
             expect(Notification.warning).toHaveBeenCalledWith(
                 'Image stored',
                 expect.stringContaining('1:/user_upload/a-lighthouse-0a1b2c3d.png'),
                 0,
+            );
+        });
+
+        it('reports a failure the dialog hands over after it was closed', async () => {
+            dialogShow.mockRejectedValue(new Error('The image request timed out'));
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(Notification.error).toHaveBeenCalledWith(
+                'Image generation failed',
+                'The image request timed out',
+                0,
+                expect.any(Array),
             );
         });
 

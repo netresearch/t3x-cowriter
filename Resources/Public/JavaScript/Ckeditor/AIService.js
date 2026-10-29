@@ -701,30 +701,56 @@ export class AIService {
 
     /**
      * Generate an image from a description. The server stores it in FAL as the
-     * editor and answers with the stored file; an aborted request may still
-     * have produced and stored the image on the server.
+     * editor and answers with the stored file.
+     *
+     * A generation takes minutes, so a proxy or PHP-FPM may cut the request
+     * off after the image was paid for and stored. A gateway timeout (504), a
+     * lost connection and an answer that is not this route's JSON therefore
+     * say so with their own message, which points to the upload folder. A
+     * refusal of the route itself keeps the route's message.
      *
      * @param {string} prompt - Description of the image
-     * @param {AbortSignal} [signal] - Cancels the wait for the answer
-     * @returns {Promise<{success: boolean, image: {fileUid: number, fileTable: string, url: string, width: number, height: number, mimeType: string, file: string}, alt: string, revisedPrompt?: string}>}
+     * @returns {Promise<{success: boolean, image: {fileUid: number, fileTable: string, url: string, width: number, height: number, mimeType: string, file: string}, alt: string}>}
      */
-    async generateImage(prompt, signal = undefined) {
+    async generateImage(prompt) {
         if (!this._routes.imageGenerate) {
             throw new Error('Image generation route not configured.');
         }
 
-        const response = await fetch(this._routes.imageGenerate, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt }),
-            signal,
-        });
+        const interrupted = (status) => new AIServiceError(
+            t(
+                'ckeditor.image.interrupted',
+                'The image request timed out or failed on the way. The image may already be in your upload folder: '
+                + 'look there before you generate it again.',
+            ),
+            null,
+            status,
+        );
 
-        if (!response.ok) {
-            await this._throwResponseError(response);
+        let response;
+        try {
+            response = await fetch(this._routes.imageGenerate, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt }),
+            });
+        } catch {
+            throw interrupted(null);
         }
 
-        return response.json();
+        const body = await response.json().catch(() => null);
+        if (body === null || typeof body !== 'object' || response.status === 504) {
+            throw interrupted(response.status);
+        }
+
+        if (!response.ok) {
+            if (typeof body.error !== 'string' || body.error === '') {
+                throw interrupted(response.status);
+            }
+            throw new AIServiceError(body.error, body.statusUrl || null, response.status, body.budgetExceeded === true);
+        }
+
+        return body;
     }
 
     /**

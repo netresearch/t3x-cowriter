@@ -75,7 +75,7 @@ describe('ImageDialog', () => {
         button('generate').click();
 
         await expect(result).resolves.toEqual(generated);
-        expect(service.generateImage).toHaveBeenCalledWith('A lighthouse', expect.any(AbortSignal));
+        expect(service.generateImage).toHaveBeenCalledWith('A lighthouse');
         expect(modal()).toBeNull();
     });
 
@@ -112,21 +112,46 @@ describe('ImageDialog', () => {
         expect(textarea().disabled).toBe(false);
     });
 
-    it('rejects and stops waiting when the editor cancels', async () => {
-        let signal;
-        service.generateImage.mockImplementation((_prompt, s) => {
-            signal = s;
-            return new Promise(() => {});
-        });
+    it('rejects when the editor cancels before generating', async () => {
         const returnFocus = vi.fn();
         const result = new ImageDialog(service, { returnFocus }).show();
+        button('cancel').click();
+
+        await expect(result).rejects.toThrow('User cancelled');
+        expect(service.generateImage).not.toHaveBeenCalled();
+        expect(returnFocus).toHaveBeenCalled();
+    });
+
+    it('keeps waiting for a paid image when the editor closes the dialog during generation', async () => {
+        let finish;
+        service.generateImage.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+        let outcome = 'pending';
+        const result = new ImageDialog(service).show();
+        result.then(() => { outcome = 'resolved'; }, () => { outcome = 'rejected'; });
+        textarea().value = 'A lighthouse';
+        button('generate').click();
+        await flush();
+        expect(status().textContent).toContain('If you close this dialog, the image is still inserted');
+
+        button('cancel').click();
+        await flush();
+        expect(modal()).toBeNull();
+        expect(outcome).toBe('pending');
+
+        finish(generated);
+        await expect(result).resolves.toEqual(generated);
+    });
+
+    it('hands over a failure that arrives after the dialog was closed', async () => {
+        let fail;
+        service.generateImage.mockReturnValue(new Promise((_resolve, reject) => { fail = reject; }));
+        const result = new ImageDialog(service).show();
         textarea().value = 'A lighthouse';
         button('generate').click();
         await flush();
         button('cancel').click();
 
-        await expect(result).rejects.toThrow('User cancelled');
-        expect(signal.aborted).toBe(true);
-        expect(returnFocus).toHaveBeenCalled();
+        fail(new Error('The image request timed out'));
+        await expect(result).rejects.toThrow('The image request timed out');
     });
 });

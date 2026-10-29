@@ -478,8 +478,8 @@
                 <target>Erzeugen</target>
             </trans-unit>
             <trans-unit id="ckeditor.image.dialog.generating" resname="ckeditor.image.dialog.generating">
-                <source>Generating the image. This can take one or two minutes.</source>
-                <target>Das Bild wird erzeugt. Das kann ein bis zwei Minuten dauern.</target>
+                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still inserted when it is ready.</source>
+                <target>Das Bild wird erzeugt. Das kann ein bis zwei Minuten dauern. Wenn Sie diesen Dialog schließen, wird das Bild trotzdem eingefügt, sobald es fertig ist.</target>
             </trans-unit>
             <trans-unit id="ckeditor.image.dialog.noPrompt" resname="ckeditor.image.dialog.noPrompt">
                 <source>Describe the image first.</source>
@@ -498,12 +498,20 @@
                 <target>Bild gespeichert</target>
             </trans-unit>
             <trans-unit id="ckeditor.image.stored.message" resname="ckeditor.image.stored.message">
-                <source>Stored as %s. This editor cannot show images, so nothing was inserted.</source>
-                <target>Gespeichert als %s. Dieser Editor kann keine Bilder anzeigen, deshalb wurde nichts eingefügt.</target>
+                <source>Stored as %s. The editor was closed before the image was ready, so it was not inserted.</source>
+                <target>Gespeichert als %s. Der Editor wurde geschlossen, bevor das Bild fertig war, deshalb wurde es nicht eingefügt.</target>
             </trans-unit>
             <trans-unit id="ckeditor.image.failed" resname="ckeditor.image.failed">
                 <source>Image generation failed</source>
                 <target>Bilderzeugung fehlgeschlagen</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.unavailable" resname="ckeditor.image.unavailable">
+                <source>Cowriter - Generate image: needs the image plugin of rte-ckeditor-image</source>
+                <target>Cowriter - Bild erzeugen: braucht das Bild-Plugin von rte-ckeditor-image</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.interrupted" resname="ckeditor.image.interrupted">
+                <source>The image request timed out or failed on the way. The image may already be in your upload folder: look there before you generate it again.</source>
+                <target>Die Bildanfrage wurde wegen Zeitüberschreitung oder auf dem Weg abgebrochen. Das Bild liegt möglicherweise schon in Ihrem Upload-Ordner: Sehen Sie dort nach, bevor Sie es erneut erzeugen.</target>
             </trans-unit>
             <trans-unit id="ckeditor.tasks.none.title" resname="ckeditor.tasks.none.title">
                 <source>No tasks configured</source>

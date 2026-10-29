@@ -360,8 +360,8 @@
                 <source>Generate</source>
             </trans-unit>
             <trans-unit id="ckeditor.image.dialog.generating" resname="ckeditor.image.dialog.generating">
-                <source>Generating the image. This can take one or two minutes.</source>
-            </trans-unit>
+                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still inserted when it is ready.</source>
+</trans-unit>
             <trans-unit id="ckeditor.image.dialog.noPrompt" resname="ckeditor.image.dialog.noPrompt">
                 <source>Describe the image first.</source>
             </trans-unit>
@@ -375,10 +375,16 @@
                 <source>Image stored</source>
             </trans-unit>
             <trans-unit id="ckeditor.image.stored.message" resname="ckeditor.image.stored.message">
-                <source>Stored as %s. This editor cannot show images, so nothing was inserted.</source>
-            </trans-unit>
+                <source>Stored as %s. The editor was closed before the image was ready, so it was not inserted.</source>
+</trans-unit>
             <trans-unit id="ckeditor.image.failed" resname="ckeditor.image.failed">
                 <source>Image generation failed</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.unavailable" resname="ckeditor.image.unavailable">
+                <source>Cowriter - Generate image: needs the image plugin of rte-ckeditor-image</source>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.interrupted" resname="ckeditor.image.interrupted">
+                <source>The image request timed out or failed on the way. The image may already be in your upload folder: look there before you generate it again.</source>
             </trans-unit>
             <trans-unit id="ckeditor.tasks.none.title" resname="ckeditor.tasks.none.title">
                 <source>No tasks configured</source>
