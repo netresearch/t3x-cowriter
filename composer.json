@@ -58,6 +58,7 @@
         "netresearch/nr-llm": "^0.41.14"
     },
     "require-dev": {
+        "netresearch/rte-ckeditor-image": "^13.10.3",
         "netresearch/typo3-ci-workflows": "^2.0.3",
         "typo3/cms-seo": "^13.4 || ^14.3",
         "typo3/cms-workspaces": "^13.4 || ^14.3"
