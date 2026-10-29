@@ -525,6 +525,73 @@ Accessibility:
     backend user; where the browser does not allow local storage,
     suggestions are on again after reloading.
 
+..  _configuration-alternative-presentation:
+
+Alternative presentation
+========================
+
+A text element (:guilabel:`Text`, :guilabel:`Text & Images`,
+:guilabel:`Text & Media`) can be presented as tabs or as an accordion. The
+button :guilabel:`Present as tabs or accordion` next to its rich text cuts
+the saved text into sections, shows them to the editor and, after the
+editor confirmed, creates a new :guilabel:`Tabs` or :guilabel:`Accordion`
+element of ``bootstrap_package`` directly after the original: on the same
+page, in the same column and language, with one item per section. The
+original element is not changed; the editor deletes or hides it once the
+new element is right. The feature is off until an administrator switches
+it on in the extension configuration.
+
+..  confval:: presentation.enable
+    :name: t3-cowriter-presentation-enable
+    :type: boolean
+    :default: ``0``
+
+    Switches the button on. While it is off, no text element shows it and
+    both routes answer with HTTP 403.
+
+Requirements:
+
+*   The extension ``bootstrap_package`` (``bk2k/bootstrap-package``), which
+    provides the :guilabel:`Tabs` and :guilabel:`Accordion` elements and
+    their item records. Without it the button does not exist.
+*   The button appears only for a saved element, and only when the editor
+    may create at least one of the two elements in its place: edit the
+    element, ``Edit content`` on the page and access to its language;
+    :guilabel:`Tabs` or :guilabel:`Accordion` allowed in
+    :guilabel:`Explicitly allow field values` of the backend group and not
+    removed by page TSconfig ``TCEFORM.tt_content.CType.removeItems`` or
+    left out of ``keepItems``; modify rights for the table
+    ``tx_bootstrappackage_tab_item`` or ``tx_bootstrappackage_accordion_item``
+    and the excluded fields the new records are written with (``colPos``
+    and ``sys_language_uid`` of ``tt_content``, ``header`` of the item
+    table, and its ``sys_language_uid`` for an element in another
+    language). Both routes check all of this again for every request.
+
+How the text is cut:
+
+*   When the saved text has headings of level 2 on its top level, it is
+    cut at them; without, at its headings of level 3. Lower headings stay
+    in the sections. Text before the first heading becomes a section titled
+    "Introduction". The heading becomes the title of its section and is not
+    repeated in it. This needs no request to the language model and costs
+    nothing.
+*   A text without such headings (or with more than 12 sections from its
+    headings) is divided by the language model of the default nr-llm
+    configuration. It gets the element's header and the text as numbered
+    blocks of plain text and answers only with the blocks where sections
+    start and their titles; it never writes the sections' text. This
+    request counts against the editor's
+    :ref:`nr-llm budget <nrllm:administration-user-budgets>`. Texts with
+    more than 80 blocks are refused without a request.
+*   A section's text is the saved markup of its blocks, unchanged. In the
+    new item records it passes the rich text processing of the item's
+    text field, as when an editor saves it.
+*   Changes in the form that are not saved yet are not included. When the
+    saved text changes between the preview and the confirmation, the
+    creation is refused and the editor lets the sections be proposed again.
+
+Both routes count against the Cowriter rate limit of the backend user.
+
 Task configuration
 ==================
 

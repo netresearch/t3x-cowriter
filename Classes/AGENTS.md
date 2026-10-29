@@ -33,6 +33,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Controller/FieldSuggestionController.php | Field suggestions for FormEngine fields |
 | Controller/BudgetStatusController.php | The session user's own nr-llm budget usage for the dialog |
 | Controller/ImageGenerationController.php | "Image by prompt": nr-llm `DallEImageService`, stored via `Service/Image/` |
+| Controller/PresentationController.php | "Present as tabs or accordion": `proposeAction` (sections from headings, or from the model) and `createAction` (DataHandler as the editor) |
 | Controller/InlineSuggestionController.php | Inline suggestions while typing: nr-llm `CompletionServiceInterface::completeForConfiguration()`, own rate-limit window (`cowriter.rateLimiter.inlineSuggestions`) |
 | Domain/DTO/CompleteRequest.php | Request DTO with validation |
 | Domain/DTO/CompleteResponse.php | Response DTO; content returned unescaped (see Security) |
@@ -63,6 +64,8 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Service/BudgetRefusal.php | 429 answer with a localised message naming the nr-llm budget limit that is used up |
 | Service/Vision/ | Alt-text prompt: instruction from `altText.prompt` (`AltTextPrompt`) plus the record's site language, read with the user's permissions (`RecordLanguageResolver`) |
 | Service/Image/ | Settings `image.enable`, `image.model` (`ImageGenerationConfiguration`); `GeneratedImageStorage` checks the returned bytes (finfo PNG/JPEG/WebP, 10 MB) and adds them to the editor's default upload folder via FAL with permission checks on |
+| Service/Presentation/ | Setting `presentation.enable` (`PresentationConfiguration`); stored text into blocks (`BlockParser`), sections from headings or the model's start blocks (`SectionPlanner`, `SectionProposalService`); which bootstrap_package layouts the editor may create (`PresentationAccess`, `PresentationElementReader`); the new element and its items through DataHandler, read back and undone when incomplete (`PresentationWriter`) |
+| Service/RecordEditAccess.php | Record edit access of a backend user on TYPO3 13.4 and 14.3 (`recordEditAccessInternals()` / `checkRecordEditAccess()`) |
 | Service/InlineSuggestion/ | Settings `inlineSuggestions.enable`, `.delay`, `.minChars`, `.configuration` (`InlineSuggestionConfiguration`, clamped); instruction and answer clean-up to one line of plain text (`SuggestionText`) |
 | Service/Translation/ | Settings `translation.polish` and `translation.polishInstruction` (`TranslationPolishConfiguration`): a language model revises a DeepL translation (nr-llm ADR-233); admin-only, never from the request |
 

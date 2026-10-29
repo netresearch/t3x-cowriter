@@ -408,6 +408,40 @@ page).
 Categories are not filled by the button. For tags, use the
 :guilabel:`Keywords` suggestions and copy the terms you want to use.
 
+..  _usage-alternative-presentation:
+
+Presenting a text as tabs or accordion
+======================================
+
+When the administrator switched it on
+(:ref:`configuration <configuration-alternative-presentation>`), a text
+element has the button **Present as tabs or accordion** next to its rich
+text. It turns the text into a new :guilabel:`Tabs` or
+:guilabel:`Accordion` element, with one tab or panel per section.
+
+1.  Save the element: the button works with the saved text
+2.  Click :guilabel:`Present as tabs or accordion` (or focus it and press
+    :kbd:`Enter` or :kbd:`Space`)
+3.  Below the field you see the proposed sections: a title you can change
+    and the beginning of the section's text
+4.  Choose :guilabel:`Tabs` or :guilabel:`Accordion`
+5.  Click :guilabel:`Create element`
+
+The new element appears directly after this one, on the same page and in
+the same column. **This element is not changed**: check the new element,
+then delete or hide this one yourself. The link
+:guilabel:`Open the new element` opens it for editing. :kbd:`Escape` or
+:guilabel:`Cancel` closes the proposal without creating anything.
+
+A text with headings is divided at its headings; the heading becomes the
+title of its tab and text before the first heading becomes an
+"Introduction". A text without headings is divided by the AI, which only
+chooses where sections start and suggests their titles; your text is not
+rewritten. Only this second case counts against your AI budget. In a
+workspace the new element is created in your workspace.
+
+The button only appears when you may create such an element on the page.
+
 Model override
 ==============
 
