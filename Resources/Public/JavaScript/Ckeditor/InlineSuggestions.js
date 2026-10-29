@@ -35,6 +35,13 @@ export const FAILURE_PAUSE = 30000;
 export const MAX_CONTEXT = 1000;
 
 /**
+ * Model elements a suggestion may appear in: paragraphs and headings. Other
+ * blocks that take text (image captions, code blocks) are left alone, so a
+ * suggestion never competes with Tab in a code block or lands in a caption.
+ */
+export const SUGGESTION_BLOCKS = /^(paragraph|heading[1-6])$/;
+
+/**
  * Milliseconds after a suggestion appears during which Tab does not accept
  * it but keeps its normal job (leaving the field) and discards the
  * suggestion. A Tab within this time was planned before the editor could
@@ -514,8 +521,8 @@ export class InlineSuggestions extends Plugin {
 
         const position = selection.getFirstPosition();
         const block = position?.parent;
-        if (!block || !block.is('element') || !model.schema.checkChild(block, '$text') || !position.isAtEnd
-            || block.is('element', 'listItem') || block.hasAttribute('listItemId')
+        if (!block || !block.is('element') || !SUGGESTION_BLOCKS.test(block.name) || !position.isAtEnd
+            || block.hasAttribute('listItemId')
             || block.findAncestor('tableCell') !== null) {
             return null;
         }

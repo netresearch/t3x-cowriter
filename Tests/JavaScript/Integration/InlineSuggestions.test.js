@@ -56,6 +56,8 @@ describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
             ...(await ckeditorModule('basic-styles')),
             ...(await ckeditorModule('list')),
             ...(await ckeditorModule('table')),
+            ...(await ckeditorModule('heading')),
+            ...(await ckeditorModule('code-block')),
             InlineSuggestions: (await import('../../../Resources/Public/JavaScript/Ckeditor/InlineSuggestions.js'))
                 .InlineSuggestions,
             Cowriter: (await import('../../../Resources/Public/JavaScript/Ckeditor/cowriter.js')).Cowriter,
@@ -95,12 +97,12 @@ describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
         delete globalThis.TYPO3;
     });
 
-    async function createEditor({ enabled = true, data = `<p>${TEXT}</p>`, userId = 7 } = {}) {
+    async function createEditor({ enabled = true, data = `<p>${TEXT}</p>`, userId = 7, extraPlugins = [] } = {}) {
         const element = document.createElement('div');
         document.body.appendChild(element);
         const editor = await modules.ClassicEditor.create(element, {
             licenseKey: 'GPL',
-            plugins: [modules.Essentials, modules.Paragraph, modules.Bold, modules.List, modules.Table, modules.Cowriter],
+            plugins: [modules.Essentials, modules.Paragraph, modules.Bold, modules.List, modules.Table, ...extraPlugins, modules.Cowriter],
             toolbar: ['cowriterInlineSuggestions'],
             cowriter: enabled ? { inlineSuggestions: { enabled: true, delay: DELAY, minChars: 20, userId } } : {},
         });
@@ -261,6 +263,28 @@ describe.skipIf(!available)('inline suggestions in TYPO3\'s CKEditor', () => {
             type(editor, '.');
             await vi.advanceTimersByTimeAsync(DELAY * 10);
         }
+
+        expect(requests).toHaveLength(0);
+    });
+
+    it('asks at the end of a heading', async () => {
+        await createEditor({ data: `<h2>${TEXT}</h2>`, extraPlugins: [modules.Heading] });
+
+        type(editors[0], '.');
+        await vi.advanceTimersByTimeAsync(DELAY);
+
+        expect(requests).toHaveLength(1);
+    });
+
+    it('does not ask in a code block, where Tab indents', async () => {
+        const editor = await createEditor({
+            data: `<pre><code class="language-plaintext">${TEXT}</code></pre>`,
+            extraPlugins: [modules.CodeBlock],
+        });
+        expect(editor.model.document.getRoot().getChild(0).name).toBe('codeBlock');
+
+        type(editor, '.');
+        await vi.advanceTimersByTimeAsync(DELAY * 10);
 
         expect(requests).toHaveLength(0);
     });
