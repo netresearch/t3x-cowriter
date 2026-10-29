@@ -283,7 +283,6 @@ final class ImageGenerationControllerTest extends TestCase
             'file'      => '1:/user_upload/a-lighthouse-at-dusk-0a1b2c3d.png',
         ], $data['image']);
         self::assertSame('A lighthouse at dusk', $data['alt']);
-        self::assertArrayNotHasKey('revisedPrompt', $data);
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
     }
 
@@ -328,20 +327,11 @@ final class ImageGenerationControllerTest extends TestCase
     #[Test]
     public function aDallEModelIsAskedForBase64(): void
     {
-        $this->controller(settings: ['enable' => '1', 'model' => 'dall-e-3'], revisedPrompt: 'A tall lighthouse at dusk')
+        $this->controller(settings: ['enable' => '1', 'model' => 'dall-e-3'])
             ->generateAction($this->jsonRequest(['prompt' => 'A lighthouse']));
 
         self::assertSame('dall-e-3', $this->sentPayloads[0]['model'] ?? null);
         self::assertSame('b64_json', $this->sentPayloads[0]['response_format'] ?? null);
-    }
-
-    #[Test]
-    public function theRevisedPromptIsPassedOnWhenTheModelChangedIt(): void
-    {
-        $response = $this->controller(revisedPrompt: 'A tall lighthouse at dusk')
-            ->generateAction($this->jsonRequest(['prompt' => 'A lighthouse']));
-
-        self::assertSame('A tall lighthouse at dusk', $this->decode($response)['revisedPrompt']);
     }
 
     #[Test]
@@ -595,7 +585,6 @@ final class ImageGenerationControllerTest extends TestCase
         ?BudgetCheckResult $budget = null,
         bool $vaultHasKey = true,
         int $providerStatus = 200,
-        ?string $revisedPrompt = null,
         array $imageData = ['b64_json' => self::PNG_BASE64],
     ): ImageGenerationController {
         $rateLimiter = $this->createStub(RateLimiterInterface::class);
@@ -608,10 +597,6 @@ final class ImageGenerationControllerTest extends TestCase
             $storage = $this->createStub(GeneratedImageStorageInterface::class);
             $storage->method('targetFolder')->willReturn($this->createStub(Folder::class));
             $storage->method('store')->willReturn(new StoredImage(1, '/fileadmin/image.png', 1, 1, 'image/png', '1:/image.png'));
-        }
-
-        if ($revisedPrompt !== null) {
-            $imageData['revised_prompt'] = $revisedPrompt;
         }
 
         return new ImageGenerationController(

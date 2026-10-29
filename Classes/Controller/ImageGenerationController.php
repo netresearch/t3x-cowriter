@@ -204,7 +204,7 @@ final readonly class ImageGenerationController
         }
 
         return $this->jsonResponseWithRateLimitHeaders(
-            $this->successPayload($stored, $imageRequest->prompt, $result->revisedPrompt),
+            $this->successPayload($stored, $imageRequest->prompt),
             $rateLimitResult,
         );
     }
@@ -234,9 +234,9 @@ final readonly class ImageGenerationController
     /**
      * @return array<string, mixed>
      */
-    private function successPayload(StoredImage $stored, string $prompt, ?string $revisedPrompt): array
+    private function successPayload(StoredImage $stored, string $prompt): array
     {
-        $payload = [
+        return [
             'success' => true,
             'image'   => [
                 'fileUid'   => $stored->fileUid,
@@ -249,12 +249,6 @@ final readonly class ImageGenerationController
             ],
             'alt' => self::altText($prompt),
         ];
-
-        if (!in_array($revisedPrompt, [null, '', $prompt], true)) {
-            $payload['revisedPrompt'] = $revisedPrompt;
-        }
-
-        return $payload;
     }
 
     /**
