@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.18.0 (2026-10-29)
+
+### FEATURE
+
+- FAL file fields in the backend (for example the images of a Text & Media element) get a **Generate image** control when `image.enable` is on: the editor types a prompt, the image is generated and stored in their default upload folder like in the rich text editor, and core adds it to the field as a new file reference, the same way "Add media by URL" does. The control appears only where the image can be kept: the field is not read-only, allows uploads and accepts PNG, and the editor has a writable upload folder. It hides while the field is full (#231).
+
+### CHANGE
+
+- The image dialog says that a closed dialog only keeps the image in the editor or field while the record stays open; after saving or closing the record the image is in the upload folder (#231).
+
 ## 3.17.0 (2026-10-29)
 
 ### FEATURE
