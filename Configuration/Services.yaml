@@ -33,6 +33,9 @@ services:
   Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolverInterface:
     alias: Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolver
 
+  Netresearch\T3Cowriter\Service\Image\GeneratedImageStorageInterface:
+    alias: Netresearch\T3Cowriter\Service\Image\GeneratedImageStorage
+
   Netresearch\T3Cowriter\Controller\AjaxController:
     public: true
 
@@ -55,6 +58,9 @@ services:
     public: true
 
   Netresearch\T3Cowriter\Controller\BudgetStatusController:
+    public: true
+
+  Netresearch\T3Cowriter\Controller\ImageGenerationController:
     public: true
 
   Netresearch\T3Cowriter\Controller\Backend\StatusController:

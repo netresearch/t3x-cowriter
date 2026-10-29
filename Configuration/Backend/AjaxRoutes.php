@@ -10,6 +10,7 @@ declare(strict_types=1);
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Controller\BudgetStatusController;
 use Netresearch\T3Cowriter\Controller\FieldSuggestionController;
+use Netresearch\T3Cowriter\Controller\ImageGenerationController;
 use Netresearch\T3Cowriter\Controller\SavedPromptController;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Controller\ToolController;
@@ -104,5 +105,10 @@ return [
         'path'    => '/cowriter/budget-status',
         'target'  => BudgetStatusController::class . '::statusAction',
         'methods' => ['GET'],
+    ],
+    'tx_cowriter_image_generate' => [
+        'path'    => '/cowriter/image-generate',
+        'target'  => ImageGenerationController::class . '::generateAction',
+        'methods' => ['POST'],
     ],
 ];

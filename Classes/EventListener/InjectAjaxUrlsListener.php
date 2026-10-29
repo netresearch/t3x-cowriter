@@ -64,6 +64,18 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.translate.done.message',
         'ckeditor.translate.done.polishedMessage',
         'ckeditor.translate.failed',
+        'ckeditor.button.image',
+        'ckeditor.image.dialog.title',
+        'ckeditor.image.dialog.prompt',
+        'ckeditor.image.dialog.promptHelp',
+        'ckeditor.image.dialog.generate',
+        'ckeditor.image.dialog.generating',
+        'ckeditor.image.dialog.noPrompt',
+        'ckeditor.image.done.title',
+        'ckeditor.image.done.message',
+        'ckeditor.image.stored.title',
+        'ckeditor.image.stored.message',
+        'ckeditor.image.failed',
         'ckeditor.tasks.none.title',
         'ckeditor.tasks.none.message',
         'ckeditor.tasks.loadFailed',
@@ -262,6 +274,8 @@ final readonly class InjectAjaxUrlsListener
                 ->buildUriFromRoute('ajax_tx_cowriter_page_search'),
             'tx_cowriter_budget_status' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_budget_status'),
+            'tx_cowriter_image_generate' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_image_generate'),
             'nrllm_tasks_module' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('nrllm_tasks'),
             'nrllm_module' => (string) $this->backendUriBuilder
