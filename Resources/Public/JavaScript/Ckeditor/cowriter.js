@@ -16,8 +16,10 @@ import { imageSourcesOf, sanitizeHtml } from "@netresearch/t3_cowriter/HtmlSanit
 import Notification from "@typo3/backend/notification.js";
 
 /**
- * Target languages for translation dropdown. The label is the English
- * fallback of the "ckeditor.language.<code>" label.
+ * Target languages for the translation dropdown when the backend injected
+ * none: the record belongs to no site, or the RTE was rendered outside
+ * FormEngine. The label is the English fallback of the
+ * "ckeditor.language.<code>" label.
  * @type {ReadonlyArray<{code: string, label: string}>}
  */
 const TRANSLATION_LANGUAGES = [
@@ -32,6 +34,12 @@ const TRANSLATION_LANGUAGES = [
     { code: 'ja', label: 'Japanese' },
     { code: 'zh', label: 'Chinese' },
 ];
+
+/**
+ * Formality values the translation endpoint accepts.
+ * @type {ReadonlyArray<string>}
+ */
+const FORMALITIES = new Set(['default', 'formal', 'informal']);
 
 /**
  * Build a TYPO3 Notification action that opens the LLM module.
@@ -208,6 +216,36 @@ export class Cowriter extends Plugin {
         return null;
     }
 
+    /**
+     * The translate menu's languages: those of the edited record's site, which
+     * InjectTranslationLanguagesListener puts into the editor configuration as
+     * `cowriter.translationLanguages`, or the fixed list when there are none.
+     *
+     * @returns {Array<{code: string, label: string, formality: string}>}
+     * @private
+     */
+    _getTranslationLanguages() {
+        const configured = this.editor.config.get('cowriter')?.translationLanguages;
+        if (Array.isArray(configured)) {
+            const languages = configured
+                .filter((lang) => typeof lang?.code === 'string' && lang.code !== '')
+                .map((lang) => ({
+                    code: lang.code,
+                    label: typeof lang.label === 'string' && lang.label !== '' ? lang.label : lang.code,
+                    formality: FORMALITIES.has(lang.formality) ? lang.formality : 'default',
+                }));
+            if (languages.length > 0) {
+                return languages;
+            }
+        }
+
+        return TRANSLATION_LANGUAGES.map((lang) => ({
+            code: lang.code,
+            label: t(`ckeditor.language.${lang.code}`, lang.label),
+            formality: 'default',
+        }));
+    }
+
     async init() {
         // Initialize the AIService (now uses TYPO3 AJAX backend)
         this._service = new AIService();
@@ -368,10 +406,11 @@ export class Cowriter extends Plugin {
             const dropdown = createDropdown(locale);
             const items = new Collection();
 
-            for (const lang of TRANSLATION_LANGUAGES) {
+            for (const lang of this._getTranslationLanguages()) {
                 const itemModel = new ViewModel({
-                    label: t(`ckeditor.language.${lang.code}`, lang.label),
+                    label: lang.label,
                     languageCode: lang.code,
+                    formality: lang.formality,
                     withText: true,
                 });
                 items.add({ type: 'button', model: itemModel });
@@ -393,6 +432,7 @@ export class Cowriter extends Plugin {
                 try {
                     const langCode = event.source.languageCode;
                     const langLabel = event.source.label || langCode;
+                    const formality = event.source.formality || 'default';
                     const selection = editor.model.document.selection;
                     const selectedRange = selection.getFirstRange();
 
@@ -417,7 +457,7 @@ export class Cowriter extends Plugin {
                         15,
                     );
 
-                    const result = await this._service.translate(selectedText, langCode);
+                    const result = await this._service.translate(selectedText, langCode, { formality });
                     if (result?.success && result.translation) {
                         // The same allow-list as the dialog's result; images from
                         // another origin stay only when the selection held them.

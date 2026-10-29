@@ -622,6 +622,62 @@ final class TranslationControllerTest extends TestCase
         self::assertSame('deepl', $options->getTranslator());
     }
 
+    /**
+     * The RTE sends the site language's formality and a regional code such
+     * as en-GB; both reach the specialized translator unchanged.
+     */
+    #[Test]
+    public function translateActionPassesFormalityAndRegionalTargetToTheSpecializedTranslator(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $deeplTranslator = $this->createStub(TranslatorInterface::class);
+        $deeplTranslator->method('getIdentifier')->willReturn('deepl');
+
+        /** @var list<array{string, ?TranslationOptions}> */
+        $capturedArgs = [];
+
+        $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
+        $translationServiceMock->expects(self::once())
+            ->method('findBestTranslator')
+            ->with('auto', 'en-GB')
+            ->willReturn($deeplTranslator);
+        $translationServiceMock->expects(self::once())
+            ->method('translateWithTranslator')
+            ->willReturnCallback(static function (
+                string $text,
+                string $targetLanguage,
+                ?string $sourceLanguage,
+                ?TranslationOptions $options,
+            ) use (&$capturedArgs): TranslatorResult {
+                $capturedArgs[] = [$targetLanguage, $options];
+
+                return new TranslatorResult(
+                    translatedText: 'Hello world',
+                    sourceLanguage: 'de',
+                    targetLanguage: 'en-GB',
+                    translator: 'deepl',
+                );
+            });
+
+        $controller = $this->createControllerWith($translationServiceMock);
+
+        $response = $controller->translateAction($this->createJsonRequest([
+            'text'           => 'Hallo Welt',
+            'targetLanguage' => 'en-GB',
+            'formality'      => 'informal',
+        ]));
+
+        $this->assertSuccessfulTranslationResponse($response, 'Hello world');
+        self::assertCount(1, $capturedArgs);
+        [$targetLang, $options] = $capturedArgs[0];
+        self::assertSame('en-GB', $targetLang);
+        self::assertInstanceOf(TranslationOptions::class, $options);
+        self::assertSame('informal', $options->getFormality());
+        self::assertSame('deepl', $options->getTranslator());
+    }
+
     #[Test]
     public function translateActionUsesPlainLlmPathWhenBestTranslatorIsTheLlmFallbackItself(): void
     {
