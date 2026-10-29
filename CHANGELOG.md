@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.19.0 (2026-10-29)
+
+### FEATURE
+
+- Inline suggestions in the rich text editor: after a pause in typing at the end of a paragraph or heading, a short continuation from the language model appears as grey text after the cursor. Tab inserts it as plain text, Escape or any other key discards it; the grey text is never part of the saved content. Off by default; admins turn it on with `inlineSuggestions.enable` and can set `delay`, `minChars` and an nr-llm `configuration`. Each editor can switch it off for all fields with a toolbar toggle. A Tab within 800 ms of a suggestion appearing keeps leaving the field; list items, table cells, captions and code blocks get no suggestions. A screen reader hears that a suggestion is available. Each suggestion is a request against the editor's nr-llm budget, also when it is not taken; at most one request every 5 s per field and 12 per minute per backend user (#233).
+
+### BUILD
+
+- A new workflow runs the Vitest tests that use TYPO3's CKEditor build in CI, so their coverage counts (#233).
+
 ## 3.18.0 (2026-10-29)
 
 ### FEATURE
