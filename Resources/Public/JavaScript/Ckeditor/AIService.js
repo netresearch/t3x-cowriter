@@ -750,6 +750,15 @@ export class AIService {
             throw new AIServiceError(body.error, body.statusUrl || null, response.status, body.budgetExceeded === true);
         }
 
+        // A success without the stored file is no answer of this route either;
+        // the image may have been stored all the same.
+        const image = body.image;
+        if (body.success !== true || typeof image !== 'object' || image === null
+            || !Number.isInteger(image.fileUid) || image.fileUid <= 0
+            || typeof image.url !== 'string' || image.url === '') {
+            throw interrupted(response.status);
+        }
+
         return body;
     }
 

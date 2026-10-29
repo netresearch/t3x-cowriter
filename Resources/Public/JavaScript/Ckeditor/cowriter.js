@@ -269,9 +269,10 @@ export class Cowriter extends Plugin {
      * inserted image.
      *
      * @param {{image: {fileUid: number, fileTable: string, url: string, width: number, height: number}, alt: string}} result
+     * @param {object|null} [insertionPoint] marker from _rememberInsertionPoint(); without one, the selection
      * @private
      */
-    _insertGeneratedImage(result) {
+    _insertGeneratedImage(result, insertionPoint = null) {
         const model = this.editor.model;
         const { image } = result;
 
@@ -289,8 +290,52 @@ export class Cowriter extends Plugin {
                 noScale: false,
                 quality: '',
             });
-            model.insertObject(element);
+            // Where the cursor was when the editor asked for the image. The
+            // marker moves with edits made while the image was generated; if
+            // its text was deleted, the current selection is used instead.
+            const position = insertionPoint?.getStart?.();
+            if (position && position.root?.rootName !== '$graveyard') {
+                model.insertObject(element, position);
+            } else {
+                model.insertObject(element);
+            }
         });
+    }
+
+    /**
+     * Remember the cursor position for an image that is inserted later, as
+     * a marker, which moves along with edits made in the meantime.
+     *
+     * @returns {object|null} the marker, null without a selection
+     * @private
+     */
+    _rememberInsertionPoint() {
+        const model = this.editor.model;
+        const position = model.document.selection.getFirstPosition();
+        if (!position) {
+            return null;
+        }
+
+        let marker = null;
+        model.change((writer) => {
+            marker = writer.addMarker(`cowriter:image:${Date.now()}:${Math.random().toString(36).slice(2)}`, {
+                range: model.createRange(position),
+                usingOperation: false,
+                affectsData: false,
+            });
+        });
+        return marker;
+    }
+
+    /**
+     * @param {object|null} marker
+     * @private
+     */
+    _forgetInsertionPoint(marker) {
+        const model = this.editor.model;
+        if (marker && this.editor.state !== 'destroyed' && model.markers.has(marker)) {
+            model.change((writer) => writer.removeMarker(marker));
+        }
     }
 
     async init() {
@@ -470,6 +515,7 @@ export class Cowriter extends Plugin {
             button.on('execute', async () => {
                 if (this._isProcessing || !this._canInsertImage()) return;
                 this._isProcessing = true;
+                const insertionPoint = this._rememberInsertionPoint();
 
                 try {
                     const dialog = new ImageDialog(this._service, {
@@ -489,7 +535,7 @@ export class Cowriter extends Plugin {
                         return;
                     }
 
-                    this._insertGeneratedImage(result);
+                    this._insertGeneratedImage(result, insertionPoint);
                     Notification.success(
                         t('ckeditor.image.done.title', 'Image inserted'),
                         t('ckeditor.image.done.message', 'Stored as %s. Check the alternative text: it is your description, not a description of the generated image.', file),
@@ -507,6 +553,7 @@ export class Cowriter extends Plugin {
                         console.error('[Cowriter Image]', error);
                     }
                 } finally {
+                    this._forgetInsertionPoint(insertionPoint);
                     this._isProcessing = false;
                 }
             });

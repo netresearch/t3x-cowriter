@@ -1451,6 +1451,10 @@ describe('AIService', () => {
             ['a bad gateway with an HTML page', 502, new SyntaxError('Unexpected token <')],
             ['an error without the route\'s message', 500, { foo: 'bar' }],
             ['a success that is no JSON', 200, new SyntaxError('Unexpected end of JSON input')],
+            ['an empty success', 200, {}],
+            ['a success that is not marked as one', 200, { success: false, image: { fileUid: 42, url: '/fileadmin/a.png' } }],
+            ['a success without a file uid', 200, { success: true, image: { url: '/fileadmin/a.png' } }],
+            ['a success without a URL', 200, { success: true, image: { fileUid: 42, url: '' } }],
         ])('should point to the upload folder for %s', async (_name, status, body) => {
             const service = await serviceWithRoute();
             respond(status, body);

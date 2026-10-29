@@ -149,6 +149,29 @@ describe.skipIf(!available)('a generated image in TYPO3\'s CKEditor with rte-cke
         expect(elements[0].getAttribute('fileUid')).toBe('42');
     });
 
+    it('inserts at the remembered cursor although the editor typed elsewhere meanwhile', async () => {
+        const editor = await createEditor({ withImagePlugin: true });
+        editor.setData('<p>First</p><p>Second</p>');
+        const root = editor.model.document.getRoot();
+        const cowriter = editor.plugins.get('cowriter');
+
+        // The cursor at the end of "First" when the button is clicked …
+        editor.model.change((writer) => writer.setSelection(root.getChild(0), 'end'));
+        const insertionPoint = cowriter._rememberInsertionPoint();
+        // … then the editor types in front of it and moves on to "Second".
+        editor.model.change((writer) => {
+            writer.insertText('Very ', root.getChild(0), 0);
+            writer.setSelection(root.getChild(1), 'end');
+        });
+        cowriter._insertGeneratedImage(generated, insertionPoint);
+        cowriter._forgetInsertionPoint(insertionPoint);
+
+        const data = editor.getData();
+        expect(data.indexOf('data-htmlarea-file-uid="42"')).toBeGreaterThan(data.indexOf('Very First'));
+        expect(data.indexOf('data-htmlarea-file-uid="42"')).toBeLessThan(data.indexOf('Second'));
+        expect(Array.from(editor.model.markers)).toHaveLength(0);
+    });
+
     it('offers the button with the image plugin', async () => {
         const editor = await createEditor({ withImagePlugin: true });
         const button = editor.ui.view.toolbar.items.find((item) => item.label === 'Cowriter - Generate image');

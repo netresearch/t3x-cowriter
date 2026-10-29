@@ -601,6 +601,10 @@ describe('Cowriter Plugin', () => {
         let mockEditor;
         let componentCallbacks;
         let dialogShow;
+        let cursor;
+        let marker;
+        /** Where the remembered insertion point is when the image arrives. */
+        let markerStart;
         /** @type {typeof import('@typo3/backend/notification.js').default} */
         let Notification;
         const generated = {
@@ -620,6 +624,8 @@ describe('Cowriter Plugin', () => {
         beforeEach(async () => {
             vi.resetModules();
             dialogShow = vi.fn().mockResolvedValue(generated);
+            marker = null;
+            markerStart = undefined;
 
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/AIService.js', () => ({
                 AIService: class MockAIService {
@@ -643,14 +649,24 @@ describe('Cowriter Plugin', () => {
             Notification.error.mockClear();
 
             componentCallbacks = {};
-            const writer = { createElement: vi.fn((name, attributes) => ({ name, attributes })) };
+            cursor = { root: { rootName: 'main' }, path: [0, 3] };
+            const writer = {
+                createElement: vi.fn((name, attributes) => ({ name, attributes })),
+                addMarker: vi.fn((name) => {
+                    marker = { name, getStart: () => markerStart };
+                    return marker;
+                }),
+                removeMarker: vi.fn(),
+            };
             mockEditor = {
                 _writer: writer,
                 model: {
-                    document: { selection: {} },
+                    document: { selection: { getFirstPosition: vi.fn(() => cursor) } },
                     schema: { isRegistered: vi.fn().mockReturnValue(true) },
                     change: vi.fn((cb) => cb(writer)),
+                    createRange: vi.fn((position) => ({ start: position })),
                     insertObject: vi.fn(),
+                    markers: { has: vi.fn(() => true) },
                 },
                 editing: { view: { focus: vi.fn() } },
                 state: 'ready',
@@ -661,6 +677,8 @@ describe('Cowriter Plugin', () => {
                     },
                 },
             };
+
+            markerStart = cursor;
 
             plugin = new Cowriter();
             plugin.editor = mockEditor;
@@ -697,7 +715,7 @@ describe('Cowriter Plugin', () => {
                 noScale: false,
                 quality: '',
             });
-            expect(mockEditor.model.insertObject).toHaveBeenCalledWith({ name: 'typo3image', attributes: expect.any(Object) });
+            expect(mockEditor.model.insertObject).toHaveBeenCalledWith({ name: 'typo3image', attributes: expect.any(Object) }, cursor);
             expect(Notification.success).toHaveBeenCalledWith(
                 'Image inserted',
                 expect.stringContaining('1:/user_upload/a-lighthouse-0a1b2c3d.png'),
@@ -715,7 +733,46 @@ describe('Cowriter Plugin', () => {
 
             await button.fire('execute');
             expect(dialogShow).not.toHaveBeenCalled();
-            expect(mockEditor.model.change).not.toHaveBeenCalled();
+            expect(mockEditor.model.insertObject).not.toHaveBeenCalled();
+        });
+
+        it('remembers the cursor before asking and inserts there, wherever the cursor went meanwhile', async () => {
+            let finish;
+            dialogShow.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+            const button = componentCallbacks['cowriterImage']();
+            const running = button.fire('execute');
+
+            expect(mockEditor._writer.addMarker).toHaveBeenCalledWith(expect.stringMatching(/^cowriter:image:/), {
+                range: { start: cursor },
+                usingOperation: false,
+                affectsData: false,
+            });
+            // The editor typed on; the marker moved with the text.
+            const moved = { root: { rootName: 'main' }, path: [0, 9] };
+            markerStart = moved;
+            mockEditor.model.document.selection.getFirstPosition.mockReturnValue({ root: { rootName: 'main' }, path: [5, 0] });
+            finish(generated);
+            await running;
+
+            expect(mockEditor.model.insertObject).toHaveBeenCalledWith(expect.objectContaining({ name: 'typo3image' }), moved);
+            expect(mockEditor._writer.removeMarker).toHaveBeenCalledWith(marker);
+        });
+
+        it('falls back to the selection when the remembered text was deleted', async () => {
+            markerStart = { root: { rootName: '$graveyard' }, path: [0] };
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(mockEditor.model.insertObject).toHaveBeenCalledWith(expect.objectContaining({ name: 'typo3image' }));
+            expect(mockEditor.model.insertObject.mock.calls[0]).toHaveLength(1);
+        });
+
+        it('forgets the remembered cursor when the dialog is cancelled', async () => {
+            dialogShow.mockRejectedValue(new Error('User cancelled'));
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(mockEditor._writer.removeMarker).toHaveBeenCalledWith(marker);
         });
 
         it('is enabled with the TYPO3 image plugin', () => {
@@ -733,7 +790,7 @@ describe('Cowriter Plugin', () => {
             finish(generated);
             await running;
 
-            expect(mockEditor.model.change).not.toHaveBeenCalled();
+            expect(mockEditor.model.insertObject).not.toHaveBeenCalled();
             expect(Notification.success).not.toHaveBeenCalled();
             expect(Notification.warning).toHaveBeenCalledWith(
                 'Image stored',
@@ -760,7 +817,7 @@ describe('Cowriter Plugin', () => {
             const button = componentCallbacks['cowriterImage']();
             await button.fire('execute');
 
-            expect(mockEditor.model.change).not.toHaveBeenCalled();
+            expect(mockEditor.model.insertObject).not.toHaveBeenCalled();
             expect(Notification.error).not.toHaveBeenCalled();
         });
 
