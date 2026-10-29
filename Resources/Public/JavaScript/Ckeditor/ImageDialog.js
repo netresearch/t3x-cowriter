@@ -96,7 +96,8 @@ export class ImageDialog {
                     this._generating ?? t(
                         'ckeditor.image.dialog.generating',
                         'Generating the image. This can take one or two minutes. '
-                        + 'If you close this dialog, the image is still inserted when it is ready.',
+                        + 'If you close this dialog, the image is still inserted when it is ready, '
+                        + 'as long as this record stays open; otherwise it is in your upload folder.',
                     ),
                     'busy',
                 );

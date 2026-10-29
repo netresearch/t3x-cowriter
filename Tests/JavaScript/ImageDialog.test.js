@@ -157,7 +157,7 @@ describe('ImageDialog', () => {
         textarea().value = 'A lighthouse';
         button('generate').click();
         await flush();
-        expect(status().textContent).toContain('If you close this dialog, the image is still inserted');
+        expect(status().textContent).toContain('as long as this record stays open; otherwise it is in your upload folder.');
 
         button('cancel').click();
         await flush();

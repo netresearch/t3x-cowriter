@@ -258,8 +258,8 @@
                 <target>Das Bild wird in Ihrem Upload-Ordner gespeichert und diesem Feld hinzugefügt. Speichern Sie den Datensatz, um es zu behalten.</target>
             </trans-unit>
             <trans-unit id="fileControl.image.dialog.generating" resname="fileControl.image.dialog.generating">
-                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still added to the field when it is ready.</source>
-                <target>Das Bild wird erzeugt. Das kann ein bis zwei Minuten dauern. Wenn Sie diesen Dialog schließen, wird das Bild trotzdem dem Feld hinzugefügt, sobald es fertig ist.</target>
+                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still added to the field when it is ready, as long as this record stays open; otherwise it is in your upload folder.</source>
+                <target>Das Bild wird erzeugt. Das kann ein bis zwei Minuten dauern. Wenn Sie diesen Dialog schließen, wird das Bild trotzdem dem Feld hinzugefügt, sobald es fertig ist, solange dieser Datensatz geöffnet bleibt; sonst liegt es in Ihrem Upload-Ordner.</target>
             </trans-unit>
             <trans-unit id="fileControl.image.full.title" resname="fileControl.image.full.title">
                 <source>The field is full</source>
@@ -514,8 +514,8 @@
                 <target>Erzeugen</target>
             </trans-unit>
             <trans-unit id="ckeditor.image.dialog.generating" resname="ckeditor.image.dialog.generating">
-                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still inserted when it is ready.</source>
-                <target>Das Bild wird erzeugt. Das kann ein bis zwei Minuten dauern. Wenn Sie diesen Dialog schließen, wird das Bild trotzdem eingefügt, sobald es fertig ist.</target>
+                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still inserted when it is ready, as long as this record stays open; otherwise it is in your upload folder.</source>
+                <target>Das Bild wird erzeugt. Das kann ein bis zwei Minuten dauern. Wenn Sie diesen Dialog schließen, wird das Bild trotzdem eingefügt, sobald es fertig ist, solange dieser Datensatz geöffnet bleibt; sonst liegt es in Ihrem Upload-Ordner.</target>
             </trans-unit>
             <trans-unit id="ckeditor.image.dialog.noPrompt" resname="ckeditor.image.dialog.noPrompt">
                 <source>Describe the image first.</source>

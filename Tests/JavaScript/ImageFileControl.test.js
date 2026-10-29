@@ -50,7 +50,7 @@ function setBody(html) {
     document.body.replaceChildren(document.createRange().createContextualFragment(html));
 }
 
-function fixture({ uids = '', max = 0, allowed = 'png,jpg,jpeg,webp' } = {}) {
+function fixture({ uids = '', max = 0, allowed = 'png' } = {}) {
     setBody(`
 <typo3-formengine-container-inline id="${FIELD_ID}" data-object-group="${FIELD_ID}-sys_file_reference">
   <div class="form-group t3js-formengine-validation-marker t3js-inline-controls">

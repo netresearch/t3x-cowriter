@@ -48,8 +48,11 @@ export const CONTROL_SELECTOR = '.t3js-cowriter-generate-image';
  */
 function text(control, name, fallback, ...args) {
     const key = 'label' + name.charAt(0).toUpperCase() + name.slice(1);
+    let index = 0;
 
-    return t(`fileControl.image.${name}`, control.dataset[key] || fallback, ...args);
+    // One pass, as in Labels.t(): an argument containing "%s" is not filled again.
+    return (control.dataset[key] || fallback)
+        .replace(/%[sd]/g, (placeholder) => (index < args.length ? String(args[index++]) : placeholder));
 }
 
 /**
@@ -133,7 +136,8 @@ export async function generateFor(control) {
             control,
             'generating',
             'Generating the image. This can take one or two minutes. '
-            + 'If you close this dialog, the image is still added to the field when it is ready.',
+            + 'If you close this dialog, the image is still added to the field when it is ready, '
+            + 'as long as this record stays open; otherwise it is in your upload folder.',
         ),
     });
 

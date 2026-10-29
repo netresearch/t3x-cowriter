@@ -195,7 +195,7 @@
                 <source>The image is stored in your upload folder and added to this field. Save the record to keep it.</source>
             </trans-unit>
             <trans-unit id="fileControl.image.dialog.generating" resname="fileControl.image.dialog.generating">
-                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still added to the field when it is ready.</source>
+                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still added to the field when it is ready, as long as this record stays open; otherwise it is in your upload folder.</source>
             </trans-unit>
             <trans-unit id="fileControl.image.full.title" resname="fileControl.image.full.title">
                 <source>The field is full</source>
@@ -387,7 +387,7 @@
                 <source>Generate</source>
             </trans-unit>
             <trans-unit id="ckeditor.image.dialog.generating" resname="ckeditor.image.dialog.generating">
-                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still inserted when it is ready.</source>
+                <source>Generating the image. This can take one or two minutes. If you close this dialog, the image is still inserted when it is ready, as long as this record stays open; otherwise it is in your upload folder.</source>
 </trans-unit>
             <trans-unit id="ckeditor.image.dialog.noPrompt" resname="ckeditor.image.dialog.noPrompt">
                 <source>Describe the image first.</source>

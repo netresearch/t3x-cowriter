@@ -80,7 +80,7 @@ final class AddImageGenerationFileControlListenerTest extends TestCase
         self::assertSame(self::FIELD_ID, $button->getAttribute('data-form-field-id'));
         self::assertSame(self::FIELD_NAME, $button->getAttribute('data-form-field'));
         self::assertSame('5', $button->getAttribute('data-max-items'));
-        self::assertSame('png,jpg,jpeg,webp', $button->getAttribute('data-allowed-extensions'));
+        self::assertSame('png', $button->getAttribute('data-allowed-extensions'));
     }
 
     #[Test]
@@ -147,18 +147,49 @@ final class AddImageGenerationFileControlListenerTest extends TestCase
         self::assertSame([], $event->getControls());
     }
 
-    #[Test]
-    public function nothingIsAddedWhereTheFieldAllowsNoUpload(): void
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function uploadSwitchedOff(): iterable
     {
-        $event = $this->dispatch(['appearance' => ['fileUploadAllowed' => false]] + self::IMAGE_CONFIG);
+        yield 'false' => [false];
+        yield '0 from TCA' => [0];
+        yield "'0' from TSconfig" => ['0'];
+        yield 'empty string' => [''];
+    }
+
+    #[Test]
+    #[DataProvider('uploadSwitchedOff')]
+    public function nothingIsAddedWhereTheFieldAllowsNoUpload(mixed $fileUploadAllowed): void
+    {
+        $event = $this->dispatch(['appearance' => ['fileUploadAllowed' => $fileUploadAllowed]] + self::IMAGE_CONFIG);
 
         self::assertSame([], $event->getControls());
     }
 
     #[Test]
-    public function nothingIsAddedToAFieldThatTakesNoGeneratedFormat(): void
+    public function theControlIsAddedWhereUploadIsSwitchedOnExplicitly(): void
     {
-        $event = $this->dispatch(['allowed' => 'pdf,mp4,youtube'] + self::IMAGE_CONFIG);
+        $event = $this->dispatch(['appearance' => ['fileUploadAllowed' => '1', 'showFileSelectors' => 0]] + self::IMAGE_CONFIG);
+
+        // showFileSelectors is only off when it is false, as in core.
+        self::assertCount(1, $event->getControls());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function fieldsWithoutPng(): iterable
+    {
+        yield 'media without images' => ['pdf,mp4,youtube'];
+        yield 'JPEG and WebP only' => ['jpg,jpeg,webp'];
+    }
+
+    #[Test]
+    #[DataProvider('fieldsWithoutPng')]
+    public function nothingIsAddedToAFieldThatDoesNotTakePng(string $allowed): void
+    {
+        $event = $this->dispatch(['allowed' => $allowed] + self::IMAGE_CONFIG);
 
         self::assertSame([], $event->getControls());
     }
@@ -176,14 +207,15 @@ final class AddImageGenerationFileControlListenerTest extends TestCase
      */
     public static function extensionLists(): iterable
     {
-        yield 'no restriction' => [null, null, ['png', 'jpg', 'jpeg', 'webp']];
-        yield 'empty list' => ['', '', ['png', 'jpg', 'jpeg', 'webp']];
+        yield 'no restriction' => [null, null, ['png']];
+        yield 'empty list' => ['', '', ['png']];
         yield 'png only' => ['png', '', ['png']];
-        yield 'upper case and blanks' => [' JPG , Jpeg ', null, ['jpg', 'jpeg']];
-        yield 'disallowed' => [null, 'png,webp', ['jpg', 'jpeg']];
-        yield 'allowed minus disallowed' => ['png,jpg,gif', 'jpg', ['png']];
-        yield 'as array' => [['webp', 'svg'], null, ['webp']];
-        yield 'nothing generated allowed' => ['pdf,svg', null, []];
+        yield 'upper case and blanks' => [' JPG , Png ', null, ['png']];
+        yield 'png disallowed' => [null, 'png,webp', []];
+        yield 'other type disallowed' => ['png,jpg,gif', 'jpg', ['png']];
+        yield 'as array' => [['webp', 'png'], null, ['png']];
+        yield 'JPEG only' => ['jpg,jpeg', null, []];
+        yield 'unresolved placeholder' => ['common-image-types', null, []];
     }
 
     /**

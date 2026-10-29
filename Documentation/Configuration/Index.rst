@@ -349,7 +349,10 @@ Requirements and behaviour:
 *   The editor may close the dialog while the image is generated. The
     request goes on, and the image is inserted where the cursor was when
     the editor clicked the button, also when the text was edited in the
-    meantime.
+    meantime. This holds as long as the record stays open: saving and
+    closing the record, or leaving the page, reloads the form, and the
+    answer is no longer awaited. The image is then stored in the upload
+    folder but not inserted; the file field control behaves the same.
 *   The description becomes the image's alternative text and the editor is
     told to check it. Extensions that react to new files, such as one that
     writes alternative texts on upload, also run for a generated image.
@@ -373,12 +376,16 @@ The button is shown only when all of these hold:
     upload button may use a different folder for a field, set with user
     TSconfig ``options.defaultUploadFolder`` per table and field; the
     generated image always goes to the editor's general upload folder.
-*   The field accepts PNG, JPEG or WebP files by its ``allowed`` and
-    ``disallowed`` lists. A file of a type the field does not accept is
-    stored but not added, and the editor is told so; in practice the
-    models return PNG.
+*   The field accepts PNG files by its ``allowed`` and ``disallowed``
+    lists. The route cannot ask the model for another format (nr-llm 0.41
+    has no option for it), and OpenAI's image models return PNG, so a field
+    that takes only JPEG or WebP gets no button. Should a model still return
+    another format the field does not accept, the image is stored but not
+    added, and the editor is told so.
 *   The field is not read-only, and its appearance does not switch off the
-    add controls (``showFileSelectors``) or uploads (``fileUploadAllowed``).
+    add controls (``showFileSelectors: false``) or uploads
+    (``fileUploadAllowed`` set to a false value such as ``0``, also from
+    TSconfig).
 
 When the field holds ``maxitems`` files, the button is hidden, like
 TYPO3's own add buttons, and it comes back when a file reference is

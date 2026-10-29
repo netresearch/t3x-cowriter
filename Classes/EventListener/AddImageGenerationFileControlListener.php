@@ -32,7 +32,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * while image generation is switched off, when the editor has no folder the
  * route could store the image in, when the field is read-only, does not show
  * its add controls (appearance.showFileSelectors / fileUploadAllowed) or
- * accepts none of the formats the route stores (PNG, JPEG, WebP). A field
+ * does not accept PNG, the format the route gets from the model. A field
  * that is full gets the control hidden; the JavaScript shows it again when a
  * reference is removed, as core does with its own add controls.
  *
@@ -49,10 +49,13 @@ final readonly class AddImageGenerationFileControlListener
     public const CONTROL_CLASS = 't3js-cowriter-generate-image';
 
     /**
-     * File extensions the route can store (GeneratedImageStorage), with the
-     * spelling a field's "allowed" list may use for each.
+     * File extensions the route produces. The storage would accept JPEG and
+     * WebP as well, but the route cannot ask for them: nr-llm 0.41's
+     * ImageGenerationOptions has no output format, and OpenAI's image models
+     * answer with PNG by default. A field that takes only JPEG would get a
+     * paid image it cannot keep.
      */
-    public const GENERATED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp'];
+    public const GENERATED_EXTENSIONS = ['png'];
 
     private const FILE_REFERENCE_TABLE = 'sys_file_reference';
 
@@ -91,8 +94,11 @@ final readonly class AddImageGenerationFileControlListener
             return;
         }
 
+        // Read as core's FilesControlContainer reads them: showFileSelectors
+        // only off when false, fileUploadAllowed cast to bool, so 0 and '0'
+        // (from TSconfig) switch uploads off.
         $appearance = is_array($config['appearance'] ?? null) ? $config['appearance'] : [];
-        if (($appearance['showFileSelectors'] ?? true) === false || ($appearance['fileUploadAllowed'] ?? true) === false) {
+        if (($appearance['showFileSelectors'] ?? true) === false || !(bool) ($appearance['fileUploadAllowed'] ?? true)) {
             return;
         }
 

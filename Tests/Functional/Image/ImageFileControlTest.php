@@ -14,10 +14,15 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use TYPO3\CMS\Backend\Form\Event\CustomFileControlsEvent;
+use TYPO3\CMS\Backend\Form\FormDataCompiler;
+use TYPO3\CMS\Backend\Form\FormDataGroup\TcaDatabaseRecord;
+use TYPO3\CMS\Backend\Form\NodeFactory;
+use TYPO3\CMS\Backend\Routing\Route;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Core\SystemEnvironmentBuilder;
 use TYPO3\CMS\Core\Http\NormalizedParams;
 use TYPO3\CMS\Core\Http\ServerRequest;
+use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
 
@@ -79,7 +84,7 @@ final class ImageFileControlTest extends FunctionalTestCase
         // The label comes from locallang_be.xlf, not as an LLL reference.
         self::assertStringContainsString('Generate image', $controls['cowriterGenerateImage']);
         self::assertStringNotContainsString('LLL:', $controls['cowriterGenerateImage']);
-        self::assertStringContainsString('data-allowed-extensions="png,jpg,jpeg,webp"', $controls['cowriterGenerateImage']);
+        self::assertStringContainsString('data-allowed-extensions="png"', $controls['cowriterGenerateImage']);
 
         $modules = array_map(
             static fn (mixed $module): string => is_object($module) && method_exists($module, 'getName') ? (string) $module->getName() : '',
@@ -102,6 +107,48 @@ final class ImageFileControlTest extends FunctionalTestCase
         $this->setUpBackendUser(4);
 
         self::assertSame([], $this->dispatch()->getControls());
+    }
+
+    /**
+     * The whole chain FormEngine runs for a record: TCA preparation, the
+     * data providers, FilesControlContainer and its event. The control must
+     * name the object group the container listens to, or core drops the
+     * hand-over message.
+     */
+    #[Test]
+    public function formEngineRendersTheControlForTheObjectGroupOfTheField(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/formengine_record.csv');
+        $backendUser     = $this->setUpBackendUser(5);
+        $GLOBALS['LANG'] = $this->get(LanguageServiceFactory::class)->createFromUserPreferences($backendUser);
+
+        $formData = $this->get(FormDataCompiler::class)->compile(
+            [
+                // FormEngine's templates are resolved by the route's package.
+                'request'    => $GLOBALS['TYPO3_REQUEST']->withAttribute('route', new Route('/record/edit', ['packageName' => 'typo3/cms-backend'])),
+                'tableName'  => 'tt_content',
+                'vanillaUid' => 1,
+                'command'    => 'edit',
+            ],
+            $this->get(TcaDatabaseRecord::class),
+        );
+        $formData['renderType'] = 'fullRecordContainer';
+        $html                   = (string) $this->get(NodeFactory::class)->create($formData)->render()['html'];
+
+        self::assertSame(1, preg_match('/<button[^>]*' . preg_quote(AddImageGenerationFileControlListener::CONTROL_CLASS, '/') . '[^>]*>/', $html, $button), 'control rendered');
+        self::assertSame(1, preg_match('/data-file-irre-object="([^"]+)"/', $button[0], $irreObject));
+        self::assertStringEndsWith('-assets-sys_file_reference', $irreObject[1]);
+
+        // The element FilesControlContainer renders for the field carries the
+        // object group its JavaScript compares the message with.
+        self::assertSame(
+            1,
+            preg_match('/<[^>]+data-object-group="' . preg_quote($irreObject[1], '/') . '"[^>]*>/', $html),
+            'a container with data-object-group="' . $irreObject[1] . '"',
+        );
+        self::assertSame(1, preg_match('/data-form-field="([^"]+)"/', $button[0], $formField));
+        self::assertSame('data[tt_content][1][assets]', html_entity_decode($formField[1]));
+        self::assertStringContainsString('name="data[tt_content][1][assets]"', $html);
     }
 
     private function dispatch(): CustomFileControlsEvent

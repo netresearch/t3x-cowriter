@@ -267,7 +267,9 @@ The description becomes the image's alternative text. It says what you
 asked for, not what the model drew: check it and correct it where needed.
 You can close the dialog while the image is generated and go on editing:
 the image is still inserted when it is ready, where the cursor was when you
-clicked the button. If the request is cut off, for example by a
+clicked the button, as long as the record stays open. If you save and
+close the record or leave the page in the meantime, nothing is inserted;
+the image is then in your upload folder. If the request is cut off, for example by a
 timeout, a message says so; the image may then already be in your upload
 folder.
 
@@ -289,10 +291,11 @@ the administrator switched the feature on.
 5.  Save the record to keep it
 
 You can close the dialog while the image is generated: the image is still
-added to the field when it is ready. When the field is full, the button is
-hidden until you remove a file. A field that does not accept the image's
-file type does not get it; the message names the file in your upload
-folder instead. The new file has no alternative text of its own: enter one
+added to the field when it is ready, as long as the record stays open. If
+you save and close the record or leave the page in the meantime, it is not
+added; it is then in your upload folder. When the field is full, the button is
+hidden until you remove a file. Fields that do not accept PNG files have
+no button. The new file has no alternative text of its own: enter one
 in the file's :guilabel:`Alternative` field where needed.
 
 Tasks shortcut
