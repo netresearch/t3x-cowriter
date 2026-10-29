@@ -18,6 +18,7 @@ use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Translation\TranslationPolishConfiguration;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Override;
@@ -27,6 +28,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Http\Uri;
 
@@ -81,6 +83,7 @@ final class TranslationControllerIntegrationTest extends AbstractIntegrationTest
             new NullLogger(),
             $backendUriBuilderMock,
             $diagnosticServiceMock,
+            new TranslationPolishConfiguration($this->createStub(ExtensionConfiguration::class)),
         );
     }
 

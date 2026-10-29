@@ -200,6 +200,12 @@ nr-llm extension. Administrators can optionally pass a
 through a specific LLM provider (e.g. DeepL or a dedicated
 translation model).
 
+When the administrator switched on the revision of DeepL translations
+(:ref:`configuration-translation-polish`), a language model revises the
+translation before it replaces the selection. This takes a second request
+and a little longer. When the revision cannot be applied, the DeepL
+translation is inserted as it came.
+
 ..  note::
 
     Inline translation requires text to be selected. A warning
