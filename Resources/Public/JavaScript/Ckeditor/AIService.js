@@ -107,7 +107,7 @@ function styleFields(style) {
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, budgetStatus: string|null, imageGenerate: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, budgetStatus: string|null, imageGenerate: string|null, inlineSuggestion: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
      * @private
      */
     _routes = {
@@ -130,6 +130,7 @@ export class AIService {
         pageSearch: null,
         budgetStatus: null,
         imageGenerate: null,
+        inlineSuggestion: null,
         tasksModule: null,
         llmModule: null,
         statusModule: null,
@@ -157,6 +158,7 @@ export class AIService {
             this._routes.pageSearch = TYPO3.settings.ajaxUrls.tx_cowriter_page_search || null;
             this._routes.budgetStatus = TYPO3.settings.ajaxUrls.tx_cowriter_budget_status || null;
             this._routes.imageGenerate = TYPO3.settings.ajaxUrls.tx_cowriter_image_generate || null;
+            this._routes.inlineSuggestion = TYPO3.settings.ajaxUrls.tx_cowriter_inline_suggestion || null;
             this._routes.tasksModule = TYPO3.settings.ajaxUrls.nrllm_tasks_module || null;
             this._routes.llmModule = TYPO3.settings.ajaxUrls.nrllm_module || null;
             this._routes.statusModule = TYPO3.settings.ajaxUrls.cowriter_status || null;
@@ -760,6 +762,51 @@ export class AIService {
         }
 
         return body;
+    }
+
+    /**
+     * A short continuation of the text before the cursor, as plain text; an
+     * empty string when the model had none. A refusal throws an
+     * AIServiceError with the HTTP status and, for a rate limit, the seconds
+     * from Retry-After as `retryAfter`.
+     *
+     * @param {string} text - The end of the text before the cursor
+     * @param {{table: string, uid: number}|null} [recordContext=null] - The edited record; the server
+     *     looks up its language
+     * @param {AbortSignal} [signal] - Aborts the request when the editor types on
+     * @returns {Promise<string>}
+     */
+    async inlineSuggestion(text, recordContext = null, signal = undefined) {
+        if (!this._routes.inlineSuggestion) {
+            throw new Error('Inline suggestion route not configured.');
+        }
+
+        const body = { text };
+        if (recordContext) {
+            body.recordContext = recordContext;
+        }
+
+        const response = await fetch(this._routes.inlineSuggestion, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal,
+        });
+
+        if (!response.ok) {
+            const retryAfter = Number.parseInt(response.headers?.get?.('Retry-After') ?? '', 10);
+            try {
+                await this._throwResponseError(response);
+            } catch (error) {
+                if (Number.isFinite(retryAfter)) {
+                    error.retryAfter = retryAfter;
+                }
+                throw error;
+            }
+        }
+
+        const data = await response.json();
+        return typeof data?.suggestion === 'string' ? data.suggestion : '';
     }
 
     /**

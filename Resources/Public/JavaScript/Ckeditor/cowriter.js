@@ -12,6 +12,7 @@ import { Collection } from "@ckeditor/ckeditor5-utils";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
 import { ImageDialog } from "@netresearch/t3_cowriter/ImageDialog";
+import { InlineSuggestions } from "@netresearch/t3_cowriter/InlineSuggestions";
 import { t } from "@netresearch/t3_cowriter/Labels";
 import { imageSourcesOf, sanitizeHtml } from "@netresearch/t3_cowriter/HtmlSanitizer";
 import Notification from "@typo3/backend/notification.js";
@@ -92,6 +93,13 @@ function errorActions(errorMessage, service, status = null) {
  */
 export class Cowriter extends Plugin {
     static pluginName = 'cowriter';
+
+    /**
+     * Inline suggestions come with the plugin, so a preset that imports only
+     * Cowriter has them too; they stay inert until the administrator switches
+     * them on (inlineSuggestions.enable).
+     */
+    static requires = [InlineSuggestions];
 
     /**
      * @type {AIService}

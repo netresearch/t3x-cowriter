@@ -29,6 +29,10 @@ const sharedAliases = {
     '@netresearch/t3_cowriter/Labels': resolve(__dirname, 'Resources/Public/JavaScript/Ckeditor/Labels.js'),
     '@netresearch/t3_cowriter/HtmlSanitizer': resolve(__dirname, 'Resources/Public/JavaScript/Ckeditor/HtmlSanitizer.js'),
     '@netresearch/t3_cowriter/ImageDialog': resolve(__dirname, 'Resources/Public/JavaScript/Ckeditor/ImageDialog.js'),
+    '@netresearch/t3_cowriter/InlineSuggestions': resolve(
+        __dirname,
+        'Resources/Public/JavaScript/Ckeditor/InlineSuggestions.js'
+    ),
 };
 
 export default defineConfig({
