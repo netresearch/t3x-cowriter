@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.16.0 (2026-10-29)
+
+### FEATURE
+
+- A language model can revise a DeepL translation for fluency, terminology and tone. Admins turn it on with the extension setting `translation.polish` (off by default) and can give their own instruction in `translation.polishInstruction`; requests from the editor cannot turn it on or change the instruction. A revised translation uses two requests against the editor's budget; when the revision changes markup, placeholders or glossary terms, fails or is refused by the budget, the DeepL text is used. The editor's notification says when a translation was revised by AI, and the response carries `polished` and, when the revision did not apply, `polishReason` (#227).
+
+### BREAKING
+
+- Requires `netresearch/nr-llm` 0.41.14 or a later 0.41 release (`composer.json` `^0.41.14`, `ext_emconf.php` `0.41.14-0.41.99`) for the translation revision (#227).
+
 ## 3.15.0 (2026-10-29)
 
 ### FEATURE
