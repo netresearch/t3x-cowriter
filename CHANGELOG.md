@@ -2,6 +2,17 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.15.0 (2026-10-29)
+
+### FEATURE
+
+- The **Translate** dropdown in the editor offers the languages of the site the edited record belongs to, labelled with their titles, including languages hidden from the frontend; records outside every site keep the fixed list of ten languages. Each site language can set the formality of translations into it with the key `cowriterFormality` (`default`, `formal`, `informal`), also in the Sites module; the editor sends it with every translation. Traditional Chinese locales translate as `zh-TW` through the language model (#224).
+- The alt-text instruction is configurable in the extension setting `altText.prompt`, and the alt text is written in the language of the record being edited when that language can be resolved for the editor (saved record, read access to the table, the record's language and its page). A failing language lookup costs only the language hint, not the alt text (#225).
+
+### BUGFIX
+
+- The editor no longer reads a record uid from a new-record URL (`edit[tt_content][<page id>]=new`); before, the task dialog's element and page context could come from an unrelated record (#225).
+
 ## 3.14.1 (2026-10-28)
 
 ### BUILD
