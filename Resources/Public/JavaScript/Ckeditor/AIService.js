@@ -640,10 +640,12 @@ export class AIService {
      * Analyze an image and generate alt text or description.
      *
      * @param {string} imageUrl - URL of the image to analyze
-     * @param {string} [prompt] - Custom analysis prompt
+     * @param {string} [prompt] - Custom analysis prompt; without one the server uses the configured instruction
+     * @param {{table: string, uid: number, field: string}|null} [recordContext=null] - The edited record; the server
+     *     looks up its language and asks for the alt text in it
      * @returns {Promise<{success: boolean, altText: string, model: string, confidence: number}>}
      */
-    async analyzeImage(imageUrl, prompt) {
+    async analyzeImage(imageUrl, prompt, recordContext = null) {
         if (!this._routes.vision) {
             throw new Error('Vision route not configured.');
         }
@@ -651,6 +653,9 @@ export class AIService {
         const body = { imageUrl };
         if (prompt) {
             body.prompt = prompt;
+        }
+        if (recordContext) {
+            body.recordContext = recordContext;
         }
 
         const response = await fetch(this._routes.vision, {

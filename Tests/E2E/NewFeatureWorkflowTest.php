@@ -23,6 +23,8 @@ use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Vision\AltTextPrompt;
+use Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolverInterface;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\TaskStubTrait;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
@@ -34,6 +36,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
 use stdClass;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Http\Uri;
 
@@ -79,6 +82,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
             $rateLimiter,
             $context,
             $this->logger,
+            new AltTextPrompt($this->createStub(ExtensionConfiguration::class), $this->createStub(RecordLanguageResolverInterface::class)),
         );
 
         return [
@@ -243,6 +247,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
             $stack['rateLimiter'],
             $stack['context'],
             $this->logger,
+            new AltTextPrompt($this->createStub(ExtensionConfiguration::class), $this->createStub(RecordLanguageResolverInterface::class)),
         );
 
         // Act

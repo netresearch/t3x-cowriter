@@ -20,7 +20,7 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | Field suggestions (JS) | `Resources/Public/JavaScript/FormEngine/FieldSuggestions.js` | FormEngine field control: suggestion list, pick fills the field |
 | AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 19 route definitions (see table below) |
 | Main controller | `Classes/Controller/AjaxController.php` | Chat, complete, stream (SSE), configurations, style options, tasks, task execution (plain and SSE), context, page search |
-| Vision controller | `Classes/Controller/VisionController.php` | Image analysis / alt-text generation |
+| Vision controller | `Classes/Controller/VisionController.php`, `Classes/Service/Vision/` | Image analysis / alt-text generation; the instruction from `altText.prompt` plus the edited record's language, resolved server-side with read checks (`RecordLanguageResolver`) |
 | Translation controller | `Classes/Controller/TranslationController.php` | Content translation |
 | Template controller | `Classes/Controller/TemplateController.php` | Prompt template listing |
 | Tool controller | `Classes/Controller/ToolController.php` | LLM tool/function calling |

@@ -1321,6 +1321,26 @@ describe('AIService', () => {
             expect(body.prompt).toBe('Describe in detail');
         });
 
+        it('should send the record context and no prompt when only the record is given', async () => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_vision = '/typo3/ajax/tx_cowriter_vision';
+            vi.resetModules();
+            const module = await import('../../Resources/Public/JavaScript/Ckeditor/AIService.js');
+            const ServiceClass = module.AIService;
+
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ success: true, altText: 'Description' }),
+            });
+
+            const service = new ServiceClass();
+            await service.analyzeImage('https://example.com/image.jpg', undefined, { table: 'tt_content', uid: 7, field: 'bodytext' });
+
+            expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body)).toEqual({
+                imageUrl: 'https://example.com/image.jpg',
+                recordContext: { table: 'tt_content', uid: 7, field: 'bodytext' },
+            });
+        });
+
         it('should throw on non-ok response', async () => {
             TYPO3Mock.settings.ajaxUrls.tx_cowriter_vision = '/typo3/ajax/tx_cowriter_vision';
             vi.resetModules();

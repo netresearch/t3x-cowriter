@@ -369,7 +369,8 @@ export class Cowriter extends Plugin {
                         15,
                     );
 
-                    const result = await this._service.analyzeImage(imageUrl);
+                    // The record context lets the server write the alt text in the record's language.
+                    const result = await this._service.analyzeImage(imageUrl, undefined, this._getRecordContext());
                     if (result?.success && result.altText) {
                         editor.model.change(writer => {
                             // If the selected element is an image, set its alt attribute

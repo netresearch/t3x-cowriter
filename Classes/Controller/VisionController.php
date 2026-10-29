@@ -17,6 +17,7 @@ use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\Vision\AltTextPrompt;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -37,6 +38,7 @@ final readonly class VisionController
         private RateLimiterInterface $rateLimiter,
         private Context $context,
         private LoggerInterface $logger,
+        private AltTextPrompt $altTextPrompt,
         private BackendLabels $labels = new BackendLabels(),
         private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
     ) {}
@@ -93,7 +95,7 @@ final readonly class VisionController
 
             $response = $this->visionService->analyzeImageFull(
                 $visionRequest->imageUrl,
-                $visionRequest->prompt,
+                $this->altTextPrompt->forRequest($visionRequest),
                 $options,
             );
 

@@ -228,6 +228,11 @@ LLM vision analysis.
     You must select an image before clicking the Vision button.
     A warning notification appears if no image is selected.
 
+The alt text is written in the language of the record you edit: a content
+element in the German language of the site gets a German alt text. What
+the alt text should contain is set by the administrator
+(:ref:`configuration <configuration-alt-text>`).
+
 ..  tip::
 
     This is useful for accessibility compliance — generate descriptive
