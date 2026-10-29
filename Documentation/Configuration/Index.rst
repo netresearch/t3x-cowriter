@@ -291,6 +291,40 @@ only the owner deletes one in the dialog.
 Hiding or deleting the record in the List module takes a prompt away
 from every editor, its owner included.
 
+..  _configuration-alt-text:
+
+Alt text
+========
+
+The :guilabel:`Generate alt text` button sends the selected image with an
+instruction to the vision model. The instruction is set in the extension
+configuration:
+
+..  confval:: altText.prompt
+    :name: t3-cowriter-altText-prompt
+    :type: string
+    :default: empty (``Generate a concise, descriptive alt text for this image.``)
+
+    The instruction for alt texts. An empty value uses the built-in
+    instruction shown as the default.
+
+    Example: ``Write an alt text of at most 120 characters for a screen
+    reader. Describe what the image shows, not how it looks. Do not start
+    with "Image of".``
+
+The Cowriter adds the language of the edited record to the instruction, for
+example ``Answer in German (Germany).``. The language comes from the
+record's language field and the locale of that language in the site
+configuration, and is resolved on the server. There is no language hint
+when the record has not been saved yet, has no language field, belongs to
+no site, is set to "all languages", or when the editor may not read the
+record, its page or its language.
+
+A request to the AJAX route may still send its own instruction in the
+``prompt`` field; it replaces the configured one, as it did before the
+setting existed. The button in the editor sends none. The language hint is
+added in both cases.
+
 ..  _configuration-style:
 
 Audience, tone and target length

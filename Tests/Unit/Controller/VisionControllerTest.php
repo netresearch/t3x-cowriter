@@ -18,6 +18,8 @@ use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Controller\VisionController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Vision\AltTextPrompt;
+use Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolverInterface;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -28,6 +30,7 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
 use stdClass;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
 
 #[CoversClass(VisionController::class)]
@@ -41,21 +44,82 @@ final class VisionControllerTest extends TestCase
 
     private VisionController $subject;
 
+    private Context&Stub $contextStub;
+
     protected function setUp(): void
     {
         $this->useXliffLanguageService();
         $this->visionServiceStub = $this->createStub(VisionServiceInterface::class);
         $this->rateLimiterStub   = $this->createStub(RateLimiterInterface::class);
-        $contextStub             = $this->createStub(Context::class);
+        $this->contextStub       = $this->createStub(Context::class);
 
-        $contextStub->method('getPropertyFromAspect')
+        $this->contextStub->method('getPropertyFromAspect')
             ->willReturn(1);
 
-        $this->subject = new VisionController(
+        $this->subject = $this->controller(null, null);
+    }
+
+    #[Test]
+    public function analyzeActionSendsTheConfiguredInstructionInTheRecordsLanguage(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $captured         = new stdClass();
+        $captured->prompt = null;
+        $this->visionServiceStub->method('analyzeImageFull')
+            ->willReturnCallback(
+                static function (string $url, string $prompt) use ($captured): VisionResponse {
+                    $captured->prompt = $prompt;
+
+                    return new VisionResponse(description: 'Eine Katze', model: 'gpt-4o', usage: new UsageStatistics(1, 1, 2), confidence: 0.9);
+                },
+            );
+
+        $subject = $this->controller('Describe the image for a museum catalogue.', 'German (Germany)');
+        $subject->analyzeAction($this->createJsonRequest([
+            'imageUrl'      => 'https://example.com/cat.jpg',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 11, 'field' => 'bodytext'],
+        ]));
+
+        self::assertSame("Describe the image for a museum catalogue.\n\nAnswer in German (Germany).", $captured->prompt);
+    }
+
+    #[Test]
+    public function analyzeActionSendsTheBuiltInInstructionWithoutSettingOrRecord(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $captured         = new stdClass();
+        $captured->prompt = null;
+        $this->visionServiceStub->method('analyzeImageFull')
+            ->willReturnCallback(
+                static function (string $url, string $prompt) use ($captured): VisionResponse {
+                    $captured->prompt = $prompt;
+
+                    return new VisionResponse(description: 'A cat', model: 'gpt-4o', usage: new UsageStatistics(1, 1, 2), confidence: 0.9);
+                },
+            );
+
+        $this->subject->analyzeAction($this->createJsonRequest(['imageUrl' => 'https://example.com/cat.jpg']));
+
+        self::assertSame(AltTextPrompt::DEFAULT_INSTRUCTION, $captured->prompt);
+    }
+
+    private function controller(?string $configuredPrompt, ?string $languageName): VisionController
+    {
+        $extensionConfiguration = $this->createStub(ExtensionConfiguration::class);
+        $extensionConfiguration->method('get')->willReturn($configuredPrompt);
+        $languageResolver = $this->createStub(RecordLanguageResolverInterface::class);
+        $languageResolver->method('languageName')->willReturn($languageName);
+
+        return new VisionController(
             $this->visionServiceStub,
             $this->rateLimiterStub,
-            $contextStub,
+            $this->contextStub,
             new NullLogger(),
+            new AltTextPrompt($extensionConfiguration, $languageResolver),
         );
     }
 

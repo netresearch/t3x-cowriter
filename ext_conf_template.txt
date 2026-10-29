@@ -9,3 +9,6 @@ fieldSuggestions.count = 3
 
 # cat=Saved prompts; type=boolean; label=Shared prompts need approval: A prompt an editor shares reaches other editors only after an administrator sets "Approved" on the record (List module, root level). A prompt an administrator shares is approved when saved.
 prompts.sharedNeedApproval = 1
+
+# cat=Alt text; type=string; label=Alt text instruction: The instruction the vision model gets when an editor generates an alt text. Leave empty for the built-in instruction ("Generate a concise, descriptive alt text for this image."). The language of the edited record is added to it on its own ("Answer in German (Germany).").
+altText.prompt =

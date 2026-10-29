@@ -477,6 +477,31 @@ describe('Cowriter Plugin', () => {
                 configurable: true,
             });
         });
+
+        it('should not take the page id of a new-record URL for a record uid', () => {
+            const plugin = new Cowriter();
+
+            // FormEngine opens a new element with edit[tt_content][<pid>]=new.
+            const origSearch = window.location.search;
+            Object.defineProperty(window, 'location', {
+                value: { ...window.location, search: '?edit[tt_content][42]=new' },
+                writable: true,
+                configurable: true,
+            });
+
+            plugin.editor = {
+                sourceElement: null,
+                editing: { view: { getDomRoot: () => null } },
+            };
+
+            expect(plugin._getRecordContext()).toBeNull();
+
+            Object.defineProperty(window, 'location', {
+                value: { ...window.location, search: origSearch },
+                writable: true,
+                configurable: true,
+            });
+        });
     });
 
     describe('init', () => {
@@ -601,7 +626,7 @@ describe('Cowriter Plugin', () => {
                     getSelectedContent: vi.fn(),
                 },
                 _writer: { remove: vi.fn(), insert: vi.fn(), insertText: vi.fn(), setSelection: vi.fn(), setAttribute: vi.fn() },
-                editing: { view: { document: { selection: { getSelectedElement: vi.fn().mockReturnValue(null) } } } },
+                editing: { view: { getDomRoot: vi.fn().mockReturnValue(null), document: { selection: { getSelectedElement: vi.fn().mockReturnValue(null) } } } },
                 data: {
                     processor: { toView: vi.fn().mockReturnValue({ type: 'viewFragment' }) },
                     toModel: vi.fn().mockReturnValue({ type: 'modelFragment' }),
@@ -644,9 +669,29 @@ describe('Cowriter Plugin', () => {
             const button = componentCallbacks['cowriterVision']();
             await button.fire('execute');
 
-            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg');
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg', undefined, null);
             expect(mockEditor.model.change).toHaveBeenCalled();
             expect(mockEditor._writer.setAttribute).toHaveBeenCalledWith('alt', 'A cat', selectedImage);
+        });
+
+        it('should send the edited record so the server can answer in its language', async () => {
+            const textarea = document.createElement('textarea');
+            textarea.name = 'data[tt_content][42][bodytext]';
+            mockEditor.sourceElement = textarea;
+            const selectedImage = {
+                is: vi.fn((_, name) => name === 'imageBlock'),
+                getAttribute: vi.fn().mockReturnValue('https://example.com/img.jpg'),
+            };
+            mockEditor.model.document.selection.getSelectedElement = vi.fn().mockReturnValue(selectedImage);
+
+            const button = componentCallbacks['cowriterVision']();
+            await button.fire('execute');
+
+            expect(mockAnalyzeImage).toHaveBeenCalledWith(
+                'https://example.com/img.jpg',
+                undefined,
+                { table: 'tt_content', uid: 42, field: 'bodytext' },
+            );
         });
 
         it('should do nothing when no image is selected', async () => {
@@ -696,6 +741,7 @@ describe('Cowriter Plugin', () => {
             };
             mockEditor.editing = {
                 view: {
+                    getDomRoot: vi.fn().mockReturnValue(null),
                     document: {
                         selection: {
                             getSelectedElement: vi.fn().mockReturnValue(viewImg),
@@ -707,7 +753,7 @@ describe('Cowriter Plugin', () => {
             const button = componentCallbacks['cowriterVision']();
             await button.fire('execute');
 
-            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/fallback.jpg');
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/fallback.jpg', undefined, null);
         });
 
         it('should detect image from editing view fallback (child img element)', async () => {
@@ -724,6 +770,7 @@ describe('Cowriter Plugin', () => {
             };
             mockEditor.editing = {
                 view: {
+                    getDomRoot: vi.fn().mockReturnValue(null),
                     document: {
                         selection: {
                             getSelectedElement: vi.fn().mockReturnValue(viewWrapper),
@@ -735,7 +782,7 @@ describe('Cowriter Plugin', () => {
             const button = componentCallbacks['cowriterVision']();
             await button.fire('execute');
 
-            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/child.jpg');
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/child.jpg', undefined, null);
         });
 
         it('should use insertText when selected element is not an image', async () => {
@@ -754,6 +801,7 @@ describe('Cowriter Plugin', () => {
             };
             mockEditor.editing = {
                 view: {
+                    getDomRoot: vi.fn().mockReturnValue(null),
                     document: {
                         selection: {
                             getSelectedElement: vi.fn().mockReturnValue(viewImg),
@@ -770,7 +818,7 @@ describe('Cowriter Plugin', () => {
             const button = componentCallbacks['cowriterVision']();
             await button.fire('execute');
 
-            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg');
+            expect(mockAnalyzeImage).toHaveBeenCalledWith('https://example.com/img.jpg', undefined, null);
             // Since selectedElement.is('element', 'imageBlock') returns false, insertText is used
             expect(mockEditor._writer.insertText).toHaveBeenCalledWith('A cat', mockPosition);
         });

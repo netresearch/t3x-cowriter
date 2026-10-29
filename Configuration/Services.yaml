@@ -30,6 +30,9 @@ services:
   Netresearch\T3Cowriter\Service\Style\TargetLengthResolverInterface:
     alias: Netresearch\T3Cowriter\Service\Style\TargetLengthResolver
 
+  Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolverInterface:
+    alias: Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolver
+
   Netresearch\T3Cowriter\Controller\AjaxController:
     public: true
 

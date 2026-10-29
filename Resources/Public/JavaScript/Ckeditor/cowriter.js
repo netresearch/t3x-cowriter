@@ -194,14 +194,15 @@ export class Cowriter extends Plugin {
             if (match) return { table: match[1], uid: parseInt(match[2], 10), field: match[3] };
         }
 
-        // Strategy 4: Parse TYPO3 edit URL (e.g. ?edit[tt_content][123]=edit)
+        // Strategy 4: Parse TYPO3 edit URL (e.g. ?edit[tt_content][123]=edit).
+        // Only "=edit" names a record: for "=new" the number is the target page.
         try {
             const searchStr = window.location.search
                 || window.parent?.location?.search || '';
             const params = new URLSearchParams(searchStr);
-            for (const [key] of params) {
+            for (const [key, value] of params) {
                 const urlMatch = key.match(urlPattern);
-                if (urlMatch) {
+                if (urlMatch && value === 'edit') {
                     return {
                         table: urlMatch[1],
                         uid: parseInt(urlMatch[2], 10),
@@ -369,7 +370,8 @@ export class Cowriter extends Plugin {
                         15,
                     );
 
-                    const result = await this._service.analyzeImage(imageUrl);
+                    // The record context lets the server write the alt text in the record's language.
+                    const result = await this._service.analyzeImage(imageUrl, undefined, this._getRecordContext());
                     if (result?.success && result.altText) {
                         editor.model.change(writer => {
                             // If the selected element is an image, set its alt attribute

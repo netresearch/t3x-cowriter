@@ -15,6 +15,8 @@ use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\T3Cowriter\Controller\VisionController;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Vision\AltTextPrompt;
+use Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolverInterface;
 use Netresearch\T3Cowriter\Tests\Integration\AbstractIntegrationTestCase;
 use Override;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -22,6 +24,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
 
 /**
@@ -64,6 +67,7 @@ final class VisionControllerIntegrationTest extends AbstractIntegrationTestCase
             $this->rateLimiterMock,
             $this->contextMock,
             new NullLogger(),
+            new AltTextPrompt($this->createStub(ExtensionConfiguration::class), $this->createStub(RecordLanguageResolverInterface::class)),
         );
     }
 
