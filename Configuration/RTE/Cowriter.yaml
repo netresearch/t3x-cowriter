@@ -50,6 +50,7 @@ editor:
         - cowriterTranslate
         - cowriterTemplates
         - cowriterImage
+        - cowriterInlineSuggestions
 
     heading:
       options:

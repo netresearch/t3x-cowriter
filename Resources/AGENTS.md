@@ -16,6 +16,7 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 - **AIService.js** - API client for backend communication (chat, complete, stream)
 - **cowriter.js** - CKEditor 5 plugin integration
 - **CowriterDialog.js** - Task dialog UI (incl. status link on errors, the editor's AI usage table, budget refusals as notice)
+- **InlineSuggestions.js** - Inline suggestions while typing: `SuggestionScheduler` (pause, minimum interval, abort, back-off) and the CKEditor plugin (editing-view-only ghost text via a marker, Tab/Escape, live region, toolbar toggle); required by `cowriter.js`
 - **ImageDialog.js** - "Generate image" dialog: description, wait, resolves with the stored file (no preview: every generated image is stored and paid)
 - **HtmlSanitizer.js** - Allow-list sanitiser for every model answer shown as markup or inserted (dialog result, variants, stream, translation)
 - **UrlLoader.js** - CSP-compliant AJAX URL injection from data attributes
@@ -37,6 +38,7 @@ Resources/
 │       │   ├── CowriterDialog.js  # Task dialog UI
 │       │   ├── HtmlSanitizer.js   # Allow-list sanitiser for model output
 │       │   ├── ImageDialog.js     # "Generate image" dialog
+│       │   ├── InlineSuggestions.js # Inline suggestions while typing
 │       │   └── UrlLoader.js       # CSP-compliant URL loader
 │       └── FormEngine/
 │           └── FieldSuggestions.js # "Suggest" field control

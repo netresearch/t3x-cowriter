@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
+#
+# The Vitest suite with the vitest project "ckeditor", which runs the plugin in
+# the CKEditor 5 build TYPO3 ships (EXT:rte_ckeditor) and in the image plugin
+# of rte-ckeditor-image, both from the Composer vendor directory. The shared
+# JavaScript job (testing.yml, typo3-ci-workflows' extended-testing.yml)
+# installs no Composer packages, so that project skips itself there and the
+# code it covers counts as uncovered. This job installs them first, runs the
+# whole suite and uploads its coverage under the same flag; Codecov merges
+# both uploads of a commit.
+#
+# A file of its own, not a change to testing.yml: testing.yml is governed by
+# the typo3-extension template (check-template-drift.yml), extra workflow
+# files are not.
+
+name: JavaScript (real CKEditor)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+jobs:
+  vitest-ckeditor:
+    name: Vitest with TYPO3's CKEditor build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer packages
+        # Only the files under .Build/vendor are used: TYPO3's CKEditor build
+        # and the rte-ckeditor-image plugin. No plugin or script runs.
+        run: composer install --no-progress --no-interaction --no-plugins --no-scripts
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Install npm packages
+        run: npm ci --ignore-scripts=true || npm install --ignore-scripts=true
+
+      - name: Fail when the CKEditor build is missing
+        # Without it the project skips itself and this job would prove nothing.
+        run: test -f .Build/vendor/typo3/cms-rte-ckeditor/Resources/Public/Contrib/@ckeditor/ckeditor5-editor-classic.js
+
+      - name: Run Vitest with coverage
+        run: ./node_modules/.bin/vitest run --coverage
+
+      - name: Upload JS coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: coverage/lcov.info
+          flags: javascript
+          name: js-coverage-ckeditor
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

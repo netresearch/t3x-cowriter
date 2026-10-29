@@ -59,7 +59,7 @@ this extension registers:
 
         RTE.default.preset = cowriter
 
-The preset is inherited by every page below, and brings all four toolbar
+The preset is inherited by every page below, and brings all Cowriter toolbar
 items with it.
 
 ..  figure:: /Images/pagetsconfig.png
@@ -87,8 +87,9 @@ If you have your own RTE configuration file
             - cowriterTranslate
             - cowriterTemplates
             - cowriterImage
+            - cowriterInlineSuggestions
 
-The five toolbar items are:
+The six toolbar items are:
 
 ``cowriter``
     Main dialog — task-based content generation with preview
@@ -109,6 +110,12 @@ The five toolbar items are:
     ``image.enable`` is on, and it works only together with the image
     plugin of ``netresearch/rte-ckeditor-image``.
 
+``cowriterInlineSuggestions``
+    Lets each editor switch inline suggestions off and on again, see
+    :ref:`configuration-inline-suggestions`. The button appears only while
+    ``inlineSuggestions.enable`` is on. The suggestions themselves do not
+    need it: without the button in the toolbar they are on for every editor.
+
 ..  tip::
 
     You can include only the toolbar items you need. For example, if you
@@ -119,7 +126,7 @@ The five toolbar items are:
 
     An explicit ``toolbar.items`` list REPLACES the toolbar, it does not add
     to it. Importing the module and then listing only ``cowriter`` gives you
-    exactly one button — the other four are registered but have nowhere to
+    exactly one button — the others are registered but have nowhere to
     appear. If buttons are missing, check this list before suspecting the
     extension.
 
@@ -397,6 +404,126 @@ The new file reference gets no alternative text of its own. Like a file
 selected from the file list, it shows the alternative text of the file's
 metadata, which the Cowriter does not write; an extension that fills it for
 new files fills it for a generated image as well.
+
+..  _configuration-inline-suggestions:
+
+Inline suggestions
+==================
+
+While an editor writes in the rich text editor, the language model can
+propose how the text goes on. When the editor stops typing at the end of a
+paragraph, the proposal appears as grey text after the cursor; :kbd:`Tab`
+inserts it, any other key, a click or leaving the editor discards it. The
+feature is off until an administrator switches it on in the extension
+configuration (:guilabel:`Admin Tools` > :guilabel:`Settings` >
+:guilabel:`Extension Configuration` > ``t3_cowriter``). A request from the
+editor cannot switch it on or choose the configuration.
+
+..  confval:: inlineSuggestions.enable
+    :name: t3-cowriter-inlineSuggestions-enable
+    :type: boolean
+    :default: ``0``
+
+    Switches inline suggestions on. While it is off, the editor sends no
+    request and shows nothing, the toggle button is removed from every
+    CKEditor toolbar, and the route answers with HTTP 403.
+
+..  confval:: inlineSuggestions.delay
+    :name: t3-cowriter-inlineSuggestions-delay
+    :type: int
+    :default: ``1200``
+
+    How long the editor waits after the last key before it asks, in
+    milliseconds. Values below 800 count as 800, values above 3000 as 3000.
+
+..  confval:: inlineSuggestions.minChars
+    :name: t3-cowriter-inlineSuggestions-minChars
+    :type: int
+    :default: ``30``
+
+    How many characters the paragraph needs before suggestions start, from
+    10 to 500. The route refuses shorter texts as well.
+
+..  confval:: inlineSuggestions.configuration
+    :name: t3-cowriter-inlineSuggestions-configuration
+    :type: string
+    :default: empty
+
+    The identifier of the nr-llm configuration that answers
+    (:guilabel:`Admin Tools` > :guilabel:`LLM` >
+    :guilabel:`Configurations`). Empty uses the default configuration. A
+    suggestion is only useful when it arrives within a second or two, so a
+    fast and inexpensive model suits it best. The editor must be allowed to
+    use the configuration; otherwise the route answers with HTTP 403 and
+    the editor stops asking until the page is reloaded.
+
+When a suggestion is asked for:
+
+*   Only after typing. Pasting, undo, a dialog's result or an accepted
+    suggestion do not trigger one.
+*   Only when the cursor is at the end of a paragraph or heading without a
+    selection, the editor has the focus, is not read-only and not in source
+    mode, and no input method composition (IME) is in progress. Never in a
+    list item or a table cell: there :kbd:`Tab` indents the item or moves to
+    the next cell, and a suggestion would compete with it.
+*   Each new key cancels the wait and aborts a running request; an answer
+    that arrives after the text or the cursor changed is dropped.
+*   Each rich text field sends at most one request every five seconds. The
+    route allows 12 per minute per backend user, across all fields and tabs,
+    counted apart from the other Cowriter actions, so typing cannot use up
+    their limit. After a refusal for the rate limit the field waits as long
+    as the route says (``Retry-After``); after another failure it waits 30
+    seconds. Failures are not shown to the editor.
+
+What is sent and returned:
+
+*   The request carries the text before the cursor as plain text: the
+    current paragraph and the paragraphs before it, at most the last 1000
+    characters. The route refuses more. With a saved record it also carries
+    the record's table and uid; the server looks up the record's site
+    language with the editor's permissions and asks for a continuation in
+    that language. Without one, the model keeps the language of the text.
+*   The model is asked for at most one sentence of plain text (at most 60
+    tokens, temperature 0.3, stopping at a line break). The route strips
+    markup, entities, line breaks, control and direction characters and
+    Markdown markers, keeps the first sentence and at most 200 characters,
+    and puts a space in front when the text does not end in one. Only what
+    looks like a tag is removed, so ``a<b`` stays; a sentence ends at
+    ``.``, ``!``, ``?`` or ``…`` followed by an upper-case word, and not
+    after an abbreviation such as ``z. B.``, ``ca.`` or ``Dr.``.
+*   The suggestion is inserted as text, never as markup.
+
+Costs:
+
+*   Every suggestion is a request to the language model and counts against
+    the editor's :ref:`nr-llm budget <nrllm:administration-user-budgets>`,
+    whether the editor takes it or not. A request that is aborted because
+    the editor typed on has already reached the server and is paid for when
+    the provider answered. A backend user who keeps pausing can cause up to
+    12 requests per minute, however many fields are open; each carries up to
+    1000 characters of text and returns up to 60 tokens.
+*   When the budget refuses a suggestion, the editor stops asking until the
+    page is reloaded. The refusal is not shown while typing; the Cowriter
+    dialog shows the editor's usage and limits.
+
+Accessibility:
+
+*   The grey text is hidden from screen readers. A polite live region next
+    to the editor announces "Suggestion available, press Tab to accept"
+    followed by the suggestion, and is cleared when the suggestion goes.
+*   :kbd:`Tab` is taken over only while a suggestion is shown, and not in
+    the first 800 milliseconds after it appeared: a :kbd:`Tab` that soon was
+    planned before the suggestion could be seen or heard, so it keeps its
+    normal behaviour (moving the focus out of the editor) and discards the
+    suggestion. A screen reader may announce the suggestion later than
+    that; to leave the field while a suggestion is shown, press
+    :kbd:`Escape`, then :kbd:`Tab`. :kbd:`Shift+Tab` is never taken over.
+*   The toggle button (:guilabel:`Cowriter - Inline suggestions`) is a
+    toggle with ``aria-pressed``. The choice applies at once to every rich
+    text field of the page and, through the browser's storage event, to the
+    backend in other tabs. It is kept in the browser's local storage per
+    backend user; where the browser does not allow local storage,
+    suggestions are on again after reloading.
 
 Task configuration
 ==================

@@ -24,3 +24,15 @@ image.enable = 0
 
 # cat=Image generation; type=string; label=Image model: The OpenAI image model, e.g. gpt-image-2 or gpt-image-2.5-flare. Leave empty to use the active image model nr-llm marks as default (Admin Tools > LLM > Models), or gpt-image-2 when there is none. nr-llm 0.41 has no price for the gpt-image-2.5 models: unless their nr-llm model record carries a price, their images count with cost 0 against a cost limit of the nr-llm budget.
 image.model =
+
+# cat=Inline suggestions; type=boolean; label=Suggest a continuation while typing in the rich text editor: When an editor stops typing at the end of a paragraph, the language model proposes how the sentence goes on; it appears as grey text after the cursor, Tab inserts it, any other key discards it. Each editor can switch it off with the toolbar button "Cowriter - Inline suggestions". Every suggestion is a request to the language model and counts against the editor's nr-llm budget, also when the editor does not take it; at most one every five seconds per rich text field and 12 per minute per backend user.
+inlineSuggestions.enable = 0
+
+# cat=Inline suggestions; type=int+; label=Pause before a suggestion (milliseconds): How long the editor waits after the last key before it asks for a suggestion, from 800 to 3000.
+inlineSuggestions.delay = 1200
+
+# cat=Inline suggestions; type=int+; label=Minimum text (characters): How many characters the paragraph needs before suggestions start, from 10 to 500.
+inlineSuggestions.minChars = 30
+
+# cat=Inline suggestions; type=string; label=LLM configuration: The identifier of the nr-llm configuration that answers (Admin Tools > LLM > Configurations). A fast, inexpensive model suits inline suggestions best. Leave empty to use the default configuration.
+inlineSuggestions.configuration =

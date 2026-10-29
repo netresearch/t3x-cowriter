@@ -21,6 +21,13 @@ services:
   Netresearch\T3Cowriter\Service\RateLimiterInterface:
     alias: Netresearch\T3Cowriter\Service\RateLimiterService
 
+  # Inline suggestions have a window and a limit of their own: debounced
+  # typing must not use up the limit of the other Cowriter actions.
+  cowriter.rateLimiter.inlineSuggestions:
+    class: Netresearch\T3Cowriter\Service\RateLimiterService
+    arguments:
+      $requestsPerMinute: 12
+
   Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface:
     alias: Netresearch\T3Cowriter\Service\ContextAssemblyService
 
@@ -62,6 +69,11 @@ services:
 
   Netresearch\T3Cowriter\Controller\ImageGenerationController:
     public: true
+
+  Netresearch\T3Cowriter\Controller\InlineSuggestionController:
+    public: true
+    arguments:
+      $rateLimiter: '@cowriter.rateLimiter.inlineSuggestions'
 
   Netresearch\T3Cowriter\Controller\Backend\StatusController:
     public: true
