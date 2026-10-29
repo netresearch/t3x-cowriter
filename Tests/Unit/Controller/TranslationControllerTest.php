@@ -65,6 +65,7 @@ use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Http\Uri;
 
 #[CoversClass(TranslationController::class)]
+#[CoversClass(TranslationPolishConfiguration::class)]
 final class TranslationControllerTest extends TestCase
 {
     use XliffLanguageServiceTrait;
