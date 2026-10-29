@@ -11,6 +11,7 @@ namespace Netresearch\T3Cowriter\Service\FieldSuggestion;
 
 use Netresearch\T3Cowriter\Domain\DTO\FieldSuggestionRequest;
 use Netresearch\T3Cowriter\EventListener\RegisterFieldSuggestionControlsListener;
+use Netresearch\T3Cowriter\Service\RecordEditAccess;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Type\Bitmask\Permission;
 
@@ -31,6 +32,7 @@ class RecordContextReader
 
     public function __construct(
         private readonly RecordFinder $recordFinder,
+        private readonly RecordEditAccess $recordEditAccess = new RecordEditAccess(),
     ) {}
 
     /**
@@ -135,7 +137,7 @@ class RecordContextReader
         }
 
         // Language, editlock and explicit allow/deny of the record itself.
-        if (!$this->mayEditRecord($backendUser, $table, $record)) {
+        if (!$this->recordEditAccess->mayEdit($backendUser, $table, $record)) {
             throw FieldSuggestionException::accessDenied();
         }
 
@@ -270,25 +272,6 @@ class RecordContextReader
         $languageField = Tca::languageField($table);
 
         return $languageField === null ? 0 : max(0, $this->intValue($record[$languageField] ?? 0));
-    }
-
-    /**
-     * TYPO3 v14 replaced recordEditAccessInternals() by checkRecordEditAccess();
-     * v13.4 only has the former.
-     *
-     * @param array<string, mixed> $record
-     */
-    private function mayEditRecord(BackendUserAuthentication $backendUser, string $table, array $record): bool
-    {
-        // @phpstan-ignore function.alreadyNarrowedType (always true when analysed against v14)
-        if (method_exists($backendUser, 'checkRecordEditAccess')) {
-            // The method, and the AccessCheckResult it returns, are absent when analysed against v13.4.
-            // @phpstan-ignore method.notFound, property.nonObject, return.type
-            return $backendUser->checkRecordEditAccess($table, $record)->isAllowed;
-        }
-
-        // @phpstan-ignore method.deprecated (TYPO3 v13.4 path)
-        return $backendUser->recordEditAccessInternals($table, $record);
     }
 
     private function plainText(mixed $value): string
