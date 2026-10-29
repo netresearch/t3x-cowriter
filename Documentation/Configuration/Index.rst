@@ -238,8 +238,9 @@ Costs and fallback:
 *   A revised translation uses two requests, the translator's and the
     language model's. Both count against the editor's
     :ref:`nr-llm budget <nrllm:administration-user-budgets>`.
-*   nr-llm caches the revised text with the translation. A repeated
-    translation of the same text from the cache sends no second request.
+*   The Cowriter does not use nr-llm's translation cache. Every translation
+    with the revision sends both requests, also when the same text was
+    translated before.
 *   The revision never fails a translation. When the language model fails,
     the budget refuses the second request, or the answer changes markup,
     placeholders or glossary terms, the editor gets the translator's text

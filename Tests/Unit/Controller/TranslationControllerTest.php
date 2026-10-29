@@ -828,6 +828,7 @@ final class TranslationControllerTest extends TestCase
         self::assertTrue($data['polished']);
         self::assertArrayNotHasKey('polishReason', $data);
         self::assertSame('Deepl', $data['translator']);
+        self::assertStringNotContainsString('gpt-test', json_encode($data, JSON_THROW_ON_ERROR), 'the revising model is not passed to the browser');
     }
 
     #[Test]
@@ -870,6 +871,60 @@ final class TranslationControllerTest extends TestCase
 
         self::assertFalse($data['polished']);
         self::assertSame('budget_refused', $data['polishReason']);
+    }
+
+    /**
+     * A result that names no revision outcome at all (no `metadata['polish']`)
+     * still answers with a reason.
+     */
+    #[Test]
+    public function aMissingRevisionOutcomeIsReportedAsUnknown(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        [$translationService] = $this->deeplServiceCapturingOptions(new TranslatorResult('Hallo Welt', 'en', 'de', 'deepl'));
+        $controller           = $this->createControllerWith($translationService, polishConfiguration: $this->polishConfiguration(['translation/polish' => '1']));
+
+        $data = $this->assertSuccessfulTranslationResponse(
+            $controller->translateAction($this->createJsonRequest(['text' => 'Hello world', 'targetLanguage' => 'de'])),
+            'Hallo Welt',
+        );
+
+        self::assertFalse($data['polished']);
+        self::assertSame('unknown', $data['polishReason']);
+    }
+
+    /**
+     * A budget refusal of the translator's own request is thrown, also with
+     * the revision on (only a refused revision comes back as a result), and
+     * stays the 429 naming the limit.
+     */
+    #[Test]
+    public function aRefusedDeepLTranslationWithTheRevisionOnIsA429NamingTheLimit(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+
+        $deeplTranslator = $this->createStub(TranslatorInterface::class);
+        $deeplTranslator->method('getIdentifier')->willReturn('deepl');
+
+        $translationServiceMock = $this->createMock(TranslationServiceInterface::class);
+        $translationServiceMock->method('findBestTranslator')->willReturn($deeplTranslator);
+        $translationServiceMock->expects(self::once())
+            ->method('translateWithTranslator')
+            ->willThrowException(new BudgetExceededException(
+                BudgetCheckResult::denied(BudgetCheckResult::LIMIT_MONTHLY_REQUESTS, 300.0, 300.0),
+            ));
+
+        $response = $this->createControllerWith($translationServiceMock, polishConfiguration: $this->polishConfiguration(['translation/polish' => '1']))
+            ->translateAction($this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']));
+
+        self::assertSame(429, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertSame('The request was refused. This limit is used up: your monthly number of requests.', $data['error']);
+        self::assertTrue($data['budgetExceeded']);
+        self::assertArrayNotHasKey('polished', $data);
     }
 
     /**
