@@ -16,6 +16,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 
@@ -113,6 +114,23 @@ final class AltTextPromptTest extends TestCase
         $languageResolver->method('languageName')->willReturn(null);
 
         $prompt = new AltTextPrompt($this->extensionConfiguration(null), $languageResolver);
+
+        self::assertSame(
+            AltTextPrompt::DEFAULT_INSTRUCTION,
+            $prompt->forRequest(new VisionRequest('https://example.com/a.png', '', ['table' => 'tt_content', 'uid' => 11])),
+        );
+    }
+
+    #[Test]
+    public function aFailingLanguageLookupCostsTheHintNotTheRequest(): void
+    {
+        $languageResolver = $this->createStub(RecordLanguageResolverInterface::class);
+        $languageResolver->method('languageName')->willThrowException(new RuntimeException('database gone'));
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects(self::once())->method('warning')
+            ->with(self::anything(), self::callback(static fn (array $context): bool => $context['exception'] === 'database gone'));
+
+        $prompt = new AltTextPrompt($this->extensionConfiguration(null), $languageResolver, $logger);
 
         self::assertSame(
             AltTextPrompt::DEFAULT_INSTRUCTION,

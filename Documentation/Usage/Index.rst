@@ -229,8 +229,10 @@ LLM vision analysis.
     A warning notification appears if no image is selected.
 
 The alt text is written in the language of the record you edit: a content
-element in the German language of the site gets a German alt text. What
-the alt text should contain is set by the administrator
+element in the German language of the site gets a German alt text. This
+needs a saved record; in a new record that has not been saved yet, the
+language is not known and the model chooses it. What the alt text should
+contain is set by the administrator
 (:ref:`configuration <configuration-alt-text>`).
 
 ..  tip::

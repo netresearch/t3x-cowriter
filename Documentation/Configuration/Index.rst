@@ -316,9 +316,9 @@ The Cowriter adds the language of the edited record to the instruction, for
 example ``Answer in German (Germany).``. The language comes from the
 record's language field and the locale of that language in the site
 configuration, and is resolved on the server. There is no language hint
-when the record has no language field, belongs to no site, is set to "all
-languages", or when the editor may not read the record, its page or its
-language.
+when the record has not been saved yet, has no language field, belongs to
+no site, is set to "all languages", or when the editor may not read the
+record, its page or its language.
 
 A request to the AJAX route may still send its own instruction in the
 ``prompt`` field; it replaces the configured one, as it did before the

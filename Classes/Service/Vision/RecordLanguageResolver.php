@@ -13,6 +13,7 @@ use InvalidArgumentException;
 use Locale as IntlLocale;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\RecordFinder;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
+use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Localization\Locale;
@@ -74,9 +75,14 @@ final readonly class RecordLanguageResolver implements RecordLanguageResolverInt
             return null;
         }
 
+        // The root line as the user's workspace shows it. The root line
+        // SiteFinder builds on its own misses a page that is new in the
+        // workspace.
+        $pageId = $this->intValue($page['uid'] ?? 0);
+
         try {
             $siteLanguage = $this->siteFinder
-                ->getSiteByPageId($this->intValue($page['uid'] ?? 0))
+                ->getSiteByPageId($pageId, BackendUtility::BEgetRootLine($pageId, '', true))
                 ->getLanguageById($languageId);
         } catch (SiteNotFoundException|InvalidArgumentException) {
             // The page belongs to no site, or the site has no such language;

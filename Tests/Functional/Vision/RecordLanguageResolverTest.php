@@ -27,7 +27,7 @@ use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
 #[CoversClass(RecordLanguageResolver::class)]
 final class RecordLanguageResolverTest extends FunctionalTestCase
 {
-    protected array $coreExtensionsToLoad = ['rte_ckeditor'];
+    protected array $coreExtensionsToLoad = ['rte_ckeditor', 'workspaces'];
 
     protected array $testExtensionsToLoad = [
         'netresearch/nr-vault',
@@ -122,6 +122,25 @@ final class RecordLanguageResolverTest extends FunctionalTestCase
         self::assertNull($resolver->languageName('tt_content', 13), 'all languages');
         self::assertNull($resolver->languageName('tt_content', 14), 'language the site does not have');
         self::assertNull($resolver->languageName('tt_content', 15), 'page outside every site');
+    }
+
+    #[Test]
+    public function aRecordNewInTheUsersWorkspaceGetsItsLanguage(): void
+    {
+        // Element 17 and its page 6 exist only in workspace 1.
+        $backendUser            = $this->setUpBackendUser(5);
+        $backendUser->workspace = 1;
+
+        self::assertSame('German (Germany)', $this->resolver()->languageName('tt_content', 17));
+    }
+
+    #[Test]
+    public function aRecordOfAnotherWorkspaceGetsNoLanguageInLive(): void
+    {
+        $backendUser            = $this->setUpBackendUser(4);
+        $backendUser->workspace = 0;
+
+        self::assertNull($this->resolver()->languageName('tt_content', 17));
     }
 
     #[Test]
