@@ -339,11 +339,15 @@ Requirements and behaviour:
     wait on Linux, because it measures only the script's own execution and
     not stream operations such as the request to OpenAI (`PHP manual,
     set_time_limit() <https://www.php.net/manual/en/function.set-time-limit.php>`__;
-    on Windows the real time counts). A request cut off after the image was
-    generated leaves the file in the upload folder without inserting it;
-    the editor gets a message that says so.
+    on Windows the real time counts). A request that is cut off inserts
+    nothing. Whether the image was stored depends on when it was cut off:
+    after the image was generated and stored, the file is in the upload
+    folder; before that, there is none. The editor's message says that the
+    image may already be in the upload folder.
 *   The editor may close the dialog while the image is generated. The
-    request goes on, and the image is inserted when it is ready.
+    request goes on, and the image is inserted where the cursor was when
+    the editor clicked the button, also when the text was edited in the
+    meantime.
 *   The description becomes the image's alternative text and the editor is
     told to check it. Extensions that react to new files, such as one that
     writes alternative texts on upload, also run for a generated image.

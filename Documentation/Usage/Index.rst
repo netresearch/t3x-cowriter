@@ -265,8 +265,9 @@ is disabled in an editor without the image plugin of rte-ckeditor-image.
 
 The description becomes the image's alternative text. It says what you
 asked for, not what the model drew: check it and correct it where needed.
-You can close the dialog while the image is generated: the image is still
-inserted when it is ready. If the request is cut off, for example by a
+You can close the dialog while the image is generated and go on editing:
+the image is still inserted when it is ready, where the cursor was when you
+clicked the button. If the request is cut off, for example by a
 timeout, a message says so; the image may then already be in your upload
 folder.
 
