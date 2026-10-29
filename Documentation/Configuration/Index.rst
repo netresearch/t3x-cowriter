@@ -199,6 +199,59 @@ With this configuration the dropdown offers "English" (``en-US``) and
     have a field in the module. The extension adds a field for
     ``cowriterFormality``, so the setting survives an edit there.
 
+..  _configuration-translation-polish:
+
+Revising DeepL translations
+---------------------------
+
+A translation without a pinned LLM configuration goes to a specialized
+translator such as DeepL when nr-llm has one for the language pair. A
+language model can then revise that translation for fluency, terminology and
+tone (nr-llm's "polish", ADR-233). Both settings are in the extension
+configuration (:guilabel:`Admin Tools` > :guilabel:`Settings` >
+:guilabel:`Extension Configuration` > ``t3_cowriter``); a request from the
+editor cannot switch the revision on or change its instruction.
+
+..  confval:: translation.polish
+    :name: t3-cowriter-translation-polish
+    :type: boolean
+    :default: ``0``
+
+    Switches the revision on. It applies only when the specialized
+    translator translated the text. A translation that a language model
+    writes anyway (no specialized translator for the pair, or a pinned
+    configuration) is not revised a second time.
+
+..  confval:: translation.polishInstruction
+    :name: t3-cowriter-translation-polishInstruction
+    :type: string
+    :default: empty
+
+    An additional instruction for the revising model, for example
+    ``Address the reader directly.``. It is added to nr-llm's built-in
+    revision instruction, which keeps meaning, formality, markup,
+    placeholders and glossary terms. An empty value uses the built-in
+    instruction alone.
+
+Costs and fallback:
+
+*   A revised translation uses two requests, the translator's and the
+    language model's. Both count against the editor's
+    :ref:`nr-llm budget <nrllm:administration-user-budgets>`.
+*   The Cowriter does not use nr-llm's translation cache. Every translation
+    with the revision sends both requests, also when the same text was
+    translated before.
+*   The revision never fails a translation. When the language model fails,
+    the budget refuses the second request, or the answer changes markup,
+    placeholders or glossary terms, the editor gets the translator's text
+    unchanged.
+
+The response of the translate route carries ``polished`` (``true`` or
+``false``) when the setting is on and the specialized translator
+translated, and ``polishReason`` with nr-llm's reason when the revision was
+not applied (for example ``budget_refused`` or ``markup_changed``). Without
+the setting the response is unchanged.
+
 Task configuration
 ==================
 

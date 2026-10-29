@@ -12,3 +12,9 @@ prompts.sharedNeedApproval = 1
 
 # cat=Alt text; type=string; label=Alt text instruction: The instruction the vision model gets when an editor generates an alt text. Leave empty for the built-in instruction ("Generate a concise, descriptive alt text for this image."). The language of the edited record is added to it on its own ("Answer in German (Germany).").
 altText.prompt =
+
+# cat=Translation; type=boolean; label=Revise DeepL translations with a language model: After a specialized translator such as DeepL translated the selected text, a language model revises the result for fluency, terminology and tone. Each revised translation uses two requests, the translator's and the model's. When the revision fails, is refused by the AI budget or changes markup, placeholders or glossary terms, the translator's text is inserted unchanged. Has no effect when the text is translated by a language model anyway.
+translation.polish = 0
+
+# cat=Translation; type=string; label=Revision instruction: An additional instruction for the revising language model, e.g. "Address the reader directly." Leave empty for nr-llm's built-in instruction alone.
+translation.polishInstruction =

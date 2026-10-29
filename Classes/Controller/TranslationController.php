@@ -16,6 +16,7 @@ use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Service\Option\TranslationOptions;
 use Netresearch\NrLlm\Specialized\Translation\LlmTranslator;
 use Netresearch\NrLlm\Specialized\Translation\TranslatorInterface;
+use Netresearch\NrLlm\Specialized\Translation\TranslatorResult;
 use Netresearch\T3Cowriter\Domain\DTO\TranslationRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\BudgetRefusal;
@@ -27,6 +28,7 @@ use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Translation\TranslationPolishConfiguration;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -51,6 +53,7 @@ final readonly class TranslationController
         private LoggerInterface $logger,
         private BackendUriBuilder $backendUriBuilder,
         private DiagnosticService $diagnosticService,
+        private TranslationPolishConfiguration $polishConfiguration,
         // Stateless; defaulted so manual constructors need no extra argument while
         // the Symfony container still autowires the shared service.
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
@@ -158,11 +161,23 @@ final readonly class TranslationController
             $bestTranslator = $this->translationService->findBestTranslator('auto', $translationRequest->targetLanguage);
 
             if ($bestTranslator instanceof TranslatorInterface && $bestTranslator->getIdentifier() !== LlmTranslator::IDENTIFIER) {
+                $translatorOptions = $options->withTranslator($bestTranslator->getIdentifier());
+
+                // A language model revises the specialized translator's text
+                // when the administrator switched it on (nr-llm ADR-233). Only
+                // here: the other two paths already translate with a language
+                // model. The setting and the instruction come from the
+                // extension configuration, never from the request.
+                $polishRequested = $this->polishConfiguration->isEnabled();
+                if ($polishRequested) {
+                    $translatorOptions = $translatorOptions->withPolish(true, $this->polishConfiguration->instruction());
+                }
+
                 $specializedResult = $this->translationService->translateWithTranslator(
                     $translationRequest->text,
                     $translationRequest->targetLanguage,
                     null,
-                    $options->withTranslator($bestTranslator->getIdentifier()),
+                    $translatorOptions,
                 );
 
                 return $this->translationResponse(
@@ -171,6 +186,7 @@ final readonly class TranslationController
                     $specializedResult->confidence,
                     $rateLimitResult,
                     translatorName: $specializedResult->getTranslatorName(),
+                    polish: $polishRequested ? $this->polishOutcome($specializedResult) : null,
                 );
             }
 
@@ -227,6 +243,12 @@ final readonly class TranslationController
      * so those two extras are optional and mutually exclusive in practice
      * (the specialized path never has usage, the LLM path never has a
      * translator name).
+     *
+     * `polished` (and `polishReason` when the revision was not applied) is
+     * present only when a revision was asked for, so a response without the
+     * setting looks as before.
+     *
+     * @param array{polished: bool, polishReason?: string}|null $polish
      */
     private function translationResponse(
         string $translation,
@@ -235,6 +257,7 @@ final readonly class TranslationController
         RateLimitResult $rateLimitResult,
         ?UsageStatistics $usage = null,
         ?string $translatorName = null,
+        ?array $polish = null,
     ): ResponseInterface {
         $payload = [
             'success'        => true,
@@ -255,7 +278,31 @@ final readonly class TranslationController
             $payload['translator'] = $translatorName;
         }
 
+        if ($polish !== null) {
+            $payload += $polish;
+        }
+
         return $this->jsonResponseWithRateLimitHeaders($payload, $rateLimitResult);
+    }
+
+    /**
+     * Whether the language model revised the translation, and nr-llm's reason
+     * when it did not (`budget_refused`, `markup_changed`, `failed`, …; the
+     * list is nr-llm's and passed on unchanged). The text is then the
+     * specialized translator's own.
+     *
+     * @return array{polished: bool, polishReason?: string}
+     */
+    private function polishOutcome(TranslatorResult $result): array
+    {
+        if ($result->isPolished()) {
+            return ['polished' => true];
+        }
+
+        $polish = $result->metadata['polish'] ?? null;
+        $reason = is_array($polish) && is_string($polish['reason'] ?? null) ? $polish['reason'] : 'unknown';
+
+        return ['polished' => false, 'polishReason' => $reason];
     }
 
     /**

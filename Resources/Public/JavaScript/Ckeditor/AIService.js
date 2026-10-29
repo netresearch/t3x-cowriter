@@ -677,7 +677,7 @@ export class AIService {
      * @param {string} text - Text to translate
      * @param {string} targetLanguage - ISO 639-1 language code
      * @param {{formality?: string, domain?: string}} [options={}] - Translation options
-     * @returns {Promise<{success: boolean, translation: string, sourceLanguage: string, confidence: number}>}
+     * @returns {Promise<{success: boolean, translation: string, sourceLanguage: string, confidence: number, translator?: string, polished?: boolean, polishReason?: string}>}
      */
     async translate(text, targetLanguage, options = {}) {
         if (!this._routes.translate) {

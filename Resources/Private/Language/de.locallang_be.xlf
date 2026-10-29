@@ -413,6 +413,10 @@
                 <source>Translated to %s</source>
                 <target>Übersetzt, Zielsprache: %s</target>
             </trans-unit>
+            <trans-unit id="ckeditor.translate.done.polishedMessage" resname="ckeditor.translate.done.polishedMessage">
+                <source>Translated to %s and revised by AI</source>
+                <target>Übersetzt und von KI überarbeitet, Zielsprache: %s</target>
+            </trans-unit>
             <trans-unit id="ckeditor.translate.failed" resname="ckeditor.translate.failed">
                 <source>Translation failed</source>
                 <target>Übersetzung fehlgeschlagen</target>

@@ -23,6 +23,7 @@ use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Translation\TranslationPolishConfiguration;
 use Netresearch\T3Cowriter\Service\Vision\AltTextPrompt;
 use Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolverInterface;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
@@ -132,6 +133,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $backendUriBuilder,
             $diagnosticService,
+            new TranslationPolishConfiguration($this->createStub(ExtensionConfiguration::class)),
         );
 
         return [
@@ -401,6 +403,7 @@ final class NewFeatureWorkflowTest extends AbstractE2ETestCase
             $this->logger,
             $backendUriBuilder2,
             $diagnosticService2,
+            new TranslationPolishConfiguration($this->createStub(ExtensionConfiguration::class)),
         );
 
         // Act

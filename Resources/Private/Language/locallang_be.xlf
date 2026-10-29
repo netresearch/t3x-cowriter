@@ -311,6 +311,9 @@
             <trans-unit id="ckeditor.translate.done.message" resname="ckeditor.translate.done.message">
                 <source>Translated to %s</source>
             </trans-unit>
+            <trans-unit id="ckeditor.translate.done.polishedMessage" resname="ckeditor.translate.done.polishedMessage">
+                <source>Translated to %s and revised by AI</source>
+            </trans-unit>
             <trans-unit id="ckeditor.translate.failed" resname="ckeditor.translate.failed">
                 <source>Translation failed</source>
             </trans-unit>

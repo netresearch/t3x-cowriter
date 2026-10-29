@@ -193,12 +193,20 @@ Records outside every site get a fixed list: German, English, French,
 Spanish, Italian, Dutch, Portuguese, Polish, Japanese and Chinese. See
 :ref:`configuration-translation-languages`.
 
-The translation uses the default
-:ref:`LLM configuration <nrllm:configuration-llm>` from the
-nr-llm extension. Administrators can optionally pass a
-``configuration`` parameter via the API to route translations
-through a specific LLM provider (e.g. DeepL or a dedicated
-translation model).
+DeepL translates when it is set up in nr-llm (an API key is configured
+and stored) and supports the target language. Otherwise the language
+model of the default
+:ref:`LLM configuration <nrllm:configuration-llm>` from the nr-llm
+extension translates. A request to the API may pass a ``configuration``
+parameter; the translation then always uses that configuration's
+language model, also when DeepL could translate the language.
+
+When the administrator switched on the revision of DeepL translations
+(:ref:`configuration-translation-polish`), a language model revises the
+translation before it replaces the selection. This takes a second request
+and a little longer. The success notification then reads "Translated to
+… and revised by AI". When the revision cannot be applied, the DeepL
+translation is inserted as it came and the notification has no hint.
 
 ..  note::
 

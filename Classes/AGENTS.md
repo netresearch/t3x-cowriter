@@ -58,6 +58,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Service/RateLimitResult.php | Rate limit check result DTO |
 | Service/BudgetRefusal.php | 429 answer with a localised message naming the nr-llm budget limit that is used up |
 | Service/Vision/ | Alt-text prompt: instruction from `altText.prompt` (`AltTextPrompt`) plus the record's site language, read with the user's permissions (`RecordLanguageResolver`) |
+| Service/Translation/ | Settings `translation.polish` and `translation.polishInstruction` (`TranslationPolishConfiguration`): a language model revises a DeepL translation (nr-llm ADR-233); admin-only, never from the request |
 
 ## PHP 8.2+ Patterns (REQUIRED)
 

@@ -36,7 +36,7 @@ jobs:
       run-functional-tests: true
       # Every other cell resolves the newest nr-llm the constraint admits;
       # this extra cell keeps the lowest supported release under test.
-      pin-packages: 'netresearch/nr-llm:0.41.11'
+      pin-packages: 'netresearch/nr-llm:0.41.14'
       upload-coverage: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
