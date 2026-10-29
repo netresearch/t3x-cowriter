@@ -33,10 +33,12 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Controller/FieldSuggestionController.php | Field suggestions for FormEngine fields |
 | Controller/BudgetStatusController.php | The session user's own nr-llm budget usage for the dialog |
 | Controller/ImageGenerationController.php | "Image by prompt": nr-llm `DallEImageService`, stored via `Service/Image/` |
+| Controller/InlineSuggestionController.php | Inline suggestions while typing: nr-llm `CompletionServiceInterface::completeForConfiguration()`, own rate-limit window (`cowriter.rateLimiter.inlineSuggestions`) |
 | Domain/DTO/CompleteRequest.php | Request DTO with validation |
 | Domain/DTO/CompleteResponse.php | Response DTO; content returned unescaped (see Security) |
 | Domain/DTO/ContextRequest.php | Context preview request DTO |
 | Domain/DTO/ExecuteTaskRequest.php | Task execution request DTO |
+| Domain/DTO/InlineSuggestionRequest.php | Inline suggestion request: text before the cursor (max. 1000 characters), record context |
 | Domain/DTO/PageSearchResult.php | Page search result DTO (tx_cowriter_page_search) |
 | Domain/DTO/ToolRequest.php | Tool/function calling request DTO |
 | Domain/DTO/TranslationRequest.php | Translation request DTO |
@@ -44,6 +46,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Domain/DTO/VisionRequest.php | Vision/alt-text request DTO |
 | EventListener/InjectAjaxUrlsListener.php | AJAX URL injection for frontend |
 | EventListener/RegisterFieldSuggestionControlsListener.php | Adds the suggestion field control to configured TCA fields |
+| EventListener/InlineSuggestionEditorListener.php | Inline suggestion settings for the plugin (`cowriter.inlineSuggestions`); removes the toggle while `inlineSuggestions.enable` is off |
 | EventListener/InjectTranslationLanguagesListener.php | Site languages and their formality for the RTE translate menu (`SiteTranslationLanguages`) |
 | Form/FieldControl/FieldSuggestionsControl.php | FormEngine node rendering the "Suggest" button |
 | Service/FieldSuggestion/ | Field suggestions: permission-checked record context (`RecordContextReader`, `RecordFinder`), prompt + schema (`FieldSuggestionService`), limits (`SuggestionNormalizer`, `FieldProfile`), slugs (`SlugSuggestionBuilder`) |
@@ -60,6 +63,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Service/BudgetRefusal.php | 429 answer with a localised message naming the nr-llm budget limit that is used up |
 | Service/Vision/ | Alt-text prompt: instruction from `altText.prompt` (`AltTextPrompt`) plus the record's site language, read with the user's permissions (`RecordLanguageResolver`) |
 | Service/Image/ | Settings `image.enable`, `image.model` (`ImageGenerationConfiguration`); `GeneratedImageStorage` checks the returned bytes (finfo PNG/JPEG/WebP, 10 MB) and adds them to the editor's default upload folder via FAL with permission checks on |
+| Service/InlineSuggestion/ | Settings `inlineSuggestions.enable`, `.delay`, `.minChars`, `.configuration` (`InlineSuggestionConfiguration`, clamped); instruction and answer clean-up to one line of plain text (`SuggestionText`) |
 | Service/Translation/ | Settings `translation.polish` and `translation.polishInstruction` (`TranslationPolishConfiguration`): a language model revises a DeepL translation (nr-llm ADR-233); admin-only, never from the request |
 
 ## PHP 8.2+ Patterns (REQUIRED)

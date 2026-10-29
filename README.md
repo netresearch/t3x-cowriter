@@ -38,14 +38,15 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 - **Vision / Alt Text**: Analyze images and generate descriptive alt text via the CKEditor toolbar
 - **Translation**: Translate selected text into 10+ languages directly from the toolbar dropdown
 - **Image generation** (off by default): Describe an image, an OpenAI image model generates it via nr-llm, and it is stored in the editor's upload folder and inserted. Switch it on with the extension setting `image.enable`; `image.model` chooses the model. Requires the image plugin of [netresearch/rte-ckeditor-image](https://github.com/netresearch/t3x-rte_ckeditor_image) in the editor configuration. File fields such as the images of a content element get a "Generate image" button too, which adds the stored file to the field as a new file reference
+- **Inline suggestions** (off by default): While an editor types at the end of a paragraph, the language model proposes how the sentence goes on; the proposal appears as grey text after the cursor, Tab inserts it, any other key discards it. Switch it on with the extension setting `inlineSuggestions.enable`; each editor can switch it off with a toolbar button. Every suggestion counts against the editor's nr-llm budget
 - **Prompt Templates**: Load reusable prompt presets from the backend for consistent content generation
 - **Tool Calling**: Structured function calling that lets the LLM query TYPO3 content during conversations
-- **CKEditor Integration**: Five toolbar components — main dialog, vision, translation, templates, and image generation
+- **CKEditor Integration**: Six toolbar components — main dialog, vision, translation, templates, image generation, and the inline suggestions toggle
 - **Multi-Provider Support**: Works with all LLM providers supported by nr-llm (OpenAI, Claude, Gemini, etc.)
 - **Secure Backend Proxy**: API keys never exposed to frontend — all requests proxied through TYPO3 backend
 - **Context control**: Choose between selected text or full content element as context
 - **Ad-hoc instructions**: Add custom instructions per request (e.g., "Write in formal tone")
-- **Rate limiting**: 20 requests/minute per backend user
+- **Rate limiting**: 20 requests/minute per backend user; inline suggestions have their own limit of 12 requests/minute
 - **Streaming**: Server-Sent Events for real-time completions
 - **Content sanitization**: Frontend DOMParser-based sanitization with CKEditor's HTML processing pipeline
 
@@ -100,6 +101,7 @@ editor:
         - cowriterTranslate
         - cowriterTemplates
         - cowriterImage
+        - cowriterInlineSuggestions
 ```
 
 ## Usage
@@ -137,6 +139,7 @@ CKEditor Toolbar
   ├─ cowriterTranslate→ AIService.js     ──────────────→ TranslationController
   ├─ cowriterTemplates→ AIService.js     ──────────────→ TemplateController
   ├─ cowriterImage    → [ImageDialog]    → AIService.js → ImageGenerationController → DallEImageService (nr-llm), FAL
+  ├─ (typing pause)   → [InlineSuggestions] → AIService.js → InlineSuggestionController → CompletionService (nr-llm)
   └─ (tool calling)   → AIService.js     ──────────────→ ToolController
                                                               ↓
                                                    [LlmServiceManagerInterface]

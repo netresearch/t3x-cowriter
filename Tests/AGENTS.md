@@ -132,8 +132,8 @@ Tests/
 │   ├── AbstractE2ETestCase.php, CowriterWorkflowTest.php, NewFeatureWorkflowTest.php  # PHP E2E
 │   ├── *.spec.ts       # Playwright specs (toolbar, dialog, tasks, translate, vision, context zoom)
 │   └── fixtures/       # Playwright auth fixture
-├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, ImageDialog, HtmlSanitizer, UrlLoader, FieldSuggestions (+ __mocks__/)
-│   └── Integration/    # Vitest project "ckeditor": TYPO3's real CKEditor build + rte-ckeditor-image from .Build/vendor (skipped without composer install)
+├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, ImageDialog, HtmlSanitizer, UrlLoader, FieldSuggestions, InlineSuggestions (+ __mocks__/)
+│   └── Integration/    # Vitest project "ckeditor": TYPO3's real CKEditor build + rte-ckeditor-image from .Build/vendor (skipped without composer install); generated image round trip, inline suggestions (ghost text never in getData(), Tab, undo)
 └── Support/            # TestQueryResult.php, TaskStubTrait.php, XliffFile.php (reads the language files)
 ```
 
