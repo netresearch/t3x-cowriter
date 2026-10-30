@@ -1,0 +1,13 @@
+"sys_file_storage"
+,"uid","pid","name","driver","configuration","is_browsable","is_public","is_writable","is_online","is_default","auto_extract_metadata","processingfolder"
+,1,0,"fileadmin","Local","<?xml version=""1.0"" encoding=""utf-8"" standalone=""yes"" ?><T3FlexForms><data><sheet index=""sDEF""><language index=""lDEF""><field index=""basePath""><value index=""vDEF"">fileadmin/</value></field><field index=""pathType""><value index=""vDEF"">relative</value></field><field index=""caseSensitive""><value index=""vDEF"">1</value></field></language></sheet></data></T3FlexForms>",1,1,1,1,1,0,""
+"sys_file"
+,"uid","pid","storage","type","identifier","identifier_hash","folder_hash","extension","mime_type","name","sha1","size"
+,1,0,1,2,"/user_upload/chair.jpg","h1","f1","jpg","image/jpeg","chair.jpg","s1",100
+,2,0,1,2,"/user_upload/back.jpg","h2","f1","jpg","image/jpeg","back.jpg","s2",100
+"sys_file_reference"
+,"uid","pid","uid_local","uid_foreign","tablenames","fieldname","sorting_foreign","title","alternative","sys_language_uid"
+,1,2,1,19,"tt_content","assets",1,"Front view","A grey office chair",0
+,2,2,2,19,"tt_content","assets",2,"Back view","Its backrest",0
+,3,2,1,19,"tt_content","image",1,"Left over","Not shown by the form",0
+,4,2,1,10,"tt_content","image",1,"Left over","Not shown by the form",0

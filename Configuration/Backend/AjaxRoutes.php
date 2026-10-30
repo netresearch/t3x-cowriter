@@ -12,6 +12,7 @@ use Netresearch\T3Cowriter\Controller\BudgetStatusController;
 use Netresearch\T3Cowriter\Controller\FieldSuggestionController;
 use Netresearch\T3Cowriter\Controller\ImageGenerationController;
 use Netresearch\T3Cowriter\Controller\InlineSuggestionController;
+use Netresearch\T3Cowriter\Controller\PresentationController;
 use Netresearch\T3Cowriter\Controller\SavedPromptController;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Controller\ToolController;
@@ -115,6 +116,21 @@ return [
     'tx_cowriter_inline_suggestion' => [
         'path'    => '/cowriter/inline-suggestion',
         'target'  => InlineSuggestionController::class . '::suggestAction',
+        'methods' => ['POST'],
+    ],
+    'tx_cowriter_presentation_propose' => [
+        'path'    => '/cowriter/presentation-propose',
+        'target'  => PresentationController::class . '::proposeAction',
+        'methods' => ['POST'],
+    ],
+    'tx_cowriter_presentation_create' => [
+        'path'    => '/cowriter/presentation-create',
+        'target'  => PresentationController::class . '::createAction',
+        'methods' => ['POST'],
+    ],
+    'tx_cowriter_presentation_switch' => [
+        'path'    => '/cowriter/presentation-switch',
+        'target'  => PresentationController::class . '::switchAction',
         'methods' => ['POST'],
     ],
 ];

@@ -408,6 +408,87 @@ page).
 Categories are not filled by the button. For tags, use the
 :guilabel:`Keywords` suggestions and copy the terms you want to use.
 
+..  _usage-alternative-presentation:
+
+Presenting a text as tabs or accordion
+======================================
+
+When the administrator switched it on
+(:ref:`configuration <configuration-alternative-presentation>`), a text
+element has the button **Present as tabs or accordion** next to its rich
+text. It turns the text into a new :guilabel:`Tabs` or
+:guilabel:`Accordion` element, with one tab or panel per section.
+
+1.  Save the element: the button works with the saved text
+2.  Click :guilabel:`Present as tabs or accordion` (or focus it and press
+    :kbd:`Enter` or :kbd:`Space`)
+3.  Below the field you see the proposed sections: a title you can change
+    and the beginning of the section's text
+4.  Choose :guilabel:`Tabs` or :guilabel:`Accordion`
+5.  Click :guilabel:`Create element`
+
+The new element appears directly after this one, on the same page and in
+the same column. **It is hidden** until you switch: this element stays
+visible and is not changed, so visitors see no difference yet. Below the
+proposal you then have three buttons:
+
+*   :guilabel:`Show the new element and hide the original` makes the new
+    element visible and hides this one, in one step. In a workspace both
+    changes are part of your workspace: publish the two elements together,
+    so the live page never shows both or neither. The button is not
+    offered for an element with translations or for a connected
+    translation (see below).
+*   :guilabel:`Open the page in the Layout module` shows the page with the
+    new element, so you can check it first.
+*   :guilabel:`Open the new element` opens it for editing.
+
+If the form has unsaved changes, the last two buttons ask first, as every
+link out of the form does. :kbd:`Escape` or :guilabel:`Cancel` closes the
+proposal without creating anything; while the element is being created,
+the proposal stays open until the result is there.
+
+An element with translations is not switched. Translated pages show a
+translation only while the element in the default language is visible:
+hiding this element would hide its translations too. To replace it:
+
+1.  In the :guilabel:`Layout` module, translate the new element into each
+    language (:guilabel:`Translate`)
+2.  Make the new element and its translations visible
+3.  Hide this element
+
+Do not delete it: deleting an element in the default language also deletes
+its translations. The proposal and the result say so.
+
+What the new element takes over from the original: the header, the
+column, the language, its access restrictions (:guilabel:`Usergroup
+Access Rights`, :guilabel:`Publish Date`, :guilabel:`Expiration Date`) and,
+where you may edit them, the header layout, frame and spacing. The images
+of a :guilabel:`Text & Images` or :guilabel:`Text & Media` element go
+into the first tab or panel; the proposal says when you may not add
+images there, and then they are not taken over. Anything else (for
+example a link on the header, the subheader, the image position or
+categories) is not taken over.
+
+A translation that is connected to its default-language element becomes a
+new element of its own in that language, not connected to the default
+language (the proposal says so). On a page in connected translation mode
+the page module then reports the page as mixed. Such a translation is not
+switched either. On a site that falls back to the default language the new
+element may not appear as expected: on TYPO3 13.4 not at all, on 14.3 next
+to the default-language content. To replace such a translation, create the
+new element from the default-language element instead and translate it.
+
+A text with headings is divided at its headings; the heading becomes the
+title of its tab and text before the first heading becomes an
+"Introduction". A text without headings is divided by the AI, which only
+chooses where sections start and suggests their titles; your text is not
+rewritten. Only this second case counts against your AI budget. The
+introduction is named in the language of the element ("Einleitung" for a
+German element). In a workspace the new element is created in your
+workspace.
+
+The button only appears when you may create such an element on the page.
+
 Model override
 ==============
 

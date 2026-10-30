@@ -49,6 +49,20 @@ final class Tca
         return is_string($field) && $field !== '' ? $field : null;
     }
 
+    /**
+     * A field of ctrl.enablecolumns ("disabled", "starttime", "endtime",
+     * "fe_group"), if the table names one.
+     *
+     * @param array<array-key, mixed>|null $tca defaults to $GLOBALS['TCA']
+     */
+    public static function enableColumn(string $table, string $key, ?array $tca = null): ?string
+    {
+        $columns = self::section($table, 'ctrl', $tca)['enablecolumns'] ?? null;
+        $field   = is_array($columns) ? ($columns[$key] ?? null) : null;
+
+        return is_string($field) && $field !== '' ? $field : null;
+    }
+
     public static function transOrigPointerField(string $table): ?string
     {
         $field = self::section($table, 'ctrl')['transOrigPointerField'] ?? null;

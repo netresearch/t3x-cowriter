@@ -8,7 +8,9 @@
 declare(strict_types=1);
 
 use Netresearch\T3Cowriter\EventListener\RegisterFieldSuggestionControlsListener;
+use Netresearch\T3Cowriter\EventListener\RegisterPresentationControlListener;
 use Netresearch\T3Cowriter\Form\FieldControl\FieldSuggestionsControl;
+use Netresearch\T3Cowriter\Form\FieldControl\PresentationControl;
 use TYPO3\CMS\Core\Cache\Backend\Typo3DatabaseBackend;
 use TYPO3\CMS\Core\Cache\Frontend\VariableFrontend;
 
@@ -48,4 +50,14 @@ $GLOBALS['TYPO3_CONF_VARS']['SYS']['formEngine']['nodeRegistry'][1790330001] = [
     'nodeName' => RegisterFieldSuggestionControlsListener::NODE_NAME,
     'priority' => 30,
     'class'    => FieldSuggestionsControl::class,
+];
+
+/**
+ * FormEngine node of the "Present as tabs or accordion" field control on the
+ * bodytext of text elements (RegisterPresentationControlListener).
+ */
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['formEngine']['nodeRegistry'][1790330002] = [
+    'nodeName' => RegisterPresentationControlListener::NODE_NAME,
+    'priority' => 30,
+    'class'    => PresentationControl::class,
 ];

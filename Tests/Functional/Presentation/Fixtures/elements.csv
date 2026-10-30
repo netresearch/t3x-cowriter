@@ -1,0 +1,41 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","perms_userid","perms_groupid","perms_user","perms_group","perms_everybody","TSconfig"
+,1,0,"Home","/",1,1,1,1,31,31,1,""
+,2,1,"Products","/products",0,1,1,1,31,31,31,""
+,3,1,"No tabs here","/no-tabs",0,1,1,1,31,31,31,"TCEFORM.tt_content.CType.removeItems = tab"
+,4,1,"Only text","/only-text",0,1,1,1,31,31,31,"TCEFORM.tt_content.CType.keepItems = text,textmedia"
+,5,1,"Read only","/read-only",0,1,1,1,31,1,1,""
+"tt_content"
+,"uid","pid","header","bodytext","CType","colPos","sys_language_uid","sorting","hidden","fe_group","starttime","endtime","header_layout","frame_class","space_before_class","space_after_class","l18n_parent","assets"
+,10,2,"Office chairs","<p>Our chairs fit every office.</p><h2>Seat</h2><p>Adjustable seat height.</p><ul><li>Lumbar support</li></ul><h2>Warranty</h2><p>Five years on every frame.</p><script>alert(1)</script><p onclick=""steal()"">Ask us.</p>","text",1,0,256,0,"",0,0,"0","default","","",0,0
+,11,2,"Next element","<p>Comes after.</p>","text",1,0,512,0,"",0,0,"0","default","","",0,0
+,12,2,"A header","","header",1,0,768,0,"",0,0,"0","default","","",0,0
+,13,3,"Elsewhere","<h2>One</h2><p>A</p><h2>Two</h2><p>B</p>","text",0,0,256,0,"",0,0,"0","default","","",0,0
+,14,4,"Elsewhere","<h2>One</h2><p>A</p><h2>Two</h2><p>B</p>","text",0,0,256,0,"",0,0,"0","default","","",0,0
+,15,5,"Elsewhere","<h2>One</h2><p>A</p><h2>Two</h2><p>B</p>","text",0,0,256,0,"",0,0,"0","default","","",0,0
+,16,2,"Deutsch","<h2>Eins</h2><p>A</p><h2>Zwei</h2><p>B</p>","textmedia",0,1,1024,0,"",0,0,"0","default","","",0,0
+,17,2,"Members only","<h2>Seat</h2><p>Adjustable.</p><h2>Warranty</h2><p>Five years.</p>","text",0,0,1280,1,"-2",1700000000,4102444800,"2","ruler-before","small","large",0,0
+,18,2,"Bürostühle","<p>Für jedes Büro.</p><h2>Sitz</h2><p>Verstellbar.</p><h2>Garantie</h2><p>Fünf Jahre.</p>","text",1,1,1536,0,"",0,0,"0","default","","",20,0
+,19,2,"With images","<h2>Front</h2><p>A</p><h2>Back</h2><p>B</p>","textmedia",0,0,1792,0,"",0,0,"0","default","","",0,2
+,20,2,"Desks","<p>For every office.</p><h2>Height</h2><p>Adjustable.</p><h2>Warranty</h2><p>Five years.</p>","text",1,0,2048,0,"",0,0,"0","default","","",0,0
+"be_groups"
+,"uid","pid","title","tables_select","tables_modify","non_exclude_fields","explicit_allowdeny","allowed_languages","db_mountpoints","workspace_perms"
+,1,0,"Editors","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item,sys_file_reference","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item,sys_file_reference","tx_bootstrappackage_tab_item:header,tx_bootstrappackage_accordion_item:header,tx_bootstrappackage_tab_item:sys_language_uid,tx_bootstrappackage_accordion_item:sys_language_uid,tt_content:sys_language_uid,tt_content:colPos,tt_content:hidden,tt_content:fe_group,tt_content:starttime,tt_content:endtime,tt_content:header_layout,tt_content:frame_class,tt_content:space_before_class,tt_content:space_after_class,tx_bootstrappackage_tab_item:media,tx_bootstrappackage_accordion_item:media,sys_file_reference:title,sys_file_reference:alternative,sys_file_reference:description,sys_file_reference:link,sys_file_reference:crop,sys_file_reference:hidden","tt_content:CType:text,tt_content:CType:textmedia,tt_content:CType:tab,tt_content:CType:accordion","","1",1
+,2,0,"Editors without tabs","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item","tx_bootstrappackage_tab_item:header,tx_bootstrappackage_accordion_item:header,tt_content:sys_language_uid,tt_content:colPos,tt_content:hidden","tt_content:CType:text,tt_content:CType:textmedia,tt_content:CType:accordion","","1",1
+,3,0,"Editors without item headers","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item","tt_content:sys_language_uid,tt_content:colPos,tt_content:hidden","tt_content:CType:text,tt_content:CType:tab,tt_content:CType:accordion","","1",1
+,4,0,"Editors without item tables","pages,tt_content","pages,tt_content","tx_bootstrappackage_tab_item:header,tx_bootstrappackage_accordion_item:header,tt_content:sys_language_uid,tt_content:colPos,tt_content:hidden","tt_content:CType:text,tt_content:CType:tab,tt_content:CType:accordion","","1",1
+,5,0,"Editors of the default language","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item","tx_bootstrappackage_tab_item:header,tx_bootstrappackage_accordion_item:header,tt_content:sys_language_uid,tt_content:colPos,tt_content:hidden","tt_content:CType:text,tt_content:CType:textmedia,tt_content:CType:tab,tt_content:CType:accordion","0","1",1
+,6,0,"Editors without the hidden field","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item","tx_bootstrappackage_tab_item:header,tx_bootstrappackage_accordion_item:header,tx_bootstrappackage_tab_item:sys_language_uid,tx_bootstrappackage_accordion_item:sys_language_uid,tt_content:sys_language_uid,tt_content:colPos","tt_content:CType:text,tt_content:CType:textmedia,tt_content:CType:tab,tt_content:CType:accordion","","1",1
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,1,0,"admin",1,"",0
+,2,0,"editor",0,"1",0
+,3,0,"notabs",0,"2",0
+,4,0,"noheaders",0,"3",0
+,5,0,"notables",0,"4",0
+,6,0,"defaultlanguage",0,"5",0
+,7,0,"nohidden",0,"6",0
+,8,0,"member",0,"1",0
+"sys_workspace"
+,"uid","pid","title","adminusers","members"
+,1,0,"Draft","be_users_2","be_users_3,be_users_8"

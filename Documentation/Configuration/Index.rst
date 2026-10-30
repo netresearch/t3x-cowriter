@@ -525,6 +525,137 @@ Accessibility:
     backend user; where the browser does not allow local storage,
     suggestions are on again after reloading.
 
+..  _configuration-alternative-presentation:
+
+Alternative presentation
+========================
+
+A text element (:guilabel:`Text`, :guilabel:`Text & Images`,
+:guilabel:`Text & Media`) can be presented as tabs or as an accordion. The
+button :guilabel:`Present as tabs or accordion` next to its rich text cuts
+the saved text into sections, shows them to the editor and, after the
+editor confirmed, creates a new :guilabel:`Tabs` or :guilabel:`Accordion`
+element of ``bootstrap_package`` directly after the original: on the same
+page, in the same column and language, with one item per section. The
+new element is created hidden and the original is not changed; one button
+then shows the new element and hides the original, in one DataHandler run
+as the editor. The feature is off until an administrator switches it on in
+the extension configuration.
+
+..  confval:: presentation.enable
+    :name: t3-cowriter-presentation-enable
+    :type: boolean
+    :default: ``0``
+
+    Switches the button on. While it is off, no text element shows it and
+    all three routes answer with HTTP 403.
+
+Requirements:
+
+*   The extension ``bootstrap_package`` (``bk2k/bootstrap-package``), which
+    provides the :guilabel:`Tabs` and :guilabel:`Accordion` elements and
+    their item records. Without it the button does not exist.
+*   The button appears only for a saved element, and only when the editor
+    may create at least one of the two elements in its place: edit the
+    element, ``Edit content`` on the page and access to its language;
+    :guilabel:`Tabs` or :guilabel:`Accordion` allowed in
+    :guilabel:`Explicitly allow field values` of the backend group and not
+    removed by page TSconfig ``TCEFORM.tt_content.CType.removeItems`` or
+    left out of ``keepItems``; modify rights for the table
+    ``tx_bootstrappackage_tab_item`` or ``tx_bootstrappackage_accordion_item``.
+*   The editor needs the right on each of these fields that is an excluded
+    field in your TCA (:guilabel:`Allowed excludefields` of the backend
+    group): of ``tt_content`` ``hidden``, ``CType``, ``colPos``,
+    ``header``, ``sys_language_uid`` and the item field
+    (``tx_bootstrappackage_tab_item`` or
+    ``tx_bootstrappackage_accordion_item``); of the item table ``header``
+    and ``bodytext``, and ``sys_language_uid`` for an element in another
+    language; ``fe_group``, ``starttime`` and ``endtime`` of ``tt_content``
+    when the original element uses them. Without one of them the button
+    does not appear for that element: DataHandler would leave the field out
+    without reporting it. With TYPO3 14.3 and bootstrap_package 16 the
+    excluded ones among them are ``hidden``, ``sys_language_uid``,
+    ``fe_group``, ``starttime`` and ``endtime`` of ``tt_content`` and
+    ``header`` and ``sys_language_uid`` of the item tables.
+*   Optional rights: with the right on ``header_layout``, ``frame_class``,
+    ``space_before_class`` and ``space_after_class`` the new element takes
+    them over from the original. With modify rights for
+    ``sys_file_reference`` and the right on the item field ``media``, the
+    images of a :guilabel:`Text & Images` or :guilabel:`Text & Media`
+    element (``image`` for :guilabel:`Text & Images`, ``assets`` for
+    :guilabel:`Text & Media`; references left in the other field, which
+    the form does not show, are ignored) are copied into the first
+    item, as new file references with their title, alternative text,
+    description, link and crop (those of these fields the editor may edit);
+    without, they are not taken over and the proposal says so.
+*   Not taken over: the subheader, header link and date, image position and
+    other image settings, categories and any field of other extensions. A
+    connected translation (``l18n_parent`` set) turns into a new element
+    of its own in that language, which makes a page in connected mode
+    mixed; the proposal warns about it. Translations of the original are
+    not converted; the proposal warns when there are any.
+*   The switch (:guilabel:`Show the new element and hide the original`) is
+    accepted only for the pair the creation just made: the creation returns
+    a token over both uids, the backend user and the workspace (an HMAC
+    with the installation's encryption key). The route checks it, reads
+    both elements as the workspace shows them, requires them on the same
+    page, the right to edit both and to write ``hidden``, and reads the
+    result back. It changes only ``hidden``: access restrictions of the new
+    element stay as they were taken over. It does not count against the
+    Cowriter rate limit, because it asks no model.
+*   The switch is refused, and not offered, when the original has
+    translations or is a connected translation (``l18n_parent`` set); the
+    route counts the translations again, since one can be added after the
+    creation. With ``fallbackType`` ``fallback`` or ``strict``, the
+    frontend selects content elements of the default language and overlays
+    their translations, so a hidden default-language element hides its
+    translations as well. Hiding a connected translation lets a ``fallback``
+    language show the default-language element again: next to the new one
+    on TYPO3 14.3, and instead of it on 13.4, where a ``fallback`` language
+    shows no element without a default-language counterpart. The refusal
+    applies to every site, whatever its ``fallbackType``. The editor is told
+    the way that works on all of them: translate the new element in the
+    Layout module, make it and its translations visible, then hide the
+    original; for a connected translation, create the new element from the
+    default-language element instead. A switch refused with 409 removes the
+    button and shows the reason.
+*   In a workspace both elements change in the workspace; publish them
+    together.
+
+How the text is cut:
+
+*   When the saved text has headings of level 2 on its top level, it is
+    cut at them; without, at its headings of level 3. Lower headings stay
+    in the sections. Text before the first heading becomes a section titled
+    "Introduction". The heading becomes the title of its section and is not
+    repeated in it. This needs no request to the language model and costs
+    nothing.
+*   A text without such headings (or with more than 12 sections from its
+    headings) is divided by the language model of the default nr-llm
+    configuration. It gets the element's header and the text as numbered
+    blocks of plain text and answers only with the blocks where sections
+    start and their titles; it never writes the sections' text. This
+    request counts against the editor's
+    :ref:`nr-llm budget <nrllm:administration-user-budgets>`. Texts with
+    more than 80 blocks are refused without a request.
+*   A section's text is the saved markup of its blocks, parsed as HTML5
+    and written out again: the content and elements are the same, but the
+    markup is not byte for byte the original (for example, quoting of
+    attributes and self-closing tags can differ). In the new item records
+    it passes the rich text processing of the item's text field, as when
+    an editor saves it.
+*   Headings without text are not used as places to cut; a heading with no
+    content up to the next heading stays inside the section before it.
+*   The section titles are plain text, kept as written: a heading
+    ``The <p> element`` gives the title ``The <p> element``. The
+    introduction is named in the language of the element's site language.
+*   Changes in the form that are not saved yet are not included. When the
+    saved text changes between the preview and the confirmation, the
+    creation is refused and the editor lets the sections be proposed again.
+
+The proposal and the creation count against the Cowriter rate limit of the
+backend user; the switch does not.
+
 Task configuration
 ==================
 

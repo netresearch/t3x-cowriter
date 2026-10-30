@@ -1,0 +1,10 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","perms_userid","perms_groupid","perms_user","perms_group","perms_everybody"
+,1,0,"Home","/",1,1,1,1,31,31,0
+,2,1,"Products","/products",0,1,1,1,31,31,0
+"tt_content"
+,"uid","pid","header","bodytext","CType","colPos","sys_language_uid","sorting"
+,10,2,"Office chairs","<h2>Seat</h2><p>Adjustable.</p><h2>Warranty</h2><p>Five years.</p>","text",0,0,256
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,1,0,"admin",1,"",0

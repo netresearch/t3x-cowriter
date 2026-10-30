@@ -1033,6 +1033,166 @@
                 <source>Access</source>
                 <target>Zugriff</target>
             </trans-unit>
+            <trans-unit id="presentation.button" resname="presentation.button">
+                <source>Present as tabs or accordion</source>
+                <target>Als Tabs oder Akkordeon darstellen</target>
+            </trans-unit>
+            <trans-unit id="presentation.heading" resname="presentation.heading">
+                <source>Present as tabs or accordion</source>
+                <target>Als Tabs oder Akkordeon darstellen</target>
+            </trans-unit>
+            <trans-unit id="presentation.loading" resname="presentation.loading">
+                <source>Dividing the saved text into sections…</source>
+                <target>Der gespeicherte Text wird in Abschnitte geteilt…</target>
+            </trans-unit>
+            <trans-unit id="presentation.proposedHeadings" resname="presentation.proposedHeadings">
+                <source>The saved text was divided at its headings. Check the sections, then create the new element.</source>
+                <target>Der gespeicherte Text wurde an seinen Überschriften geteilt. Prüfen Sie die Abschnitte und legen Sie dann das neue Element an.</target>
+            </trans-unit>
+            <trans-unit id="presentation.proposedModel" resname="presentation.proposedModel">
+                <source>The language model proposed these sections for the saved text. Check the titles, then create the new element.</source>
+                <target>Das Sprachmodell hat diese Abschnitte für den gespeicherten Text vorgeschlagen. Prüfen Sie die Titel und legen Sie dann das neue Element an.</target>
+            </trans-unit>
+            <trans-unit id="presentation.layout" resname="presentation.layout">
+                <source>Present as</source>
+                <target>Darstellen als</target>
+            </trans-unit>
+            <trans-unit id="presentation.layoutTab" resname="presentation.layoutTab">
+                <source>Tabs</source>
+                <target>Tabs</target>
+            </trans-unit>
+            <trans-unit id="presentation.layoutAccordion" resname="presentation.layoutAccordion">
+                <source>Accordion</source>
+                <target>Akkordeon</target>
+            </trans-unit>
+            <trans-unit id="presentation.sectionTitle" resname="presentation.sectionTitle">
+                <source>Title of section %d</source>
+                <target>Titel von Abschnitt %d</target>
+            </trans-unit>
+            <trans-unit id="presentation.noText" resname="presentation.noText">
+                <source>(no text, only the heading)</source>
+                <target>(kein Text, nur die Überschrift)</target>
+            </trans-unit>
+            <trans-unit id="presentation.original" resname="presentation.original">
+                <source>A new element is created directly after this one, hidden: visitors keep seeing this element until you switch the two. This element stays unchanged. Changes in this form that are not saved yet are not included.</source>
+                <target>Direkt nach diesem Element wird ein neues Element angelegt, verborgen: Besucher sehen weiterhin dieses Element, bis Sie die beiden tauschen. Dieses Element bleibt unverändert. Noch nicht gespeicherte Änderungen in diesem Formular werden nicht übernommen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.create" resname="presentation.create">
+                <source>Create element</source>
+                <target>Element anlegen</target>
+            </trans-unit>
+            <trans-unit id="presentation.creating" resname="presentation.creating">
+                <source>Creating the element…</source>
+                <target>Das Element wird angelegt…</target>
+            </trans-unit>
+            <trans-unit id="presentation.created" resname="presentation.created">
+                <source>The new element was created directly after this one and is hidden. Visitors keep seeing this element until you switch the two.</source>
+                <target>Das neue Element wurde direkt nach diesem angelegt und ist verborgen. Besucher sehen weiterhin dieses Element, bis Sie die beiden tauschen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.createdNoSwitch" resname="presentation.createdNoSwitch">
+                <source>The new element was created directly after this one and is hidden. This element stays visible.</source>
+                <target>Das neue Element wurde direkt nach diesem angelegt und ist verborgen. Dieses Element bleibt sichtbar.</target>
+            </trans-unit>
+            <trans-unit id="presentation.open" resname="presentation.open">
+                <source>Open the new element</source>
+                <target>Neues Element öffnen</target>
+            </trans-unit>
+            <trans-unit id="presentation.cancel" resname="presentation.cancel">
+                <source>Cancel</source>
+                <target>Abbrechen</target>
+            </trans-unit>
+            <trans-unit id="presentation.error" resname="presentation.error">
+                <source>The sections could not be proposed.</source>
+                <target>Die Abschnitte konnten nicht vorgeschlagen werden.</target>
+            </trans-unit>
+            <trans-unit id="presentation.titleRequired" resname="presentation.titleRequired">
+                <source>Every section needs a title.</source>
+                <target>Jeder Abschnitt braucht einen Titel.</target>
+            </trans-unit>
+            <trans-unit id="presentation.introduction" resname="presentation.introduction">
+                <source>Introduction</source>
+                <target>Einleitung</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.disabled" resname="presentation.error.disabled">
+                <source>Presenting a text as tabs or accordion is switched off.</source>
+                <target>Das Darstellen eines Textes als Tabs oder Akkordeon ist ausgeschaltet.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.notAvailable" resname="presentation.error.notAvailable">
+                <source>This element cannot be presented as tabs or accordion, or you may not create such an element on this page.</source>
+                <target>Dieses Element kann nicht als Tabs oder Akkordeon dargestellt werden, oder Sie dürfen auf dieser Seite kein solches Element anlegen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.tooShort" resname="presentation.error.tooShort">
+                <source>The saved text is too short to be divided into sections. If you changed the text, save the element first.</source>
+                <target>Der gespeicherte Text ist zu kurz, um ihn in Abschnitte zu teilen. Wenn Sie den Text geändert haben, speichern Sie das Element zuerst.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.tooLong" resname="presentation.error.tooLong">
+                <source>The saved text is too long to be divided without headings. Add headings (level 2) where the sections begin, save, and try again.</source>
+                <target>Der gespeicherte Text ist zu lang, um ihn ohne Überschriften zu teilen. Fügen Sie Überschriften der Ebene 2 dort ein, wo die Abschnitte beginnen, speichern Sie und versuchen Sie es erneut.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.noSplit" resname="presentation.error.noSplit">
+                <source>No usable division into sections was proposed. Try again, or add headings (level 2) where the sections begin.</source>
+                <target>Es wurde keine brauchbare Teilung in Abschnitte vorgeschlagen. Versuchen Sie es erneut oder fügen Sie Überschriften der Ebene 2 dort ein, wo die Abschnitte beginnen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.changed" resname="presentation.error.changed">
+                <source>The saved text changed after the sections were proposed. Let the sections be proposed again.</source>
+                <target>Der gespeicherte Text hat sich geändert, nachdem die Abschnitte vorgeschlagen wurden. Lassen Sie die Abschnitte erneut vorschlagen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.invalidSections" resname="presentation.error.invalidSections">
+                <source>The sections do not fit the saved text. Let the sections be proposed again.</source>
+                <target>Die Abschnitte passen nicht zum gespeicherten Text. Lassen Sie die Abschnitte erneut vorschlagen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.createFailed" resname="presentation.error.createFailed">
+                <source>The new element could not be created. Nothing was changed.</source>
+                <target>Das neue Element konnte nicht angelegt werden. Es wurde nichts geändert.</target>
+            </trans-unit>
+            <trans-unit id="presentation.switch" resname="presentation.switch">
+                <source>Show the new element and hide the original</source>
+                <target>Neues Element anzeigen und Original verbergen</target>
+            </trans-unit>
+            <trans-unit id="presentation.switching" resname="presentation.switching">
+                <source>Switching the elements…</source>
+                <target>Die Elemente werden getauscht…</target>
+            </trans-unit>
+            <trans-unit id="presentation.switched" resname="presentation.switched">
+                <source>The new element is visible now and this element is hidden.</source>
+                <target>Das neue Element ist jetzt sichtbar, dieses Element ist verborgen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.openPage" resname="presentation.openPage">
+                <source>Open the page in the Layout module</source>
+                <target>Seite im Layout-Modul öffnen</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.switchFailed" resname="presentation.error.switchFailed">
+                <source>The elements could not be switched. Check both elements in the Layout module.</source>
+                <target>Die Elemente konnten nicht getauscht werden. Prüfen Sie beide Elemente im Layout-Modul.</target>
+            </trans-unit>
+            <trans-unit id="presentation.warning.translations" resname="presentation.warning.translations">
+                <source>This element has translations. Translated pages show them only while this element is visible, so the switch is not offered. To replace this element: 1. In the Layout module, translate the new element into each language (Translate). 2. Make the new element and its translations visible. 3. Hide this element. Do not delete it; that deletes its translations too.</source>
+                <target>Dieses Element hat Übersetzungen. Übersetzte Seiten zeigen sie nur, solange dieses Element sichtbar ist, deshalb wird der Tausch nicht angeboten. So ersetzen Sie dieses Element: 1. Im Layout-Modul das neue Element in jede Sprache übersetzen (Übersetzen). 2. Das neue Element und seine Übersetzungen sichtbar machen. 3. Dieses Element verbergen. Löschen Sie es nicht; das löscht auch seine Übersetzungen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.warning.connectedTranslation" resname="presentation.warning.connectedTranslation">
+                <source>This element is a translation connected to the default language. The new element becomes an element of its own in this language, so the Layout module shows the page in mixed mode, and the switch is not offered. On a site that falls back to the default language the new element may not appear as expected: on TYPO3 13.4 not at all, on 14.3 next to the default-language content.</source>
+                <target>Dieses Element ist eine Übersetzung, die mit der Standardsprache verbunden ist. Das neue Element wird ein eigenständiges Element dieser Sprache; das Layout-Modul zeigt die Seite dann im gemischten Modus, und der Tausch wird nicht angeboten. Auf einer Website, die auf die Standardsprache zurückfällt, erscheint das neue Element unter Umständen nicht wie erwartet: unter TYPO3 13.4 gar nicht, unter 14.3 neben dem Inhalt der Standardsprache.</target>
+            </trans-unit>
+            <trans-unit id="presentation.warning.imagesNotTaken" resname="presentation.warning.imagesNotTaken">
+                <source>The images of this element are not taken over: you may not add images to the new element. Add them yourself.</source>
+                <target>Die Bilder dieses Elements werden nicht übernommen: Sie dürfen dem neuen Element keine Bilder hinzufügen. Fügen Sie sie selbst hinzu.</target>
+            </trans-unit>
+            <trans-unit id="presentation.switchNote.translations" resname="presentation.switchNote.translations">
+                <source>Not switched: this element has translations, and hiding it would hide them on translated pages too. To replace this element: 1. In the Layout module, translate the new element into each language (Translate). 2. Make the new element and its translations visible. 3. Hide this element.</source>
+                <target>Nicht getauscht: Dieses Element hat Übersetzungen, und es zu verbergen würde sie auf übersetzten Seiten mit verbergen. So ersetzen Sie dieses Element: 1. Im Layout-Modul das neue Element in jede Sprache übersetzen (Übersetzen). 2. Das neue Element und seine Übersetzungen sichtbar machen. 3. Dieses Element verbergen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.switchNote.connectedTranslation" resname="presentation.switchNote.connectedTranslation">
+                <source>Not switched: this element is a connected translation. The new element is an element of its own in this language. On a site that falls back to the default language it may not appear as expected: on TYPO3 13.4 not at all, on 14.3 next to the default-language content. To replace this translation, create the new element from the default-language element instead and translate it.</source>
+                <target>Nicht getauscht: Dieses Element ist eine verbundene Übersetzung. Das neue Element ist ein eigenständiges Element dieser Sprache. Auf einer Website, die auf die Standardsprache zurückfällt, erscheint es unter Umständen nicht wie erwartet: unter TYPO3 13.4 gar nicht, unter 14.3 neben dem Inhalt der Standardsprache. Um diese Übersetzung zu ersetzen, legen Sie das neue Element stattdessen aus dem Element der Standardsprache an und übersetzen es.</target>
+            </trans-unit>
+            <trans-unit id="presentation.imagesTaken" resname="presentation.imagesTaken">
+                <source>Images of this element: %d. They go into the first section.</source>
+                <target>Bilder dieses Elements: %d. Sie kommen in den ersten Abschnitt.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.createIncomplete" resname="presentation.error.createIncomplete">
+                <source>The new element could not be created completely, and what was created could not be removed. Check the page in the Layout module.</source>
+                <target>Das neue Element konnte nicht vollständig angelegt werden, und das Angelegte konnte nicht entfernt werden. Prüfen Sie die Seite im Layout-Modul.</target>
+            </trans-unit>
         </body>
     </file>
 </xliff>
