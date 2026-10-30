@@ -46,6 +46,11 @@ final readonly class AboutBuilder
 
     private const CONFIGURATION_TABLE = 'tx_nrllm_configuration';
 
+    /**
+     * nr-llm's list of LLM configurations (nr-llm 0.41.14 and later).
+     */
+    private const CONFIGURATIONS_MODULE = 'nrllm_configurations';
+
     public function __construct(
         private UriBuilder $uriBuilder,
         private ModuleProvider $moduleProvider,
@@ -209,7 +214,15 @@ final readonly class AboutBuilder
         }
 
         if ($modelUse->configurationUid > 0 && $backendUser->isAdmin() && $backendUser->check('tables_modify', self::CONFIGURATION_TABLE)) {
-            $url = $this->url('record_edit', ['edit' => [self::CONFIGURATION_TABLE => [$modelUse->configurationUid => 'edit']]]);
+            // The link opens in a new window: after "Close" the form returns to
+            // nr-llm's list of configurations rather than to an empty frame.
+            $parameters = ['edit' => [self::CONFIGURATION_TABLE => [$modelUse->configurationUid => 'edit']]];
+            $returnUrl  = $this->moduleProvider->isModuleRegistered(self::CONFIGURATIONS_MODULE) ? $this->url(self::CONFIGURATIONS_MODULE) : '';
+            if ($returnUrl !== '') {
+                $parameters['returnUrl'] = $returnUrl;
+            }
+
+            $url = $this->url('record_edit', $parameters);
             if ($url !== '') {
                 $links[] = ['label' => $this->labels->get('about.link.configuration'), 'url' => $url];
             }

@@ -21,7 +21,9 @@ use Netresearch\T3Cowriter\Service\Transparency\ContextSources;
  * of neighbouring pages (from the last), the parent page title, the page
  * content (from its end), the page fields and the record's other fields
  * (from the last). The source list is counted from what is left, so the
- * editor is never told that something went out that was cut.
+ * editor is never told that something went out that was cut; a source the
+ * cut removed completely keeps its heading with LEFT_OUT, so the model does
+ * not take it for an empty one.
  */
 final readonly class ContextComposer
 {
@@ -31,6 +33,12 @@ final readonly class ContextComposer
      * review can make the message longer, because they are never cut.
      */
     public const MAX_DATA_LENGTH = 16000;
+
+    /**
+     * Stands for a source the cut removed completely: the model must not read
+     * it as "there is none" (an empty page, a page without neighbours).
+     */
+    public const LEFT_OUT = '(left out for length)';
 
     public function __construct(
         private UntrustedDataFence $fence = new UntrustedDataFence(),
@@ -56,9 +64,18 @@ final readonly class ContextComposer
         $parent   = trim($context->parentPageTitle);
         $siblings = array_values(array_filter(array_map(trim(...), $context->siblingPageTitles), static fn (string $title): bool => $title !== ''));
         $content  = trim($context->pageContent);
+        // What there was before the cut: a source the cut removes completely
+        // is named with LEFT_OUT, so the model does not read it as missing.
+        $had = [
+            'recordFields' => $recordFields !== [],
+            'pageFields'   => $pageFields !== [],
+            'parent'       => $parent !== '',
+            'siblings'     => $siblings !== [],
+            'content'      => $content !== '',
+        ];
 
         while (true) {
-            $message = $this->fence->wrap($this->render($context->pageTitle, $valueLines, $recordFields, $pageFields, $parent, $siblings, $content));
+            $message = $this->fence->wrap($this->render($context->pageTitle, $valueLines, $recordFields, $pageFields, $parent, $siblings, $content, $had));
             $over    = mb_strlen($message, 'UTF-8') - self::MAX_DATA_LENGTH;
             if ($over <= 0) {
                 break;
@@ -99,6 +116,7 @@ final readonly class ContextComposer
      * @param list<array{label: string, value: string}> $recordFields
      * @param list<array{label: string, value: string}> $pageFields
      * @param list<string>                              $siblings
+     * @param array<string, bool>                       $had          which sources there were before the cut
      */
     private function render(
         string $pageTitle,
@@ -108,36 +126,53 @@ final readonly class ContextComposer
         string $parent,
         array $siblings,
         string $content,
+        array $had,
     ): string {
         $lines = ['Page title: ' . (trim($pageTitle) !== '' ? $pageTitle : '(none)'), ...$valueLines];
 
-        if ($recordFields !== []) {
+        if ($recordFields !== [] || $had['recordFields']) {
             $lines[] = 'Other fields of the edited record:';
             foreach ($recordFields as $entry) {
                 $lines[] = '- ' . $entry['label'] . ': ' . $entry['value'];
             }
+
+            if ($recordFields === []) {
+                $lines[] = self::LEFT_OUT;
+            }
         }
 
-        if ($pageFields !== []) {
+        if ($pageFields !== [] || $had['pageFields']) {
             $lines[] = 'Fields of the page:';
             foreach ($pageFields as $entry) {
                 $lines[] = '- ' . $entry['label'] . ': ' . $entry['value'];
             }
+
+            if ($pageFields === []) {
+                $lines[] = self::LEFT_OUT;
+            }
         }
 
-        if ($parent !== '') {
-            $lines[] = 'Title of the parent page: ' . $parent;
+        if ($parent !== '' || $had['parent']) {
+            $lines[] = 'Title of the parent page: ' . ($parent !== '' ? $parent : self::LEFT_OUT);
         }
 
-        if ($siblings !== []) {
+        if ($siblings !== [] || $had['siblings']) {
             $lines[] = 'Titles of neighbouring pages:';
             foreach ($siblings as $title) {
                 $lines[] = '- ' . $title;
             }
+
+            if ($siblings === []) {
+                $lines[] = self::LEFT_OUT;
+            }
         }
 
         $lines[] = 'Page content:';
-        $lines[] = $content !== '' ? $content : '(no content yet)';
+        $lines[] = match (true) {
+            $content !== '' => $content,
+            $had['content'] => self::LEFT_OUT,
+            default         => '(no content yet)',
+        };
 
         return implode("\n", $lines);
     }

@@ -16,6 +16,12 @@ import { showAbout } from '@netresearch/t3_cowriter/AboutSection';
 export const MAX_PROMPT_LENGTH = 1000;
 
 /**
+ * Pause between showing the live region and writing the proposal into it, so
+ * screen readers register the region first and announce the text as a change.
+ */
+export const ANNOUNCE_DELAY_MS = 100;
+
+/**
  * @typedef {Object} GeneratedImage
  * @property {{fileUid: number, fileTable: string, url: string, width: number, height: number, mimeType: string, file: string}} image
  * @property {string} alt
@@ -208,14 +214,27 @@ export class ImageDialog {
             purpose.hidden = false;
         }
 
+        showAbout(/** @type {HTMLElement} */ (container.querySelector('[data-role="image-about"]')), context.about);
+
         if (context.proposal !== '' && textarea.value.trim() === '' && !textarea.disabled) {
             textarea.value = context.proposal.slice(0, MAX_PROMPT_LENGTH);
             const hint = /** @type {HTMLElement} */ (container.querySelector('[data-role="image-proposal"]'));
             hint.hidden = false;
             textarea.setAttribute('aria-describedby', hint.id + ' cowriter-image-prompt-help');
+            // The description field has focus already, and a screen reader does
+            // not announce a new value or description of a focused field: the
+            // live region says it. It is shown (but only to screen readers)
+            // before its text arrives, so the text is announced as a change.
+            const status = /** @type {HTMLElement} */ (container.querySelector('[data-role="image-status"]'));
+            status.className = 'visually-hidden';
+            status.hidden = false;
+            await new Promise((resolve) => { setTimeout(resolve, ANNOUNCE_DELAY_MS); });
+            // Not when the editor started generating meanwhile: then the status says that.
+            if (!textarea.disabled && status.className === 'visually-hidden') {
+                status.textContent = (hint.textContent ?? '') + ' ' + textarea.value;
+            }
         }
 
-        showAbout(/** @type {HTMLElement} */ (container.querySelector('[data-role="image-about"]')), context.about);
     }
 
     /**

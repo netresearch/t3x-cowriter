@@ -137,6 +137,18 @@ final class AboutBuilderTest extends TestCase
     }
 
     #[Test]
+    public function theRecordLinkReturnsToNrLlmsConfigurationListWhereThereIsOne(): void
+    {
+        $this->builder(['system_settings', 'nrllm_configurations'])->fieldSuggestions($this->modelUse(), new ContextSources(), [], 3, 20, $this->user(true));
+
+        $recordEdit = array_values(array_filter($this->built, static fn (array $call): bool => $call[0] === 'record_edit'));
+        self::assertSame([['record_edit', [
+            'edit'      => ['tx_nrllm_configuration' => [7 => 'edit']],
+            'returnUrl' => '/typo3/nrllm_configurations',
+        ]]], $recordEdit);
+    }
+
+    #[Test]
     public function singularSourcesHaveTheirOwnWordingAndZeroCountsAreLeftOut(): void
     {
         $about = $this->builder()->fieldOverview(

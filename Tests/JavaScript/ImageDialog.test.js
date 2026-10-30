@@ -8,7 +8,7 @@
  * vitest.config.js alias.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ImageDialog, MAX_PROMPT_LENGTH } from '../../Resources/Public/JavaScript/Ckeditor/ImageDialog.js';
+import { ImageDialog, MAX_PROMPT_LENGTH, ANNOUNCE_DELAY_MS } from '../../Resources/Public/JavaScript/Ckeditor/ImageDialog.js';
 
 const generated = {
     success: true,
@@ -227,6 +227,48 @@ describe('ImageDialog', () => {
             expect(hint().textContent).toContain('not by the model');
             expect(textarea().getAttribute('aria-describedby')).toBe(hint().id + ' cowriter-image-prompt-help');
             expect(hint().id).toBe('cowriter-image-proposal');
+        });
+
+        it('announces the proposal in the status live region, shown before its text arrives', async () => {
+            void new ImageDialog(service, { target: TARGET }).show().catch(() => {});
+            expect(status().getAttribute('role')).toBe('status');
+
+            finish(CONTEXT);
+            await flush();
+
+            // The region is in the accessibility tree first, still empty ...
+            expect(status().hidden).toBe(false);
+            expect(status().className).toBe('visually-hidden');
+            expect(status().textContent).toBe('');
+
+            await new Promise((resolve) => setTimeout(resolve, ANNOUNCE_DELAY_MS + 20));
+
+            // ... then the hint and the proposal arrive as a change.
+            expect(status().textContent).toBe(hint().textContent + ' Our team at the office in Leipzig');
+        });
+
+        it('does not announce a proposal over the status of a generation that started meanwhile', async () => {
+            service.generateImage.mockReturnValue(new Promise(() => {}));
+            void new ImageDialog(service, { target: TARGET }).show().catch(() => {});
+
+            finish(CONTEXT);
+            await flush();
+            button('generate').click();
+            await new Promise((resolve) => setTimeout(resolve, ANNOUNCE_DELAY_MS + 20));
+
+            expect(status().textContent).not.toContain('Our team at the office in Leipzig');
+            expect(status().className).toBe('mt-3');
+        });
+
+        it('announces nothing when the editor typed a description first', async () => {
+            void new ImageDialog(service, { target: TARGET }).show().catch(() => {});
+            textarea().value = 'My own description';
+
+            finish(CONTEXT);
+            await new Promise((resolve) => setTimeout(resolve, ANNOUNCE_DELAY_MS + 20));
+
+            expect(status().hidden).toBe(true);
+            expect(status().textContent).toBe('');
         });
 
         it('asks with a null target when it has none', () => {

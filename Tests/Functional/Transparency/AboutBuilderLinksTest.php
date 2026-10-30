@@ -99,6 +99,10 @@ final class AboutBuilderLinksTest extends FunctionalTestCase
             http_build_query(['edit' => ['tx_nrllm_configuration' => [self::CONFIGURATION_UID => 'edit']]]),
             $recordUrl,
         );
+        // After "Close" the form goes back to nr-llm's configuration list.
+        parse_str((string) parse_url($recordUrl, PHP_URL_QUERY), $query);
+        self::assertIsString($query['returnUrl'] ?? null);
+        self::assertStringContainsString('/module/nrllm/configurations', $query['returnUrl']);
     }
 
     #[Test]

@@ -168,12 +168,47 @@ final class ContextComposerTest extends TestCase
     }
 
     #[Test]
+    public function everySourceTheCutRemovesCompletelyIsNamedAsLeftOutNotAsMissing(): void
+    {
+        $composed = (new ContextComposer())->compose(
+            $this->context('Some content'),
+            ['- seo_title: ' . str_repeat('v', ContextComposer::MAX_DATA_LENGTH)],
+            [],
+            true,
+        );
+
+        self::assertStringContainsString("Other fields of the edited record:\n" . ContextComposer::LEFT_OUT, $composed->message);
+        self::assertStringContainsString("Fields of the page:\n" . ContextComposer::LEFT_OUT, $composed->message);
+        self::assertStringContainsString('Title of the parent page: ' . ContextComposer::LEFT_OUT, $composed->message);
+        self::assertStringContainsString("Titles of neighbouring pages:\n" . ContextComposer::LEFT_OUT, $composed->message);
+        self::assertStringContainsString("Page content:\n" . ContextComposer::LEFT_OUT, $composed->message);
+        self::assertStringNotContainsString('(no content yet)', $composed->message);
+        self::assertSame('(left out for length)', ContextComposer::LEFT_OUT);
+    }
+
+    #[Test]
+    public function aSourceThatIsOnlyShortenedOrNeverThereIsNotNamedAsLeftOut(): void
+    {
+        $long      = str_repeat('a', ContextComposer::MAX_DATA_LENGTH);
+        $shortened = (new ContextComposer())->compose($this->context($long), [], [], true)->message;
+        $empty     = (new ContextComposer())->compose($this->context('', [], [], '', []), [], [], false)->message;
+
+        // Neighbours and parent were cut completely; the content only shortened.
+        self::assertStringContainsString('Title of the parent page: ' . ContextComposer::LEFT_OUT, $shortened);
+        self::assertStringNotContainsString("Page content:\n" . ContextComposer::LEFT_OUT, $shortened);
+        self::assertStringNotContainsString(ContextComposer::LEFT_OUT, $empty);
+        self::assertStringContainsString("Page content:\n(no content yet)", $empty);
+        self::assertStringNotContainsString('neighbouring', $empty);
+    }
+
+    #[Test]
     public function aRecordFieldIsDroppedOnlyWhenNoPageFieldIsLeft(): void
     {
         $composer = new ContextComposer();
         $records  = ['header' => ['label' => 'Header', 'value' => 'H'], 'bodytext' => ['label' => 'Text', 'value' => 'T']];
-        $pages    = ['abstract' => ['label' => 'Abstract', 'value' => 'P']];
-        $base     = $composer->compose($this->context('', $records, $pages, '', []), [], [], true)->message;
+        // Longer than the placeholder that replaces it, so dropping it makes room.
+        $pages = ['abstract' => ['label' => 'Abstract', 'value' => str_repeat('p', 60)]];
+        $base  = $composer->compose($this->context('', $records, $pages, '', []), [], [], true)->message;
         // Enough value text to push out the page field (and the content placeholder stays).
         $fill     = str_repeat('v', ContextComposer::MAX_DATA_LENGTH - mb_strlen($base) + 1);
         $composed = $composer->compose($this->context('', $records, $pages, '', []), [$fill], [], true);

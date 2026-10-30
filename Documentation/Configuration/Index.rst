@@ -825,8 +825,11 @@ data, read on the server with the editor's permissions
     8,000 tokens). When the data is longer, the server leaves out, in this
     order, the titles of neighbouring pages, the parent page title, the
     end of the page content, the page fields and the record's other
-    fields, until it fits. The values of the fields the AI works on are
-    never cut; each value an editor sends is limited to 2000 characters.
+    fields, until it fits. A source left out completely keeps its heading
+    with "(left out for length)", so the AI does not take the page for one
+    without content or neighbours. The values of the fields the AI works on
+    are never cut; each value an editor sends is limited to 2000
+    characters, and the overview takes at most 30 fields.
 
 Everything sent stays fenced as data: the model is told to ignore
 instructions written inside it. The section
