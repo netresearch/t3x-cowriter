@@ -2,6 +2,14 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.22.0 (2026-10-30)
+
+### FEATURE
+
+- Every Cowriter dialog that asks a language model — field suggestions, the all-fields overview, the tabs/accordion proposal and the image dialog in the rich text editor and on file fields — ends with a collapsed **About this suggestion** section: the feature and that it comes from the Cowriter, the nr-llm configuration and the model, the sources of the context that was sent (names and counts, never the data), the current settings, and links to change them for users who may open those modules (#239).
+- Field suggestions and the overview send more page context: the descriptive page fields the editor may read, the parent page title and up to five neighbouring page titles, each only where the editor may see the page, in the record's language where a visible translation exists. The data sent is capped at 16,000 characters; a source the cap removes completely is named as left out for length (#239).
+- The image dialog is titled "Cowriter - Generate image", states what the image is for (element and page, or record and field) and opens with an editable description proposed from the page title and the element's header and text. No language model is asked for the proposal (#239).
+
 ## 3.21.0 (2026-10-30)
 
 ### FEATURE
