@@ -100,13 +100,13 @@ export class FieldOverview {
         this.button.setAttribute('aria-haspopup', 'dialog');
         this.button.addEventListener('click', (event) => {
             event.preventDefault();
-            this.open();
+            this.report(this.open());
         });
         this.button.addEventListener('keydown', (event) => {
             // The button is an <a role="button">: Space must act like Enter.
             if (event.key === ' ') {
                 event.preventDefault();
-                this.open();
+                this.report(this.open());
             }
         });
     }
@@ -204,6 +204,22 @@ export class FieldOverview {
     }
 
     /**
+     * open() handles the failures of the request itself; anything it did not
+     * foresee (the dialog could not be opened, for example) is shown as an
+     * error notification instead of getting lost.
+     *
+     * @param {Promise<void>} action
+     */
+    report(action) {
+        action.catch((error) => {
+            Notification.error(
+                this.labels.title,
+                error instanceof Error && error.message !== '' ? error.message : this.labels.error,
+            );
+        });
+    }
+
+    /**
      * @param {HTMLElement[]} controls
      * @returns {Promise<object[]>}
      */
@@ -236,8 +252,8 @@ export class FieldOverview {
         }
 
         const result = await response.resolve();
-        if (!result || result.success !== true || !Array.isArray(result.fields)) {
-            throw new Error(result && typeof result.error === 'string' ? result.error : this.labels.error);
+        if (result?.success !== true || !Array.isArray(result.fields)) {
+            throw new Error(typeof result?.error === 'string' ? result.error : this.labels.error);
         }
         const known = new Set(controls.map((control) => control.dataset.field));
         return result.fields.filter((entry) => entry

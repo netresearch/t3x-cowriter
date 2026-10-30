@@ -10,7 +10,7 @@
  * renders (hidden) and two FormEngine fields with the "Suggest" field control,
  * in the markup InputTextElement renders around a field control.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
 import FormEngine from '@typo3/backend/form-engine.js';
 import FormEngineValidation from '@typo3/backend/form-engine-validation.js';
@@ -85,6 +85,7 @@ describe('FieldOverview', () => {
         FormEngine.markFieldAsChanged.mockClear();
         FormEngineValidation.validateField.mockClear();
         Notification.success.mockClear();
+        Notification.error.mockClear();
         render(BUTTON + field('seo_title', 'Old title') + field('description', 'A good description.'));
     });
 
@@ -298,6 +299,47 @@ describe('FieldOverview', () => {
         expect(description.tagName).toBe('TEXTAREA');
         expect(description.maxLength).toBe(160);
         expect(description.value).toBe('A better description.');
+    });
+
+    it('shows a failure to open the dialog as an error notification', async () => {
+        const advanced = Modal.advanced;
+        Modal.advanced = () => {
+            throw new Error('The dialog could not be opened.');
+        };
+        try {
+            FieldOverview.attach(document);
+            document.querySelector('.t3js-cowriter-suggest-all').click();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(Notification.error).toHaveBeenCalledWith('AI suggestions for all fields', 'The dialog could not be opened.');
+        } finally {
+            Modal.advanced = advanced;
+        }
+    });
+
+    it('opening with Space reports a failure the same way', async () => {
+        const advanced = Modal.advanced;
+        Modal.advanced = () => {
+            throw new Error('');
+        };
+        try {
+            FieldOverview.attach(document);
+            document.querySelector('.t3js-cowriter-suggest-all')
+                .dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(Notification.error).toHaveBeenCalledWith('AI suggestions for all fields', 'The suggestions could not be loaded.');
+        } finally {
+            Modal.advanced = advanced;
+        }
+    });
+
+    it('a server answer without success flag shows the generic error', async () => {
+        AjaxRequest.nextPost = () => Promise.resolve(jsonResponse(null));
+
+        await FieldOverview.attach(document).open();
+
+        expect(modal().querySelector('[role="status"]').textContent).toBe('The suggestions could not be loaded.');
     });
 
     it('keeps "Apply selected" disabled until the table is rendered', async () => {
