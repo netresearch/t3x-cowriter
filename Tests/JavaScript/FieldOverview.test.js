@@ -14,6 +14,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
 import FormEngine from '@typo3/backend/form-engine.js';
 import FormEngineValidation from '@typo3/backend/form-engine-validation.js';
+import Modal from '@typo3/backend/modal.js';
 import Notification from '@typo3/backend/notification.js';
 import FieldOverview from '../../Resources/Public/JavaScript/FormEngine/FieldOverview.js';
 import FieldSuggestions from '../../Resources/Public/JavaScript/FormEngine/FieldSuggestions.js';
@@ -297,6 +298,52 @@ describe('FieldOverview', () => {
         expect(description.tagName).toBe('TEXTAREA');
         expect(description.maxLength).toBe(160);
         expect(description.value).toBe('A better description.');
+    });
+
+    it('keeps "Apply selected" disabled until the table is rendered', async () => {
+        let finish;
+        AjaxRequest.nextPost = () => new Promise((resolve) => { finish = resolve; });
+        const overview = FieldOverview.attach(document);
+
+        const opening = overview.open();
+
+        expect(footerButton('apply').disabled).toBe(true);
+        finish(jsonResponse(ANSWER));
+        await opening;
+        expect(footerButton('apply').disabled).toBe(false);
+    });
+
+    it('keeps "Apply selected" disabled when the request fails', async () => {
+        AjaxRequest.nextPost = () => Promise.reject(jsonResponse({ success: false, error: 'Nope.' }));
+
+        await FieldOverview.attach(document).open();
+
+        expect(footerButton('apply').disabled).toBe(true);
+    });
+
+    it('disables "Apply selected" also when the footer renders after the call', async () => {
+        Modal.renderAsync = true;
+        try {
+            AjaxRequest.nextPost = () => new Promise(() => {});
+            FieldOverview.attach(document).open();
+            await modal().updateComplete;
+            await Promise.resolve();
+
+            expect(footerButton('apply').disabled).toBe(true);
+        } finally {
+            Modal.renderAsync = false;
+        }
+    });
+
+    it('focuses the caption when every field is fine as it is', async () => {
+        const answer = structuredClone(ANSWER);
+        answer.fields[0] = { ...answer.fields[0], action: 'keep', value: '' };
+
+        await openOverview(answer);
+
+        expect(modal().querySelector('input[type="checkbox"]')).toBeNull();
+        expect(document.activeElement).toBe(modal().querySelector('caption'));
+        expect(footerButton('apply').disabled).toBe(true);
     });
 
     it('a slug suggestion gets no length limit in the input, since it is the full path', async () => {

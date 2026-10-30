@@ -550,7 +550,10 @@ appears only when the form shows at least one such field you may edit.
     or :kbd:`Space`)
 2.  A dialog lists the fields in a table: the field, its current value
     (including text you typed but have not saved yet), the suggestion and
-    the reason for it
+    the reason for it. While the AI works, :guilabel:`Apply selected` is
+    disabled and a status line says so; when the list is there, the cursor
+    is on the first checkbox (on the table caption when no change is
+    suggested at all)
 3.  Where a change is suggested, the row has a checked checkbox and the
     suggestion in a text field you can edit; editing a suggestion checks its
     box again. Where the current value is already good, the row says
@@ -584,10 +587,12 @@ and every value is shortened to the field's limit before you see it. Text
 from the AI is always shown and inserted as plain text.
 
 The whole review is **one request**: it counts once against your rate limit
-of 20 requests per minute and is one call against the AI budget (nr-llm),
-however many fields it covers. That call sends the context once and is
-larger than a single-field request, so it uses more tokens than one
-suggestion for one field.
+of 20 requests per minute and is one call to the AI (nr-llm), however many
+fields it covers; two calls when the answer does not have the expected
+format and nr-llm asks the model once more to repair it. Both count
+against the AI budget. That call sends the context once and is larger than
+a single-field request, so it uses more tokens than one suggestion for one
+field.
 
 Model override
 ==============

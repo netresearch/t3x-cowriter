@@ -167,6 +167,10 @@ export class FieldOverview {
             this.button.focus();
         });
 
+        // Nothing to apply until the table is there. The core modal renders
+        // its footer only after Modal.advanced() has returned.
+        this.setApplyEnabled(false);
+        this.modal?.updateComplete?.then?.(() => this.setApplyEnabled(this.rows.length > 0));
         this.setStatus(this.labels.loading, false);
         container.setAttribute('aria-busy', 'true');
         const modal = this.modal;
@@ -182,7 +186,10 @@ export class FieldOverview {
             this.renderTable(fields, controls);
             const changes = fields.filter((field) => field.action === 'change').length;
             this.setStatus(format(this.labels.loaded, changes, fields.length), false);
-            this.results.querySelector('input[type="checkbox"]')?.focus();
+            this.setApplyEnabled(this.rows.length > 0);
+            // The first suggestion; when every field is fine as it is, the
+            // table caption, so the reader lands on the result either way.
+            (this.results.querySelector('input[type="checkbox"]') ?? this.results.querySelector('caption'))?.focus();
         } catch (error) {
             if (modal === this.modal) {
                 this.setStatus(error instanceof Error && error.message !== '' ? error.message : this.labels.error, true);
@@ -264,6 +271,7 @@ export class FieldOverview {
         table.className = 'table table-striped cowriter-field-overview-table';
         const caption = doc.createElement('caption');
         caption.textContent = this.labels.caption;
+        caption.tabIndex = -1;
         table.append(caption);
 
         const head = doc.createElement('thead');
@@ -357,6 +365,16 @@ export class FieldOverview {
      *
      * @returns {number} how many values were written
      */
+    /**
+     * @param {boolean} enabled
+     */
+    setApplyEnabled(enabled) {
+        const button = this.modal?.querySelector?.('button[name="apply"]');
+        if (button) {
+            button.disabled = !enabled;
+        }
+    }
+
     apply() {
         let applied = 0;
         for (const row of this.rows) {
