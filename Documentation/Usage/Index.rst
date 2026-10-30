@@ -428,17 +428,49 @@ text. It turns the text into a new :guilabel:`Tabs` or
 5.  Click :guilabel:`Create element`
 
 The new element appears directly after this one, on the same page and in
-the same column. **This element is not changed**: check the new element,
-then delete or hide this one yourself. The link
-:guilabel:`Open the new element` opens it for editing. :kbd:`Escape` or
-:guilabel:`Cancel` closes the proposal without creating anything.
+the same column. **It is hidden** until you switch: this element stays
+visible and is not changed, so visitors see no difference yet. Below the
+proposal you then have three buttons:
+
+*   :guilabel:`Show the new element and hide the original` makes the new
+    element visible and hides this one, in one step. In a workspace both
+    changes are part of your workspace.
+*   :guilabel:`Open the page in the Layout module` shows the page with the
+    new element, so you can check it first.
+*   :guilabel:`Open the new element` opens it for editing.
+
+If the form has unsaved changes, the last two buttons ask first, as every
+link out of the form does. :kbd:`Escape` or :guilabel:`Cancel` closes the
+proposal without creating anything.
+
+Hide the original rather than delete it. Deleting an element in the
+default language also deletes its translations; the proposal warns when
+the element has translations. They are not converted: create the new
+element for each translation separately.
+
+What the new element takes over from the original: the header, the
+column, the language, its access restrictions (:guilabel:`Usergroup
+Access Rights`, :guilabel:`Publish Date`, :guilabel:`Expiration Date`) and,
+where you may edit them, the header layout, frame and spacing. The images
+of a :guilabel:`Text & Images` or :guilabel:`Text & Media` element go
+into the first tab or panel; the proposal says when you may not add
+images there, and then they are not taken over. Anything else (for
+example a link on the header, the subheader, the image position or
+categories) is not taken over.
+
+A translation that is connected to its default-language element becomes a
+new element of its own in that language, not connected to the default
+language (the proposal says so). On a page in connected translation mode
+the page module then reports the page as mixed.
 
 A text with headings is divided at its headings; the heading becomes the
 title of its tab and text before the first heading becomes an
 "Introduction". A text without headings is divided by the AI, which only
 chooses where sections start and suggests their titles; your text is not
-rewritten. Only this second case counts against your AI budget. In a
-workspace the new element is created in your workspace.
+rewritten. Only this second case counts against your AI budget. The
+introduction is named in the language of the element ("Einleitung" for a
+German element). In a workspace the new element is created in your
+workspace.
 
 The button only appears when you may create such an element on the page.
 

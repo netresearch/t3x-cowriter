@@ -125,7 +125,7 @@ Tests/
 │                       # Localization/: TYPO3 resolves the de. language files
 │                       # Context/: task context read rules (tables_select, language, root level, workspaces)
 │                       # Image/: a generated image written through FAL as a backend user (mounts, read-only mount)
-│                       # Presentation/: tab/accordion element written through DataHandler with bootstrap_package's TCA (live, workspace, language, refusals), the control in FormEngine, a TYPO3 without bootstrap_package
+│                       # Presentation/: tab/accordion element written through DataHandler with bootstrap_package's TCA (live, workspace, language, access fields, images, translations, refusals), the switch to the new element, the proposal's warnings and introduction title, the control in FormEngine, a TYPO3 without bootstrap_package
 ├── Integration/
 │   ├── AbstractIntegrationTestCase.php
 │   └── Controller/     # Ajax, Template, Translation, Vision + Backend/Status integration tests
