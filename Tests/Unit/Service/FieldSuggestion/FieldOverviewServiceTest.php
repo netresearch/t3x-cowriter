@@ -106,6 +106,51 @@ final class FieldOverviewServiceTest extends TestCase
     }
 
     #[Test]
+    public function theCallGetsAnOutputLimitForAllFieldsWithTheirReasons(): void
+    {
+        $this->completion->structuredResult = ['fields' => []];
+        $configuration                      = new LlmConfiguration();
+        $configuration->setMaxTokens(1000);
+
+        $this->subject()->review($this->context(), $this->profiles(), [], $configuration);
+
+        // (60 + 160 + 40 + 3 * (240 + 60)) / 2.5 = 464, plus 1024 for thinking.
+        self::assertSame(1488, $this->completion->completeStructuredForConfigurationCalls[0]['options']?->getMaxTokens());
+    }
+
+    #[Test]
+    public function twelveFieldsNeedMoreThanTheDefaultOf1000Tokens(): void
+    {
+        $profiles = [];
+        foreach ([FieldKind::PageTitle, FieldKind::NavTitle, FieldKind::Subtitle, FieldKind::Abstract, FieldKind::SeoTitle,
+            FieldKind::MetaDescription, FieldKind::Keywords, FieldKind::OgTitle, FieldKind::OgDescription,
+            FieldKind::TwitterTitle, FieldKind::TwitterDescription, FieldKind::Slug] as $kind) {
+            $profiles[$kind->value] = new FieldProfile($kind, $kind->defaultMaxLength());
+        }
+
+        self::assertSame(3182, FieldOverviewService::maxTokens($profiles, 1000));
+    }
+
+    #[Test]
+    public function aHigherConfiguredLimitWinsAndModelMaximumStaysUntouched(): void
+    {
+        self::assertSame(8000, FieldOverviewService::maxTokens($this->profiles(), 8000));
+        self::assertNull(FieldOverviewService::maxTokens($this->profiles(), 0));
+    }
+
+    #[Test]
+    public function aConfigurationAskingForTheModelMaximumGetsNoLimitFromTheCall(): void
+    {
+        $this->completion->structuredResult = ['fields' => []];
+        $configuration                      = new LlmConfiguration();
+        $configuration->setMaxTokens(0);
+
+        $this->subject()->review($this->context(), $this->profiles(), [], $configuration);
+
+        self::assertNull($this->completion->completeStructuredForConfigurationCalls[0]['options']?->getMaxTokens());
+    }
+
+    #[Test]
     public function anAnswerWithoutFieldListYieldsNothing(): void
     {
         $this->completion->structuredResult = ['fields' => 'none'];
@@ -123,7 +168,7 @@ final class FieldOverviewServiceTest extends TestCase
         self::assertArrayNotHasKey('required', $entry);
         self::assertArrayNotHasKey('maxItems', $schema['properties']['fields']);
         foreach ($entry['properties'] as $name => $property) {
-            self::assertSame(['type' => 'string'], $property, $name);
+            self::assertSame(['type' => ['string', 'null']], $property, $name);
         }
     }
 
@@ -138,6 +183,13 @@ final class FieldOverviewServiceTest extends TestCase
 
         $validator = new JsonSchemaValidator();
         self::assertTrue($validator->validateStrict($answer, FieldOverviewService::schema()));
+
+        // Nulls in an entry and keys the schema does not name pass as well.
+        $loose = ['note' => 'extra root key', 'fields' => [
+            ['field' => 'seo_title', 'action' => 'keep', 'value' => null, 'reason' => 'Fine.', 'confidence' => 0.9],
+            ['field' => null, 'action' => null, 'value' => null, 'reason' => null],
+        ]];
+        self::assertTrue($validator->validateStrict($loose, FieldOverviewService::schema()));
 
         // Control: the same validator refuses the answer once the schema names the allowed values.
         $constrained                                                                  = FieldOverviewService::schema();
@@ -224,6 +276,19 @@ final class FieldOverviewServiceTest extends TestCase
         ]);
 
         self::assertSame([], $reviews);
+    }
+
+    #[Test]
+    public function nullsInAnEntryAreHandledLikeMissingValues(): void
+    {
+        $reviews = $this->parse([
+            ['field' => 'seo_title', 'action' => 'keep', 'value' => null, 'reason' => 'Fine as it is.'],
+            ['field' => 'description', 'action' => 'change', 'value' => null, 'reason' => 'No value.'],
+            ['field' => 'keywords', 'action' => 'keep', 'reason' => null],
+            ['field' => null, 'action' => 'keep', 'reason' => 'No field.'],
+        ]);
+
+        self::assertEquals([new FieldReview('seo_title', FieldReview::ACTION_KEEP, '', 'Fine as it is.')], $reviews);
     }
 
     #[Test]

@@ -37,6 +37,23 @@ final readonly class FieldOverviewService
      */
     public const MAX_REASON_LENGTH = 240;
 
+    /**
+     * Characters per output token, on the low side: German text and JSON
+     * syntax both tokenise worse than English prose (about 3 to 4).
+     */
+    public const CHARS_PER_TOKEN = 2.5;
+
+    /**
+     * JSON syntax of one entry: the four keys, quotes, the field name.
+     */
+    public const ENTRY_OVERHEAD_CHARS = 60;
+
+    /**
+     * Output tokens a reasoning model may spend on thinking before it writes
+     * the answer; they count against the same limit.
+     */
+    public const REASONING_HEADROOM_TOKENS = 1024;
+
     public function __construct(
         private CompletionServiceInterface $completionService,
         private SlugSuggestionBuilder $slugSuggestionBuilder,
@@ -62,6 +79,11 @@ final readonly class FieldOverviewService
             ->withSystemPrompt($this->buildSystemPrompt($profiles, $languageName))
             ->withCallerSource(CallerSource::EXTENSION, self::OPERATION);
 
+        $maxTokens = self::maxTokens($profiles, $configuration->getMaxTokens());
+        if ($maxTokens !== null) {
+            $options = $options->withMaxTokens($maxTokens);
+        }
+
         $answer = StructuredAnswer::payload($this->completionService->completeStructuredForConfiguration(
             $this->buildUserMessage($context, $profiles, $currentValues),
             $configuration,
@@ -75,11 +97,43 @@ final readonly class FieldOverviewService
     }
 
     /**
+     * The output token limit for a review of $profiles: room for every field
+     * at its full length plus a full reason, plus thinking headroom. The
+     * configuration's own limit (1000 tokens by default) is sized for one
+     * answer, not for a dozen fields with reasons; a JSON answer cut off there
+     * cannot be parsed and fails the request. The configured value still wins
+     * when it is higher, and nr-llm caps the result at the model's maximum
+     * output.
+     *
+     * @param array<string, FieldProfile> $profiles
+     * @param int                         $configured the configuration's max_tokens; 0 or less means "model maximum"
+     *
+     * @return int|null null when the configuration already asks for the model maximum
+     */
+    public static function maxTokens(array $profiles, int $configured): ?int
+    {
+        if ($configured <= 0) {
+            return null;
+        }
+
+        $characters = 0;
+        foreach ($profiles as $profile) {
+            $characters += $profile->maxLength + self::MAX_REASON_LENGTH + self::ENTRY_OVERHEAD_CHARS;
+        }
+
+        $needed = (int) ceil($characters / self::CHARS_PER_TOKEN) + self::REASONING_HEADROOM_TOKENS;
+
+        return max($configured, $needed);
+    }
+
+    /**
      * JSON schema of the answer: types only. nr-llm validates the answer
-     * strictly (required, enum, maxItems) and repairs it once, then gives up,
-     * so any constraint here turns one bad entry into a failed request. The
-     * allowed fields and actions are named in the prompt and checked entry by
-     * entry in parse() instead, which drops what does not fit.
+     * strictly (required, enum, maxItems, additionalProperties) and repairs it
+     * once, then gives up, so any constraint here turns one bad entry into a
+     * failed request. The allowed fields and actions are named in the prompt
+     * and checked entry by entry in parse() instead, which drops what does not
+     * fit; a null in an entry is dropped there as well, and keys the schema
+     * does not name are ignored.
      *
      * @return array<string, mixed>
      */
@@ -93,16 +147,15 @@ final readonly class FieldOverviewService
                     'items' => [
                         'type'       => 'object',
                         'properties' => [
-                            'field'  => ['type' => 'string'],
-                            'action' => ['type' => 'string'],
-                            'value'  => ['type' => 'string'],
-                            'reason' => ['type' => 'string'],
+                            'field'  => ['type' => ['string', 'null']],
+                            'action' => ['type' => ['string', 'null']],
+                            'value'  => ['type' => ['string', 'null']],
+                            'reason' => ['type' => ['string', 'null']],
                         ],
                     ],
                 ],
             ],
-            'required'             => ['fields'],
-            'additionalProperties' => false,
+            'required' => ['fields'],
         ];
     }
 

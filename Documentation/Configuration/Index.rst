@@ -772,7 +772,20 @@ The same list decides which fields the
 appears in the document header of a record form with at least one of these
 fields the editor may edit. ``fieldSuggestions.count`` does not apply there;
 the overview asks for one value per field. A review of all fields is one
-request against the rate limit and one call against the nr-llm budget.
+request against the rate limit and one call to the language model; two
+when the answer has to be repaired (nr-llm asks the model once more when
+the answer does not match the expected format). Both calls count against
+the nr-llm budget.
+
+The overview asks for enough output tokens for every field at its full
+length plus a reason of up to 240 characters, at 2.5 characters per token,
+plus 1024 tokens for models that think before they answer: about 3,200
+tokens for the twelve page fields of the built-in set. The ``max_tokens``
+of the nr-llm configuration still applies when it is higher, nr-llm caps
+the value at the model's maximum output, and with ``max_tokens = 0`` the
+model's maximum applies unchanged. A configuration limit of 1000 tokens,
+nr-llm's default, would cut off the answer for a whole page, which then
+cannot be read.
 
 The list is extension configuration rather than page TSconfig because the
 button is added to the TCA, which is the same for the whole installation.
