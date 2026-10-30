@@ -80,24 +80,37 @@ class RecordContextReader
      *
      * @return array{context: RecordContext, fields: list<string>}
      *
-     * @throws FieldSuggestionException when no field is left, the record does
-     *                                  not exist or the user may not edit it
+     * @throws FieldSuggestionException when no field has the control, the
+     *                                  user may edit none of them, the record
+     *                                  does not exist or the user may not edit it
      */
     public function readFields(string $table, array $fields, int $uid, int $pid, BackendUserAuthentication $backendUser): array
     {
-        $allowed = [];
+        // The same order as read(): the control, the table, then the field.
+        $enabled = [];
         foreach (array_unique($fields) as $field) {
             $column = $this->enabledColumn($table, $field);
-            if ($column !== null && $this->mayEditField($backendUser, $table, $field, $column)) {
+            if ($column !== null) {
+                $enabled[$field] = $column;
+            }
+        }
+
+        if ($enabled === []) {
+            throw FieldSuggestionException::notEnabled();
+        }
+
+        if (!$backendUser->check('tables_modify', $table)) {
+            throw FieldSuggestionException::accessDenied();
+        }
+
+        $allowed = [];
+        foreach ($enabled as $field => $column) {
+            if ($this->mayEditField($backendUser, $table, $field, $column)) {
                 $allowed[] = $field;
             }
         }
 
         if ($allowed === []) {
-            throw FieldSuggestionException::notEnabled();
-        }
-
-        if (!$backendUser->check('tables_modify', $table)) {
             throw FieldSuggestionException::accessDenied();
         }
 

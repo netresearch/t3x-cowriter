@@ -118,12 +118,9 @@ final readonly class RegisterFieldSuggestionControlsListener
             return false;
         }
 
-        if ((bool) ($config['enableRichtext'] ?? false) || $this->isRichTextInAnyType($tableTca, $field)) {
-            return false;
-        }
-
-        $renderType = $config['renderType'] ?? '';
-        if ($renderType !== '' && $renderType !== 'default') {
+        if ((bool) ($config['enableRichtext'] ?? false) || $this->hasOtherRenderType($config)
+            || $this->anyTypeTurnsItIntoNonProse($tableTca, $field)
+        ) {
             return false;
         }
 
@@ -137,15 +134,33 @@ final readonly class RegisterFieldSuggestionControlsListener
     }
 
     /**
+     * @param array<array-key, mixed> $config
+     */
+    private function hasOtherRenderType(array $config): bool
+    {
+        $renderType = $config['renderType'] ?? '';
+
+        return $renderType !== '' && $renderType !== 'default';
+    }
+
+    /**
+     * Whether a record type's columnsOverrides switch the field to rich text
+     * or to another renderType. The control is added to the column, so it
+     * would show in that type too.
+     *
+     * A readOnly override needs no check here: FormEngine merges the
+     * overrides before rendering, and core's input, text and slug elements
+     * render no field control for a read-only field.
+     *
      * @param array<array-key, mixed> $tableTca
      */
-    private function isRichTextInAnyType(array $tableTca, string $field): bool
+    private function anyTypeTurnsItIntoNonProse(array $tableTca, string $field): bool
     {
         $types = is_array($tableTca['types'] ?? null) ? $tableTca['types'] : [];
         foreach ($types as $type) {
             $overrides = is_array($type) && is_array($type['columnsOverrides'] ?? null) ? $type['columnsOverrides'] : [];
-            $override  = is_array($overrides[$field] ?? null) ? $overrides[$field] : [];
-            if ((bool) (Tca::config($override)['enableRichtext'] ?? false)) {
+            $override  = Tca::config(is_array($overrides[$field] ?? null) ? $overrides[$field] : []);
+            if ((bool) ($override['enableRichtext'] ?? false) || $this->hasOtherRenderType($override)) {
                 return true;
             }
         }

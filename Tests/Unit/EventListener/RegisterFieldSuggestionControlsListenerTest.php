@@ -227,6 +227,30 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
     }
 
     #[Test]
+    public function aFieldThatOnlyARecordTypeGivesAnotherRenderTypeGetsNoControl(): void
+    {
+        $tca = ['tt_content' => [
+            'columns' => [
+                'header'   => ['config' => ['type' => 'input']],
+                'bodytext' => ['config' => ['type' => 'text']],
+            ],
+            'types' => [
+                'text' => ['showitem' => 'header,bodytext'],
+                'html' => ['showitem' => 'bodytext', 'columnsOverrides' => [
+                    'bodytext' => ['config' => ['renderType' => 'codeEditor', 'format' => 'html']],
+                    'header'   => ['config' => ['renderType' => 'default', 'readOnly' => true]],
+                ]],
+            ],
+        ]];
+
+        $result = $this->subject()->register($tca, [['tt_content', 'header'], ['tt_content', 'bodytext']], 3);
+
+        self::assertNull($this->control($result, 'tt_content', 'bodytext'));
+        // renderType "default" is the plain element; readOnly is left to FormEngine.
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($result, 'tt_content', 'header'));
+    }
+
+    #[Test]
     public function representativePageAndContentTcaGetsTheControlOnTheDefaultSetOnly(): void
     {
         // Column configurations as TYPO3 14.3 core and EXT:seo define them.

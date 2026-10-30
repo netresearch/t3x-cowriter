@@ -140,7 +140,41 @@ final class FieldOverviewTest extends FunctionalTestCase
             ['fields' => []],
         );
 
-        self::assertSame(400, $response->getStatusCode());
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
+    }
+
+    #[Test]
+    public function aPageTheEditorMayNotEditIsRefusedBeforeTheModel(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/pages_and_users.csv');
+        $this->setUpBackendUser(2);
+
+        // Page 4 belongs to another group and grants nothing to everybody.
+        $response = $this->suggestAll(
+            ['table' => 'pages', 'uid' => 4, 'pid' => 2, 'fields' => ['seo_title' => '', 'description' => '']],
+            ['fields' => [['field' => 'seo_title', 'action' => 'keep', 'reason' => 'x']]],
+        );
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
+    }
+
+    #[Test]
+    public function aTranslationInALanguageTheEditorMayNotEditIsRefusedBeforeTheModel(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/pages_and_users.csv');
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/overview_permissions.csv');
+        $this->setUpBackendUser(4);
+        $answer = ['fields' => [['field' => 'seo_title', 'action' => 'keep', 'reason' => 'Fine.']]];
+
+        // Control: the same editor reviews the page in the default language.
+        $allowed = $this->suggestAll(['table' => 'pages', 'uid' => 3, 'pid' => 2, 'fields' => ['seo_title' => '']], $answer);
+        self::assertSame(200, $allowed->getStatusCode(), (string) $allowed->getBody());
+
+        // Page 5 is the translation of page 3 into language 1; the editor may edit language 0 only.
+        $refused = $this->suggestAll(['table' => 'pages', 'uid' => 5, 'pid' => 2, 'fields' => ['seo_title' => '']], $answer);
+        self::assertSame(403, $refused->getStatusCode());
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
 

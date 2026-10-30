@@ -202,13 +202,43 @@ final class RecordContextReaderTest extends TestCase
     }
 
     #[Test]
-    public function readFieldsWithoutAnyAllowedFieldIsRefused(): void
+    public function readFieldsWithoutAnyFieldWithTheControlIsNotEnabled(): void
     {
         $this->assertRefused(
             'Suggestions are not enabled for this field.',
             400,
             fn (): array => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))
+                ->readFields('pages', ['title', 'abstract', 'missing'], 12, 0, $this->editor()),
+        );
+    }
+
+    #[Test]
+    public function readFieldsWithoutAnyFieldTheUserMayEditIsDenied(): void
+    {
+        // Like read(): the field has the control, the user lacks the exclude field.
+        $this->assertRefused(
+            'You are not allowed to edit this field.',
+            403,
+            fn (): array => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))
                 ->readFields('pages', ['title', 'keywords'], 12, 0, $this->editor(['non_exclude_fields:pages:keywords'])),
+        );
+    }
+
+    #[Test]
+    public function readFieldsChecksTheTableBeforeTheFields(): void
+    {
+        // Same answer as read() for a user without the table and without the field.
+        $user = $this->editor(['tables_modify:pages', 'non_exclude_fields:pages:keywords']);
+
+        $this->assertRefused(
+            'You are not allowed to edit this field.',
+            403,
+            fn (): RecordContext => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read($this->request(['field' => 'keywords']), $user),
+        );
+        $this->assertRefused(
+            'You are not allowed to edit this field.',
+            403,
+            fn (): array => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->readFields('pages', ['keywords'], 12, 0, $user),
         );
     }
 
