@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Unit\Service\FieldSuggestion;
 
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
+use Netresearch\NrLlm\Provider\GeminiProvider;
 use Netresearch\NrLlm\Service\Schema\JsonSchemaValidator;
 use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Service\CallerSource;
@@ -24,6 +25,8 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\UntrustedDataFence;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use ReflectionMethod;
 
 #[CoversClass(FieldOverviewService::class)]
 #[CoversClass(FieldReview::class)]
@@ -114,8 +117,8 @@ final class FieldOverviewServiceTest extends TestCase
 
         $this->subject()->review($this->context(), $this->profiles(), [], $configuration);
 
-        // (60 + 160 + 40 + 3 * (240 + 60)) / 2.5 = 464, plus 1024 for thinking.
-        self::assertSame(1488, $this->completion->completeStructuredForConfigurationCalls[0]['options']?->getMaxTokens());
+        // (60 + 160 + 40 + 3 * (240 + 60)) / 1.5 = 774 (rounded up), plus 2048 for thinking.
+        self::assertSame(2822, $this->completion->completeStructuredForConfigurationCalls[0]['options']?->getMaxTokens());
     }
 
     #[Test]
@@ -128,7 +131,7 @@ final class FieldOverviewServiceTest extends TestCase
             $profiles[$kind->value] = new FieldProfile($kind, $kind->defaultMaxLength());
         }
 
-        self::assertSame(3182, FieldOverviewService::maxTokens($profiles, 1000));
+        self::assertSame(5645, FieldOverviewService::maxTokens($profiles, 1000));
     }
 
     #[Test]
@@ -168,7 +171,7 @@ final class FieldOverviewServiceTest extends TestCase
         self::assertArrayNotHasKey('required', $entry);
         self::assertArrayNotHasKey('maxItems', $schema['properties']['fields']);
         foreach ($entry['properties'] as $name => $property) {
-            self::assertSame(['type' => ['string', 'null']], $property, $name);
+            self::assertSame(['type' => 'string'], $property, $name);
         }
     }
 
@@ -184,17 +187,51 @@ final class FieldOverviewServiceTest extends TestCase
         $validator = new JsonSchemaValidator();
         self::assertTrue($validator->validateStrict($answer, FieldOverviewService::schema()));
 
-        // Nulls in an entry and keys the schema does not name pass as well.
+        // An empty value for "keep" and keys the schema does not name pass as well.
         $loose = ['note' => 'extra root key', 'fields' => [
-            ['field' => 'seo_title', 'action' => 'keep', 'value' => null, 'reason' => 'Fine.', 'confidence' => 0.9],
-            ['field' => null, 'action' => null, 'value' => null, 'reason' => null],
+            ['field' => 'seo_title', 'action' => 'keep', 'value' => '', 'reason' => 'Fine.', 'confidence' => 0.9],
         ]];
         self::assertTrue($validator->validateStrict($loose, FieldOverviewService::schema()));
+
+        // A null is no string: nr-llm refuses it and asks the model once more.
+        $null = ['fields' => [['field' => 'seo_title', 'action' => 'keep', 'value' => null, 'reason' => 'Fine.']]];
+        self::assertFalse($validator->validateStrict($null, FieldOverviewService::schema()));
 
         // Control: the same validator refuses the answer once the schema names the allowed values.
         $constrained                                                                  = FieldOverviewService::schema();
         $constrained['properties']['fields']['items']['properties']['action']['enum'] = ['change', 'keep'];
         self::assertFalse($validator->validateStrict($answer, $constrained));
+    }
+
+    #[Test]
+    public function geminiReceivesAllFourEntryPropertiesOfTheSchema(): void
+    {
+        // nr-llm's Gemini adapter reduces the schema to Gemini's dialect and
+        // drops a property whose type is not a single string.
+        $provider = (new ReflectionClass(GeminiProvider::class))->newInstanceWithoutConstructor();
+        $convert  = new ReflectionMethod(GeminiProvider::class, 'toGeminiSchema');
+
+        $converted = $convert->invoke($provider, FieldOverviewService::schema());
+
+        self::assertIsArray($converted);
+        $items = $converted['properties']['fields']['items'] ?? null;
+        self::assertIsArray($items);
+        self::assertSame('OBJECT', $items['type']);
+        self::assertSame(['field', 'action', 'value', 'reason'], array_keys($items['properties'] ?? []));
+        foreach ($items['properties'] as $name => $property) {
+            self::assertSame(['type' => 'STRING'], $property, $name);
+        }
+
+        self::assertSame(['fields'], $converted['required']);
+    }
+
+    #[Test]
+    public function theSystemPromptAsksForAnEmptyStringOnKeep(): void
+    {
+        $system = $this->subject()->buildSystemPrompt($this->profiles(), null);
+
+        self::assertStringContainsString('then "value" is the empty string "".', $system);
+        self::assertStringContainsString('each a string, never null', $system);
     }
 
     #[Test]

@@ -39,9 +39,12 @@ final readonly class FieldOverviewService
 
     /**
      * Characters per output token, on the low side: German text and JSON
-     * syntax both tokenise worse than English prose (about 3 to 4).
+     * syntax tokenise worse than English prose (about 3 to 4), Chinese,
+     * Japanese, Korean and Thai text at about one to two characters per
+     * token. The limit is a cap, not a price: only the tokens the model
+     * writes are billed.
      */
-    public const CHARS_PER_TOKEN = 2.5;
+    public const CHARS_PER_TOKEN = 1.5;
 
     /**
      * JSON syntax of one entry: the four keys, quotes, the field name.
@@ -50,9 +53,11 @@ final readonly class FieldOverviewService
 
     /**
      * Output tokens a reasoning model may spend on thinking before it writes
-     * the answer; they count against the same limit.
+     * the answer; they count against the same limit. A model that thinks
+     * longer needs a higher max_tokens in its nr-llm configuration, which
+     * wins when it is higher.
      */
-    public const REASONING_HEADROOM_TOKENS = 1024;
+    public const REASONING_HEADROOM_TOKENS = 2048;
 
     public function __construct(
         private CompletionServiceInterface $completionService,
@@ -132,8 +137,13 @@ final readonly class FieldOverviewService
      * once, then gives up, so any constraint here turns one bad entry into a
      * failed request. The allowed fields and actions are named in the prompt
      * and checked entry by entry in parse() instead, which drops what does not
-     * fit; a null in an entry is dropped there as well, and keys the schema
-     * does not name are ignored.
+     * fit; keys the schema does not name are ignored.
+     *
+     * Every type is a single string: Gemini's schema dialect has no type
+     * unions, and nr-llm's Gemini adapter drops a property whose type is a
+     * list, which would leave the entries without properties. A "keep"
+     * therefore carries "" as its value. A model that sends null anyway
+     * fails nr-llm's validation and gets one repair round-trip.
      *
      * @return array<string, mixed>
      */
@@ -147,10 +157,10 @@ final readonly class FieldOverviewService
                     'items' => [
                         'type'       => 'object',
                         'properties' => [
-                            'field'  => ['type' => ['string', 'null']],
-                            'action' => ['type' => ['string', 'null']],
-                            'value'  => ['type' => ['string', 'null']],
-                            'reason' => ['type' => ['string', 'null']],
+                            'field'  => ['type' => 'string'],
+                            'action' => ['type' => 'string'],
+                            'value'  => ['type' => 'string'],
+                            'reason' => ['type' => 'string'],
                         ],
                     ],
                 ],
@@ -180,7 +190,8 @@ final readonly class FieldOverviewService
             'You review the text fields of one record in a CMS and suggest a better value where it helps readers and search engines.',
             'Return one entry per field listed below, with the field name in "field":',
             '- "action": "change" with the suggested value in "value" when the field is empty or a clearly better value is possible;',
-            '- "action": "keep" when the current value already serves its purpose; "value" stays empty.',
+            '- "action": "keep" when the current value already serves its purpose; then "value" is the empty string "".',
+            'Every entry has all four keys "field", "action", "value" and "reason", each a string, never null.',
             sprintf(
                 'Every entry has a "reason": one sentence of at most %d characters that tells the editor why, for example the length, the main keyword or what the value adds.',
                 self::MAX_REASON_LENGTH,

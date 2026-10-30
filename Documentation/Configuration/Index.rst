@@ -778,14 +778,20 @@ the answer does not match the expected format). Both calls count against
 the nr-llm budget.
 
 The overview asks for enough output tokens for every field at its full
-length plus a reason of up to 240 characters, at 2.5 characters per token,
-plus 1024 tokens for models that think before they answer: about 3,200
-tokens for the twelve page fields of the built-in set. The ``max_tokens``
-of the nr-llm configuration still applies when it is higher, nr-llm caps
-the value at the model's maximum output, and with ``max_tokens = 0`` the
-model's maximum applies unchanged. A configuration limit of 1000 tokens,
-nr-llm's default, would cut off the answer for a whole page, which then
-cannot be read.
+length plus a reason of up to 240 characters, at 1.5 characters per token,
+plus 2048 tokens for models that think before they answer: about 5,600
+tokens for the twelve page fields of the built-in set. 1.5 characters per
+token is low for German or English text and leaves room for Chinese,
+Japanese, Korean and Thai, which take about one to two characters per
+token. The value is an upper limit, not a price: only the tokens the
+model writes are billed. The ``max_tokens`` of the nr-llm configuration
+still applies when it is higher, nr-llm caps the value at the model's
+maximum output when the model's limit is known, and with
+``max_tokens = 0`` the model's maximum applies unchanged. A configuration
+limit of 1000 tokens, nr-llm's default, would cut off the answer for a
+whole page, which then cannot be read. A model that thinks longer than
+2048 tokens, or a script that needs more than one token per character,
+needs a higher ``max_tokens`` in its nr-llm configuration.
 
 The list is extension configuration rather than page TSconfig because the
 button is added to the TCA, which is the same for the whole installation.
