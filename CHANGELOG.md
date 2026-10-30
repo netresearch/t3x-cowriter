@@ -2,6 +2,12 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.20.0 (2026-10-30)
+
+### FEATURE
+
+- Text elements (Text, Text & Images, Text & Media) can be presented as tabs or as an accordion: the **Present as tabs or accordion** button next to the rich text proposes how to cut the saved text into sections, and the editor picks tabs or accordion and can edit the section titles. A text with h2 or h3 headings is cut at them without a request to the language model; a text without them is split by the language model, which counts against the editor's nr-llm budget. Every section keeps the text as stored; the model only chooses where sections start and what they are called. After the editor confirms the preview, a new bootstrap_package Tabs or Accordion element is created hidden directly after the original, with one item per section; it takes over the access settings, the frame and spacing and the images of the original, which itself is not changed. A switch in the dialog then shows the new element and hides the original. There is no switch for an original with translations or for a connected translation, because hiding it would hide its translations or bring back the default-language element; the dialog explains what to do instead: translate the new element, make it and its translations visible, then hide the original. Off by default; admins turn it on with `presentation.enable`. The button appears only where bootstrap_package is installed and the editor may create these elements on the page (#236).
+
 ## 3.19.0 (2026-10-29)
 
 ### FEATURE
