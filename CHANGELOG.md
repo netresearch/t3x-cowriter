@@ -2,6 +2,13 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.21.0 (2026-10-30)
+
+### FEATURE
+
+- Field suggestions cover all descriptive fields: on pages the title, navigation title, subtitle, abstract, SEO title, description, keywords, the Open Graph and X title and description and the URL segment; on content elements the header and subheader. Each field has its own instruction and length limit, and a lower `max` in the TCA wins. The prompt also contains the record's own readable text fields. Fields that are rich text, use a `renderType` or a value picker, are read-only or carry an identifier or number `eval` never get the button, whatever the setting says; alternative texts are left out because the text model does not see the image. The default of `fieldSuggestions.fields` is now `default`, the built-in set, which can be combined with further fields; the literal 3.19 default is read as `default` (#237).
+- **Suggest values for all fields with AI**: a button in the record's document header opens an overview with one suggestion and one reason per field. Each row has a checkbox and an editable value; **Apply selected** writes the checked values into the form, and nothing is saved until the editor saves. The overview is one call against the editor's nr-llm budget, two when the answer has to be repaired (#237).
+
 ## 3.20.0 (2026-10-30)
 
 ### FEATURE
