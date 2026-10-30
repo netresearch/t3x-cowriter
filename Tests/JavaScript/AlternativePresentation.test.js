@@ -340,6 +340,64 @@ describe('AlternativePresentation', () => {
         expect(document.getElementById(CONTROL_ID + '-status').textContent).toBe(created + ' Not switched: this element has translations.');
     });
 
+    /**
+     * Answers the proposal at once and holds the creation until the test
+     * settles it.
+     */
+    function holdCreation() {
+        const held = {};
+        AjaxRequest.nextPost = (url) => {
+            if (url.includes('propose')) {
+                return Promise.resolve(jsonResponse(PROPOSAL));
+            }
+            return new Promise((resolve, reject) => {
+                held.resolve = () => resolve(jsonResponse(CREATED));
+                held.reject = () => reject(Object.assign(new Error('500'), { resolve: async () => ({ success: false, error: 'Failed.' }) }));
+            });
+        };
+        return held;
+    }
+
+    it('stays open while the element is being created, so its result is not lost', async () => {
+        const held = holdCreation();
+        const { control } = await setup();
+        await openPanel(control);
+        const panel = document.getElementById(CONTROL_ID + '-panel');
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        expect(document.querySelector('.cowriter-presentation-cancel').disabled).toBe(true);
+        panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        control.click();
+        await flush();
+        expect(panel.hidden).toBe(false);
+        expect(control.getAttribute('aria-expanded')).toBe('true');
+
+        held.resolve();
+        await flush();
+        expect(document.querySelector('.cowriter-presentation-result')).not.toBeNull();
+
+        // Once answered, the panel closes again.
+        panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(panel.hidden).toBe(true);
+    });
+
+    it('can be closed again after a failed creation', async () => {
+        const held = holdCreation();
+        const { control } = await setup();
+        await openPanel(control);
+        const panel = document.getElementById(CONTROL_ID + '-panel');
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        held.reject();
+        await flush();
+        const cancel = document.querySelector('.cowriter-presentation-cancel');
+        expect(cancel.disabled).toBe(false);
+        cancel.click();
+        expect(panel.hidden).toBe(true);
+    });
+
     it('announces the switch promise only where there is a switch', async () => {
         answer(PROPOSAL, CREATED);
         const { control } = await setup();

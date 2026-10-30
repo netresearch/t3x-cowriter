@@ -444,7 +444,8 @@ proposal you then have three buttons:
 
 If the form has unsaved changes, the last two buttons ask first, as every
 link out of the form does. :kbd:`Escape` or :guilabel:`Cancel` closes the
-proposal without creating anything.
+proposal without creating anything; while the element is being created,
+the proposal stays open until the result is there.
 
 An element with translations is not switched. Translated pages show a
 translation only while the element in the default language is visible:

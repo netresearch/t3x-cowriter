@@ -67,6 +67,9 @@ export class AlternativePresentation {
         this.request = null;
         this.proposal = null;
         this.created = null;
+        // A creation in flight: the server may create the element even if the
+        // browser stops waiting, so the panel stays open until it answers.
+        this.creating = false;
         this.switched = false;
         // Increases with every open and close: an answer to a superseded
         // request is ignored.
@@ -186,6 +189,9 @@ export class AlternativePresentation {
     }
 
     close() {
+        if (this.creating) {
+            return;
+        }
         this.requestToken++;
         this.request?.abort();
         this.request = null;
@@ -293,7 +299,7 @@ export class AlternativePresentation {
         createButton.textContent = this.labels.create;
         const cancelButton = document.createElement('button');
         cancelButton.type = 'button';
-        cancelButton.className = 'btn btn-default';
+        cancelButton.className = 'btn btn-default cowriter-presentation-cancel';
         cancelButton.textContent = this.labels.cancel;
         cancelButton.addEventListener('click', () => this.close());
         buttons.append(createButton, cancelButton);
@@ -357,7 +363,12 @@ export class AlternativePresentation {
         }));
 
         const submit = form.querySelector('button[type="submit"]');
+        const cancel = form.querySelector('.cowriter-presentation-cancel');
         submit.disabled = true;
+        this.creating = true;
+        if (cancel) {
+            cancel.disabled = true;
+        }
         this.setStatus(this.labels.creating, false);
         const token = ++this.requestToken;
 
@@ -376,6 +387,11 @@ export class AlternativePresentation {
             if (token === this.requestToken) {
                 submit.disabled = false;
                 this.setStatus(this.messageOf(error), true);
+            }
+        } finally {
+            this.creating = false;
+            if (cancel) {
+                cancel.disabled = false;
             }
         }
     }
