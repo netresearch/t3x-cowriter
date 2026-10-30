@@ -1,0 +1,9 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","perms_userid","perms_groupid","perms_user","perms_group","perms_everybody","sys_language_uid","l10n_parent"
+,5,2,"Bürostühle","/products/buerostuehle",0,1,1,1,31,31,0,1,3
+"be_groups"
+,"uid","pid","title","tables_modify","tables_select","non_exclude_fields","db_mountpoints","allowed_languages"
+,3,0,"Editors of the default language","pages,tt_content","pages,tt_content","pages:description,pages:keywords,pages:seo_title","1","0"
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,4,0,"default-language-editor",0,"1,3",0

@@ -220,6 +220,8 @@ translation is inserted as it came and the notification has no hint.
     linked text, the formatting is maintained in the translated
     output.
 
+..  _usage-vision:
+
 Alt text generation
 ===================
 
@@ -358,13 +360,31 @@ Field suggestions
 
 Outside the rich text editor, the **Suggest values with AI** button
 (light bulb icon) next to a form field asks the LLM for alternative
-values. By default it sits next to these page properties:
+values. By default it sits next to these fields:
 
-*   :guilabel:`SEO` > :guilabel:`Title for search engines`
-    (``pages.seo_title``, only with the system extension ``seo``)
-*   :guilabel:`SEO` > :guilabel:`Description` (``pages.description``)
-*   :guilabel:`SEO` > :guilabel:`Keywords` (``pages.keywords``)
-*   :guilabel:`General` > :guilabel:`URL Segment` (``pages.slug``)
+*   Page properties, :guilabel:`General`: :guilabel:`Page title`
+    (``pages.title``), :guilabel:`URL Segment` (``pages.slug``),
+    :guilabel:`Alternative Navigation Title` (``pages.nav_title``) and
+    :guilabel:`Subtitle` (``pages.subtitle``)
+*   Page properties, :guilabel:`SEO`: :guilabel:`Title for search engines`
+    (``pages.seo_title``) and :guilabel:`Description for search engines`
+    (``pages.description``)
+*   Page properties, :guilabel:`Social Media`: :guilabel:`Open Graph Title`,
+    :guilabel:`Open Graph Description`, :guilabel:`X / Twitter Title` and
+    :guilabel:`X / Twitter Description` (``pages.og_title``,
+    ``pages.og_description``, ``pages.twitter_title``,
+    ``pages.twitter_description``)
+*   Page properties, :guilabel:`Metadata`: :guilabel:`Abstract`
+    (``pages.abstract``) and :guilabel:`Keywords` (``pages.keywords``)
+*   Content elements: :guilabel:`Header` and :guilabel:`Subheader`
+    (``tt_content.header``, ``tt_content.subheader``)
+
+Tabs and labels are those of TYPO3 14.3 with the system extension ``seo``;
+other versions may place a field on another tab.
+
+The SEO and social media fields exist only with the system extension
+``seo``. Administrators can change the list, see
+:ref:`configuration-field-suggestions`.
 
 1.  Click the light bulb button next to the field (or focus it and press
     :kbd:`Enter` or :kbd:`Space`)
@@ -389,17 +409,42 @@ exactly as if you had typed it, and :kbd:`Escape` closes the list without
 changing anything.
 
 The suggestions are generated from the page title, the current value of
-the field (including text you typed but have not saved yet) and the text
-of the content elements on the page. In a workspace, the page and its
-content elements are read as they look in your workspace; drafts of other
-workspaces are never used. They follow the length guidance of
-the field: at most 60 characters for the SEO title and 160 characters for
-the description; keywords are a comma-separated list. For the URL segment
-the AI only proposes the words of the last path segment. TYPO3 adds the
-parent page path and turns the words into a valid URL segment. It checks
-that the URL segment is unique the same way as for a segment you type in.
+the field (including text you typed but have not saved yet), the other
+text fields of the record you may see (for a content element its header
+and text, so a headline describes the element and not the whole page)
+and the text of the content elements on the page. In a workspace, the
+page and its content elements are read as they look in your workspace;
+drafts of other workspaces are never used.
 
-The button only appears for fields you may edit, and the server checks
+Each field gets its own instruction and length limit, and a suggestion
+longer than the limit is shortened at a word boundary before you see it:
+
+=====================================  ===============================================  ==========
+Field                                  What the AI writes                               At most
+=====================================  ===============================================  ==========
+Page title                             The page topic, without the site name            70
+Navigation title                       1 to 3 words for menus                           30
+Subtitle                               One phrase that adds to the title                120
+Abstract                               1 to 3 sentences for teasers and page lists      500
+Title for search engines               The topic first, without the site name           60
+Description                            One or two sentences for search result snippets  160
+Keywords                               3 to 8 comma-separated keywords                  255
+Open Graph / X title                   A catchy title for link previews                 70
+Open Graph / X description             One or two sentences for link previews           200
+URL segment                            1 to 5 words for the last path segment           60
+Content element header                 What the element is about                        80
+Content element subheader              One phrase that adds to the header               120
+Other configured fields                A value for the field, named by its label        255
+=====================================  ===============================================  ==========
+
+A lower ``max`` in the field's TCA wins over these numbers. For the URL
+segment the AI only proposes the words of the last path segment. TYPO3
+adds the parent page path and turns the words into a valid URL segment.
+It checks that the URL segment is unique the same way as for a segment
+you type in.
+
+The button only appears for fields you may edit (a read-only field shows
+no button), and the server checks
 your permissions again for every request: you need write access to the
 table, access to the field if it is an exclude field, and edit rights on
 the page (for a new page: the right to create pages below the parent
@@ -407,6 +452,8 @@ page).
 
 Categories are not filled by the button. For tags, use the
 :guilabel:`Keywords` suggestions and copy the terms you want to use.
+Image alternative texts are not suggested here, because the text model
+never sees the image: use :ref:`usage-vision` in the rich text editor.
 
 ..  _usage-alternative-presentation:
 
@@ -488,6 +535,64 @@ German element). In a workspace the new element is created in your
 workspace.
 
 The button only appears when you may create such an element on the page.
+
+..  _usage-field-overview:
+
+Suggestions for all fields at once
+==================================
+
+The **Suggest values for all fields with AI** button in the document header
+of the record form (next to :guilabel:`Save` and :guilabel:`Close`) reviews
+every field of the record that has the light bulb button in one go. It
+appears only when the form shows at least one such field you may edit.
+
+1.  Click the button (or move to it with :kbd:`Tab` and press :kbd:`Enter`
+    or :kbd:`Space`)
+2.  A dialog lists the fields in a table: the field, its current value
+    (including text you typed but have not saved yet), the suggestion and
+    the reason for it. While the AI works, :guilabel:`Apply selected` is
+    disabled and a status line says so; when the list is there, the cursor
+    is on the first checkbox (on the table caption when no change is
+    suggested at all)
+3.  Where a change is suggested, the row has a checked checkbox and the
+    suggestion in a text field you can edit; editing a suggestion checks its
+    box again. Where the current value is already good, the row says
+    :guilabel:`No change suggested` and gives the reason
+4.  Uncheck the values you do not want and click
+    :guilabel:`Apply selected`
+5.  The checked values are written into the form fields and the form is
+    marked as changed; a notification says how many values were applied
+6.  Review the values and save the record
+
+..  figure:: /Images/Usage/FieldOverviewDialog.png
+    :alt: Dialog "AI suggestions for all fields" over the page properties:
+          a table with the columns Apply, Field, Current value, Suggestion
+          and Reason; checked rows with an editable suggestion for the page
+          title, URL segment, subtitle and the SEO and Open Graph fields, one
+          row "No change suggested" for the navigation title, and the
+          buttons Cancel and Apply selected
+    :class: with-border with-shadow
+
+    The overview of all fields: each suggestion with its reason, checked
+    where a change is suggested. Long texts get a text area.
+
+:guilabel:`Cancel`, :kbd:`Escape` or the close button leave the form as it
+was. Nothing is saved until you save the record.
+
+The values follow the same instructions and length limits as the light bulb
+button next to a single field (:ref:`usage-field-suggestions`), and the
+values and reasons are written in the language of the record. The server
+checks every field: a field you may not edit is left out of the request,
+and every value is shortened to the field's limit before you see it. Text
+from the AI is always shown and inserted as plain text.
+
+The whole review is **one request**: it counts once against your rate limit
+of 20 requests per minute and is one call to the AI (nr-llm), however many
+fields it covers; two calls when the answer does not have the expected
+format and nr-llm asks the model once more to repair it. Both count
+against the AI budget. That call sends the context once and is larger than
+a single-field request, so it uses more tokens than one suggestion for one
+field.
 
 Model override
 ==============

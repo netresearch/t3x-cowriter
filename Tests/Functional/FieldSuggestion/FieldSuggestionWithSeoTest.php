@@ -103,6 +103,6 @@ final class FieldSuggestionWithSeoTest extends FunctionalTestCase
             self::assertLessThanOrEqual(60, mb_strlen($suggestion));
         }
 
-        self::assertStringContainsString('SEO titles', (string) $completion->completeStructuredForConfigurationCalls[0]['options']?->getSystemPrompt());
+        self::assertStringContainsString('an SEO title for the HTML <title>', (string) $completion->completeStructuredForConfigurationCalls[0]['options']?->getSystemPrompt());
     }
 }

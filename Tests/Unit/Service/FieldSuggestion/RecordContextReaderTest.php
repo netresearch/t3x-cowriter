@@ -155,6 +155,116 @@ final class RecordContextReaderTest extends TestCase
     }
 
     #[Test]
+    public function theRecordsOwnTextIsReadForFieldsTheUserMaySee(): void
+    {
+        $GLOBALS['TCA']['tt_content']['ctrl']['label']              = 'header';
+        $GLOBALS['TCA']['tt_content']['columns']['header']['label'] = 'Header';
+        $GLOBALS['TCA']['tt_content']['columns']['subheader']       = ['exclude' => true, 'label' => 'Subheader', 'config' => ['type' => 'input', 'fieldControl' => [RegisterFieldSuggestionControlsListener::CONTROL_NAME => []]]];
+        $GLOBALS['TCA']['tt_content']['columns']['bodytext']        = ['label' => 'Text', 'config' => ['type' => 'text']];
+        $GLOBALS['TCA']['tt_content']['columns']['header_link']     = ['config' => ['type' => 'link']];
+        $GLOBALS['TCA']['tt_content']['columns']['secret']          = ['exclude' => true, 'config' => ['type' => 'input', 'fieldControl' => [RegisterFieldSuggestionControlsListener::CONTROL_NAME => []]]];
+        $content                                                    = self::CONTENT + [
+            'subheader'   => 'A subheader', 'bodytext' => '<p>Chairs&nbsp;for <b>offices</b></p>' . str_repeat('x', 2000),
+            'header_link' => 't3://page?uid=1', 'secret' => 'Hidden from this editor',
+        ];
+        $finder = $this->finder(['tt_content:40' => $content, 'pages:12' => self::PAGE]);
+
+        $context = (new RecordContextReader($finder))->read(
+            $this->request(['table' => 'tt_content', 'field' => 'header', 'uid' => 40]),
+            $this->editor(['non_exclude_fields:tt_content:secret']),
+        );
+
+        self::assertSame(['header', 'subheader', 'bodytext'], array_keys($context->recordFields));
+        self::assertSame(['label' => 'Header', 'value' => 'Old header'], $context->recordFields['header']);
+        self::assertSame(['label' => 'Subheader', 'value' => 'A subheader'], $context->recordFields['subheader']);
+        self::assertSame('Text', $context->recordFields['bodytext']['label']);
+        self::assertStringStartsWith('Chairs for offices', $context->recordFields['bodytext']['value']);
+        self::assertSame(RecordContextReader::MAX_RECORD_FIELD_LENGTH, mb_strlen($context->recordFields['bodytext']['value']));
+    }
+
+    #[Test]
+    public function readFieldsKeepsOnlyTheFieldsTheUserMayEditWithTheControl(): void
+    {
+        $finder = $this->finder(['pages:12' => self::PAGE]);
+
+        $result = (new RecordContextReader($finder))->readFields(
+            'pages',
+            ['seo_title', 'slug', 'title', 'abstract', 'keywords', 'missing', 'slug'],
+            12,
+            0,
+            $this->editor(['non_exclude_fields:pages:keywords']),
+        );
+
+        // title has no control, abstract a disabled one, keywords is excluded for this user.
+        self::assertSame(['seo_title', 'slug'], $result['fields']);
+        self::assertSame('pages', $result['context']->table);
+        self::assertSame(self::PAGE, $result['context']->record);
+    }
+
+    #[Test]
+    public function readFieldsWithoutAnyFieldWithTheControlIsNotEnabled(): void
+    {
+        $this->assertRefused(
+            'Suggestions are not enabled for this field.',
+            400,
+            fn (): array => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))
+                ->readFields('pages', ['title', 'abstract', 'missing'], 12, 0, $this->editor()),
+        );
+    }
+
+    #[Test]
+    public function readFieldsWithoutAnyFieldTheUserMayEditIsDenied(): void
+    {
+        // Like read(): the field has the control, the user lacks the exclude field.
+        $this->assertRefused(
+            'You are not allowed to edit this field.',
+            403,
+            fn (): array => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))
+                ->readFields('pages', ['title', 'keywords'], 12, 0, $this->editor(['non_exclude_fields:pages:keywords'])),
+        );
+    }
+
+    #[Test]
+    public function readFieldsChecksTheTableBeforeTheFields(): void
+    {
+        // Same answer as read() for a user without the table and without the field.
+        $user = $this->editor(['tables_modify:pages', 'non_exclude_fields:pages:keywords']);
+
+        $this->assertRefused(
+            'You are not allowed to edit this field.',
+            403,
+            fn (): RecordContext => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->read($this->request(['field' => 'keywords']), $user),
+        );
+        $this->assertRefused(
+            'You are not allowed to edit this field.',
+            403,
+            fn (): array => (new RecordContextReader($this->finder(['pages:12' => self::PAGE])))->readFields('pages', ['keywords'], 12, 0, $user),
+        );
+    }
+
+    #[Test]
+    public function readFieldsChecksTableAndRecordPermissions(): void
+    {
+        $reader = new RecordContextReader($this->finder(['pages:12' => self::PAGE]));
+
+        $this->assertRefused(
+            'You are not allowed to edit this field.',
+            403,
+            fn (): array => $reader->readFields('pages', ['seo_title'], 12, 0, $this->editor(['tables_modify:pages'])),
+        );
+        $this->assertRefused(
+            'You are not allowed to edit this field.',
+            403,
+            fn (): array => $reader->readFields('pages', ['seo_title'], 12, 0, $this->editor(['page:' . Permission::PAGE_EDIT])),
+        );
+        $this->assertRefused(
+            'You are not allowed to edit this field.',
+            403,
+            fn (): array => $reader->readFields('pages', ['seo_title'], 99, 0, $this->editor()),
+        );
+    }
+
+    #[Test]
     public function editingAPageRequiresPageEditOnThePageItself(): void
     {
         $user = $this->editor(['page:' . Permission::PAGE_EDIT]);

@@ -65,6 +65,94 @@
                 <source>The suggestions could not be generated. Please try again later.</source>
                 <target>Die Vorschläge konnten nicht erstellt werden. Bitte versuchen Sie es später erneut.</target>
             </trans-unit>
+            <trans-unit id="fieldOverview.button" resname="fieldOverview.button">
+                <source>Suggest values for all fields with AI</source>
+                <target>Werte für alle Felder mit KI vorschlagen</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.title" resname="fieldOverview.title">
+                <source>AI suggestions for all fields</source>
+                <target>KI-Vorschläge für alle Felder</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.loading" resname="fieldOverview.loading">
+                <source>Reviewing all fields…</source>
+                <target>Alle Felder werden geprüft …</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.loaded" resname="fieldOverview.loaded">
+                <source>%d of %d fields have a suggestion. Check the values you want to apply.</source>
+                <target>Für %d von %d Feldern gibt es einen Vorschlag. Markieren Sie die Werte, die übernommen werden sollen.</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.error" resname="fieldOverview.error">
+                <source>The suggestions could not be loaded.</source>
+                <target>Die Vorschläge konnten nicht geladen werden.</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.empty" resname="fieldOverview.empty">
+                <source>No suggestions were returned.</source>
+                <target>Es wurden keine Vorschläge geliefert.</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.caption" resname="fieldOverview.caption">
+                <source>Suggested values for the fields of this record</source>
+                <target>Vorgeschlagene Werte für die Felder dieses Datensatzes</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnApply" resname="fieldOverview.columnApply">
+                <source>Apply</source>
+                <target>Übernehmen</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnField" resname="fieldOverview.columnField">
+                <source>Field</source>
+                <target>Feld</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnCurrent" resname="fieldOverview.columnCurrent">
+                <source>Current value</source>
+                <target>Aktueller Wert</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnSuggestion" resname="fieldOverview.columnSuggestion">
+                <source>Suggestion</source>
+                <target>Vorschlag</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnReason" resname="fieldOverview.columnReason">
+                <source>Reason</source>
+                <target>Begründung</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.keep" resname="fieldOverview.keep">
+                <source>No change suggested</source>
+                <target>Keine Änderung vorgeschlagen</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.emptyValue" resname="fieldOverview.emptyValue">
+                <source>(empty)</source>
+                <target>(leer)</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.apply" resname="fieldOverview.apply">
+                <source>Apply selected</source>
+                <target>Ausgewählte übernehmen</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.cancel" resname="fieldOverview.cancel">
+                <source>Cancel</source>
+                <target>Abbrechen</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.applied" resname="fieldOverview.applied">
+                <source>%d values applied. Please review them and save the record.</source>
+                <target>%d Werte übernommen. Bitte prüfen Sie sie und speichern Sie den Datensatz.</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.appliedSingular" resname="fieldOverview.appliedSingular">
+                <source>1 value applied. Please review it and save the record.</source>
+                <target>1 Wert übernommen. Bitte prüfen Sie ihn und speichern Sie den Datensatz.</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.appliedTitle" resname="fieldOverview.appliedTitle">
+                <source>Suggestions applied</source>
+                <target>Vorschläge übernommen</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.nothingSelected" resname="fieldOverview.nothingSelected">
+                <source>No value is selected.</source>
+                <target>Es ist kein Wert ausgewählt.</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.applyRow" resname="fieldOverview.applyRow">
+                <source>Apply the suggestion for "%s"</source>
+                <target>Vorschlag für „%s“ übernehmen</target>
+            </trans-unit>
+            <trans-unit id="fieldOverview.suggestionFor" resname="fieldOverview.suggestionFor">
+                <source>Suggestion for "%s"</source>
+                <target>Vorschlag für „%s“</target>
+            </trans-unit>
             <trans-unit id="error.rateLimitExceeded" resname="error.rateLimitExceeded">
                 <source>Rate limit exceeded. Please try again later.</source>
                 <target>Zu viele Anfragen. Bitte versuchen Sie es später erneut.</target>

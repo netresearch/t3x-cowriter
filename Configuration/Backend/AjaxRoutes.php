@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Controller\BudgetStatusController;
+use Netresearch\T3Cowriter\Controller\FieldOverviewController;
 use Netresearch\T3Cowriter\Controller\FieldSuggestionController;
 use Netresearch\T3Cowriter\Controller\ImageGenerationController;
 use Netresearch\T3Cowriter\Controller\InlineSuggestionController;
@@ -102,6 +103,10 @@ return [
     'tx_cowriter_suggestions' => [
         'path'   => '/cowriter/suggestions',
         'target' => FieldSuggestionController::class . '::suggestAction',
+    ],
+    'tx_cowriter_suggestions_all' => [
+        'path'   => '/cowriter/suggestions/all',
+        'target' => FieldOverviewController::class . '::suggestAllAction',
     ],
     'tx_cowriter_budget_status' => [
         'path'    => '/cowriter/budget-status',

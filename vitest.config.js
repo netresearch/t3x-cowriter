@@ -34,6 +34,8 @@ const sharedAliases = {
         __dirname,
         'Resources/Public/JavaScript/Ckeditor/InlineSuggestions.js'
     ),
+    '@netresearch/t3_cowriter/FieldValue': resolve(__dirname, 'Resources/Public/JavaScript/FormEngine/FieldValue.js'),
+    '@netresearch/t3_cowriter/FieldOverview': resolve(__dirname, 'Resources/Public/JavaScript/FormEngine/FieldOverview.js'),
 };
 
 export default defineConfig({

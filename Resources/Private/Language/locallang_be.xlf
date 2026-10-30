@@ -50,6 +50,72 @@
             <trans-unit id="fieldSuggestions.error.unknown" resname="fieldSuggestions.error.unknown">
                 <source>The suggestions could not be generated. Please try again later.</source>
             </trans-unit>
+            <trans-unit id="fieldOverview.button" resname="fieldOverview.button">
+                <source>Suggest values for all fields with AI</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.title" resname="fieldOverview.title">
+                <source>AI suggestions for all fields</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.loading" resname="fieldOverview.loading">
+                <source>Reviewing all fields…</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.loaded" resname="fieldOverview.loaded">
+                <source>%d of %d fields have a suggestion. Check the values you want to apply.</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.error" resname="fieldOverview.error">
+                <source>The suggestions could not be loaded.</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.empty" resname="fieldOverview.empty">
+                <source>No suggestions were returned.</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.caption" resname="fieldOverview.caption">
+                <source>Suggested values for the fields of this record</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnApply" resname="fieldOverview.columnApply">
+                <source>Apply</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnField" resname="fieldOverview.columnField">
+                <source>Field</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnCurrent" resname="fieldOverview.columnCurrent">
+                <source>Current value</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnSuggestion" resname="fieldOverview.columnSuggestion">
+                <source>Suggestion</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.columnReason" resname="fieldOverview.columnReason">
+                <source>Reason</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.keep" resname="fieldOverview.keep">
+                <source>No change suggested</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.emptyValue" resname="fieldOverview.emptyValue">
+                <source>(empty)</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.apply" resname="fieldOverview.apply">
+                <source>Apply selected</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.cancel" resname="fieldOverview.cancel">
+                <source>Cancel</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.applied" resname="fieldOverview.applied">
+                <source>%d values applied. Please review them and save the record.</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.appliedSingular" resname="fieldOverview.appliedSingular">
+                <source>1 value applied. Please review it and save the record.</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.appliedTitle" resname="fieldOverview.appliedTitle">
+                <source>Suggestions applied</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.nothingSelected" resname="fieldOverview.nothingSelected">
+                <source>No value is selected.</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.applyRow" resname="fieldOverview.applyRow">
+                <source>Apply the suggestion for "%s"</source>
+            </trans-unit>
+            <trans-unit id="fieldOverview.suggestionFor" resname="fieldOverview.suggestionFor">
+                <source>Suggestion for "%s"</source>
+            </trans-unit>
             <trans-unit id="error.rateLimitExceeded" resname="error.rateLimitExceeded">
                 <source>Rate limit exceeded. Please try again later.</source>
             </trans-unit>

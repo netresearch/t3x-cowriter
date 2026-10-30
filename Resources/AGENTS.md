@@ -21,6 +21,8 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 - **HtmlSanitizer.js** - Allow-list sanitiser for every model answer shown as markup or inserted (dialog result, variants, stream, translation)
 - **UrlLoader.js** - CSP-compliant AJAX URL injection from data attributes
 - **FormEngine/FieldSuggestions.js** - "Suggest" field control for plain form fields (suggestion list, keyboard, live region)
+- **FormEngine/FieldOverview.js** - "Suggest values for all fields" document-header button and modal (one request, table with checkbox, editable value and reason per field)
+- **FormEngine/FieldValue.js** - writes a value into a FormEngine field (slug element, change event, validation, changed marker); shared by both
 
 ### File Structure
 
@@ -41,6 +43,8 @@ Resources/
 │       │   ├── InlineSuggestions.js # Inline suggestions while typing
 │       │   └── UrlLoader.js       # CSP-compliant URL loader
 │       └── FormEngine/
+│           ├── FieldOverview.js # "all fields" overview
+│           ├── FieldValue.js # shared field writer
 │           └── FieldSuggestions.js # "Suggest" field control
 ├── Private/
 │   ├── Language/locallang_be.xlf           # Field suggestion labels and endpoint messages
