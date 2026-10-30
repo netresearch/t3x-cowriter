@@ -797,6 +797,50 @@ The list is extension configuration rather than page TSconfig because the
 button is added to the TCA, which is the same for the whole installation.
 After changing either setting, flush the caches so the TCA is rebuilt.
 
+..  _configuration-field-suggestions-context:
+
+What a suggestion request sends
+-------------------------------
+
+The light bulb button and the overview of all fields send the same record
+data, read on the server with the editor's permissions
+(:ref:`usage-field-suggestions` lists the sources). These limits are fixed:
+
+*   Each text field of the record or of its page: up to 1000 characters.
+*   The page content: the header and text of up to 50 visible content
+    elements, up to 6000 characters together.
+*   The page fields are chosen by name: ``nav_title``, ``subtitle``,
+    ``abstract``, ``seo_title``, ``description``, ``keywords``,
+    ``og_title``, ``og_description``, ``twitter_title``,
+    ``twitter_description``, plus page fields from
+    ``fieldSuggestions.fields``. An exclude field is sent only to an
+    editor who has access to it. ``author``, ``author_email``,
+    ``target``, ``cache_tags``, ``TSconfig`` and other fields are never
+    sent.
+*   Neighbouring pages: the titles of up to five visible pages on the same
+    level, of the first 100 subpages of the parent, that the editor may
+    see. Folders (doktype 254), menu separators (199) and the recycler
+    (255) are skipped, as is a parent page of these types.
+*   All record data together: up to 16,000 characters (about 4,000 to
+    8,000 tokens). When the data is longer, the server leaves out, in this
+    order, the titles of neighbouring pages, the parent page title, the
+    end of the page content, the page fields and the record's other
+    fields, until it fits. The values of the fields the AI works on are
+    never cut; each value an editor sends is limited to 2000 characters.
+
+Everything sent stays fenced as data: the model is told to ignore
+instructions written inside it. The section
+:ref:`About this suggestion <usage-about>` tells editors which sources a
+request used and shows these limits.
+
+The image dialog asks the server for a proposal of the description
+(route ``tx_cowriter_image_context``). The proposal is built from the
+record's header, its page title and the first 300 characters of its text;
+no model is asked for it, and the request does not count against the rate
+limit. It uses the same permission checks as a field suggestion and gives a
+record the editor may not edit, or one that does not exist, an empty
+proposal.
+
 ..  _configuration-saved-prompts:
 
 Saved prompts
