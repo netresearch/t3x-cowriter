@@ -30,6 +30,11 @@ class RecordContextReader
      */
     public const MAX_PAGE_CONTENT_LENGTH = 6000;
 
+    /**
+     * Upper bound for one field of the edited record handed to the model.
+     */
+    public const MAX_RECORD_FIELD_LENGTH = 1000;
+
     public function __construct(
         private readonly RecordFinder $recordFinder,
         private readonly RecordEditAccess $recordEditAccess = new RecordEditAccess(),
@@ -58,16 +63,64 @@ class RecordContextReader
             throw FieldSuggestionException::accessDenied();
         }
 
-        // Truthy like core's own check: extensions write `'exclude' => 1` as often as `true`.
-        if ((bool) ($column['exclude'] ?? false) && !$backendUser->check('non_exclude_fields', $table . ':' . $field)) {
+        if (!$this->mayEditField($backendUser, $table, $field, $column)) {
             throw FieldSuggestionException::accessDenied();
         }
 
-        $maxCount = $this->configuredCount($column);
+        return $this->readRecord($table, $field, $request->uid, $request->pid, $backendUser, $this->configuredCount($column));
+    }
 
-        return $request->isNewRecord()
-            ? $this->readNewRecord($request, $backendUser, $maxCount)
-            : $this->readExistingRecord($request, $backendUser, $maxCount);
+    /**
+     * The record context for several fields of one record at once (the
+     * "all fields" overview), plus the fields of $fields the user may edit
+     * and that carry the suggestion control. The others are dropped without
+     * a word: the client only names fields, the server decides.
+     *
+     * @param list<string> $fields
+     *
+     * @return array{context: RecordContext, fields: list<string>}
+     *
+     * @throws FieldSuggestionException when no field is left, the record does
+     *                                  not exist or the user may not edit it
+     */
+    public function readFields(string $table, array $fields, int $uid, int $pid, BackendUserAuthentication $backendUser): array
+    {
+        $allowed = [];
+        foreach (array_unique($fields) as $field) {
+            $column = $this->enabledColumn($table, $field);
+            if ($column !== null && $this->mayEditField($backendUser, $table, $field, $column)) {
+                $allowed[] = $field;
+            }
+        }
+
+        if ($allowed === []) {
+            throw FieldSuggestionException::notEnabled();
+        }
+
+        if (!$backendUser->check('tables_modify', $table)) {
+            throw FieldSuggestionException::accessDenied();
+        }
+
+        return [
+            'context' => $this->readRecord($table, $allowed[0], $uid, $pid, $backendUser, 1),
+            'fields'  => $allowed,
+        ];
+    }
+
+    /**
+     * @param array<array-key, mixed> $column
+     */
+    private function mayEditField(BackendUserAuthentication $backendUser, string $table, string $field, array $column): bool
+    {
+        // Truthy like core's own check: extensions write `'exclude' => 1` as often as `true`.
+        return !(bool) ($column['exclude'] ?? false) || $backendUser->check('non_exclude_fields', $table . ':' . $field);
+    }
+
+    private function readRecord(string $table, string $field, int $uid, int $pid, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
+    {
+        return $uid <= 0
+            ? $this->readNewRecord($table, $field, $pid, $backendUser, $maxCount)
+            : $this->readExistingRecord($table, $field, $uid, $backendUser, $maxCount);
     }
 
     /**
@@ -112,11 +165,10 @@ class RecordContextReader
         return $column;
     }
 
-    private function readExistingRecord(FieldSuggestionRequest $request, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
+    private function readExistingRecord(string $table, string $field, int $uid, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
     {
-        $table       = $request->table;
         $workspaceId = $this->workspaceId($backendUser);
-        $record      = $this->recordFinder->findRecord($table, $request->uid, $workspaceId);
+        $record      = $this->recordFinder->findRecord($table, $uid, $workspaceId);
         if ($record === null) {
             throw FieldSuggestionException::accessDenied();
         }
@@ -143,20 +195,19 @@ class RecordContextReader
 
         return new RecordContext(
             table: $table,
-            field: $request->field,
+            field: $field,
             record: $record,
-            storedValue: $this->stringValue($record[$request->field] ?? ''),
+            storedValue: $this->stringValue($record[$field] ?? ''),
             pageTitle: $page === null ? '' : $this->stringValue($page['title'] ?? ''),
             pageContent: $page === null ? '' : $this->pageContent($page, $this->languageId($table, $record), $backendUser, $workspaceId),
             slugPid: $pid,
             maxCount: $maxCount,
+            recordFields: $this->recordFields($table, $record, $backendUser),
         );
     }
 
-    private function readNewRecord(FieldSuggestionRequest $request, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
+    private function readNewRecord(string $table, string $field, int $pid, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
     {
-        $table       = $request->table;
-        $pid         = $request->pid;
         $workspaceId = $this->workspaceId($backendUser);
 
         if ($pid === 0) {
@@ -180,7 +231,7 @@ class RecordContextReader
 
         return new RecordContext(
             table: $table,
-            field: $request->field,
+            field: $field,
             record: ['pid' => $pid],
             storedValue: '',
             // A new page has no content yet: its parent page is the context.
@@ -254,6 +305,38 @@ class RecordContextReader
         }
 
         return mb_substr(implode("\n\n", $parts), 0, self::MAX_PAGE_CONTENT_LENGTH, 'UTF-8');
+    }
+
+    /**
+     * The record's own text the user may read, as context for the model: its
+     * label field, the fields with the suggestion control and the bodytext.
+     * Excluded fields count only when the user has access to them.
+     *
+     * @param array<string, mixed> $record
+     *
+     * @return array<string, array{label: string, value: string}>
+     */
+    private function recordFields(string $table, array $record, BackendUserAuthentication $backendUser): array
+    {
+        $labelField = Tca::labelField($table);
+        $fields     = [];
+        foreach (Tca::columns($table) as $field => $column) {
+            if (!is_string($field) || !is_array($column)) {
+                continue;
+            }
+
+            $isContext = $field === $labelField || $field === 'bodytext' || $this->enabledColumn($table, $field) !== null;
+            if (!$isContext || !$this->mayEditField($backendUser, $table, $field, $column)) {
+                continue;
+            }
+
+            $value = mb_substr($this->plainText($record[$field] ?? ''), 0, self::MAX_RECORD_FIELD_LENGTH, 'UTF-8');
+            if ($value !== '') {
+                $fields[$field] = ['label' => FieldProfile::columnLabel($field, $column), 'value' => $value];
+            }
+        }
+
+        return $fields;
     }
 
     /**

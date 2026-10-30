@@ -54,9 +54,10 @@ final class FieldSuggestionTcaTest extends FunctionalTestCase
     #[Test]
     public function unconfiguredFieldsStayWithoutTheControl(): void
     {
-        self::assertNull($this->control('pages', 'title'));
-        self::assertNull($this->control('pages', 'abstract'));
+        self::assertNull($this->control('pages', 'author'));
+        self::assertNull($this->control('pages', 'target'));
         self::assertNull($this->control('pages', 'categories'));
+        self::assertNull($this->control('tt_content', 'bodytext'));
     }
 
     #[Test]

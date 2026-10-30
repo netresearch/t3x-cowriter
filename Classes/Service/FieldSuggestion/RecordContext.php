@@ -17,9 +17,10 @@ use Netresearch\T3Cowriter\Domain\DTO\FieldSuggestionRequest;
 final readonly class RecordContext
 {
     /**
-     * @param array<string, mixed> $record   the stored row, or the few known fields of a new record
-     * @param int                  $slugPid  the pid TYPO3's SlugHelper derives the parent path from
-     * @param int                  $maxCount the most suggestions the field control is configured for
+     * @param array<string, mixed>                               $record       the stored row, or the few known fields of a new record
+     * @param int                                                $slugPid      the pid TYPO3's SlugHelper derives the parent path from
+     * @param int                                                $maxCount     the most suggestions the field control is configured for
+     * @param array<string, array{label: string, value: string}> $recordFields text fields of the record the user may read, as plain text, by field name
      */
     public function __construct(
         public string $table,
@@ -30,7 +31,28 @@ final readonly class RecordContext
         public string $pageContent,
         public int $slugPid,
         public int $maxCount = FieldSuggestionRequest::MAX_COUNT,
+        public array $recordFields = [],
     ) {}
+
+    /**
+     * The same record context for another field of the record.
+     */
+    public function forField(string $field): self
+    {
+        $storedValue = $this->record[$field] ?? '';
+
+        return new self(
+            table: $this->table,
+            field: $field,
+            record: $this->record,
+            storedValue: is_scalar($storedValue) ? (string) $storedValue : '',
+            pageTitle: $this->pageTitle,
+            pageContent: $this->pageContent,
+            slugPid: $this->slugPid,
+            maxCount: $this->maxCount,
+            recordFields: $this->recordFields,
+        );
+    }
 
     public function isSiteRoot(): bool
     {

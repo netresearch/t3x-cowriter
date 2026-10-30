@@ -37,6 +37,23 @@ final class Tca
         return is_array($column['config'] ?? null) ? $column['config'] : [];
     }
 
+    /**
+     * @param array<array-key, mixed>|null $tca defaults to $GLOBALS['TCA']
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function columns(string $table, ?array $tca = null): array
+    {
+        return self::section($table, 'columns', $tca);
+    }
+
+    public static function labelField(string $table): ?string
+    {
+        $field = self::section($table, 'ctrl')['label'] ?? null;
+
+        return is_string($field) && $field !== '' ? $field : null;
+    }
+
     public static function hasTable(string $table): bool
     {
         return is_array(self::all()[$table] ?? null);

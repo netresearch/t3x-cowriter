@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: Netresearch DTT GmbH
 
-# cat=Field suggestions; type=string; label=Fields with the AI "Suggest" button: Comma-separated list of table.field. A field that does not exist in the TCA is skipped (pages.seo_title needs EXT:seo). Leave empty to switch the button off.
-fieldSuggestions.fields = pages.seo_title,pages.description,pages.keywords,pages.slug
+# cat=Field suggestions; type=string; label=Fields with the AI "Suggest" button: Comma-separated list of table.field. "default" stands for the built-in set (page title, navigation title, subtitle, abstract, SEO title, description, keywords, Open Graph and X title and description, URL segment, content element header and subheader); for example "default,tx_news_domain_model_news.teaser". A field that does not exist in the TCA is skipped (the SEO fields need EXT:seo), and only plain text fields get the button. Leave empty to switch the button off.
+fieldSuggestions.fields = default
 
 # cat=Field suggestions; type=int+; label=Number of suggestions: How many suggestions the button asks for (1 to 5).
 fieldSuggestions.count = 3

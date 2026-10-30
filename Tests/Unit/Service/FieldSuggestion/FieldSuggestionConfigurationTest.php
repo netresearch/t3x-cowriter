@@ -20,6 +20,13 @@ use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 #[CoversClass(FieldSuggestionConfiguration::class)]
 final class FieldSuggestionConfigurationTest extends TestCase
 {
+    private const DEFAULT_SET = [
+        ['pages', 'title'], ['pages', 'nav_title'], ['pages', 'subtitle'], ['pages', 'abstract'],
+        ['pages', 'seo_title'], ['pages', 'description'], ['pages', 'keywords'],
+        ['pages', 'og_title'], ['pages', 'og_description'], ['pages', 'twitter_title'], ['pages', 'twitter_description'],
+        ['pages', 'slug'], ['tt_content', 'header'], ['tt_content', 'subheader'],
+    ];
+
     /**
      * @param array<string, mixed> $settings keyed by the path below t3_cowriter
      */
@@ -43,9 +50,33 @@ final class FieldSuggestionConfigurationTest extends TestCase
     #[Test]
     public function defaultFieldsApplyWhenNothingIsConfigured(): void
     {
+        self::assertSame(self::DEFAULT_SET, $this->subject([])->fields());
+    }
+
+    #[Test]
+    public function theDefaultOfVersion319IsReadAsTheCurrentDefault(): void
+    {
         self::assertSame(
-            [['pages', 'seo_title'], ['pages', 'description'], ['pages', 'keywords'], ['pages', 'slug']],
-            $this->subject([])->fields(),
+            self::DEFAULT_SET,
+            $this->subject(['fieldSuggestions/fields' => 'pages.seo_title, pages.description,pages.keywords ,pages.slug'])->fields(),
+        );
+    }
+
+    #[Test]
+    public function aDifferentOrderOfTheOldFieldsIsAChoiceAndStays(): void
+    {
+        self::assertSame(
+            [['pages', 'slug'], ['pages', 'seo_title'], ['pages', 'description'], ['pages', 'keywords']],
+            $this->subject(['fieldSuggestions/fields' => 'pages.slug,pages.seo_title,pages.description,pages.keywords'])->fields(),
+        );
+    }
+
+    #[Test]
+    public function theDefaultTokenExpandsToTheDefaultFieldsWithoutDuplicates(): void
+    {
+        self::assertSame(
+            [['tx_news_domain_model_news', 'teaser'], ...self::DEFAULT_SET],
+            $this->subject(['fieldSuggestions/fields' => 'tx_news_domain_model_news.teaser, default ,pages.title'])->fields(),
         );
     }
 
@@ -66,7 +97,7 @@ final class FieldSuggestionConfigurationTest extends TestCase
     #[Test]
     public function nonScalarSettingFallsBackToTheDefault(): void
     {
-        self::assertCount(4, $this->subject(['fieldSuggestions/fields' => ['x']])->fields());
+        self::assertSame(self::DEFAULT_SET, $this->subject(['fieldSuggestions/fields' => ['x']])->fields());
     }
 
     /**

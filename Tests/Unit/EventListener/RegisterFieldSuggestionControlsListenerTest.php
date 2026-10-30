@@ -13,6 +13,7 @@ use Netresearch\T3Cowriter\EventListener\RegisterFieldSuggestionControlsListener
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldSuggestionConfiguration;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -155,6 +156,134 @@ final class RegisterFieldSuggestionControlsListenerTest extends TestCase
         self::assertNull($this->control($result, 'pages', 'bodytext'));
         self::assertNull($this->control($result, 'pages', 'rte_int'));
         self::assertSame(self::EXPECTED_CONTROL, $this->control($result, 'pages', 'plain_text'));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function nonProseColumnProvider(): iterable
+    {
+        yield 'code editor (pages.TSconfig)' => [['type' => 'text', 'renderType' => 'codeEditor']];
+        yield 'table wizard' => [['type' => 'text', 'renderType' => 'textTable']];
+        yield 'is_in (pages.cache_tags)' => [['type' => 'input', 'eval' => 'trim,is_in', 'is_in' => 'abc']];
+        yield 'integer' => [['type' => 'input', 'eval' => 'int']];
+        yield 'nospace identifier' => [['type' => 'input', 'eval' => 'nospace, trim']];
+        yield 'value picker (pages.target)' => [['type' => 'input', 'eval' => 'trim', 'valuePicker' => ['items' => [['label' => 'New window', 'value' => '_blank']]]]];
+        yield 'read only' => [['type' => 'input', 'readOnly' => true]];
+        yield 'email type' => [['type' => 'email']];
+        yield 'link type' => [['type' => 'link']];
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    #[Test]
+    #[DataProvider('nonProseColumnProvider')]
+    public function columnsThatDoNotHoldProseGetNoControl(array $config): void
+    {
+        $tca                                  = $this->coreTca();
+        $tca['pages']['columns']['candidate'] = ['config' => $config];
+
+        $result = $this->subject()->register($tca, [['pages', 'candidate']], 3);
+
+        self::assertNull($this->control($result, 'pages', 'candidate'));
+    }
+
+    #[Test]
+    public function proseColumnsWithHarmlessSettingsGetTheControl(): void
+    {
+        $tca                                 = $this->coreTca();
+        $tca['pages']['columns']['trimmed']  = ['config' => ['type' => 'input', 'eval' => 'trim', 'max' => 255, 'required' => true]];
+        $tca['pages']['columns']['rendered'] = ['config' => ['type' => 'text', 'renderType' => 'default']];
+        $tca['pages']['columns']['not_ro']   = ['config' => ['type' => 'input', 'readOnly' => false]];
+
+        $result = $this->subject()->register($tca, [['pages', 'trimmed'], ['pages', 'rendered'], ['pages', 'not_ro']], 3);
+
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($result, 'pages', 'trimmed'));
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($result, 'pages', 'rendered'));
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($result, 'pages', 'not_ro'));
+    }
+
+    #[Test]
+    public function aFieldThatOnlyARecordTypeTurnsIntoRichTextGetsNoControl(): void
+    {
+        // tt_content.bodytext: plain text in the column, rich text for "text",
+        // "textpic" and "textmedia" through columnsOverrides.
+        $tca = ['tt_content' => [
+            'columns' => [
+                'header'   => ['config' => ['type' => 'input', 'max' => 255]],
+                'bodytext' => ['config' => ['type' => 'text']],
+            ],
+            'types' => [
+                'header' => ['showitem' => 'header'],
+                'text'   => ['showitem' => 'header,bodytext', 'columnsOverrides' => ['bodytext' => ['config' => ['enableRichtext' => true]]]],
+            ],
+        ]];
+
+        $result = $this->subject()->register($tca, [['tt_content', 'header'], ['tt_content', 'bodytext']], 3);
+
+        self::assertSame(self::EXPECTED_CONTROL, $this->control($result, 'tt_content', 'header'));
+        self::assertNull($this->control($result, 'tt_content', 'bodytext'));
+    }
+
+    #[Test]
+    public function representativePageAndContentTcaGetsTheControlOnTheDefaultSetOnly(): void
+    {
+        // Column configurations as TYPO3 14.3 core and EXT:seo define them.
+        $tca = [
+            'pages' => [
+                'ctrl'    => ['label' => 'title'],
+                'columns' => [
+                    'title'               => ['config' => ['type' => 'input', 'max' => 255, 'eval' => 'trim', 'required' => true]],
+                    'slug'                => ['config' => ['type' => 'slug', 'eval' => 'uniqueInSite']],
+                    'TSconfig'            => ['config' => ['type' => 'text', 'renderType' => 'codeEditor']],
+                    'nav_title'           => ['exclude' => true, 'config' => ['type' => 'input', 'max' => 255, 'eval' => 'trim']],
+                    'subtitle'            => ['exclude' => true, 'config' => ['type' => 'input', 'max' => 255, 'eval' => 'trim']],
+                    'target'              => ['exclude' => true, 'config' => ['type' => 'input', 'max' => 80, 'eval' => 'trim', 'valuePicker' => ['items' => []]]],
+                    'link'                => ['config' => ['type' => 'link']],
+                    'cache_tags'          => ['exclude' => true, 'config' => ['type' => 'input', 'max' => 255, 'eval' => 'trim,is_in']],
+                    'keywords'            => ['exclude' => true, 'config' => ['type' => 'text']],
+                    'description'         => ['exclude' => true, 'config' => ['type' => 'text']],
+                    'abstract'            => ['exclude' => true, 'config' => ['type' => 'text']],
+                    'author'              => ['exclude' => true, 'config' => ['type' => 'input', 'max' => 255, 'eval' => 'trim']],
+                    'author_email'        => ['exclude' => true, 'config' => ['type' => 'email']],
+                    'seo_title'           => ['exclude' => true, 'config' => ['type' => 'input', 'max' => 255, 'eval' => 'trim']],
+                    'canonical_link'      => ['exclude' => true, 'config' => ['type' => 'link']],
+                    'og_title'            => ['exclude' => true, 'config' => ['type' => 'input', 'max' => 255, 'eval' => 'trim']],
+                    'og_description'      => ['exclude' => true, 'config' => ['type' => 'text']],
+                    'twitter_title'       => ['exclude' => true, 'config' => ['type' => 'input', 'max' => 255, 'eval' => 'trim']],
+                    'twitter_description' => ['exclude' => true, 'config' => ['type' => 'text']],
+                ],
+            ],
+            'tt_content' => [
+                'columns' => [
+                    'header'      => ['config' => ['type' => 'input', 'max' => 255]],
+                    'header_link' => ['exclude' => true, 'config' => ['type' => 'link']],
+                    'subheader'   => ['exclude' => true, 'config' => ['type' => 'input', 'max' => 255]],
+                    'bodytext'    => ['config' => ['type' => 'text']],
+                ],
+                'types' => ['text' => ['columnsOverrides' => ['bodytext' => ['config' => ['enableRichtext' => true]]]]],
+            ],
+        ];
+        $event = new AfterTcaCompilationEvent($tca);
+
+        ($this->subject())($event);
+        $result = $event->getTca();
+
+        $withControl = [];
+        foreach ($result as $table => $tableTca) {
+            foreach ($tableTca['columns'] as $field => $column) {
+                if (isset($column['config']['fieldControl'][RegisterFieldSuggestionControlsListener::CONTROL_NAME])) {
+                    $withControl[] = $table . '.' . $field;
+                }
+            }
+        }
+
+        sort($withControl);
+        $expected = explode(',', FieldSuggestionConfiguration::DEFAULT_FIELDS);
+        sort($expected);
+
+        self::assertSame($expected, $withControl);
     }
 
     #[Test]

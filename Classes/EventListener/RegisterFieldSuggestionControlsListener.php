@@ -39,6 +39,15 @@ final readonly class RegisterFieldSuggestionControlsListener
      */
     private const SUPPORTED_TYPES = ['input', 'text', 'slug'];
 
+    /**
+     * eval rules of identifiers, numbers and codes (pages.cache_tags has
+     * `is_in`), not of prose.
+     */
+    private const NON_PROSE_EVALS = [
+        'alpha', 'alphanum', 'alphanum_x', 'domainname', 'double2', 'int', 'is_in',
+        'lower', 'md5', 'nospace', 'num', 'password', 'saltedPassword', 'upper',
+    ];
+
     public function __construct(
         private FieldSuggestionConfiguration $configuration,
     ) {}
@@ -58,7 +67,9 @@ final readonly class RegisterFieldSuggestionControlsListener
     {
         foreach ($fields as [$table, $field]) {
             $column = Tca::column($table, $field, $tca);
-            if ($column === null || !$this->isSupported($column)) {
+            /** @var array<array-key, mixed> $tableTca Tca::column() found the table when it found a column */
+            $tableTca = $column === null ? [] : $tca[$table];
+            if ($column === null || !$this->isSupported($tableTca, $field, $column)) {
                 continue;
             }
 
@@ -77,8 +88,6 @@ final readonly class RegisterFieldSuggestionControlsListener
             $config['fieldControl'] = $fieldControl;
             $column['config']       = $config;
 
-            /** @var array<array-key, mixed> $tableTca Tca::column() found the table */
-            $tableTca = $tca[$table];
             /** @var array<array-key, mixed> $columns */
             $columns             = $tableTca['columns'];
             $columns[$field]     = $column;
@@ -90,16 +99,57 @@ final readonly class RegisterFieldSuggestionControlsListener
     }
 
     /**
+     * Whether the column holds free text a suggestion makes sense for.
+     *
+     * Rich text fields have the cowriter toolbar in CKEditor instead — also
+     * when only a record type switches the editor on (tt_content.bodytext is
+     * plain text in its column and rich text through columnsOverrides). A
+     * renderType turns a text field into something else (code editor, table
+     * wizard), and an eval rule, a value picker or readOnly mark values that
+     * are identifiers, numbers or choices rather than prose.
+     *
+     * @param array<array-key, mixed> $tableTca
      * @param array<array-key, mixed> $column
      */
-    private function isSupported(array $column): bool
+    public function isSupported(array $tableTca, string $field, array $column): bool
     {
         $config = Tca::config($column);
         if (!in_array($config['type'] ?? null, self::SUPPORTED_TYPES, true)) {
             return false;
         }
 
-        // Rich text fields have the cowriter toolbar in CKEditor instead.
-        return !(bool) ($config['enableRichtext'] ?? false);
+        if ((bool) ($config['enableRichtext'] ?? false) || $this->isRichTextInAnyType($tableTca, $field)) {
+            return false;
+        }
+
+        $renderType = $config['renderType'] ?? '';
+        if ($renderType !== '' && $renderType !== 'default') {
+            return false;
+        }
+
+        if ((bool) ($config['readOnly'] ?? false) || isset($config['valuePicker'])) {
+            return false;
+        }
+
+        $evals = is_string($config['eval'] ?? null) ? array_map(trim(...), explode(',', $config['eval'])) : [];
+
+        return array_intersect($evals, self::NON_PROSE_EVALS) === [];
+    }
+
+    /**
+     * @param array<array-key, mixed> $tableTca
+     */
+    private function isRichTextInAnyType(array $tableTca, string $field): bool
+    {
+        $types = is_array($tableTca['types'] ?? null) ? $tableTca['types'] : [];
+        foreach ($types as $type) {
+            $overrides = is_array($type) && is_array($type['columnsOverrides'] ?? null) ? $type['columnsOverrides'] : [];
+            $override  = is_array($overrides[$field] ?? null) ? $overrides[$field] : [];
+            if ((bool) (Tca::config($override)['enableRichtext'] ?? false)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

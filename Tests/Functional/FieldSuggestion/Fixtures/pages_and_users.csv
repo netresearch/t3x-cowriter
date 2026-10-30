@@ -9,9 +9,9 @@
 ,10,3,"Ergonomic chairs","<p>Adjustable seat height and lumbar support.</p>","text",0,256
 ,11,3,"Warranty","Five years on every frame.","text",0,512
 "be_groups"
-,"uid","pid","title","tables_modify","tables_select","non_exclude_fields","db_mountpoints"
-,1,0,"Editors","pages,tt_content","pages,tt_content","pages:description,pages:keywords,pages:seo_title","1"
-,2,0,"Editors without SEO fields","pages,tt_content","pages,tt_content","","1"
+,"uid","pid","title","tables_modify","tables_select","non_exclude_fields","db_mountpoints","explicit_allowdeny"
+,1,0,"Editors","pages,tt_content","pages,tt_content","pages:description,pages:keywords,pages:seo_title","1","tt_content:CType:text"
+,2,0,"Editors without SEO fields","pages,tt_content","pages,tt_content","","1",""
 "be_users"
 ,"uid","pid","username","admin","usergroup","workspace_id"
 ,1,0,"admin",1,"",0

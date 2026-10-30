@@ -24,7 +24,29 @@ use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
  */
 final readonly class FieldSuggestionConfiguration
 {
-    public const DEFAULT_FIELDS = 'pages.seo_title,pages.description,pages.keywords,pages.slug';
+    /**
+     * The fields the button is meant for: short descriptive text an editor
+     * writes about a page or a content element. Fields that do not exist in
+     * an installation (EXT:seo not installed) are skipped by the listener.
+     */
+    public const DEFAULT_FIELDS = 'pages.title,pages.nav_title,pages.subtitle,pages.abstract,'
+        . 'pages.seo_title,pages.description,pages.keywords,'
+        . 'pages.og_title,pages.og_description,pages.twitter_title,pages.twitter_description,'
+        . 'pages.slug,tt_content.header,tt_content.subheader';
+
+    /**
+     * The setting's value up to version 3.19. TYPO3 writes a setting's default
+     * into settings.php when the extension is set up, so most installations
+     * hold this literal string without anybody having chosen it; it is read as
+     * the current default.
+     */
+    public const LEGACY_DEFAULT_FIELDS = 'pages.seo_title,pages.description,pages.keywords,pages.slug';
+
+    /**
+     * Entry that stands for DEFAULT_FIELDS inside the setting, so an
+     * integrator can add fields and still get the ones later versions add.
+     */
+    public const DEFAULT_TOKEN = 'default';
 
     public function __construct(
         private ExtensionConfiguration $extensionConfiguration,
@@ -39,11 +61,19 @@ final readonly class FieldSuggestionConfiguration
     public function fields(): array
     {
         $setting = $this->setting('fields', self::DEFAULT_FIELDS);
+        if (preg_replace('/\s+/', '', $setting) === self::LEGACY_DEFAULT_FIELDS) {
+            $setting = self::DEFAULT_FIELDS;
+        }
 
         $fields = [];
         foreach (explode(',', $setting) as $entry) {
-            if (preg_match('/^\s*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\s*$/', $entry, $match) === 1) {
-                $fields[] = [$match[1], $match[2]];
+            $entries = trim($entry) === self::DEFAULT_TOKEN ? explode(',', self::DEFAULT_FIELDS) : [$entry];
+            foreach ($entries as $candidate) {
+                if (preg_match('/^\s*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\s*$/', $candidate, $match) === 1
+                    && !in_array([$match[1], $match[2]], $fields, true)
+                ) {
+                    $fields[] = [$match[1], $match[2]];
+                }
             }
         }
 

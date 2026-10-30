@@ -701,13 +701,62 @@ button are set in the extension configuration
 ..  confval:: fieldSuggestions.fields
     :name: t3-cowriter-fieldSuggestions-fields
     :type: string
-    :default: ``pages.seo_title,pages.description,pages.keywords,pages.slug``
+    :default: ``default``
 
-    Comma-separated list of ``table.field``. Only single-line text fields,
-    plain-text areas (no rich text) and slug fields are supported. A field
-    that does not exist is skipped, so ``pages.seo_title`` only gets the
-    button when the system extension ``seo`` is installed. An empty value
-    switches the button off.
+    Comma-separated list of ``table.field``. The entry ``default`` stands
+    for the built-in set, so ``default,tx_news_domain_model_news.teaser``
+    adds a field and still gets the fields later versions add to the set.
+    The built-in set is the short text an editor writes about a page or a
+    content element:
+
+    ``pages``
+        ``title``, ``nav_title``, ``subtitle``, ``abstract``,
+        ``seo_title``, ``description``, ``keywords``, ``og_title``,
+        ``og_description``, ``twitter_title``, ``twitter_description``,
+        ``slug``
+
+    ``tt_content``
+        ``header``, ``subheader``
+
+    A field that does not exist is skipped, so the SEO and social media
+    fields only get the button when the system extension ``seo`` is
+    installed. An empty value switches the button off.
+
+    The value ``pages.seo_title,pages.description,pages.keywords,pages.slug``
+    (the default up to version 3.19, which TYPO3 has written into
+    :file:`settings.php` of most installations) is read as ``default``. To
+    keep exactly those four fields, list them in another order.
+
+    Only fields that hold prose get the button, whatever the list says:
+    single-line text, plain-text areas and slug fields. Skipped are rich
+    text fields (they have the Cowriter toolbar in CKEditor), also when only
+    a record type switches the editor on (``tt_content.bodytext``); fields
+    with a ``renderType`` (code editor, table wizard); fields with a value
+    picker (``pages.target``); read-only fields; and fields with an ``eval``
+    rule for identifiers or numbers (``int``, ``num``, ``is_in``,
+    ``nospace``, ``alphanum`` and the like, ``pages.cache_tags``). Email,
+    link, number, date, password, colour, select and check fields have
+    other TCA types and are never supported.
+
+    Not in the built-in set, on purpose:
+
+    *   ``pages.author``, ``pages.author_email``, ``pages.target``,
+        ``pages.cache_tags`` and ``pages.TSconfig`` hold names, addresses,
+        identifiers or code, not text about the page.
+    *   ``sys_file_reference.alternative`` and ``sys_file_metadata.alternative``:
+        the text model never sees the image, so it would invent an
+        alternative text. Use the :ref:`alt text <usage-vision>` function of
+        the rich text editor, which sends the image to a vision model.
+    *   The other fields of ``sys_file_reference`` (``title``,
+        ``description``) are switched off until the editor ticks the
+        override box next to them, and describe the image as well.
+    *   ``sys_file_metadata`` lives on the root level and is protected by
+        file mounts, not by page permissions; the button would refuse every
+        editor who is not an administrator.
+
+    There is no wildcard such as ``pages.*``: the TCA type alone does not
+    tell prose from identifiers (``pages.author`` and ``pages.target`` are
+    plain text fields), so every field is chosen by name.
 
 ..  confval:: fieldSuggestions.count
     :name: t3-cowriter-fieldSuggestions-count

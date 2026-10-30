@@ -220,6 +220,8 @@ translation is inserted as it came and the notification has no hint.
     linked text, the formatting is maintained in the translated
     output.
 
+..  _usage-vision:
+
 Alt text generation
 ===================
 
@@ -358,13 +360,26 @@ Field suggestions
 
 Outside the rich text editor, the **Suggest values with AI** button
 (light bulb icon) next to a form field asks the LLM for alternative
-values. By default it sits next to these page properties:
+values. By default it sits next to these fields:
 
-*   :guilabel:`SEO` > :guilabel:`Title for search engines`
-    (``pages.seo_title``, only with the system extension ``seo``)
-*   :guilabel:`SEO` > :guilabel:`Description` (``pages.description``)
-*   :guilabel:`SEO` > :guilabel:`Keywords` (``pages.keywords``)
-*   :guilabel:`General` > :guilabel:`URL Segment` (``pages.slug``)
+*   Page properties, :guilabel:`General`: :guilabel:`Page Title`
+    (``pages.title``), :guilabel:`URL Segment` (``pages.slug``),
+    :guilabel:`Subtitle` (``pages.subtitle``) and
+    :guilabel:`Navigation Title` (``pages.nav_title``)
+*   Page properties, :guilabel:`SEO`: :guilabel:`Title for search engines`
+    (``pages.seo_title``), :guilabel:`Description` (``pages.description``)
+    and :guilabel:`Keywords` (``pages.keywords``)
+*   Page properties, :guilabel:`Metadata`: :guilabel:`Abstract`
+    (``pages.abstract``)
+*   Page properties, :guilabel:`Social media`: the Open Graph and X (Twitter)
+    title and description (``pages.og_title``, ``pages.og_description``,
+    ``pages.twitter_title``, ``pages.twitter_description``)
+*   Content elements: :guilabel:`Header` and :guilabel:`Subheader`
+    (``tt_content.header``, ``tt_content.subheader``)
+
+The SEO and social media fields exist only with the system extension
+``seo``. Administrators can change the list, see
+:ref:`configuration-field-suggestions`.
 
 1.  Click the light bulb button next to the field (or focus it and press
     :kbd:`Enter` or :kbd:`Space`)
@@ -389,17 +404,42 @@ exactly as if you had typed it, and :kbd:`Escape` closes the list without
 changing anything.
 
 The suggestions are generated from the page title, the current value of
-the field (including text you typed but have not saved yet) and the text
-of the content elements on the page. In a workspace, the page and its
-content elements are read as they look in your workspace; drafts of other
-workspaces are never used. They follow the length guidance of
-the field: at most 60 characters for the SEO title and 160 characters for
-the description; keywords are a comma-separated list. For the URL segment
-the AI only proposes the words of the last path segment. TYPO3 adds the
-parent page path and turns the words into a valid URL segment. It checks
-that the URL segment is unique the same way as for a segment you type in.
+the field (including text you typed but have not saved yet), the other
+text fields of the record you may see (for a content element its header
+and text, so a headline describes the element and not the whole page)
+and the text of the content elements on the page. In a workspace, the
+page and its content elements are read as they look in your workspace;
+drafts of other workspaces are never used.
 
-The button only appears for fields you may edit, and the server checks
+Each field gets its own instruction and length limit, and a suggestion
+longer than the limit is shortened at a word boundary before you see it:
+
+=====================================  ===============================================  ==========
+Field                                  What the AI writes                               At most
+=====================================  ===============================================  ==========
+Page title                             The page topic, without the site name            70
+Navigation title                       1 to 3 words for menus                           30
+Subtitle                               One phrase that adds to the title                120
+Abstract                               1 to 3 sentences for teasers and page lists      500
+Title for search engines               The topic first, without the site name           60
+Description                            One or two sentences for search result snippets  160
+Keywords                               3 to 8 comma-separated keywords                  255
+Open Graph / X title                   A catchy title for link previews                 70
+Open Graph / X description             One or two sentences for link previews           200
+URL segment                            1 to 5 words for the last path segment           60
+Content element header                 What the element is about                        80
+Content element subheader              One phrase that adds to the header               120
+Other configured fields                A value for the field, named by its label        255
+=====================================  ===============================================  ==========
+
+A lower ``max`` in the field's TCA wins over these numbers. For the URL
+segment the AI only proposes the words of the last path segment. TYPO3
+adds the parent page path and turns the words into a valid URL segment.
+It checks that the URL segment is unique the same way as for a segment
+you type in.
+
+The button only appears for fields you may edit (a read-only field shows
+no button), and the server checks
 your permissions again for every request: you need write access to the
 table, access to the field if it is an exclude field, and edit rights on
 the page (for a new page: the right to create pages below the parent
@@ -407,6 +447,8 @@ page).
 
 Categories are not filled by the button. For tags, use the
 :guilabel:`Keywords` suggestions and copy the terms you want to use.
+Image alternative texts are not suggested here, because the text model
+never sees the image: use :ref:`usage-vision` in the rich text editor.
 
 ..  _usage-alternative-presentation:
 
