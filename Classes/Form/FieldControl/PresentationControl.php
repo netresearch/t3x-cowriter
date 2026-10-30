@@ -38,7 +38,7 @@ final class PresentationControl extends AbstractNode
      */
     private const JS_LABELS = [
         'heading', 'loading', 'proposedHeadings', 'proposedModel', 'layout', 'layoutTab', 'layoutAccordion',
-        'sectionTitle', 'noText', 'original', 'create', 'creating', 'created', 'open', 'cancel', 'error',
+        'sectionTitle', 'noText', 'original', 'create', 'creating', 'created', 'createdNoSwitch', 'open', 'cancel', 'error',
         'titleRequired', 'switch', 'switching', 'switched', 'openPage', 'imagesTaken',
         'warning.translations', 'warning.connectedTranslation', 'warning.imagesNotTaken',
     ];

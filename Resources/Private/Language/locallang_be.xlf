@@ -818,6 +818,9 @@
             <trans-unit id="presentation.created" resname="presentation.created">
                 <source>The new element was created directly after this one and is hidden. Visitors keep seeing this element until you switch the two.</source>
             </trans-unit>
+            <trans-unit id="presentation.createdNoSwitch" resname="presentation.createdNoSwitch">
+                <source>The new element was created directly after this one and is hidden. This element stays visible.</source>
+            </trans-unit>
             <trans-unit id="presentation.open" resname="presentation.open">
                 <source>Open the new element</source>
             </trans-unit>
@@ -873,19 +876,19 @@
                 <source>The elements could not be switched. Check both elements in the Layout module.</source>
             </trans-unit>
             <trans-unit id="presentation.warning.translations" resname="presentation.warning.translations">
-                <source>This element has translations. Translated pages show them only while this element is visible, so the switch is not offered: translated pages keep showing this element until each translation has its own new element. Do not delete this element; that deletes its translations too.</source>
+                <source>This element has translations. Translated pages show them only while this element is visible, so the switch is not offered. To replace this element: 1. In the Layout module, translate the new element into each language (Translate). 2. Make the new element and its translations visible. 3. Hide this element. Do not delete it; that deletes its translations too.</source>
             </trans-unit>
             <trans-unit id="presentation.warning.connectedTranslation" resname="presentation.warning.connectedTranslation">
-                <source>This element is a translation connected to the default language. The new element becomes an element of its own in this language, not connected to the default language, so the Layout module shows the page in mixed mode. The switch is not offered: on a site that falls back to the default language, hiding this translation shows the default-language element again, instead of or next to the new one.</source>
+                <source>This element is a translation connected to the default language. The new element becomes an element of its own in this language, so the Layout module shows the page in mixed mode, and the switch is not offered. On a site that falls back to the default language the new element may not appear as expected: on TYPO3 13.4 not at all, on 14.3 next to the default-language content.</source>
             </trans-unit>
             <trans-unit id="presentation.warning.imagesNotTaken" resname="presentation.warning.imagesNotTaken">
                 <source>The images of this element are not taken over: you may not add images to the new element. Add them yourself.</source>
             </trans-unit>
             <trans-unit id="presentation.switchNote.translations" resname="presentation.switchNote.translations">
-                <source>Not switched: this element has translations, and hiding it would hide them on translated pages too. Translated pages keep showing this element until each translation has its own new element. Hide this element yourself once that is done.</source>
+                <source>Not switched: this element has translations, and hiding it would hide them on translated pages too. To replace this element: 1. In the Layout module, translate the new element into each language (Translate). 2. Make the new element and its translations visible. 3. Hide this element.</source>
             </trans-unit>
             <trans-unit id="presentation.switchNote.connectedTranslation" resname="presentation.switchNote.connectedTranslation">
-                <source>Not switched: on a site that falls back to the default language, hiding this translation would show the default-language element again, instead of or next to the new one. Decide in the Layout module how this language should show it.</source>
+                <source>Not switched: this element is a connected translation. The new element is an element of its own in this language. On a site that falls back to the default language it may not appear as expected: on TYPO3 13.4 not at all, on 14.3 next to the default-language content. To replace this translation, create the new element from the default-language element instead and translate it.</source>
             </trans-unit>
             <trans-unit id="presentation.imagesTaken" resname="presentation.imagesTaken">
                 <source>Images of this element: %d. They go into the first section.</source>

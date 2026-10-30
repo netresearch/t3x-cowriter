@@ -39,6 +39,7 @@ const DEFAULT_LABELS = {
     create: 'Create element',
     creating: 'Creating the element…',
     created: 'The new element was created directly after this one and is hidden. Visitors keep seeing this element until you switch the two.',
+    createdNoSwitch: 'The new element was created directly after this one and is hidden. This element stays visible.',
     open: 'Open the new element',
     openPage: 'Open the page in the Layout module',
     switch: 'Show the new element and hide the original',
@@ -386,9 +387,15 @@ export class AlternativePresentation {
      */
     renderCreated(result) {
         this.created = result;
+        // Why there is no switch: the original has translations or is a connected one.
+        const switchNote = !this.switched && typeof result.switchNote === 'string' ? result.switchNote : '';
         const message = document.createElement('p');
         message.className = 'mb-2 cowriter-presentation-result';
-        message.textContent = this.switched ? this.labels.switched : this.labels.created;
+        if (this.switched) {
+            message.textContent = this.labels.switched;
+        } else {
+            message.textContent = switchNote !== '' ? this.labels.createdNoSwitch : this.labels.created;
+        }
 
         const buttons = document.createElement('div');
         buttons.className = 'd-flex flex-wrap gap-2';
@@ -403,15 +410,15 @@ export class AlternativePresentation {
         }
 
         const parts = [this.heading(), message];
-        if (!this.switched && typeof result.switchNote === 'string' && result.switchNote !== '') {
-            // Why there is no switch: the original has translations or is a connected one.
+        if (switchNote !== '') {
             const note = document.createElement('p');
             note.className = 'alert alert-warning cowriter-presentation-switch-note';
-            note.textContent = result.switchNote;
+            note.textContent = switchNote;
             parts.push(note);
         }
         this.panel.replaceChildren(...parts, buttons);
-        this.setStatus(message.textContent, false);
+        // The status line is the live region: it carries the note too.
+        this.setStatus(switchNote !== '' ? message.textContent + ' ' + switchNote : message.textContent, false);
         this.panel.querySelector('button')?.focus();
     }
 
@@ -440,6 +447,11 @@ export class AlternativePresentation {
                 token: this.created.switchToken,
             });
         } catch (error) {
+            if (error?.cause?.response?.status === 409) {
+                // Refused for good (translations): no switch button any more, the reason instead.
+                this.renderCreated({ ...this.created, switchToken: '', switchNote: this.messageOf(error) });
+                return;
+            }
             button.disabled = false;
             this.setStatus(this.messageOf(error), true);
             return;

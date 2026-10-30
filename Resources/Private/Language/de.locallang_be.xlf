@@ -1089,6 +1089,10 @@
                 <source>The new element was created directly after this one and is hidden. Visitors keep seeing this element until you switch the two.</source>
                 <target>Das neue Element wurde direkt nach diesem angelegt und ist verborgen. Besucher sehen weiterhin dieses Element, bis Sie die beiden tauschen.</target>
             </trans-unit>
+            <trans-unit id="presentation.createdNoSwitch" resname="presentation.createdNoSwitch">
+                <source>The new element was created directly after this one and is hidden. This element stays visible.</source>
+                <target>Das neue Element wurde direkt nach diesem angelegt und ist verborgen. Dieses Element bleibt sichtbar.</target>
+            </trans-unit>
             <trans-unit id="presentation.open" resname="presentation.open">
                 <source>Open the new element</source>
                 <target>Neues Element öffnen</target>
@@ -1162,24 +1166,24 @@
                 <target>Die Elemente konnten nicht getauscht werden. Prüfen Sie beide Elemente im Layout-Modul.</target>
             </trans-unit>
             <trans-unit id="presentation.warning.translations" resname="presentation.warning.translations">
-                <source>This element has translations. Translated pages show them only while this element is visible, so the switch is not offered: translated pages keep showing this element until each translation has its own new element. Do not delete this element; that deletes its translations too.</source>
-                <target>Dieses Element hat Übersetzungen. Übersetzte Seiten zeigen sie nur, solange dieses Element sichtbar ist, deshalb wird der Tausch nicht angeboten: Übersetzte Seiten zeigen dieses Element weiter, bis jede Übersetzung ein eigenes neues Element hat. Löschen Sie dieses Element nicht; das löscht auch seine Übersetzungen.</target>
+                <source>This element has translations. Translated pages show them only while this element is visible, so the switch is not offered. To replace this element: 1. In the Layout module, translate the new element into each language (Translate). 2. Make the new element and its translations visible. 3. Hide this element. Do not delete it; that deletes its translations too.</source>
+                <target>Dieses Element hat Übersetzungen. Übersetzte Seiten zeigen sie nur, solange dieses Element sichtbar ist, deshalb wird der Tausch nicht angeboten. So ersetzen Sie dieses Element: 1. Im Layout-Modul das neue Element in jede Sprache übersetzen (Übersetzen). 2. Das neue Element und seine Übersetzungen sichtbar machen. 3. Dieses Element verbergen. Löschen Sie es nicht; das löscht auch seine Übersetzungen.</target>
             </trans-unit>
             <trans-unit id="presentation.warning.connectedTranslation" resname="presentation.warning.connectedTranslation">
-                <source>This element is a translation connected to the default language. The new element becomes an element of its own in this language, not connected to the default language, so the Layout module shows the page in mixed mode. The switch is not offered: on a site that falls back to the default language, hiding this translation shows the default-language element again, instead of or next to the new one.</source>
-                <target>Dieses Element ist eine Übersetzung, die mit der Standardsprache verbunden ist. Das neue Element wird ein eigenständiges Element dieser Sprache, nicht mit der Standardsprache verbunden; das Layout-Modul zeigt die Seite dann im gemischten Modus. Der Tausch wird nicht angeboten: Auf einer Website, die auf die Standardsprache zurückfällt, erscheint nach dem Verbergen dieser Übersetzung wieder das Element der Standardsprache, statt des neuen oder daneben.</target>
+                <source>This element is a translation connected to the default language. The new element becomes an element of its own in this language, so the Layout module shows the page in mixed mode, and the switch is not offered. On a site that falls back to the default language the new element may not appear as expected: on TYPO3 13.4 not at all, on 14.3 next to the default-language content.</source>
+                <target>Dieses Element ist eine Übersetzung, die mit der Standardsprache verbunden ist. Das neue Element wird ein eigenständiges Element dieser Sprache; das Layout-Modul zeigt die Seite dann im gemischten Modus, und der Tausch wird nicht angeboten. Auf einer Website, die auf die Standardsprache zurückfällt, erscheint das neue Element unter Umständen nicht wie erwartet: unter TYPO3 13.4 gar nicht, unter 14.3 neben dem Inhalt der Standardsprache.</target>
             </trans-unit>
             <trans-unit id="presentation.warning.imagesNotTaken" resname="presentation.warning.imagesNotTaken">
                 <source>The images of this element are not taken over: you may not add images to the new element. Add them yourself.</source>
                 <target>Die Bilder dieses Elements werden nicht übernommen: Sie dürfen dem neuen Element keine Bilder hinzufügen. Fügen Sie sie selbst hinzu.</target>
             </trans-unit>
             <trans-unit id="presentation.switchNote.translations" resname="presentation.switchNote.translations">
-                <source>Not switched: this element has translations, and hiding it would hide them on translated pages too. Translated pages keep showing this element until each translation has its own new element. Hide this element yourself once that is done.</source>
-                <target>Nicht getauscht: Dieses Element hat Übersetzungen, und es zu verbergen würde sie auf übersetzten Seiten mit verbergen. Übersetzte Seiten zeigen dieses Element weiter, bis jede Übersetzung ein eigenes neues Element hat. Verbergen Sie dieses Element selbst, wenn das erledigt ist.</target>
+                <source>Not switched: this element has translations, and hiding it would hide them on translated pages too. To replace this element: 1. In the Layout module, translate the new element into each language (Translate). 2. Make the new element and its translations visible. 3. Hide this element.</source>
+                <target>Nicht getauscht: Dieses Element hat Übersetzungen, und es zu verbergen würde sie auf übersetzten Seiten mit verbergen. So ersetzen Sie dieses Element: 1. Im Layout-Modul das neue Element in jede Sprache übersetzen (Übersetzen). 2. Das neue Element und seine Übersetzungen sichtbar machen. 3. Dieses Element verbergen.</target>
             </trans-unit>
             <trans-unit id="presentation.switchNote.connectedTranslation" resname="presentation.switchNote.connectedTranslation">
-                <source>Not switched: on a site that falls back to the default language, hiding this translation would show the default-language element again, instead of or next to the new one. Decide in the Layout module how this language should show it.</source>
-                <target>Nicht getauscht: Auf einer Website, die auf die Standardsprache zurückfällt, würde nach dem Verbergen dieser Übersetzung wieder das Element der Standardsprache erscheinen, statt des neuen oder daneben. Entscheiden Sie im Layout-Modul, wie diese Sprache es zeigen soll.</target>
+                <source>Not switched: this element is a connected translation. The new element is an element of its own in this language. On a site that falls back to the default language it may not appear as expected: on TYPO3 13.4 not at all, on 14.3 next to the default-language content. To replace this translation, create the new element from the default-language element instead and translate it.</source>
+                <target>Nicht getauscht: Dieses Element ist eine verbundene Übersetzung. Das neue Element ist ein eigenständiges Element dieser Sprache. Auf einer Website, die auf die Standardsprache zurückfällt, erscheint es unter Umständen nicht wie erwartet: unter TYPO3 13.4 gar nicht, unter 14.3 neben dem Inhalt der Standardsprache. Um diese Übersetzung zu ersetzen, legen Sie das neue Element stattdessen aus dem Element der Standardsprache an und übersetzen es.</target>
             </trans-unit>
             <trans-unit id="presentation.imagesTaken" resname="presentation.imagesTaken">
                 <source>Images of this element: %d. They go into the first section.</source>

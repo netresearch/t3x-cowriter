@@ -448,9 +448,13 @@ proposal without creating anything.
 
 An element with translations is not switched. Translated pages show a
 translation only while the element in the default language is visible:
-hiding this element would hide its translations too. So translated pages
-keep showing this element (in their language) until each translation has
-its own new element; create those first, then hide this element yourself.
+hiding this element would hide its translations too. To replace it:
+
+1.  In the :guilabel:`Layout` module, translate the new element into each
+    language (:guilabel:`Translate`)
+2.  Make the new element and its translations visible
+3.  Hide this element
+
 Do not delete it: deleting an element in the default language also deletes
 its translations. The proposal and the result say so.
 
@@ -468,9 +472,10 @@ A translation that is connected to its default-language element becomes a
 new element of its own in that language, not connected to the default
 language (the proposal says so). On a page in connected translation mode
 the page module then reports the page as mixed. Such a translation is not
-switched either: on a site that falls back to the default language,
-hiding it would show the default-language element again, instead of or
-next to the new one.
+switched either. On a site that falls back to the default language the new
+element may not appear as expected: on TYPO3 13.4 not at all, on 14.3 next
+to the default-language content. To replace such a translation, create the
+new element from the default-language element instead and translate it.
 
 A text with headings is divided at its headings; the heading becomes the
 title of its tab and text before the first heading becomes an

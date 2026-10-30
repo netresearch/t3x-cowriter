@@ -500,7 +500,7 @@ final class PresentationControllerTest extends TestCase
     public static function originalsWithoutSwitch(): iterable
     {
         yield 'with translations' => [2, false, 'Not switched: this element has translations'];
-        yield 'a connected translation' => [0, true, 'Not switched: on a site that falls back'];
+        yield 'a connected translation' => [0, true, 'Not switched: this element is a connected translation'];
     }
 
     #[Test]

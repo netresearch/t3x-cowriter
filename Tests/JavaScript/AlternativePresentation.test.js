@@ -334,6 +334,46 @@ describe('AlternativePresentation', () => {
         expect(note.textContent).toBe('Not switched: this element has translations.');
         expect(note.classList.contains('alert-warning')).toBe(true);
         expect(document.querySelector('.cowriter-presentation-page')).not.toBeNull();
+        // The result does not promise a switch, and the live region carries the reason.
+        const created = 'The new element was created directly after this one and is hidden. This element stays visible.';
+        expect(document.querySelector('.cowriter-presentation-result').textContent).toBe(created);
+        expect(document.getElementById(CONTROL_ID + '-status').textContent).toBe(created + ' Not switched: this element has translations.');
+    });
+
+    it('announces the switch promise only where there is a switch', async () => {
+        answer(PROPOSAL, CREATED);
+        const { control } = await setup();
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        const created = 'The new element was created directly after this one and is hidden. Visitors keep seeing this element until you switch the two.';
+        expect(document.querySelector('.cowriter-presentation-result').textContent).toBe(created);
+        expect(document.getElementById(CONTROL_ID + '-status').textContent).toBe(created);
+        expect(document.querySelector('.cowriter-presentation-switch-note')).toBeNull();
+    });
+
+    it('drops the switch and shows the reason when the server refuses it for good', async () => {
+        const refusal = Object.assign(new Error('409'), {
+            response: { status: 409 },
+            resolve: async () => ({ success: false, error: 'Not switched: a translation was added.' }),
+        });
+        answer(PROPOSAL, CREATED, refusal);
+        const { control } = await setup();
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        document.querySelector('.cowriter-presentation-switch').click();
+        await flush();
+
+        expect(document.querySelector('.cowriter-presentation-switch')).toBeNull();
+        expect(document.querySelector('.cowriter-presentation-switch-note').textContent).toBe('Not switched: a translation was added.');
+        const status = document.getElementById(CONTROL_ID + '-status');
+        expect(status.textContent).toBe('The new element was created directly after this one and is hidden. This element stays visible. Not switched: a translation was added.');
+        expect(status.classList.contains('text-danger')).toBe(false);
+        expect(document.querySelector('input[name="data[tt_content][10][disabled]"]').value).toBe('0');
+        expect(document.activeElement).toBe(document.querySelector('.cowriter-presentation-page'));
     });
 
     it('leaves a form field that already says hidden alone', async () => {

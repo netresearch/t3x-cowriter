@@ -612,7 +612,13 @@ Requirements:
     translations as well. Hiding a connected translation lets a ``fallback``
     language show the default-language element again: next to the new one
     on TYPO3 14.3, and instead of it on 13.4, where a ``fallback`` language
-    shows no element without a default-language counterpart.
+    shows no element without a default-language counterpart. The refusal
+    applies to every site, whatever its ``fallbackType``. The editor is told
+    the way that works on all of them: translate the new element in the
+    Layout module, make it and its translations visible, then hide the
+    original; for a connected translation, create the new element from the
+    default-language element instead. A switch refused with 409 removes the
+    button and shows the reason.
 *   In a workspace both elements change in the workspace; publish them
     together.
 
