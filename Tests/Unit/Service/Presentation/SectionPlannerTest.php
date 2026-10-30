@@ -129,31 +129,46 @@ final class SectionPlannerTest extends TestCase
         $html = str_repeat('<h2>H</h2><p>t</p>', SectionPlanner::MAX_SECTIONS);
         self::assertCount(SectionPlanner::MAX_SECTIONS, $this->planner->fromHeadings($this->blocks($html), 'Introduction'));
 
-        self::assertSame([], $this->planner->fromHeadings($this->blocks($html . '<h2>H</h2>'), 'Introduction'));
+        self::assertSame([], $this->planner->fromHeadings($this->blocks($html . '<h2>H</h2><p>t</p>'), 'Introduction'));
         self::assertSame([], $this->planner->fromHeadings($this->blocks('<p>i</p>' . $html), 'Introduction'));
     }
 
     #[Test]
-    public function aHeadingWithoutTextBelowItGivesAnEmptySection(): void
+    public function aHeadingWithNothingBelowItIsNoPlaceToCut(): void
     {
-        $html       = '<h2>Empty</h2><h2>Full</h2><p>Text</p>';
+        // "Empty" has no text before the next heading: it stays in the text
+        // before "Full" instead of making an empty section. So does a heading
+        // at the end.
+        $html       = '<h2>Empty</h2><h2>Full</h2><p>Text</p><h2>Second</h2><p>More</p><h2>Last</h2>';
         $boundaries = $this->planner->fromHeadings($this->blocks($html), 'Introduction');
-        $contents   = $this->planner->contents($this->blocks($html), $boundaries);
 
-        self::assertSame([['Empty', ''], ['Full', '<p>Text</p>']], $this->cut($html, $boundaries));
-        self::assertSame('', $contents[0]->text);
-        self::assertSame('Text', $contents[1]->text);
+        self::assertSame(
+            [['Introduction', '<h2>Empty</h2>'], ['Full', '<p>Text</p>'], ['Second', "<p>More</p>\n<h2>Last</h2>"]],
+            $this->cut($html, $boundaries),
+        );
     }
 
     #[Test]
-    public function headingTitlesArePlainText(): void
+    public function aHeadingWithoutTextIsNoPlaceToCut(): void
+    {
+        $html = '<h2>A</h2><p>1</p><h2> </h2><p>2</p><h2>B</h2><p>3</p>';
+
+        self::assertSame(
+            [['A', "<p>1</p>\n<h2> </h2>\n<p>2</p>"], ['B', '<p>3</p>']],
+            $this->cut($html, $this->planner->fromHeadings($this->blocks($html), 'Introduction')),
+        );
+        self::assertSame([], $this->planner->fromHeadings($this->blocks('<h3>x</h3><h2></h2><p>1</p><h2></h2><p>2</p>'), 'I'));
+    }
+
+    #[Test]
+    public function headingTitlesAreTheirTextAsItReads(): void
     {
         $boundaries = $this->planner->fromHeadings(
-            $this->blocks('<h2>Seat <em>&amp;</em>&nbsp;back</h2><p>1</p><h2></h2><p>2</p>'),
-            'Intro <b>x</b>',
+            $this->blocks('<h2>The &lt;p&gt; element</h2><p>1</p><h2>Seat <em>&amp;</em>&nbsp;back</h2><p>2</p>'),
+            'Intro',
         );
 
-        self::assertSame(['Seat & back', ''], [$boundaries[0]->title, $boundaries[1]->title]);
+        self::assertSame(['The <p> element', 'Seat & back'], [$boundaries[0]->title, $boundaries[1]->title]);
     }
 
     #[Test]
@@ -182,10 +197,10 @@ final class SectionPlannerTest extends TestCase
             ['title' => 'Not a number', 'start' => '2'],
             ['title' => 'Duplicate start', 'start' => 0],
             'not an object',
-            ['title' => 'B <script>x</script>', 'start' => 2],
+            ['title' => "B\u{0007} <script>", 'start' => 2],
         ]);
 
-        self::assertSame([['A', 0, false], ['B x', 2, false]], $this->plain($boundaries));
+        self::assertSame([['A', 0, false], ['B <script>', 2, false]], $this->plain($boundaries));
     }
 
     #[Test]
@@ -254,9 +269,10 @@ final class SectionPlannerTest extends TestCase
     #[Test]
     public function titlesArePlainTextOfLimitedLength(): void
     {
-        self::assertSame('Seat & back', SectionPlanner::title("<b>Seat</b> &amp;\n back"));
+        self::assertSame('Seat & back', SectionPlanner::title("Seat &\n\u{0000}\u{0085} back"));
         self::assertSame(SectionPlanner::MAX_TITLE_LENGTH, mb_strlen(SectionPlanner::title(str_repeat('ä', 300))));
-        self::assertSame('', SectionPlanner::title('<img src="x" onerror="alert(1)">'));
+        self::assertSame('', SectionPlanner::title("\u{0007}\t "));
+        self::assertSame('', SectionPlanner::title("\xC3\x28"), 'invalid UTF-8');
     }
 
     #[Test]
@@ -269,9 +285,10 @@ final class SectionPlannerTest extends TestCase
     }
 
     #[Test]
-    public function titlesDecodeQuotesAndLoseTrailingSpaceWhereTheyAreCut(): void
+    public function titlesAreTakenAsTheyAreAndLoseTrailingSpaceWhereTheyAreCut(): void
     {
-        self::assertSame('"Seat" & \'back\'', SectionPlanner::title('&quot;Seat&quot; &amp; &apos;back&#039;'));
+        // Plain text: nothing in a title is decoded or taken for markup.
+        self::assertSame('&quot;Seat&quot; & <b>back</b>', SectionPlanner::title('&quot;Seat&quot; & <b>back</b>'));
         self::assertSame(str_repeat('a', 99), SectionPlanner::title(str_repeat('a', 99) . ' bcd'));
     }
 }

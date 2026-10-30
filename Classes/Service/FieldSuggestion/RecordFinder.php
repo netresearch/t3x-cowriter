@@ -147,6 +147,78 @@ class RecordFinder
         return array_slice($elements, 0, self::MAX_CONTENT_ELEMENTS);
     }
 
+    /**
+     * How many records are translations of $uid (their transOrigPointerField
+     * points to it), as $workspaceId sees them.
+     */
+    public function countTranslations(string $table, string $pointerField, int $uid, int $workspaceId): int
+    {
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable($table);
+        $queryBuilder->getRestrictions()
+            ->removeAll()
+            ->add(new DeletedRestriction())
+            ->add(new WorkspaceRestriction($workspaceId));
+
+        $count = 0;
+        foreach ($queryBuilder
+            ->select('*')
+            ->from($table)
+            ->where($queryBuilder->expr()->eq($pointerField, $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT)))
+            ->executeQuery()
+            ->fetchAllAssociative() as $row) {
+            // A translation this workspace deletes does not count.
+            if ($this->overlay($table, $row, $workspaceId) !== null) {
+                ++$count;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * The file references of a record in the given fields, in their order,
+     * as $workspaceId sees them.
+     *
+     * @param list<string> $fields
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findFileReferences(string $table, int $uid, array $fields, int $workspaceId): array
+    {
+        if ($fields === []) {
+            return [];
+        }
+
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('sys_file_reference');
+        $queryBuilder->getRestrictions()
+            ->removeAll()
+            ->add(new DeletedRestriction())
+            ->add(new WorkspaceRestriction($workspaceId));
+
+        $rows = $queryBuilder
+            ->select('*')
+            ->from('sys_file_reference')
+            ->where(
+                $queryBuilder->expr()->eq('tablenames', $queryBuilder->createNamedParameter($table)),
+                $queryBuilder->expr()->eq('uid_foreign', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT)),
+                $queryBuilder->expr()->in('fieldname', $queryBuilder->createNamedParameter($fields, Connection::PARAM_STR_ARRAY)),
+            )
+            ->orderBy('fieldname')
+            ->addOrderBy('sorting_foreign')
+            ->executeQuery()
+            ->fetchAllAssociative();
+
+        $references = [];
+        foreach ($rows as $row) {
+            $row = $this->overlay('sys_file_reference', $row, $workspaceId);
+            if ($row !== null) {
+                $references[] = $row;
+            }
+        }
+
+        return $references;
+    }
+
     private function intValue(mixed $value): int
     {
         return is_numeric($value) ? (int) $value : 0;

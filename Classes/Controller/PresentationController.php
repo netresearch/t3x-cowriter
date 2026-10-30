@@ -13,6 +13,7 @@ use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\T3Cowriter\Domain\DTO\PresentationCreateRequest;
 use Netresearch\T3Cowriter\Domain\DTO\PresentationProposeRequest;
+use Netresearch\T3Cowriter\Domain\DTO\PresentationSwitchRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
@@ -20,11 +21,14 @@ use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\Presentation\Block;
 use Netresearch\T3Cowriter\Service\Presentation\BlockParser;
+use Netresearch\T3Cowriter\Service\Presentation\ContentLanguageLabel;
 use Netresearch\T3Cowriter\Service\Presentation\Layout;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationElement;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationElementReader;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationException;
+use Netresearch\T3Cowriter\Service\Presentation\PresentationSwitcher;
+use Netresearch\T3Cowriter\Service\Presentation\PresentationSwitchToken;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationWriter;
 use Netresearch\T3Cowriter\Service\Presentation\SectionBoundary;
 use Netresearch\T3Cowriter\Service\Presentation\SectionPlanner;
@@ -48,7 +52,10 @@ use TYPO3\CMS\Core\Context\Context;
  *
  * create: after the editor confirmed, creates a new tab or accordion element
  * directly after the original, with one item per section, through DataHandler
- * as the editor. The original element stays as it is.
+ * as the editor, hidden. The original element stays as it is.
+ *
+ * switch: shows the new element and hides the original in one step, only for
+ * the pair the creation made (PresentationSwitchToken).
  *
  * Every refusal that needs no model comes first — rate limit, the admin
  * switch, the request, the element and the editor's permissions — so a
@@ -70,11 +77,14 @@ final readonly class PresentationController
         private PresentationElementReader $elementReader,
         private SectionProposalService $proposalService,
         private PresentationWriter $writer,
+        private PresentationSwitcher $switcher,
+        private PresentationSwitchToken $switchToken,
         private ConfigurationSelector $configurationSelector,
         private RateLimiterInterface $rateLimiter,
         private UriBuilder $uriBuilder,
         private Context $context,
         private LoggerInterface $logger,
+        private ?ContentLanguageLabel $contentLanguageLabel = null,
         private BlockParser $blockParser = new BlockParser(),
         private SectionPlanner $planner = new SectionPlanner(),
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
@@ -112,7 +122,7 @@ final readonly class PresentationController
                 throw PresentationException::tooShort();
             }
 
-            $sections = $this->planner->fromHeadings($blocks, $this->labels->get('presentation.introduction'));
+            $sections = $this->planner->fromHeadings($blocks, $this->introductionTitle($element));
             $source   = 'headings';
             if ($sections === []) {
                 if (count($blocks) > SectionProposalService::MAX_BLOCKS) {
@@ -142,6 +152,8 @@ final readonly class PresentationController
                 'fingerprint' => $element->fingerprint(),
                 'layouts'     => $element->layouts,
                 'sections'    => $this->preview($blocks, $sections),
+                'warnings'    => $this->warnings($element),
+                'images'      => count($element->fileReferences),
             ],
             $rateLimitResult,
         );
@@ -191,15 +203,57 @@ final readonly class PresentationController
             return $this->failure($this->labels->get($e->getLabelKey()), $rateLimitResult, $e->getHttpStatus());
         }
 
+        $pageUrl = $this->pageUrl($element->pageUid, $element->languageId, $uid);
+
         return $this->jsonResponseWithRateLimitHeaders(
             [
-                'success' => true,
-                'uid'     => $uid,
-                'layout'  => $dto->layout->value,
-                'editUrl' => $this->editUrl($uid),
+                'success'     => true,
+                'uid'         => $uid,
+                'originalUid' => $element->uid,
+                'layout'      => $dto->layout->value,
+                'switchToken' => $this->switchToken->issue($uid, $element->uid, $this->userId(), $backendUser->workspace),
+                'pageUrl'     => $pageUrl,
+                'editUrl'     => $this->editUrl($uid, $pageUrl),
             ],
             $rateLimitResult,
         );
+    }
+
+    public function switchAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $rateLimitResult = $this->rateLimiter->checkLimit((string) $this->userId());
+        if (!$rateLimitResult->allowed) {
+            return $this->rateLimitedResponse($rateLimitResult);
+        }
+
+        $refusal = $this->refuseUnlessEnabled($rateLimitResult);
+        if ($refusal instanceof ResponseInterface) {
+            return $refusal;
+        }
+
+        $body = $this->parseJsonBody($request);
+        $dto  = PresentationSwitchRequest::fromArray($body ?? []);
+        if ($body === null || !$dto->isValid()) {
+            return $this->failure('Invalid request.', $rateLimitResult, 400);
+        }
+
+        $backendUser = $GLOBALS['BE_USER'] ?? null;
+        if (!$backendUser instanceof BackendUserAuthentication) {
+            return $this->failure('No backend user session.', $rateLimitResult, 403);
+        }
+
+        try {
+            // Only the pair this user's creation made, in this workspace.
+            if (!$this->switchToken->isValid($dto->token, $dto->newUid, $dto->originalUid, $this->userId(), $backendUser->workspace)) {
+                throw PresentationException::notAvailable();
+            }
+
+            $this->switcher->switch($dto->newUid, $dto->originalUid, $backendUser);
+        } catch (PresentationException $e) {
+            return $this->failure($this->labels->get($e->getLabelKey()), $rateLimitResult, $e->getHttpStatus());
+        }
+
+        return $this->jsonResponseWithRateLimitHeaders(['success' => true], $rateLimitResult);
     }
 
     /**
@@ -266,6 +320,42 @@ final readonly class PresentationController
         return $preview;
     }
 
+    /**
+     * The title of the text before the first heading, in the language of the
+     * element (its site language), else in the editor's.
+     */
+    private function introductionTitle(PresentationElement $element): string
+    {
+        return $this->contentLanguageLabel?->get('presentation.introduction', $element->pageUid, $element->languageId)
+            ?? $this->labels->get('presentation.introduction');
+    }
+
+    /**
+     * What the editor should know before creating: the original has
+     * translations (deleting it would delete them), it is a connected
+     * translation (the new element is a free one), or its images cannot be
+     * taken over.
+     *
+     * @return list<string>
+     */
+    private function warnings(PresentationElement $element): array
+    {
+        $warnings = [];
+        if ($element->translationCount > 0) {
+            $warnings[] = 'translations';
+        }
+
+        if ($element->connectedTranslation) {
+            $warnings[] = 'connectedTranslation';
+        }
+
+        if ($element->fileReferences !== [] && $element->layoutsTakingFiles !== $element->layouts) {
+            $warnings[] = 'imagesNotTaken';
+        }
+
+        return $warnings;
+    }
+
     private function refuseUnlessEnabled(RateLimitResult $rateLimitResult): ?ResponseInterface
     {
         return $this->presentationConfiguration->isEnabled()
@@ -278,13 +368,41 @@ final readonly class PresentationController
         return $this->jsonResponseWithRateLimitHeaders(['success' => false, 'error' => $message], $rateLimitResult, $status);
     }
 
-    private function editUrl(int $uid): string
+    /**
+     * The edit form of the new element; closing it leads to $returnUrl.
+     */
+    private function editUrl(int $uid, string $returnUrl): string
     {
+        $parameters = ['edit' => ['tt_content' => [$uid => 'edit']]];
+        if ($returnUrl !== '') {
+            $parameters['returnUrl'] = $returnUrl;
+        }
+
         try {
-            return (string) $this->uriBuilder->buildUriFromRoute('record_edit', ['edit' => ['tt_content' => [$uid => 'edit']]]);
+            return (string) $this->uriBuilder->buildUriFromRoute('record_edit', $parameters);
         } catch (Throwable) {
             return '';
         }
+    }
+
+    /**
+     * The Page module for the element's page and language, at the new
+     * element: the page module renders each element with the id
+     * "element-tt_content-<uid>" (TYPO3 13.4 and 14.3). 13.4 reads the
+     * language from "language", 14.3 from "languages".
+     */
+    private function pageUrl(int $pageUid, int $languageId, int $uid): string
+    {
+        try {
+            $url = (string) $this->uriBuilder->buildUriFromRoute(
+                'web_layout',
+                ['id' => $pageUid, 'language' => $languageId, 'languages' => [$languageId]],
+            );
+        } catch (Throwable) {
+            return '';
+        }
+
+        return $url . '#element-tt_content-' . $uid;
     }
 
     /**

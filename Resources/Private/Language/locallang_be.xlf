@@ -807,7 +807,7 @@
                 <source>(no text, only the heading)</source>
             </trans-unit>
             <trans-unit id="presentation.original" resname="presentation.original">
-                <source>A new element is created directly after this one. This element stays unchanged: delete or hide it yourself once the new element is right. Changes in this form that are not saved yet are not included.</source>
+                <source>A new element is created directly after this one, hidden: visitors keep seeing this element until you switch the two. This element stays unchanged. Changes in this form that are not saved yet are not included.</source>
             </trans-unit>
             <trans-unit id="presentation.create" resname="presentation.create">
                 <source>Create element</source>
@@ -816,7 +816,7 @@
                 <source>Creating the element…</source>
             </trans-unit>
             <trans-unit id="presentation.created" resname="presentation.created">
-                <source>The new element was created directly after this one. This element is unchanged: delete or hide it yourself.</source>
+                <source>The new element was created directly after this one and is hidden. Visitors keep seeing this element until you switch the two.</source>
             </trans-unit>
             <trans-unit id="presentation.open" resname="presentation.open">
                 <source>Open the new element</source>
@@ -856,6 +856,36 @@
             </trans-unit>
             <trans-unit id="presentation.error.createFailed" resname="presentation.error.createFailed">
                 <source>The new element could not be created. Nothing was changed.</source>
+            </trans-unit>
+            <trans-unit id="presentation.switch" resname="presentation.switch">
+                <source>Show the new element and hide the original</source>
+            </trans-unit>
+            <trans-unit id="presentation.switching" resname="presentation.switching">
+                <source>Switching the elements…</source>
+            </trans-unit>
+            <trans-unit id="presentation.switched" resname="presentation.switched">
+                <source>The new element is visible now and this element is hidden.</source>
+            </trans-unit>
+            <trans-unit id="presentation.openPage" resname="presentation.openPage">
+                <source>Open the page in the Layout module</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.switchFailed" resname="presentation.error.switchFailed">
+                <source>The elements could not be switched. Check both elements in the Layout module.</source>
+            </trans-unit>
+            <trans-unit id="presentation.warning.translations" resname="presentation.warning.translations">
+                <source>This element has translations. Do not delete it: deleting it deletes its translations too. Hide it instead; the switch after creating does that. The translations keep their text; present each of them on its own.</source>
+            </trans-unit>
+            <trans-unit id="presentation.warning.connectedTranslation" resname="presentation.warning.connectedTranslation">
+                <source>This element is a translation connected to the default language. The new element becomes a translation of its own, not connected to it, so the Layout module shows the page in mixed mode.</source>
+            </trans-unit>
+            <trans-unit id="presentation.warning.imagesNotTaken" resname="presentation.warning.imagesNotTaken">
+                <source>The images of this element are not taken over: you may not add images to the new element. Add them yourself.</source>
+            </trans-unit>
+            <trans-unit id="presentation.imagesTaken" resname="presentation.imagesTaken">
+                <source>Images of this element: %d. They go into the first section.</source>
+            </trans-unit>
+            <trans-unit id="presentation.error.createIncomplete" resname="presentation.error.createIncomplete">
+                <source>The new element could not be created completely, and what was created could not be removed. Check the page in the Layout module.</source>
             </trans-unit>
         </body>
     </file>

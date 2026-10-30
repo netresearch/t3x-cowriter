@@ -153,6 +153,7 @@ final class PresentationWriterTest extends FunctionalTestCase
         self::assertSame(1, (int) $element['colPos'], 'colPos of the original');
         self::assertSame(0, (int) $element['sys_language_uid']);
         self::assertSame('Office chairs', $element['header']);
+        self::assertSame(1, (int) $element['hidden'], 'hidden until the editor switches');
         self::assertGreaterThan((int) $original['sorting'], (int) $element['sorting']);
         self::assertLessThan(512, (int) $element['sorting'], 'before the next element');
         self::assertSame(3, (int) $element['tx_bootstrappackage_tab_item']);
@@ -160,6 +161,7 @@ final class PresentationWriterTest extends FunctionalTestCase
         $items = $this->rows('tx_bootstrappackage_tab_item', 'tt_content', $uid);
         self::assertSame(['Introduction', 'Seat', 'Warranty'], array_column($items, 'header'));
         self::assertSame([2, 2, 2], array_map(intval(...), array_column($items, 'pid')));
+        self::assertSame([0, 0, 0], array_map(intval(...), array_column($items, 'hidden')), 'the items stay visible inside the hidden element');
         self::assertSame('<p>Our chairs fit every office.</p>', $items[0]['bodytext']);
         // The rich text transformation stores line breaks as CRLF.
         self::assertSame("<p>Adjustable seat height.</p>\r\n<ul><li>Lumbar support</li></ul>", $items[1]['bodytext']);
@@ -227,6 +229,7 @@ final class PresentationWriterTest extends FunctionalTestCase
         self::assertSame(1, (int) $element['t3ver_wsid']);
         self::assertSame(1, (int) $element['t3ver_state'], 'a new record of the workspace');
         self::assertSame(1, (int) $element['colPos']);
+        self::assertSame(1, (int) $element['hidden']);
 
         $items = $this->rows('tx_bootstrappackage_tab_item', 'tt_content', $uid);
         self::assertSame(['Introduction', 'Seat', 'Warranty'], array_column($items, 'header'));
@@ -257,6 +260,15 @@ final class PresentationWriterTest extends FunctionalTestCase
         $this->expectExceptionObject(PresentationException::notAvailable());
 
         $this->reader()->read(10, $this->editor(5));
+    }
+
+    #[Test]
+    public function anEditorWhoMayNotWriteTheHiddenFieldIsRefused(): void
+    {
+        // The element would otherwise go live at once.
+        $this->expectExceptionObject(PresentationException::notAvailable());
+
+        $this->reader()->read(10, $this->editor(7));
     }
 
     #[Test]
@@ -325,11 +337,177 @@ final class PresentationWriterTest extends FunctionalTestCase
         }
 
         self::assertSame([], $this->liveContentOf('tab'));
-        // Elements 10, 11, 13, 14 and 15: no element of the default type was left behind.
-        self::assertCount(5, $this->liveContentOf('text'));
+        // Elements 10, 11, 13, 14, 15, 17 and 18: no element of the default type was left behind.
+        self::assertCount(7, $this->liveContentOf('text'));
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_bootstrappackage_tab_item');
         $queryBuilder->getRestrictions()->removeAll();
         self::assertSame(0, (int) $queryBuilder->count('uid')->from('tx_bootstrappackage_tab_item')
             ->where($queryBuilder->expr()->eq('deleted', 0))->executeQuery()->fetchOne());
+    }
+
+    #[Test]
+    public function theNewElementKeepsTheOriginalsAccessRestrictionsAndAppearance(): void
+    {
+        // Element 17 is hidden, for logged-in visitors only, shown in a time
+        // span, and has its own header layout, frame and spacing.
+        $original = $this->rows('tt_content', 'uid', 17)[0];
+
+        $uid = $this->createFor(17, Layout::Tabs, $this->editor(2));
+
+        $element = $this->rows('tt_content', 'uid', $uid)[0];
+        self::assertSame(
+            ['-2', 1700000000, 4102444800, '2', 'ruler-before', 'small', 'large', 1],
+            [
+                (string) $element['fe_group'], (int) $element['starttime'], (int) $element['endtime'], (string) $element['header_layout'],
+                $element['frame_class'], $element['space_before_class'], $element['space_after_class'], (int) $element['hidden'],
+            ],
+        );
+        self::assertSame($original, $this->rows('tt_content', 'uid', 17)[0]);
+    }
+
+    #[Test]
+    public function anElementWithAccessRestrictionsNeedsTheRightOnThoseFields(): void
+    {
+        // Editor 6 may not write frontend groups, start and end time, nor the
+        // appearance fields: an unrestricted element takes over no appearance.
+        $backendUser = $this->editor(6);
+        self::assertSame(['fe_group', 'starttime', 'endtime'], array_keys($this->reader()->read(10, $backendUser)->copiedFields));
+
+        $this->expectExceptionObject(PresentationException::notAvailable());
+        $this->reader()->read(17, $backendUser);
+    }
+
+    #[Test]
+    public function translationsAreCountedAndAConnectedTranslationIsRecognised(): void
+    {
+        $backendUser = $this->editor(2);
+
+        $original = $this->reader()->read(10, $backendUser);
+        self::assertSame([1, false], [$original->translationCount, $original->connectedTranslation], 'element 18 translates element 10');
+
+        $translation = $this->reader()->read(18, $backendUser);
+        self::assertSame([0, true], [$translation->translationCount, $translation->connectedTranslation]);
+
+        $free = $this->reader()->read(16, $backendUser);
+        self::assertSame([0, false], [$free->translationCount, $free->connectedTranslation]);
+    }
+
+    #[Test]
+    public function theNewElementForAConnectedTranslationIsAFreeRecordOfThatLanguage(): void
+    {
+        $uid = $this->createFor(18, Layout::Tabs, $this->editor(2));
+
+        $element = $this->rows('tt_content', 'uid', $uid)[0];
+        self::assertSame([1, 0], [(int) $element['sys_language_uid'], (int) $element['l18n_parent']]);
+        self::assertSame(
+            ['Introduction', 'Sitz', 'Garantie'],
+            array_column($this->rows('tx_bootstrappackage_tab_item', 'tt_content', $uid), 'header'),
+        );
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function fileReferencesOf(string $table, int $uid): array
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('sys_file_reference');
+        $queryBuilder->getRestrictions()->removeAll();
+
+        return $queryBuilder->select('*')->from('sys_file_reference')
+            ->where(
+                $queryBuilder->expr()->eq('tablenames', $queryBuilder->createNamedParameter($table)),
+                $queryBuilder->expr()->eq('uid_foreign', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT)),
+                $queryBuilder->expr()->eq('deleted', 0),
+            )
+            ->orderBy('sorting_foreign')
+            ->executeQuery()
+            ->fetchAllAssociative();
+    }
+
+    #[Test]
+    public function theImagesOfTheOriginalGoIntoTheFirstItem(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/images.csv');
+
+        $uid = $this->createFor(19, Layout::Tabs, $this->editor(2));
+
+        $items = $this->rows('tx_bootstrappackage_tab_item', 'tt_content', $uid);
+        self::assertSame([2, 0], [(int) $items[0]['media'], (int) $items[1]['media']]);
+        $references = $this->fileReferencesOf('tx_bootstrappackage_tab_item', (int) $items[0]['uid']);
+        self::assertSame([1, 2], array_map(intval(...), array_column($references, 'uid_local')));
+        self::assertSame(['Front view', 'Back view'], array_column($references, 'title'));
+        self::assertSame(['A grey office chair', 'Its backrest'], array_column($references, 'alternative'));
+        self::assertSame(['media', 'media'], array_column($references, 'fieldname'));
+
+        // The original keeps its own.
+        self::assertCount(2, $this->fileReferencesOf('tt_content', 19));
+    }
+
+    #[Test]
+    public function withoutTheRightOnFileReferencesTheImagesAreNotTaken(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/images.csv');
+
+        // Editor 6 may not modify sys_file_reference.
+        $element = $this->reader()->read(19, $this->editor(6));
+
+        self::assertCount(2, $element->fileReferences);
+        self::assertSame([], $element->layoutsTakingFiles);
+    }
+
+    #[Test]
+    public function aPlainWorkspaceMemberCreatesADraftToo(): void
+    {
+        // Editor 8 is a member of the workspace, not its owner.
+        $uid = $this->createFor(10, Layout::Tabs, $this->editor(8, 1));
+
+        $element = $this->rows('tt_content', 'uid', $uid)[0];
+        self::assertSame([1, 1], [(int) $element['t3ver_wsid'], (int) $element['hidden']]);
+        self::assertNull($this->finder()->findRecord('tt_content', $uid, 0));
+    }
+
+    /**
+     * Rows of $table that are drafts of workspace $workspace and not deleted.
+     */
+    private function draftCount(string $table, int $workspace): int
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
+        $queryBuilder->getRestrictions()->removeAll();
+
+        return (int) $queryBuilder->count('uid')->from($table)
+            ->where(
+                $queryBuilder->expr()->eq('t3ver_wsid', $queryBuilder->createNamedParameter($workspace, Connection::PARAM_INT)),
+                $queryBuilder->expr()->eq('deleted', 0),
+            )
+            ->executeQuery()
+            ->fetchOne();
+    }
+
+    #[Test]
+    public function aFailedCreationInAWorkspaceLeavesNoDraftBehind(): void
+    {
+        // Editor 3 may not use the tab CType and is a member of the workspace.
+        $backendUser = $this->editor(3, 1);
+        $element     = new PresentationElement(10, 2, 0, 1, 'Office chairs', '', [Layout::Tabs]);
+        $planner     = new SectionPlanner();
+        $blocks      = (new BlockParser())->parse('<h2>One</h2><p>A</p><h2>Two</h2><p>B</p>');
+        $logger      = new RecordingLogger();
+
+        try {
+            (new PresentationWriter($this->finder(), $logger))->create(
+                $element,
+                Layout::Tabs,
+                $planner->contents($blocks, $planner->fromHeadings($blocks, 'Intro')),
+                $backendUser,
+            );
+            self::fail('The creation must fail');
+        } catch (PresentationException $e) {
+            self::assertSame('presentation.error.createFailed', $e->getLabelKey(), 'the clean-up came through');
+        }
+
+        self::assertCount(1, $logger->records, 'only the failed creation is logged');
+        self::assertSame(0, $this->draftCount('tt_content', 1));
+        self::assertSame(0, $this->draftCount('tx_bootstrappackage_tab_item', 1));
+        self::assertSame([], $this->liveContentOf('tab'));
     }
 }

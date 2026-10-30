@@ -12,6 +12,7 @@ import { resolve } from 'path';
  */
 const sharedAliases = {
     '@typo3/backend/modal.js': resolve(__dirname, 'Tests/JavaScript/__mocks__/typo3-backend-modal.js'),
+    '@typo3/backend/viewport.js': resolve(__dirname, 'Tests/JavaScript/__mocks__/typo3-backend-viewport.js'),
     '@typo3/backend/notification.js': resolve(__dirname, 'Tests/JavaScript/__mocks__/typo3-backend-notification.js'),
     '@typo3/backend/form-engine.js': resolve(__dirname, 'Tests/JavaScript/__mocks__/typo3-backend-form-engine.js'),
     '@typo3/backend/form-engine-validation.js': resolve(

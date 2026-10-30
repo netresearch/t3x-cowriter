@@ -18,9 +18,15 @@ namespace Netresearch\T3Cowriter\Service\Presentation;
 final readonly class PresentationElement
 {
     /**
-     * @param int          $uid      the live uid (FormEngine's uid in a workspace too)
-     * @param list<Layout> $layouts  never empty
-     * @param string       $bodytext the stored rich text
+     * @param int                        $uid                  the live uid (FormEngine's uid in a workspace too)
+     * @param list<Layout>               $layouts              never empty
+     * @param string                     $bodytext             the stored rich text
+     * @param array<string, scalar|null> $copiedFields         fields the new element takes over: access
+     *                                                         (fe_group, start and end time) and appearance
+     * @param int                        $translationCount     translations of this element (default language)
+     * @param bool                       $connectedTranslation a translation connected to its default-language record
+     * @param list<array<string, mixed>> $fileReferences       the images of the element (image, assets)
+     * @param list<Layout>               $layoutsTakingFiles   layouts whose first item may take the images
      */
     public function __construct(
         public int $uid,
@@ -30,7 +36,20 @@ final readonly class PresentationElement
         public string $header,
         public string $bodytext,
         public array $layouts,
+        public array $copiedFields = [],
+        public int $translationCount = 0,
+        public bool $connectedTranslation = false,
+        public array $fileReferences = [],
+        public array $layoutsTakingFiles = [],
     ) {}
+
+    /**
+     * Whether the images go into the first item of $layout.
+     */
+    public function takesFiles(Layout $layout): bool
+    {
+        return $this->fileReferences !== [] && in_array($layout, $this->layoutsTakingFiles, true);
+    }
 
     /**
      * Identifies the stored text a proposal was made for: the creation is

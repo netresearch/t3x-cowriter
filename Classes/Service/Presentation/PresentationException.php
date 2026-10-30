@@ -66,6 +66,16 @@ final class PresentationException extends RuntimeException
         return new self('presentation.error.createFailed', 500);
     }
 
+    public static function createIncomplete(): self
+    {
+        return new self('presentation.error.createIncomplete', 500);
+    }
+
+    public static function switchFailed(): self
+    {
+        return new self('presentation.error.switchFailed', 500);
+    }
+
     public function getLabelKey(): string
     {
         return $this->labelKey;

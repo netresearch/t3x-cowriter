@@ -96,6 +96,7 @@ final class PresentationControlTest extends TestCase
         self::assertSame($attributes['id'] . '-panel', $attributes['aria-controls']);
         self::assertSame('/typo3/ajax/ajax_tx_cowriter_presentation_propose?token=abc', $attributes['data-propose-url']);
         self::assertSame('/typo3/ajax/ajax_tx_cowriter_presentation_create?token=abc', $attributes['data-create-url']);
+        self::assertSame('/typo3/ajax/ajax_tx_cowriter_presentation_switch?token=abc', $attributes['data-switch-url']);
         self::assertSame('12', $attributes['data-uid']);
         self::assertSame('accordion,tab', $attributes['data-layouts']);
 
@@ -116,6 +117,10 @@ final class PresentationControlTest extends TestCase
         self::assertSame('translated:proposedHeadings', $attributes['data-label-proposed-headings']);
         self::assertSame('translated:titleRequired', $attributes['data-label-title-required']);
         self::assertSame('translated:original', $attributes['data-label-original']);
+        self::assertSame('translated:switch', $attributes['data-label-switch']);
+        self::assertSame('translated:openPage', $attributes['data-label-open-page']);
+        self::assertSame('translated:switched', $attributes['data-label-switched']);
+        self::assertSame('translated:switching', $attributes['data-label-switching']);
     }
 
     #[Test]

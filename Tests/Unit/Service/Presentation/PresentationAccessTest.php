@@ -49,13 +49,14 @@ final class PresentationAccessTest extends TestCase
     {
         $tca = RegisterPresentationControlListenerTest::tca(true, true);
         // @phpstan-ignore offsetAccess.nonOffsetAccessible
-        $tca['tt_content']['ctrl'] = ['languageField' => 'sys_language_uid'];
+        $tca['tt_content']['ctrl'] = ['languageField' => 'sys_language_uid', 'enablecolumns' => ['disabled' => 'hidden']];
         // @phpstan-ignore offsetAccess.nonOffsetAccessible
         $tca['tt_content']['columns']['CType']['config']['authMode'] = 'explicitAllow';
         // @phpstan-ignore offsetAccess.nonOffsetAccessible
         $tca['tt_content']['columns'] += [
             'header'           => ['config' => ['type' => 'input']],
             'colPos'           => ['exclude' => true, 'config' => ['type' => 'select']],
+            'hidden'           => ['exclude' => true, 'config' => ['type' => 'check']],
             'sys_language_uid' => ['exclude' => true, 'config' => ['type' => 'language']],
         ];
         foreach (['tab', 'accordion'] as $ctype) {
@@ -471,5 +472,84 @@ final class PresentationAccessTest extends TestCase
         self::assertSame('presentation.error.changed', $refusal->getMessage());
         self::assertSame(409, $refusal->getCode());
         self::assertSame(409, $refusal->getHttpStatus());
+    }
+
+    #[Test]
+    public function theNewElementIsCreatedHiddenSoTheHiddenFieldIsNeeded(): void
+    {
+        self::assertSame('hidden', PresentationAccess::hiddenField());
+        self::assertSame([], $this->layouts(['non_exclude_fields:tt_content:hidden']));
+
+        // @phpstan-ignore offsetAccess.nonOffsetAccessible
+        unset($GLOBALS['TCA']['tt_content']['ctrl']['enablecolumns']);
+        self::assertNull(PresentationAccess::hiddenField());
+        self::assertSame([], $this->layouts());
+        self::assertNull(PresentationAccess::hiddenField(['tt_content' => ['ctrl' => ['enablecolumns' => ['disabled' => '']]]]));
+        self::assertSame('off', PresentationAccess::hiddenField(['tt_content' => ['ctrl' => ['enablecolumns' => ['disabled' => 'off']]]]));
+    }
+
+    private const NEW_ELEMENT = ['uid' => 20, 'pid' => 2, 'CType' => 'tab', 'sys_language_uid' => 0];
+
+    /**
+     * @param list<string>         $denied
+     * @param array<string, mixed> $newElement
+     * @param array<string, mixed> $original
+     */
+    private function maySwitch(array $denied = [], array $newElement = self::NEW_ELEMENT, array $original = self::ELEMENT): bool
+    {
+        return (new PresentationAccess())->maySwitch($this->editor($denied), $newElement, $original, self::PAGE);
+    }
+
+    #[Test]
+    public function anEditorWithAllPermissionsMaySwitch(): void
+    {
+        self::assertTrue($this->maySwitch());
+        self::assertTrue($this->maySwitch([], ['CType' => 'accordion'] + self::NEW_ELEMENT));
+    }
+
+    /**
+     * @return iterable<string, array{list<string>}>
+     */
+    public static function switchRefusals(): iterable
+    {
+        yield 'content table not writable' => [['tables_modify:tt_content']];
+        yield 'no content edit on the page' => [['page:' . Permission::CONTENT_EDIT]];
+        yield 'records not editable' => [['record']];
+        yield 'hidden field excluded' => [['non_exclude_fields:tt_content:hidden']];
+        yield 'language not allowed' => [['language:0']];
+    }
+
+    /**
+     * @param list<string> $denied
+     */
+    #[Test]
+    #[DataProvider('switchRefusals')]
+    public function aMissingPermissionRefusesTheSwitch(array $denied): void
+    {
+        self::assertFalse($this->maySwitch($denied));
+    }
+
+    #[Test]
+    public function theLanguageOfEachRecordIsChecked(): void
+    {
+        self::assertFalse($this->maySwitch(['language:1'], ['sys_language_uid' => 1] + self::NEW_ELEMENT));
+        self::assertFalse($this->maySwitch(['language:1'], self::NEW_ELEMENT, ['sys_language_uid' => 1] + self::ELEMENT));
+        self::assertTrue($this->maySwitch(['language:1']));
+    }
+
+    #[Test]
+    public function onlyATabOrAccordionElementIsSwitchedIn(): void
+    {
+        self::assertFalse($this->maySwitch([], ['CType' => 'text'] + self::NEW_ELEMENT));
+        self::assertFalse($this->maySwitch([], ['CType' => null] + self::NEW_ELEMENT));
+    }
+
+    #[Test]
+    public function withoutHiddenFieldNothingIsSwitched(): void
+    {
+        // @phpstan-ignore offsetAccess.nonOffsetAccessible
+        unset($GLOBALS['TCA']['tt_content']['ctrl']['enablecolumns']);
+
+        self::assertFalse($this->maySwitch());
     }
 }

@@ -18,6 +18,8 @@ use Netresearch\T3Cowriter\Form\FieldControl\PresentationControl;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\RecordFinder;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationElementReader;
+use Netresearch\T3Cowriter\Service\Presentation\PresentationSwitcher;
+use Netresearch\T3Cowriter\Service\Presentation\PresentationSwitchToken;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationWriter;
 use Netresearch\T3Cowriter\Service\Presentation\SectionProposalService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -35,6 +37,7 @@ use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Core\SystemEnvironmentBuilder;
+use TYPO3\CMS\Core\Crypto\HashService;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\NormalizedParams;
@@ -151,6 +154,8 @@ final class PresentationControlTest extends FunctionalTestCase
             new PresentationElementReader($finder),
             new SectionProposalService($completion),
             new PresentationWriter($finder, new NullLogger()),
+            new PresentationSwitcher($finder, new NullLogger()),
+            new PresentationSwitchToken(new HashService()),
             ConfigurationAccessDouble::selector($configurationRepository),
             $rateLimiter,
             $this->get(UriBuilder::class),

@@ -23,6 +23,7 @@
  */
 import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
 import DocumentService from '@typo3/core/document-service.js';
+import Viewport from '@typo3/backend/viewport.js';
 
 const DEFAULT_LABELS = {
     heading: 'Present as tabs or accordion',
@@ -34,11 +35,19 @@ const DEFAULT_LABELS = {
     layoutAccordion: 'Accordion',
     sectionTitle: 'Title of section %d',
     noText: '(no text, only the heading)',
-    original: 'A new element is created directly after this one. This element stays unchanged: delete or hide it yourself once the new element is right.',
+    original: 'A new element is created directly after this one, hidden: visitors keep seeing this element until you switch the two. This element stays unchanged.',
     create: 'Create element',
     creating: 'Creating the element…',
-    created: 'The new element was created directly after this one. This element is unchanged: delete or hide it yourself.',
+    created: 'The new element was created directly after this one and is hidden. Visitors keep seeing this element until you switch the two.',
     open: 'Open the new element',
+    openPage: 'Open the page in the Layout module',
+    switch: 'Show the new element and hide the original',
+    switching: 'Switching the elements…',
+    switched: 'The new element is visible now and this element is hidden.',
+    imagesTaken: 'Images of this element: %d. They go into the first section.',
+    warningTranslations: 'This element has translations. Do not delete it: deleting it deletes its translations too. Hide it instead.',
+    warningConnectedTranslation: 'This element is a translation connected to the default language. The new element becomes a translation of its own.',
+    warningImagesNotTaken: 'The images of this element are not taken over. Add them yourself.',
     cancel: 'Cancel',
     error: 'The sections could not be proposed.',
     titleRequired: 'Every section needs a title.',
@@ -56,6 +65,8 @@ export class AlternativePresentation {
         this.status = null;
         this.request = null;
         this.proposal = null;
+        this.created = null;
+        this.switched = false;
         // Increases with every open and close: an answer to a superseded
         // request is ignored.
         this.requestToken = 0;
@@ -133,13 +144,18 @@ export class AlternativePresentation {
         if (this.isOpen()) {
             this.close();
         } else {
-            this.open();
+            this.report(this.open());
         }
     }
 
     async open() {
         this.panel.hidden = false;
         this.control.setAttribute('aria-expanded', 'true');
+        if (this.created) {
+            // The element exists: show the result again instead of a second proposal.
+            this.renderCreated(this.created);
+            return;
+        }
         this.panel.replaceChildren(this.heading());
         this.setStatus(this.labels.loading, false);
         this.control.setAttribute('aria-busy', 'true');
@@ -205,7 +221,7 @@ export class AlternativePresentation {
         form.noValidate = true;
         form.addEventListener('submit', (event) => {
             event.preventDefault();
-            this.create(form);
+            this.report(this.create(form));
         });
 
         const fieldset = document.createElement('fieldset');
@@ -249,6 +265,12 @@ export class AlternativePresentation {
             input.required = true;
             input.value = section.title;
             input.dataset.index = String(index);
+            // Enter in a title does not create the element at once.
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                }
+            });
             const preview = document.createElement('p');
             preview.className = 'form-text mb-0';
             preview.id = id + '-preview-' + index;
@@ -275,8 +297,35 @@ export class AlternativePresentation {
         cancelButton.addEventListener('click', () => this.close());
         buttons.append(createButton, cancelButton);
 
-        form.append(fieldset, list, note, buttons);
+        form.append(fieldset, list, ...this.notices(proposal), note, buttons);
         this.panel.replaceChildren(this.heading(), form);
+    }
+
+    /**
+     * Notes about the original before creating: its images, its translations,
+     * a connected translation.
+     *
+     * @returns {HTMLElement[]}
+     */
+    notices(proposal) {
+        const warnings = Array.isArray(proposal.warnings) ? proposal.warnings : [];
+        const texts = [];
+        const images = Number(proposal.images) || 0;
+        if (images > 0 && !warnings.includes('imagesNotTaken')) {
+            texts.push(['info', this.labels.imagesTaken.replace('%d', String(images))]);
+        }
+        const keys = { translations: 'warningTranslations', connectedTranslation: 'warningConnectedTranslation', imagesNotTaken: 'warningImagesNotTaken' };
+        for (const warning of warnings) {
+            if (warning in keys) {
+                texts.push(['warning', this.labels[keys[warning]]]);
+            }
+        }
+        return texts.map(([kind, text]) => {
+            const notice = document.createElement('p');
+            notice.className = 'alert alert-' + kind + ' cowriter-presentation-notice';
+            notice.textContent = text;
+            return notice;
+        });
     }
 
     /**
@@ -330,21 +379,116 @@ export class AlternativePresentation {
         }
     }
 
+    /**
+     * The result step: the new element is hidden until the editor switches.
+     * One button swaps the visibility of the two elements, two more open the
+     * page in the Layout module and the new element.
+     */
     renderCreated(result) {
+        this.created = result;
         const message = document.createElement('p');
-        message.className = 'mb-2';
-        message.textContent = this.labels.created;
-        const children = [this.heading(), message];
-        if (typeof result.editUrl === 'string' && result.editUrl !== '') {
-            const link = document.createElement('a');
-            link.className = 'btn btn-default';
-            link.href = result.editUrl;
-            link.textContent = this.labels.open;
-            children.push(link);
+        message.className = 'mb-2 cowriter-presentation-result';
+        message.textContent = this.switched ? this.labels.switched : this.labels.created;
+
+        const buttons = document.createElement('div');
+        buttons.className = 'd-flex flex-wrap gap-2';
+        if (!this.switched && typeof result.switchToken === 'string' && result.switchToken !== '' && this.control.dataset.switchUrl) {
+            buttons.append(this.button(this.labels.switch, 'btn btn-primary cowriter-presentation-switch', (button) => this.report(this.switchElements(button))));
         }
-        this.panel.replaceChildren(...children);
-        this.setStatus(this.labels.created, false);
-        this.panel.querySelector('a')?.focus();
+        if (typeof result.pageUrl === 'string' && result.pageUrl !== '') {
+            buttons.append(this.button(this.labels.openPage, 'btn btn-default cowriter-presentation-page', () => this.navigate(result.pageUrl)));
+        }
+        if (typeof result.editUrl === 'string' && result.editUrl !== '') {
+            buttons.append(this.button(this.labels.open, 'btn btn-default cowriter-presentation-edit', () => this.navigate(result.editUrl)));
+        }
+
+        this.panel.replaceChildren(this.heading(), message, buttons);
+        this.setStatus(message.textContent, false);
+        this.panel.querySelector('button')?.focus();
+    }
+
+    button(label, className, onClick) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = className;
+        button.textContent = label;
+        button.addEventListener('click', () => onClick(button));
+        return button;
+    }
+
+    /**
+     * Shows the new element and hides this one, for the pair the creation
+     * made only (its token).
+     *
+     * @param {HTMLButtonElement} button
+     */
+    async switchElements(button) {
+        button.disabled = true;
+        this.setStatus(this.labels.switching, false);
+        try {
+            await this.post(this.control.dataset.switchUrl, {
+                newUid: this.created.uid,
+                originalUid: this.created.originalUid,
+                token: this.created.switchToken,
+            });
+        } catch (error) {
+            button.disabled = false;
+            this.setStatus(this.messageOf(error), true);
+            return;
+        }
+
+        this.switched = true;
+        this.syncHiddenField(this.created.originalUid);
+        button.remove();
+        this.panel.querySelector('.cowriter-presentation-result').textContent = this.labels.switched;
+        this.setStatus(this.labels.switched, false);
+        this.panel.querySelector('button')?.focus();
+    }
+
+    /**
+     * This form still holds the original's old visibility. Without this,
+     * saving the form afterwards would show the original again. The stored
+     * value is put into the submitted field and the toggle follows it; the
+     * field is not marked as changed, because it matches what is stored.
+     *
+     * @param {number} uid
+     */
+    syncHiddenField(uid) {
+        const name = 'data[tt_content][' + uid + '][hidden]';
+        const stored = document.querySelector('input[type="hidden"][name="' + CSS.escape(name) + '"]');
+        if (!stored || stored.value === '1') {
+            return;
+        }
+        stored.value = '1';
+        const toggle = document.querySelector('input[type="checkbox"][data-formengine-input-name="' + CSS.escape(name) + '"]');
+        if (toggle) {
+            // The toggle may show the value inverted ("Enabled"): flip it.
+            toggle.checked = !toggle.checked;
+        }
+    }
+
+    /**
+     * Loads $url in the backend's content frame. The content container asks
+     * FormEngine first, which shows its "unsaved changes" dialog when this
+     * form has changes.
+     *
+     * @param {string} url
+     */
+    navigate(url) {
+        Viewport.ContentContainer.setUrl(url).catch(() => {
+            // Rejected when the editor stays: FormEngine's "unsaved changes"
+            // dialog was cancelled. Nothing to report, the form is unchanged.
+        });
+    }
+
+    /**
+     * The actions handle their own failures; anything they did not foresee
+     * is shown in the status line instead of getting lost.
+     *
+     * @param {Promise<void>} action
+     */
+    report(action) {
+        action.catch((error) => this.setStatus(this.messageOf(error), true));
     }
 
     /**

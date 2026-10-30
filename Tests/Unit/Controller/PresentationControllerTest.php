@@ -19,11 +19,14 @@ use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Controller\PresentationController;
 use Netresearch\T3Cowriter\Domain\DTO\PresentationCreateRequest;
 use Netresearch\T3Cowriter\Domain\DTO\PresentationProposeRequest;
+use Netresearch\T3Cowriter\Domain\DTO\PresentationSwitchRequest;
 use Netresearch\T3Cowriter\Service\Presentation\Layout;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationElement;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationElementReader;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationException;
+use Netresearch\T3Cowriter\Service\Presentation\PresentationSwitcher;
+use Netresearch\T3Cowriter\Service\Presentation\PresentationSwitchToken;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationWriter;
 use Netresearch\T3Cowriter\Service\Presentation\SectionContent;
 use Netresearch\T3Cowriter\Service\Presentation\SectionProposalService;
@@ -47,6 +50,7 @@ use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Crypto\HashService;
 use TYPO3\CMS\Core\Http\Uri;
 
 #[CoversClass(PresentationController::class)]
@@ -54,6 +58,8 @@ use TYPO3\CMS\Core\Http\Uri;
 #[CoversClass(PresentationCreateRequest::class)]
 #[CoversClass(PresentationException::class)]
 #[CoversClass(PresentationConfiguration::class)]
+#[CoversClass(PresentationSwitchRequest::class)]
+#[CoversClass(PresentationSwitchToken::class)]
 final class PresentationControllerTest extends TestCase
 {
     use XliffLanguageServiceTrait;
@@ -67,6 +73,8 @@ final class PresentationControllerTest extends TestCase
     private PresentationElementReader&Stub $reader;
 
     private PresentationWriter&Stub $writer;
+
+    private PresentationSwitcher&Stub $switcher;
 
     private RateLimiterInterface&Stub $rateLimiter;
 
@@ -83,12 +91,14 @@ final class PresentationControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->completion              = new FakeCompletionService();
-        $this->reader                  = $this->createStub(PresentationElementReader::class);
-        $this->writer                  = $this->createStub(PresentationWriter::class);
-        $this->rateLimiter             = $this->createStub(RateLimiterInterface::class);
-        $this->configurationRepository = $this->createStub(LlmConfigurationRepository::class);
-        $this->logger                  = new RecordingLogger();
+        $this->completion                                   = new FakeCompletionService();
+        $this->reader                                       = $this->createStub(PresentationElementReader::class);
+        $this->writer                                       = $this->createStub(PresentationWriter::class);
+        $this->switcher                                     = $this->createStub(PresentationSwitcher::class);
+        $GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey'] = 'unit-test-encryption-key';
+        $this->rateLimiter                                  = $this->createStub(RateLimiterInterface::class);
+        $this->configurationRepository                      = $this->createStub(LlmConfigurationRepository::class);
+        $this->logger                                       = new RecordingLogger();
 
         $this->rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
         $this->configurationRepository->method('findDefault')->willReturn(new LlmConfiguration());
@@ -138,7 +148,7 @@ final class PresentationControllerTest extends TestCase
         $uriBuilder->method('buildUriFromRoute')->willReturnCallback(function (string $route, array $parameters): Uri {
             $this->builtUris[] = [$route, $parameters];
 
-            return new Uri('/typo3/record/edit?edit%5Btt_content%5D%5B17%5D=edit');
+            return new Uri($route === 'web_layout' ? '/typo3/module/web/layout?id=2' : '/typo3/record/edit?x=17');
         });
 
         return new PresentationController(
@@ -146,6 +156,8 @@ final class PresentationControllerTest extends TestCase
             $this->reader,
             new SectionProposalService($this->completion),
             $this->writer,
+            $this->switcher,
+            new PresentationSwitchToken(new HashService()),
             ConfigurationAccessDouble::selector($this->configurationRepository),
             $this->rateLimiter,
             $uriBuilder,
@@ -216,6 +228,8 @@ final class PresentationControllerTest extends TestCase
                 ['title' => 'Seat', 'start' => 1, 'consumesHeading' => true, 'preview' => 'Height'],
                 ['title' => 'Warranty', 'start' => 3, 'consumesHeading' => true, 'preview' => 'Five years'],
             ],
+            'warnings' => [],
+            'images'   => 0,
         ], $this->json($response));
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
@@ -450,7 +464,7 @@ final class PresentationControllerTest extends TestCase
                 Layout::Accordion,
                 self::equalTo([
                     new SectionContent('Intro', '<p>Intro</p>', 'Intro'),
-                    new SectionContent('Seat & back', '<p>Height</p>', 'Height'),
+                    new SectionContent('<b>Seat</b> &amp; back', '<p>Height</p>', 'Height'),
                     new SectionContent('Warranty', '<p>Five years</p>', 'Five years'),
                 ]),
                 $GLOBALS['BE_USER'],
@@ -465,12 +479,18 @@ final class PresentationControllerTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
         self::assertSame([
-            'success' => true,
-            'uid'     => 17,
-            'layout'  => 'accordion',
-            'editUrl' => '/typo3/record/edit?edit%5Btt_content%5D%5B17%5D=edit',
+            'success'     => true,
+            'uid'         => 17,
+            'originalUid' => 10,
+            'layout'      => 'accordion',
+            'switchToken' => (new PresentationSwitchToken(new HashService()))->issue(17, 10, 7, 0),
+            'pageUrl'     => '/typo3/module/web/layout?id=2#element-tt_content-17',
+            'editUrl'     => '/typo3/record/edit?x=17',
         ], $this->json($response));
-        self::assertSame([['record_edit', ['edit' => ['tt_content' => [17 => 'edit']]]]], $this->builtUris);
+        self::assertSame([
+            ['web_layout', ['id' => 2, 'language' => 0, 'languages' => [0]]],
+            ['record_edit', ['edit' => ['tt_content' => [17 => 'edit']], 'returnUrl' => '/typo3/module/web/layout?id=2#element-tt_content-17']],
+        ], $this->builtUris);
     }
 
     #[Test]
@@ -524,7 +544,7 @@ final class PresentationControllerTest extends TestCase
     public static function sectionsThatDoNotFit(): iterable
     {
         yield 'past the end of the text' => [[['title' => 'A', 'start' => 0, 'consumesHeading' => false], ['title' => 'B', 'start' => 9, 'consumesHeading' => false]]];
-        yield 'a title that is only markup' => [[['title' => 'A', 'start' => 0, 'consumesHeading' => false], ['title' => '<img src=x>', 'start' => 1, 'consumesHeading' => true]]];
+        yield 'a title that is only blanks' => [[['title' => 'A', 'start' => 0, 'consumesHeading' => false], ['title' => " \t\u{0007}", 'start' => 1, 'consumesHeading' => true]]];
         yield 'a paragraph taken for a heading' => [[['title' => 'A', 'start' => 0, 'consumesHeading' => true], ['title' => 'B', 'start' => 1, 'consumesHeading' => true]]];
     }
 
@@ -569,6 +589,8 @@ final class PresentationControllerTest extends TestCase
             $this->reader,
             new SectionProposalService($this->completion),
             $this->writer,
+            $this->switcher,
+            new PresentationSwitchToken(new HashService()),
             ConfigurationAccessDouble::selector($this->configurationRepository),
             $this->rateLimiter,
             $uriBuilder,
@@ -580,6 +602,7 @@ final class PresentationControllerTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('', $this->json($response)['editUrl'] ?? null);
+        self::assertSame('', $this->json($response)['pageUrl'] ?? null);
     }
 
     #[Test]
@@ -673,5 +696,140 @@ final class PresentationControllerTest extends TestCase
         $this->rateLimiter = $rateLimiter;
 
         self::assertSame(429, $this->subject()->proposeAction($this->request(['uid' => 10]))->getStatusCode());
+    }
+
+    // ---- switch ----------------------------------------------------------------
+
+    /**
+     * @param array<string, mixed> $overrides
+     *
+     * @return array<string, mixed>
+     */
+    private function switchBody(array $overrides = []): array
+    {
+        return $overrides + [
+            'newUid'      => 17,
+            'originalUid' => 10,
+            'token'       => (new PresentationSwitchToken(new HashService()))->issue(17, 10, 7, 0),
+        ];
+    }
+
+    private function switcherMock(): PresentationSwitcher&MockObject
+    {
+        $switcher       = $this->createMock(PresentationSwitcher::class);
+        $this->switcher = $switcher;
+
+        return $switcher;
+    }
+
+    #[Test]
+    public function thePairTheCreationMadeIsSwitched(): void
+    {
+        $this->switcherMock()->expects(self::once())->method('switch')->with(17, 10, $GLOBALS['BE_USER']);
+
+        $response = $this->subject()->switchAction($this->request($this->switchBody(['newUid' => '17'])));
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame(['success' => true], $this->json($response));
+    }
+
+    /**
+     * @return iterable<string, array{int, int, int, int}>
+     */
+    public static function foreignTokens(): iterable
+    {
+        yield 'another original' => [17, 11, 7, 0];
+        yield 'another new element' => [18, 10, 7, 0];
+        yield 'the pair swapped' => [10, 17, 7, 0];
+        yield 'another user' => [17, 10, 8, 0];
+        yield 'another workspace' => [17, 10, 7, 1];
+    }
+
+    #[Test]
+    #[DataProvider('foreignTokens')]
+    public function aTokenOfAnotherPairUserOrWorkspaceIsRefused(int $newUid, int $originalUid, int $userId, int $workspace): void
+    {
+        $this->switcherMock()->expects(self::never())->method('switch');
+        $token = (new PresentationSwitchToken(new HashService()))->issue($newUid, $originalUid, $userId, $workspace);
+
+        $response = $this->subject()->switchAction($this->request($this->switchBody(['token' => $token])));
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertStringStartsWith('This element cannot be presented', (string) ($this->json($response)['error'] ?? ''));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>|string}>
+     */
+    public static function malformedSwitchBodies(): iterable
+    {
+        yield 'malformed JSON' => ['{nope'];
+        yield 'no new uid' => [['newUid' => null]];
+        yield 'no original uid' => [['originalUid' => 0]];
+        yield 'the same uid twice' => [['originalUid' => 17]];
+        yield 'a uid with text' => [['newUid' => '17a']];
+        yield 'no token' => [['token' => '']];
+        yield 'a token that is no hash' => [['token' => str_repeat('z', 40)]];
+        yield 'a token not a string' => [['token' => 5]];
+        yield 'a token too short' => [['token' => str_repeat('a', 39)]];
+    }
+
+    /**
+     * @param array<string, mixed>|string $body
+     */
+    #[Test]
+    #[DataProvider('malformedSwitchBodies')]
+    public function malformedSwitchRequestsAreA400(array|string $body): void
+    {
+        $this->switcherMock()->expects(self::never())->method('switch');
+
+        $request = $this->request(is_string($body) ? $body : $this->switchBody($body));
+
+        self::assertSame(400, $this->subject()->switchAction($request)->getStatusCode());
+    }
+
+    #[Test]
+    public function aSwitchIsRateLimitedSwitchedOffAndNeedsABackendUser(): void
+    {
+        $this->switcherMock()->expects(self::never())->method('switch');
+
+        $this->enabled = false;
+        self::assertSame(403, $this->subject()->switchAction($this->request($this->switchBody()))->getStatusCode());
+
+        $this->enabled = true;
+        unset($GLOBALS['BE_USER']);
+        self::assertSame(403, $this->subject()->switchAction($this->request($this->switchBody()))->getStatusCode());
+
+        $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
+        $this->rateLimiter  = $this->createStub(RateLimiterInterface::class);
+        $this->rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(false, 20, 0, time() + 60));
+        self::assertSame(429, $this->subject()->switchAction($this->request($this->switchBody()))->getStatusCode());
+    }
+
+    #[Test]
+    public function aRefusedOrFailedSwitchIsReportedWithItsMessage(): void
+    {
+        $this->switcher = $this->createStub(PresentationSwitcher::class);
+        $this->switcher->method('switch')->willThrowException(PresentationException::switchFailed());
+
+        $response = $this->subject()->switchAction($this->request($this->switchBody()));
+
+        self::assertSame(500, $response->getStatusCode());
+        self::assertSame(
+            ['success' => false, 'error' => 'The elements could not be switched. Check both elements in the Layout module.'],
+            $this->json($response),
+        );
+    }
+
+    #[Test]
+    public function theTokenIsBoundToTheEditorsWorkspace(): void
+    {
+        $GLOBALS['BE_USER']->workspace = 1;
+        $this->switcherMock()->expects(self::once())->method('switch');
+
+        $body     = $this->switchBody(['token' => (new PresentationSwitchToken(new HashService()))->issue(17, 10, 7, 1)]);
+        $response = $this->subject()->switchAction($this->request($body));
+
+        self::assertSame(200, $response->getStatusCode());
     }
 }

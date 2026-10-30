@@ -51,7 +51,7 @@ final class PresentationWriterTest extends TestCase
     {
         $tca = RegisterPresentationControlListenerTest::tca(true, true);
         // @phpstan-ignore offsetAccess.nonOffsetAccessible
-        $tca['tt_content']['ctrl'] = ['languageField' => 'sys_language_uid'];
+        $tca['tt_content']['ctrl'] = ['languageField' => 'sys_language_uid', 'enablecolumns' => ['disabled' => 'hidden']];
         // @phpstan-ignore offsetAccess.nonOffsetAccessible
         $tca['tx_bootstrappackage_tab_item']['ctrl'] = ['languageField' => 'sys_language_uid'];
         $GLOBALS['TCA']                              = $tca;
@@ -115,7 +115,7 @@ final class PresentationWriterTest extends TestCase
 
     private const CREATED = ['NEWcowriterElement' => 50, 'NEWcowriterItem0' => 61, 'NEWcowriterItem1' => 62];
 
-    private const STORED = ['uid' => 50, 'CType' => 'tab', 'tx_bootstrappackage_tab_item' => 2];
+    private const STORED = ['uid' => 50, 'CType' => 'tab', 'hidden' => 1, 'tx_bootstrappackage_tab_item' => 2];
 
     #[Test]
     public function theNewElementGoesAfterTheOriginalWithItsItemsInOrder(): void
@@ -139,6 +139,7 @@ final class PresentationWriterTest extends TestCase
                     'colPos'                       => 3,
                     'header'                       => 'Office chairs',
                     'tx_bootstrappackage_tab_item' => 'NEWcowriterItem0,NEWcowriterItem1',
+                    'hidden'                       => 1,
                     'sys_language_uid'             => 1,
                 ],
             ],
@@ -151,7 +152,7 @@ final class PresentationWriterTest extends TestCase
     public function tablesWithoutLanguageFieldGetNone(): void
     {
         // @phpstan-ignore offsetAccess.nonOffsetAccessible
-        unset($GLOBALS['TCA']['tt_content']['ctrl'], $GLOBALS['TCA']['tx_bootstrappackage_tab_item']['ctrl']);
+        unset($GLOBALS['TCA']['tt_content']['ctrl']['languageField'], $GLOBALS['TCA']['tx_bootstrappackage_tab_item']['ctrl']);
         $this->queueDataHandler(self::CREATED);
 
         $this->writer(self::STORED)->create($this->element(), Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class));
@@ -300,5 +301,237 @@ final class PresentationWriterTest extends TestCase
         $this->expectExceptionObject(PresentationException::createFailed());
 
         $this->writer($stored)->create($this->element(), Layout::Tabs, [$this->sections()[0]], $this->createStub(BackendUserAuthentication::class));
+    }
+
+    #[Test]
+    public function anElementThatIsNotStoredHiddenIsUndone(): void
+    {
+        $this->queueDataHandler(self::CREATED);
+        $this->queueDataHandler();
+
+        $this->expectExceptionObject(PresentationException::createFailed());
+
+        $this->writer(['hidden' => 0] + self::STORED)->create($this->element(), Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class));
+    }
+
+    #[Test]
+    public function withoutHiddenFieldNothingIsStarted(): void
+    {
+        // @phpstan-ignore offsetAccess.nonOffsetAccessible
+        unset($GLOBALS['TCA']['tt_content']['ctrl']['enablecolumns']);
+
+        try {
+            $this->writer(self::STORED)->create($this->element(), Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class));
+            self::fail('The creation must fail');
+        } catch (PresentationException) {
+        }
+
+        self::assertSame([], $this->started);
+    }
+
+    #[Test]
+    public function aCleanUpThatFailsTooIsReportedAsIncomplete(): void
+    {
+        $this->queueDataHandler(self::CREATED, ['[1.1]: refused']);
+        $cleanUp = $this->createStub(DataHandler::class);
+        $cleanUp->method('process_cmdmap')->willReturnCallback(static function () use ($cleanUp): void {
+            $cleanUp->errorLog = ['[1.2]: may not delete'];
+        });
+        GeneralUtility::addInstance(DataHandler::class, $cleanUp);
+
+        try {
+            $this->writer(self::STORED)->create($this->element(), Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class));
+            self::fail('The creation must fail');
+        } catch (PresentationException $e) {
+            self::assertSame('presentation.error.createIncomplete', $e->getLabelKey());
+            self::assertSame(500, $e->getHttpStatus());
+        }
+
+        self::assertCount(2, $this->logger->records);
+        self::assertSame(['element' => 50, 'items' => [61, 62], 'errors' => ['[1.2]: may not delete']], $this->logger->records[1]['context']);
+    }
+
+    /**
+     * TCA with frontend groups, start and end time and the file fields.
+     */
+    private function withAccessAndFileTca(): void
+    {
+        // @phpstan-ignore offsetAccess.nonOffsetAccessible
+        $GLOBALS['TCA']['tt_content']['ctrl']['enablecolumns'] = ['disabled' => 'hidden', 'fe_group' => 'fe_group', 'starttime' => 'starttime', 'endtime' => 'endtime'];
+        foreach (['fe_group', 'starttime', 'endtime', 'frame_class'] as $field) {
+            // @phpstan-ignore offsetAccess.nonOffsetAccessible
+            $GLOBALS['TCA']['tt_content']['columns'][$field] = ['exclude' => true, 'config' => ['type' => 'input']];
+        }
+
+        foreach (['uid_local', 'title', 'alternative'] as $field) {
+            // @phpstan-ignore offsetAccess.nonOffsetAccessible
+            $GLOBALS['TCA']['sys_file_reference']['columns'][$field] = ['config' => ['type' => 'input']];
+        }
+
+        // @phpstan-ignore offsetAccess.nonOffsetAccessible
+        $GLOBALS['TCA']['sys_file_reference']['ctrl'] = ['languageField' => 'sys_language_uid'];
+        // @phpstan-ignore offsetAccess.nonOffsetAccessible
+        $GLOBALS['TCA']['tx_bootstrappackage_tab_item']['columns']['media'] = ['exclude' => true, 'config' => ['type' => 'file']];
+    }
+
+    private const ACCESS = ['fe_group' => '1,2', 'starttime' => 1700000000, 'endtime' => 0, 'frame_class' => 'ruler-before'];
+
+    #[Test]
+    public function theNewElementTakesOverAccessAndAppearanceOfTheOriginal(): void
+    {
+        $this->withAccessAndFileTca();
+        $this->queueDataHandler(self::CREATED);
+        $element = new PresentationElement(10, 2, 0, 3, 'Office chairs', '', [Layout::Tabs], self::ACCESS);
+
+        // The database gives the numbers as strings, and endtime 0 as "0".
+        $stored = ['fe_group' => '1,2', 'starttime' => '1700000000', 'endtime' => '0'] + self::STORED;
+        self::assertSame(50, $this->writer($stored)->create($element, Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class)));
+
+        // @phpstan-ignore offsetAccess.nonOffsetAccessible
+        $new = $this->started[0]['data']['tt_content']['NEWcowriterElement'];
+        self::assertIsArray($new);
+        self::assertSame(self::ACCESS, array_intersect_key($new, self::ACCESS));
+        self::assertSame(1, $new['hidden']);
+    }
+
+    #[Test]
+    public function aZeroAndAnEmptyRestrictionAreTheSame(): void
+    {
+        // An older record may hold "0" for no frontend group; the new one is
+        // stored with an empty value, which restricts no more and no less.
+        $this->withAccessAndFileTca();
+        $this->queueDataHandler(self::CREATED);
+        $element = new PresentationElement(10, 2, 0, 3, 'Office chairs', '', [Layout::Tabs], ['fe_group' => '0', 'starttime' => 0, 'endtime' => '']);
+
+        $stored = ['fe_group' => '', 'starttime' => '0', 'endtime' => 0] + self::STORED;
+
+        self::assertSame(50, $this->writer($stored)->create($element, Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class)));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function lostAccessRestrictions(): iterable
+    {
+        yield 'the frontend groups were dropped' => [['fe_group' => '', 'starttime' => 1700000000, 'endtime' => 0]];
+        yield 'the start time was dropped' => [['fe_group' => '1,2', 'starttime' => 0, 'endtime' => 0]];
+        yield 'an end time appeared' => [['fe_group' => '1,2', 'starttime' => 1700000000, 'endtime' => 1800000000]];
+    }
+
+    /**
+     * @param array<string, mixed> $access
+     */
+    #[Test]
+    #[DataProvider('lostAccessRestrictions')]
+    public function aNewElementWithoutTheOriginalsRestrictionsIsUndone(array $access): void
+    {
+        $this->withAccessAndFileTca();
+        $this->queueDataHandler(self::CREATED);
+        $this->queueDataHandler();
+        $element = new PresentationElement(10, 2, 0, 3, 'Office chairs', '', [Layout::Tabs], self::ACCESS);
+
+        $this->expectExceptionObject(PresentationException::createFailed());
+
+        $this->writer($access + self::STORED)->create($element, Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class));
+    }
+
+    private const FILE = ['uid' => 7, 'uid_local' => 3, 'title' => 'Front', 'alternative' => 'A chair', 'description' => 'not in the TCA', 'tablenames' => 'tt_content'];
+
+    /**
+     * @param array<string, mixed>|null $firstItem the first item as read back
+     */
+    private function fileWriter(?array $firstItem): PresentationWriter
+    {
+        $finder = $this->createStub(RecordFinder::class);
+        $finder->method('findRecord')->willReturnCallback(
+            static fn (string $table, int $uid): ?array => match ([$table, $uid]) {
+                ['tt_content', 50]                   => self::STORED,
+                ['tx_bootstrappackage_tab_item', 61] => $firstItem,
+                default                              => null,
+            },
+        );
+
+        return new PresentationWriter($finder, $this->logger);
+    }
+
+    private function elementWithImages(bool $takesFiles): PresentationElement
+    {
+        return new PresentationElement(
+            10,
+            2,
+            1,
+            3,
+            'Office chairs',
+            '',
+            [Layout::Tabs],
+            fileReferences: [self::FILE, ['uid_local' => 4] + self::FILE],
+            layoutsTakingFiles: $takesFiles ? [Layout::Tabs] : [],
+        );
+    }
+
+    #[Test]
+    public function theImagesGoIntoTheFirstItem(): void
+    {
+        $this->withAccessAndFileTca();
+        $this->queueDataHandler(self::CREATED + ['NEWcowriterFile0' => 71, 'NEWcowriterFile1' => 72]);
+
+        $uid = $this->fileWriter(['media' => '2'])->create($this->elementWithImages(true), Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class));
+
+        self::assertSame(50, $uid);
+        $data = $this->started[0]['data'];
+        self::assertSame([
+            'NEWcowriterFile0' => ['pid' => 2, 'uid_local' => 3, 'title' => 'Front', 'alternative' => 'A chair', 'sys_language_uid' => 1],
+            'NEWcowriterFile1' => ['pid' => 2, 'uid_local' => 4, 'title' => 'Front', 'alternative' => 'A chair', 'sys_language_uid' => 1],
+        ], $data['sys_file_reference'] ?? null);
+        // @phpstan-ignore offsetAccess.nonOffsetAccessible
+        self::assertSame('NEWcowriterFile0,NEWcowriterFile1', $data['tx_bootstrappackage_tab_item']['NEWcowriterItem0']['media'] ?? null);
+        // @phpstan-ignore offsetAccess.nonOffsetAccessible
+        self::assertArrayNotHasKey('media', $data['tx_bootstrappackage_tab_item']['NEWcowriterItem1']);
+    }
+
+    #[Test]
+    public function withoutTheRightOnTheFilesTheImagesStayBehind(): void
+    {
+        $this->withAccessAndFileTca();
+        $this->queueDataHandler(self::CREATED);
+
+        $this->fileWriter(null)->create($this->elementWithImages(false), Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class));
+
+        self::assertArrayNotHasKey('sys_file_reference', $this->started[0]['data']);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, int>, array<string, mixed>|null}>
+     */
+    public static function lostImages(): iterable
+    {
+        yield 'a reference was not created' => [['NEWcowriterFile0' => 71], ['media' => 2]];
+        yield 'the first item has fewer images' => [['NEWcowriterFile0' => 71, 'NEWcowriterFile1' => 72], ['media' => 1]];
+        yield 'the first item cannot be read back' => [['NEWcowriterFile0' => 71, 'NEWcowriterFile1' => 72], null];
+    }
+
+    /**
+     * @param array<string, int>        $files
+     * @param array<string, mixed>|null $firstItem
+     */
+    #[Test]
+    #[DataProvider('lostImages')]
+    public function aCreationThatLostImagesIsUndoneWithTheReferences(array $files, ?array $firstItem): void
+    {
+        $this->withAccessAndFileTca();
+        $this->queueDataHandler(self::CREATED + $files);
+        $this->queueDataHandler();
+
+        try {
+            $this->fileWriter($firstItem)->create($this->elementWithImages(true), Layout::Tabs, $this->sections(), $this->createStub(BackendUserAuthentication::class));
+            self::fail('The creation must fail');
+        } catch (PresentationException $e) {
+            self::assertSame('presentation.error.createFailed', $e->getLabelKey());
+        }
+
+        self::assertSame(
+            array_fill_keys(array_values($files), ['delete' => 1]),
+            $this->started[1]['commands']['sys_file_reference'] ?? null,
+        );
     }
 }

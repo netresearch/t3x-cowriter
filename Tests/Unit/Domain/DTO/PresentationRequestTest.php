@@ -80,7 +80,7 @@ final class PresentationRequestTest extends TestCase
         self::assertSame(Layout::Accordion, $dto->layout);
         self::assertSame(self::FINGERPRINT, $dto->fingerprint);
         // consumesHeading is false unless sent.
-        self::assertEquals([new SectionBoundary('Intro', 0, false), new SectionBoundary('Seat', 1, true)], $dto->sections);
+        self::assertEquals([new SectionBoundary('<b>Intro</b>', 0, false), new SectionBoundary('Seat', 1, true)], $dto->sections);
     }
 
     #[Test]

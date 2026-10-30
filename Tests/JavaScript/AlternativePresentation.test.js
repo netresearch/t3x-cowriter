@@ -12,6 +12,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
+import Viewport from '@typo3/backend/viewport.js';
 import AlternativePresentation from '../../Resources/Public/JavaScript/FormEngine/AlternativePresentation.js';
 
 const CONTROL_ID = 't3js-cowriter-presentation-1';
@@ -26,6 +27,7 @@ const FIXTURE = `
           <a id="${CONTROL_ID}" role="button" aria-expanded="false" aria-controls="${CONTROL_ID}-panel"
             data-propose-url="/typo3/ajax/cowriter/presentation-propose?token=a"
             data-create-url="/typo3/ajax/cowriter/presentation-create?token=b"
+            data-switch-url="/typo3/ajax/cowriter/presentation-switch?token=c"
             data-uid="10" data-layouts="tab,accordion"
             data-label-heading="Present as tabs or accordion" data-label-layout-tab="Tabs (label)"
             data-label-title-required="Every section needs a title."
@@ -34,7 +36,22 @@ const FIXTURE = `
       </div>
     </div>
   </div>
+</div>
+<div class="form-check form-switch">
+  <input type="checkbox" class="form-check-input" checked
+    data-formengine-input-name="data[tt_content][10][hidden]" id="hidden-toggle" />
+  <input type="hidden" name="data[tt_content][10][hidden]" value="0" />
 </div>`;
+
+const CREATED = {
+    success: true,
+    uid: 17,
+    originalUid: 10,
+    layout: 'accordion',
+    switchToken: 'a'.repeat(40),
+    pageUrl: '/typo3/module/web/layout?id=2#element-tt_content-17',
+    editUrl: '/typo3/record/edit?x=17',
+};
 
 const PROPOSAL = {
     success: true,
@@ -73,11 +90,11 @@ async function setup() {
  * Answers the propose request with $proposal and the create request with
  * $created; records the bodies.
  */
-function answer(proposal, created) {
+function answer(proposal, created, switched = { success: true }) {
     const posts = [];
     AjaxRequest.nextPost = (url, data) => {
         posts.push({ url, data });
-        const result = url.includes('propose') ? proposal : created;
+        const result = url.includes('propose') ? proposal : (url.includes('switch') ? switched : created);
         return result instanceof Error ? Promise.reject(result) : Promise.resolve(jsonResponse(result));
     };
     return posts;
@@ -170,7 +187,7 @@ describe('AlternativePresentation', () => {
     });
 
     it('creates the element with the edited titles, the start blocks and no markup', async () => {
-        const posts = answer(PROPOSAL, { success: true, uid: 17, layout: 'accordion', editUrl: '/typo3/record/edit?x=17' });
+        const posts = answer(PROPOSAL, CREATED);
         const { control } = await setup();
         await openPanel(control);
 
@@ -193,25 +210,202 @@ describe('AlternativePresentation', () => {
                 ],
             },
         });
-
-        const link = document.querySelector('.cowriter-presentation a');
-        expect(link.getAttribute('href')).toBe('/typo3/record/edit?x=17');
-        expect(link.textContent).toBe('Open the new element');
-        expect(document.activeElement).toBe(link);
-        expect(document.getElementById(CONTROL_ID + '-status').textContent).toContain('This element is unchanged');
         expect(document.querySelector('.cowriter-presentation form')).toBeNull();
     });
 
-    it('shows no link when the server sent no edit URL', async () => {
-        answer(PROPOSAL, { success: true, uid: 17, editUrl: '' });
+    it('says the new element is hidden and offers the switch, the page and the element', async () => {
+        answer(PROPOSAL, CREATED);
         const { control } = await setup();
         await openPanel(control);
-
         document.querySelector('.cowriter-presentation-create').click();
         await flush();
 
+        const buttons = [...document.querySelectorAll('.cowriter-presentation button')];
+        expect(buttons.map((button) => button.textContent)).toEqual([
+            'Show the new element and hide the original',
+            'Open the page in the Layout module',
+            'Open the new element',
+        ]);
+        expect(buttons[0].classList.contains('btn-primary')).toBe(true);
+        expect(document.activeElement).toBe(buttons[0]);
+        expect(document.querySelector('.cowriter-presentation-result').textContent).toContain('is hidden');
+        expect(document.getElementById(CONTROL_ID + '-status').textContent).toContain('until you switch');
         expect(document.querySelector('.cowriter-presentation a')).toBeNull();
-        expect(document.querySelector('.cowriter-presentation p').textContent).toContain('created directly after');
+    });
+
+    it('opens the page and the new element through the content frame', async () => {
+        answer(PROPOSAL, CREATED);
+        const { control } = await setup();
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        document.querySelector('.cowriter-presentation-page').click();
+        document.querySelector('.cowriter-presentation-edit').click();
+
+        expect(Viewport.ContentContainer.setUrl.mock.calls).toEqual([
+            ['/typo3/module/web/layout?id=2#element-tt_content-17'],
+            ['/typo3/record/edit?x=17'],
+        ]);
+    });
+
+    it('stays put when the editor cancels the unsaved changes dialog', async () => {
+        answer(PROPOSAL, CREATED);
+        const { control } = await setup();
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+        Viewport.ContentContainer.setUrl.mockReturnValueOnce(Promise.reject(new Error('cancelled')));
+
+        document.querySelector('.cowriter-presentation-edit').click();
+        await flush();
+
+        expect(document.getElementById(CONTROL_ID + '-status').classList.contains('text-danger')).toBe(false);
+        expect(document.querySelector('.cowriter-presentation-edit')).not.toBeNull();
+    });
+
+    it('offers no switch without a token or a switch URL, and no links without URLs', async () => {
+        answer(PROPOSAL, { success: true, uid: 17, originalUid: 10, switchToken: '', pageUrl: '', editUrl: '' });
+        const { control } = await setup();
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+        expect(document.querySelectorAll('.cowriter-presentation button')).toHaveLength(0);
+
+        answer(PROPOSAL, CREATED);
+        const second = await setup();
+        second.control.dataset.switchUrl = '';
+        await openPanel(second.control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+        expect(document.querySelector('.cowriter-presentation-switch')).toBeNull();
+        expect(document.querySelector('.cowriter-presentation-page')).not.toBeNull();
+    });
+
+    it('switches the pair the creation made and keeps this form from showing the original again', async () => {
+        const posts = answer(PROPOSAL, CREATED);
+        const { control } = await setup();
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        document.querySelector('.cowriter-presentation-switch').click();
+        await flush();
+
+        expect(posts[2]).toEqual({
+            url: '/typo3/ajax/cowriter/presentation-switch?token=c',
+            data: { newUid: 17, originalUid: 10, token: 'a'.repeat(40) },
+        });
+        expect(document.querySelector('.cowriter-presentation-switch')).toBeNull();
+        expect(document.querySelector('.cowriter-presentation-result').textContent).toBe('The new element is visible now and this element is hidden.');
+        expect(document.getElementById(CONTROL_ID + '-status').textContent).toBe('The new element is visible now and this element is hidden.');
+        expect(document.activeElement).toBe(document.querySelector('.cowriter-presentation-page'));
+        // The form now submits the stored state of the original.
+        expect(document.querySelector('input[name="data[tt_content][10][hidden]"]').value).toBe('1');
+        expect(document.getElementById('hidden-toggle').checked).toBe(false);
+    });
+
+    it('leaves a form field that already says hidden alone', async () => {
+        answer(PROPOSAL, CREATED);
+        const { control } = await setup();
+        document.querySelector('input[name="data[tt_content][10][hidden]"]').value = '1';
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        document.querySelector('.cowriter-presentation-switch').click();
+        await flush();
+
+        expect(document.getElementById('hidden-toggle').checked).toBe(true);
+    });
+
+    it('shows a refused switch and lets the editor try again', async () => {
+        const failure = Object.assign(new Error('500'), {
+            resolve: async () => ({ success: false, error: 'The elements could not be switched.' }),
+        });
+        answer(PROPOSAL, CREATED, failure);
+        const { control } = await setup();
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        document.querySelector('.cowriter-presentation-switch').click();
+        await flush();
+
+        const status = document.getElementById(CONTROL_ID + '-status');
+        expect(status.textContent).toBe('The elements could not be switched.');
+        expect(status.classList.contains('text-danger')).toBe(true);
+        expect(document.querySelector('.cowriter-presentation-switch').disabled).toBe(false);
+        expect(document.querySelector('input[name="data[tt_content][10][hidden]"]').value).toBe('0');
+    });
+
+    it('shows the result again instead of a second proposal after creating', async () => {
+        const posts = answer(PROPOSAL, CREATED);
+        const { control } = await setup();
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+        document.querySelector('.cowriter-presentation-switch').click();
+        await flush();
+
+        control.click();
+        await openPanel(control);
+
+        expect(posts).toHaveLength(3);
+        expect(document.querySelector('.cowriter-presentation form')).toBeNull();
+        expect(document.querySelector('.cowriter-presentation-switch')).toBeNull();
+        expect(document.querySelector('.cowriter-presentation-result').textContent).toContain('visible now');
+    });
+
+    it('does not create when Enter is pressed in a title', async () => {
+        const posts = answer(PROPOSAL, CREATED);
+        const { control } = await setup();
+        await openPanel(control);
+
+        const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        document.querySelector('.cowriter-presentation-sections input').dispatchEvent(event);
+        await flush();
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(posts).toHaveLength(1);
+        const other = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
+        document.querySelector('.cowriter-presentation-sections input').dispatchEvent(other);
+        expect(other.defaultPrevented).toBe(false);
+    });
+
+    it('notes the images and warns about translations', async () => {
+        answer({ ...PROPOSAL, images: 2, warnings: ['translations', 'connectedTranslation', 'unknown'] }, CREATED);
+        const { control } = await setup();
+        await openPanel(control);
+
+        const notices = [...document.querySelectorAll('.cowriter-presentation-notice')];
+        expect(notices.map((notice) => notice.className)).toEqual([
+            'alert alert-info cowriter-presentation-notice',
+            'alert alert-warning cowriter-presentation-notice',
+            'alert alert-warning cowriter-presentation-notice',
+        ]);
+        expect(notices[0].textContent).toBe('Images of this element: 2. They go into the first section.');
+        expect(notices[1].textContent).toContain('Do not delete it');
+        expect(notices[2].textContent).toContain('connected to the default language');
+    });
+
+    it('says when the images are not taken over', async () => {
+        answer({ ...PROPOSAL, images: 2, warnings: ['imagesNotTaken'] }, CREATED);
+        const { control } = await setup();
+        await openPanel(control);
+
+        const notices = [...document.querySelectorAll('.cowriter-presentation-notice')];
+        expect(notices.map((notice) => notice.textContent)).toEqual(['The images of this element are not taken over. Add them yourself.']);
+    });
+
+    it('reports an unforeseen failure of an action in the status line', async () => {
+        answer(PROPOSAL, CREATED);
+        const { subject } = await setup();
+
+        subject.report(Promise.reject(new Error('Unexpected')));
+        await flush();
+
+        expect(document.getElementById(CONTROL_ID + '-status').textContent).toBe('Unexpected');
     });
 
     it('refuses to send an empty title and marks the field', async () => {

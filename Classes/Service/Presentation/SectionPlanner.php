@@ -46,7 +46,7 @@ final readonly class SectionPlanner
     {
         $levels = [];
         foreach ($blocks as $block) {
-            if (in_array($block->headingLevel, self::SPLIT_LEVELS, true)) {
+            if (in_array($block->headingLevel, self::SPLIT_LEVELS, true) && $block->text !== '') {
                 $levels[] = $block->headingLevel;
             }
         }
@@ -55,10 +55,20 @@ final readonly class SectionPlanner
             return [];
         }
 
+        // A heading without text is no title, and a heading with nothing
+        // below it before the next one (or the end) would make an empty
+        // section: neither is a place to cut, both stay in the text.
         $level      = min($levels);
-        $boundaries = [];
+        $candidates = [];
         foreach ($blocks as $index => $block) {
-            if ($block->headingLevel !== $level) {
+            if ($block->headingLevel === $level && $block->text !== '') {
+                $candidates[$index] = true;
+            }
+        }
+
+        $boundaries = [];
+        foreach (array_keys($candidates) as $index) {
+            if (!isset($blocks[$index + 1]) || isset($candidates[$index + 1])) {
                 continue;
             }
 
@@ -66,7 +76,7 @@ final readonly class SectionPlanner
                 $boundaries[] = new SectionBoundary(self::title($introTitle), 0);
             }
 
-            $boundaries[] = new SectionBoundary(self::title($block->text), $index, true);
+            $boundaries[] = new SectionBoundary(self::title($blocks[$index]->text), $index, true);
         }
 
         $count = count($boundaries);
@@ -175,11 +185,14 @@ final readonly class SectionPlanner
     }
 
     /**
-     * A title as plain text on one line, at most MAX_TITLE_LENGTH characters.
+     * A title on one line, at most MAX_TITLE_LENGTH characters. It is plain
+     * text already (a heading's text, the model's or the editor's words) and
+     * is stored in a plain text field, so nothing in it is markup: "The <p>
+     * element" stays as it is. Control characters become spaces.
      */
     public static function title(string $text): string
     {
-        $plain = BlockParser::plainText(html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $plain = BlockParser::plainText((string) preg_replace('/[\x{0000}-\x{001F}\x{007F}-\x{009F}]/u', ' ', $text));
 
         return trim(mb_substr($plain, 0, self::MAX_TITLE_LENGTH, 'UTF-8'));
     }

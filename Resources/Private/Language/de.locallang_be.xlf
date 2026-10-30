@@ -1074,8 +1074,8 @@
                 <target>(kein Text, nur die Überschrift)</target>
             </trans-unit>
             <trans-unit id="presentation.original" resname="presentation.original">
-                <source>A new element is created directly after this one. This element stays unchanged: delete or hide it yourself once the new element is right. Changes in this form that are not saved yet are not included.</source>
-                <target>Direkt nach diesem Element wird ein neues Element angelegt. Dieses Element bleibt unverändert: Löschen oder verbergen Sie es selbst, sobald das neue Element stimmt. Noch nicht gespeicherte Änderungen in diesem Formular werden nicht übernommen.</target>
+                <source>A new element is created directly after this one, hidden: visitors keep seeing this element until you switch the two. This element stays unchanged. Changes in this form that are not saved yet are not included.</source>
+                <target>Direkt nach diesem Element wird ein neues Element angelegt, verborgen: Besucher sehen weiterhin dieses Element, bis Sie die beiden tauschen. Dieses Element bleibt unverändert. Noch nicht gespeicherte Änderungen in diesem Formular werden nicht übernommen.</target>
             </trans-unit>
             <trans-unit id="presentation.create" resname="presentation.create">
                 <source>Create element</source>
@@ -1086,8 +1086,8 @@
                 <target>Das Element wird angelegt…</target>
             </trans-unit>
             <trans-unit id="presentation.created" resname="presentation.created">
-                <source>The new element was created directly after this one. This element is unchanged: delete or hide it yourself.</source>
-                <target>Das neue Element wurde direkt nach diesem angelegt. Dieses Element ist unverändert: Löschen oder verbergen Sie es selbst.</target>
+                <source>The new element was created directly after this one and is hidden. Visitors keep seeing this element until you switch the two.</source>
+                <target>Das neue Element wurde direkt nach diesem angelegt und ist verborgen. Besucher sehen weiterhin dieses Element, bis Sie die beiden tauschen.</target>
             </trans-unit>
             <trans-unit id="presentation.open" resname="presentation.open">
                 <source>Open the new element</source>
@@ -1140,6 +1140,46 @@
             <trans-unit id="presentation.error.createFailed" resname="presentation.error.createFailed">
                 <source>The new element could not be created. Nothing was changed.</source>
                 <target>Das neue Element konnte nicht angelegt werden. Es wurde nichts geändert.</target>
+            </trans-unit>
+            <trans-unit id="presentation.switch" resname="presentation.switch">
+                <source>Show the new element and hide the original</source>
+                <target>Neues Element anzeigen und Original verbergen</target>
+            </trans-unit>
+            <trans-unit id="presentation.switching" resname="presentation.switching">
+                <source>Switching the elements…</source>
+                <target>Die Elemente werden getauscht…</target>
+            </trans-unit>
+            <trans-unit id="presentation.switched" resname="presentation.switched">
+                <source>The new element is visible now and this element is hidden.</source>
+                <target>Das neue Element ist jetzt sichtbar, dieses Element ist verborgen.</target>
+            </trans-unit>
+            <trans-unit id="presentation.openPage" resname="presentation.openPage">
+                <source>Open the page in the Layout module</source>
+                <target>Seite im Layout-Modul öffnen</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.switchFailed" resname="presentation.error.switchFailed">
+                <source>The elements could not be switched. Check both elements in the Layout module.</source>
+                <target>Die Elemente konnten nicht getauscht werden. Prüfen Sie beide Elemente im Layout-Modul.</target>
+            </trans-unit>
+            <trans-unit id="presentation.warning.translations" resname="presentation.warning.translations">
+                <source>This element has translations. Do not delete it: deleting it deletes its translations too. Hide it instead; the switch after creating does that. The translations keep their text; present each of them on its own.</source>
+                <target>Dieses Element hat Übersetzungen. Löschen Sie es nicht: Damit würden auch seine Übersetzungen gelöscht. Verbergen Sie es stattdessen; der Tausch nach dem Anlegen tut das. Die Übersetzungen behalten ihren Text; stellen Sie jede für sich dar.</target>
+            </trans-unit>
+            <trans-unit id="presentation.warning.connectedTranslation" resname="presentation.warning.connectedTranslation">
+                <source>This element is a translation connected to the default language. The new element becomes a translation of its own, not connected to it, so the Layout module shows the page in mixed mode.</source>
+                <target>Dieses Element ist eine Übersetzung, die mit der Standardsprache verbunden ist. Das neue Element wird eine eigenständige, nicht verbundene Übersetzung; das Layout-Modul zeigt die Seite dann im gemischten Modus.</target>
+            </trans-unit>
+            <trans-unit id="presentation.warning.imagesNotTaken" resname="presentation.warning.imagesNotTaken">
+                <source>The images of this element are not taken over: you may not add images to the new element. Add them yourself.</source>
+                <target>Die Bilder dieses Elements werden nicht übernommen: Sie dürfen dem neuen Element keine Bilder hinzufügen. Fügen Sie sie selbst hinzu.</target>
+            </trans-unit>
+            <trans-unit id="presentation.imagesTaken" resname="presentation.imagesTaken">
+                <source>Images of this element: %d. They go into the first section.</source>
+                <target>Bilder dieses Elements: %d. Sie kommen in den ersten Abschnitt.</target>
+            </trans-unit>
+            <trans-unit id="presentation.error.createIncomplete" resname="presentation.error.createIncomplete">
+                <source>The new element could not be created completely, and what was created could not be removed. Check the page in the Layout module.</source>
+                <target>Das neue Element konnte nicht vollständig angelegt werden, und das Angelegte konnte nicht entfernt werden. Prüfen Sie die Seite im Layout-Modul.</target>
             </trans-unit>
         </body>
     </file>

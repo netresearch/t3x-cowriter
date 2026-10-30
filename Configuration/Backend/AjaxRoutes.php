@@ -128,4 +128,9 @@ return [
         'target'  => PresentationController::class . '::createAction',
         'methods' => ['POST'],
     ],
+    'tx_cowriter_presentation_switch' => [
+        'path'    => '/cowriter/presentation-switch',
+        'target'  => PresentationController::class . '::switchAction',
+        'methods' => ['POST'],
+    ],
 ];

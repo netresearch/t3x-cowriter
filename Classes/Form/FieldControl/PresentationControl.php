@@ -38,7 +38,8 @@ final class PresentationControl extends AbstractNode
     private const JS_LABELS = [
         'heading', 'loading', 'proposedHeadings', 'proposedModel', 'layout', 'layoutTab', 'layoutAccordion',
         'sectionTitle', 'noText', 'original', 'create', 'creating', 'created', 'open', 'cancel', 'error',
-        'titleRequired',
+        'titleRequired', 'switch', 'switching', 'switched', 'openPage', 'imagesTaken',
+        'warning.translations', 'warning.connectedTranslation', 'warning.imagesNotTaken',
     ];
 
     public function __construct(
@@ -65,6 +66,7 @@ final class PresentationControl extends AbstractNode
             $element    = $this->elementReader->read((int) $rawUid, $backendUser);
             $proposeUrl = (string) $this->uriBuilder->buildUriFromRoute('ajax_tx_cowriter_presentation_propose');
             $createUrl  = (string) $this->uriBuilder->buildUriFromRoute('ajax_tx_cowriter_presentation_create');
+            $switchUrl  = (string) $this->uriBuilder->buildUriFromRoute('ajax_tx_cowriter_presentation_switch');
         } catch (Throwable) {
             // A refusal (PresentationException), or no route the button could call.
             return [];
@@ -78,6 +80,7 @@ final class PresentationControl extends AbstractNode
             'aria-controls'    => $id . '-panel',
             'data-propose-url' => $proposeUrl,
             'data-create-url'  => $createUrl,
+            'data-switch-url'  => $switchUrl,
             'data-uid'         => (string) $element->uid,
             'data-layouts'     => implode(',', array_map(static fn (Layout $layout): string => $layout->value, $element->layouts)),
         ];
@@ -85,7 +88,7 @@ final class PresentationControl extends AbstractNode
         $languageService = $this->getLanguageService();
         foreach (self::JS_LABELS as $label) {
             // data-label-layout-tab reaches the module as dataset.labelLayoutTab.
-            $attribute                  = 'data-label-' . strtolower((string) preg_replace('/[A-Z]/', '-$0', $label));
+            $attribute                  = 'data-label-' . strtolower((string) preg_replace('/[A-Z]/', '-$0', str_replace('.', '-', $label)));
             $linkAttributes[$attribute] = $languageService->sL(self::LABEL_PREFIX . $label);
         }
 

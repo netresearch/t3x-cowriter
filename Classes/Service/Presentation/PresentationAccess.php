@@ -36,6 +36,17 @@ final readonly class PresentationAccess
      */
     public const SOURCE_CTYPES = ['text', 'textpic', 'textmedia'];
 
+    /**
+     * Fields of a text element that hold its images.
+     */
+    public const FILE_FIELDS = ['image', 'assets'];
+
+    /**
+     * Appearance fields the new element takes over where the editor may
+     * write them; without that right it keeps their defaults.
+     */
+    public const APPEARANCE_FIELDS = ['header_layout', 'frame_class', 'space_before_class', 'space_after_class'];
+
     public function __construct(
         private RecordEditAccess $recordEditAccess = new RecordEditAccess(),
     ) {}
@@ -86,6 +97,92 @@ final readonly class PresentationAccess
     }
 
     /**
+     * The fields that restrict who sees a content element and when: frontend
+     * groups, start and end time (ctrl.enablecolumns), those that exist.
+     *
+     * @return list<string>
+     */
+    public static function accessFields(): array
+    {
+        $fields = [];
+        foreach (['fe_group', 'starttime', 'endtime'] as $key) {
+            $field = Tca::enableColumn('tt_content', $key);
+            if ($field !== null && Tca::column('tt_content', $field) !== null) {
+                $fields[] = $field;
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Whether $backendUser may write $field of $table: it exists and, if it
+     * is an excluded field, the user may edit it.
+     */
+    public function mayWrite(BackendUserAuthentication $backendUser, string $table, string $field): bool
+    {
+        return $this->mayWriteField($backendUser, $table, $field);
+    }
+
+    /**
+     * Whether the first item of $layout may take file references: the item's
+     * file field and the file reference table are writable for the editor.
+     */
+    public function mayCopyFiles(BackendUserAuthentication $backendUser, Layout $layout): bool
+    {
+        $relation = self::itemRelation($layout);
+
+        return $relation !== null
+            && $backendUser->check('tables_modify', 'sys_file_reference')
+            && $this->mayWriteField($backendUser, $relation['table'], 'media')
+            && $this->mayWriteField($backendUser, 'sys_file_reference', 'uid_local');
+    }
+
+    /**
+     * The field that hides a content element (ctrl.enablecolumns.disabled).
+     *
+     * @param array<array-key, mixed>|null $tca defaults to $GLOBALS['TCA']
+     */
+    public static function hiddenField(?array $tca = null): ?string
+    {
+        return Tca::enableColumn('tt_content', 'disabled', $tca);
+    }
+
+    /**
+     * Whether $backendUser may swap the visibility of a new element and its
+     * original, both tt_content rows as the user's workspace shows them, on
+     * $page: edit both records and their page, use their languages, and
+     * write the hidden field, which DataHandler would otherwise leave out
+     * without reporting it.
+     *
+     * @param array<string, mixed> $newElement
+     * @param array<string, mixed> $original
+     * @param array<string, mixed> $page
+     */
+    public function maySwitch(BackendUserAuthentication $backendUser, array $newElement, array $original, array $page): bool
+    {
+        $hiddenField = self::hiddenField();
+        if ($hiddenField === null
+            || Layout::tryFrom(is_string($newElement['CType'] ?? null) ? $newElement['CType'] : '') === null
+            || !$backendUser->check('tables_modify', 'tt_content')
+            || !$backendUser->doesUserHaveAccess($page, Permission::CONTENT_EDIT)
+            || !$this->mayWriteField($backendUser, 'tt_content', $hiddenField)
+        ) {
+            return false;
+        }
+
+        foreach ([$newElement, $original] as $record) {
+            if (!$this->recordEditAccess->mayEdit($backendUser, 'tt_content', $record)
+                || !$backendUser->checkLanguageAccess($this->intValue($record['sys_language_uid'] ?? 0))
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * The layouts $backendUser may create in place of $element, a tt_content
      * row as the user's workspace shows it, on $page.
      *
@@ -112,14 +209,15 @@ final readonly class PresentationAccess
 
         return array_values(array_filter(
             self::layoutsInTca(),
-            fn (Layout $layout): bool => $this->mayCreate($backendUser, $layout, $languageId, $pageTsConfig),
+            fn (Layout $layout): bool => $this->mayCreate($backendUser, $layout, $languageId, $element, $pageTsConfig),
         ));
     }
 
     /**
+     * @param array<string, mixed>    $element
      * @param array<array-key, mixed> $pageTsConfig
      */
-    private function mayCreate(BackendUserAuthentication $backendUser, Layout $layout, int $languageId, array $pageTsConfig): bool
+    private function mayCreate(BackendUserAuthentication $backendUser, Layout $layout, int $languageId, array $element, array $pageTsConfig): bool
     {
         $relation = self::itemRelation($layout);
         if ($relation === null || !$backendUser->check('tables_modify', $relation['table'])) {
@@ -131,8 +229,16 @@ final readonly class PresentationAccess
         }
 
         // The fields the new records are written with; DataHandler leaves out
-        // an excluded field the user may not edit without reporting it.
+        // an excluded field the user may not edit without reporting it. The
+        // new element is created hidden: without the right on the hidden
+        // field it would go live at once.
+        $hiddenField = self::hiddenField();
+        if ($hiddenField === null) {
+            return false;
+        }
+
         $fields = [
+            ['tt_content', $hiddenField],
             ['tt_content', 'CType'],
             ['tt_content', 'colPos'],
             ['tt_content', 'header'],
@@ -143,6 +249,15 @@ final readonly class PresentationAccess
         $elementLanguageField = Tca::languageField('tt_content');
         if ($elementLanguageField !== null) {
             $fields[] = ['tt_content', $elementLanguageField];
+        }
+
+        // An original restricted to frontend groups or a time span must not
+        // turn into a new element without that restriction.
+        foreach (self::accessFields() as $accessField) {
+            $value = $element[$accessField] ?? null;
+            if (!in_array($value, [null, '', 0, '0'], true)) {
+                $fields[] = ['tt_content', $accessField];
+            }
         }
 
         // Items of a translated element need their language field: without
