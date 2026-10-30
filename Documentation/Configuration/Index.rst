@@ -767,6 +767,13 @@ button are set in the extension configuration
     treats it as the upper bound: a request for more is answered with this
     many.
 
+The same list decides which fields the
+:ref:`overview of all fields <usage-field-overview>` reviews: its button
+appears in the document header of a record form with at least one of these
+fields the editor may edit. ``fieldSuggestions.count`` does not apply there;
+the overview asks for one value per field. A review of all fields is one
+request against the rate limit and one call against the nr-llm budget.
+
 The list is extension configuration rather than page TSconfig because the
 button is added to the TCA, which is the same for the whole installation.
 After changing either setting, flush the caches so the TCA is rebuilt.

@@ -362,20 +362,25 @@ Outside the rich text editor, the **Suggest values with AI** button
 (light bulb icon) next to a form field asks the LLM for alternative
 values. By default it sits next to these fields:
 
-*   Page properties, :guilabel:`General`: :guilabel:`Page Title`
+*   Page properties, :guilabel:`General`: :guilabel:`Page title`
     (``pages.title``), :guilabel:`URL Segment` (``pages.slug``),
-    :guilabel:`Subtitle` (``pages.subtitle``) and
-    :guilabel:`Navigation Title` (``pages.nav_title``)
+    :guilabel:`Alternative Navigation Title` (``pages.nav_title``) and
+    :guilabel:`Subtitle` (``pages.subtitle``)
 *   Page properties, :guilabel:`SEO`: :guilabel:`Title for search engines`
-    (``pages.seo_title``), :guilabel:`Description` (``pages.description``)
-    and :guilabel:`Keywords` (``pages.keywords``)
+    (``pages.seo_title``) and :guilabel:`Description for search engines`
+    (``pages.description``)
+*   Page properties, :guilabel:`Social Media`: :guilabel:`Open Graph Title`,
+    :guilabel:`Open Graph Description`, :guilabel:`X / Twitter Title` and
+    :guilabel:`X / Twitter Description` (``pages.og_title``,
+    ``pages.og_description``, ``pages.twitter_title``,
+    ``pages.twitter_description``)
 *   Page properties, :guilabel:`Metadata`: :guilabel:`Abstract`
-    (``pages.abstract``)
-*   Page properties, :guilabel:`Social media`: the Open Graph and X (Twitter)
-    title and description (``pages.og_title``, ``pages.og_description``,
-    ``pages.twitter_title``, ``pages.twitter_description``)
+    (``pages.abstract``) and :guilabel:`Keywords` (``pages.keywords``)
 *   Content elements: :guilabel:`Header` and :guilabel:`Subheader`
     (``tt_content.header``, ``tt_content.subheader``)
+
+Tabs and labels are those of TYPO3 14.3 with the system extension ``seo``;
+other versions may place a field on another tab.
 
 The SEO and social media fields exist only with the system extension
 ``seo``. Administrators can change the list, see
@@ -530,6 +535,59 @@ German element). In a workspace the new element is created in your
 workspace.
 
 The button only appears when you may create such an element on the page.
+
+..  _usage-field-overview:
+
+Suggestions for all fields at once
+==================================
+
+The **Suggest values for all fields with AI** button in the document header
+of the record form (next to :guilabel:`Save` and :guilabel:`Close`) reviews
+every field of the record that has the light bulb button in one go. It
+appears only when the form shows at least one such field you may edit.
+
+1.  Click the button (or move to it with :kbd:`Tab` and press :kbd:`Enter`
+    or :kbd:`Space`)
+2.  A dialog lists the fields in a table: the field, its current value
+    (including text you typed but have not saved yet), the suggestion and
+    the reason for it
+3.  Where a change is suggested, the row has a checked checkbox and the
+    suggestion in a text field you can edit; editing a suggestion checks its
+    box again. Where the current value is already good, the row says
+    :guilabel:`No change suggested` and gives the reason
+4.  Uncheck the values you do not want and click
+    :guilabel:`Apply selected`
+5.  The checked values are written into the form fields and the form is
+    marked as changed; a notification says how many values were applied
+6.  Review the values and save the record
+
+..  figure:: /Images/Usage/FieldOverviewDialog.png
+    :alt: Dialog "AI suggestions for all fields" over the page properties:
+          a table with the columns Apply, Field, Current value, Suggestion
+          and Reason; checked rows with an editable suggestion for the page
+          title, URL segment, subtitle and the SEO and Open Graph fields, one
+          row "No change suggested" for the navigation title, and the
+          buttons Cancel and Apply selected
+    :class: with-border with-shadow
+
+    The overview of all fields: each suggestion with its reason, checked
+    where a change is suggested. Long texts get a text area.
+
+:guilabel:`Cancel`, :kbd:`Escape` or the close button leave the form as it
+was. Nothing is saved until you save the record.
+
+The values follow the same instructions and length limits as the light bulb
+button next to a single field (:ref:`usage-field-suggestions`), and the
+values and reasons are written in the language of the record. The server
+checks every field: a field you may not edit is left out of the request,
+and every value is shortened to the field's limit before you see it. Text
+from the AI is always shown and inserted as plain text.
+
+The whole review is **one request**: it counts once against your rate limit
+of 20 requests per minute and is one call against the AI budget (nr-llm),
+however many fields it covers. That call sends the context once and is
+larger than a single-field request, so it uses more tokens than one
+suggestion for one field.
 
 Model override
 ==============

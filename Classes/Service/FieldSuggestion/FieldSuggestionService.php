@@ -123,32 +123,12 @@ final readonly class FieldSuggestionService
             'Page title: ' . $this->orPlaceholder($context->pageTitle, '(none)'),
             'Stored value of the field: ' . $this->orPlaceholder($context->storedValue, '(empty)'),
             'Value typed into the form, not saved yet: ' . $this->orPlaceholder($currentValue, '(none)'),
-            ...$this->recordFieldLines($context, [$context->field]),
+            ...$context->recordFieldLines([$context->field]),
             'Page content:',
             $this->orPlaceholder($context->pageContent, '(no content yet)'),
         ]);
 
         return $this->fence->wrap($data);
-    }
-
-    /**
-     * The other text fields of the edited record, so a content element's own
-     * text, not only the page around it, decides its headline.
-     *
-     * @param list<string> $skip fields that are listed elsewhere in the message
-     *
-     * @return list<string>
-     */
-    public function recordFieldLines(RecordContext $context, array $skip): array
-    {
-        $lines = [];
-        foreach ($context->recordFields as $field => $entry) {
-            if (!in_array($field, $skip, true) && trim($entry['value']) !== '') {
-                $lines[] = '- ' . $entry['label'] . ': ' . $entry['value'];
-            }
-        }
-
-        return $lines === [] ? [] : ['Other fields of the edited record:', ...$lines];
     }
 
     private function orPlaceholder(string $value, string $placeholder): string

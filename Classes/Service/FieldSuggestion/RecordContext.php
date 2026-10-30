@@ -54,6 +54,26 @@ final readonly class RecordContext
         );
     }
 
+    /**
+     * The record's text fields as lines for the model, so a content element's
+     * own text, not only the page around it, decides its headline.
+     *
+     * @param list<string> $skip fields that are listed elsewhere in the message
+     *
+     * @return list<string>
+     */
+    public function recordFieldLines(array $skip): array
+    {
+        $lines = [];
+        foreach ($this->recordFields as $field => $entry) {
+            if (!in_array($field, $skip, true) && trim($entry['value']) !== '') {
+                $lines[] = '- ' . $entry['label'] . ': ' . $entry['value'];
+            }
+        }
+
+        return $lines === [] ? [] : ['Other fields of the edited record:', ...$lines];
+    }
+
     public function isSiteRoot(): bool
     {
         return $this->table === 'pages'

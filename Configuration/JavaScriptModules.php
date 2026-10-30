@@ -21,6 +21,8 @@ return [
         '@netresearch/t3_cowriter/ImageDialog'             => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/ImageDialog.js',
         '@netresearch/t3_cowriter/InlineSuggestions'       => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/InlineSuggestions.js',
         '@netresearch/t3_cowriter/FieldSuggestions'        => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/FieldSuggestions.js',
+        '@netresearch/t3_cowriter/FieldValue'              => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/FieldValue.js',
+        '@netresearch/t3_cowriter/FieldOverview'           => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/FieldOverview.js',
         '@netresearch/t3_cowriter/ImageFileControl'        => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/ImageFileControl.js',
         '@netresearch/t3_cowriter/AlternativePresentation' => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/AlternativePresentation.js',
     ],

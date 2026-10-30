@@ -84,16 +84,25 @@ final readonly class FieldProfile
     public static function columnLabel(string $field, array $column): string
     {
         $label = is_string($column['label'] ?? null) ? trim($column['label']) : '';
-
-        $languageService = $GLOBALS['LANG'] ?? null;
-        if ($label !== '' && $languageService instanceof LanguageService) {
-            $label = trim($languageService->sL($label));
+        if (!self::isReference($label)) {
+            return $label !== '' ? $label : $field;
         }
 
-        // An untranslated reference ("LLL:EXT:…", or a v14 translation domain
-        // key such as "frontend.db.tt_content:bodytext") means nothing to the model.
-        $isReference = str_starts_with($label, 'LLL:') || preg_match('/^[\w.\-]+:[\w.\-]+$/', $label) === 1;
+        $languageService = $GLOBALS['LANG'] ?? null;
+        $label           = $languageService instanceof LanguageService ? trim($languageService->sL($label)) : '';
+
+        // A reference that did not resolve means nothing to the model.
+        $isReference = self::isReference($label);
 
         return $label === '' || $isReference ? $field : $label;
+    }
+
+    /**
+     * "LLL:EXT:…", or a v14 translation domain key such as
+     * "frontend.db.tt_content:bodytext".
+     */
+    private static function isReference(string $label): bool
+    {
+        return str_starts_with($label, 'LLL:') || preg_match('/^[\w.\-]+:[\w.\-]+$/', $label) === 1;
     }
 }

@@ -19,8 +19,8 @@
  */
 import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
 import DocumentService from '@typo3/core/document-service.js';
-import FormEngine from '@typo3/backend/form-engine.js';
-import FormEngineValidation from '@typo3/backend/form-engine-validation.js';
+import { applyValue as writeFieldValue, findField } from '@netresearch/t3_cowriter/FieldValue';
+import FieldOverview from '@netresearch/t3_cowriter/FieldOverview';
 
 const DEFAULT_LABELS = {
     heading: 'AI suggestions',
@@ -59,6 +59,8 @@ export class FieldSuggestions {
         this.control = control;
         this.labels = this.readLabels(control.dataset);
         this.buildPanel();
+        // A control in the form is what makes the "all fields" button useful.
+        FieldOverview.attach(control.ownerDocument);
 
         control.addEventListener('click', (event) => {
             event.preventDefault();
@@ -291,11 +293,7 @@ export class FieldSuggestions {
     }
 
     findField() {
-        const itemName = this.control.dataset.itemName;
-        if (!itemName) {
-            return null;
-        }
-        return document.querySelector('[data-formengine-input-name="' + CSS.escape(itemName) + '"]');
+        return findField(this.control.dataset.itemName, this.control.ownerDocument);
     }
 
     /**
@@ -303,23 +301,7 @@ export class FieldSuggestions {
      * @param {string} value
      */
     applyValue(field, value) {
-        if (field.classList.contains('t3js-form-field-slug-input')) {
-            // TYPO3's slug element: show its editable input, then let its own
-            // "input" handler sanitise the value, check uniqueness and update
-            // the hidden field that is submitted.
-            const wrap = field.closest('.form-control-wrap');
-            wrap?.querySelector('.t3js-form-field-slug-readonly')?.classList.add('hidden');
-            field.classList.remove('hidden');
-            field.value = value;
-            field.dispatchEvent(new Event('input', { bubbles: true }));
-            return;
-        }
-
-        // Same sequence as core's password generator field control.
-        field.value = value;
-        field.dispatchEvent(new Event('change', { bubbles: true }));
-        FormEngineValidation.validateField(field);
-        FormEngine.markFieldAsChanged(field);
+        writeFieldValue(field, value);
     }
 
     /**
