@@ -25,6 +25,7 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\Transparency\AboutBuilder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -58,6 +59,7 @@ final readonly class FieldSuggestionController
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
         private BackendLabels $labels = new BackendLabels(),
         private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
+        private ?AboutBuilder $about = null,
     ) {}
 
     public function suggestAction(ServerRequestInterface $request): ResponseInterface
@@ -124,7 +126,7 @@ final readonly class FieldSuggestionController
         }
 
         try {
-            $suggestions = $this->fieldSuggestionService->suggest(
+            $result = $this->fieldSuggestionService->suggest(
                 $recordContext,
                 $profile,
                 $dto->currentValue,
@@ -148,6 +150,7 @@ final readonly class FieldSuggestionController
             );
         }
 
+        $suggestions = $result->items;
         if ($suggestions === []) {
             return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => $this->labels->get('fieldSuggestions.error.noSuggestions')],
@@ -156,13 +159,22 @@ final readonly class FieldSuggestionController
             );
         }
 
-        return $this->jsonResponseWithRateLimitHeaders(
-            [
-                'success'     => true,
-                'suggestions' => $suggestions,
-            ],
-            $rateLimitResult,
-        );
+        $payload = [
+            'success'     => true,
+            'suggestions' => $suggestions,
+        ];
+        if ($this->about instanceof AboutBuilder) {
+            $payload['about'] = $this->about->fieldSuggestions(
+                $result->modelUse,
+                $result->sources,
+                $this->recordContextReader->suggestionFields($dto->table, $backendUser),
+                min($dto->count, $recordContext->maxCount),
+                $rateLimitResult->limit,
+                $backendUser,
+            );
+        }
+
+        return $this->jsonResponseWithRateLimitHeaders($payload, $rateLimitResult);
     }
 
     /**

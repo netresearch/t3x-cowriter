@@ -17,6 +17,7 @@ return [
         '@netresearch/t3_cowriter/AIService'               => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/AIService.js',
         '@netresearch/t3_cowriter/CowriterDialog'          => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/CowriterDialog.js',
         '@netresearch/t3_cowriter/Labels'                  => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/Labels.js',
+        '@netresearch/t3_cowriter/AboutSection'            => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/AboutSection.js',
         '@netresearch/t3_cowriter/HtmlSanitizer'           => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/HtmlSanitizer.js',
         '@netresearch/t3_cowriter/ImageDialog'             => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/ImageDialog.js',
         '@netresearch/t3_cowriter/InlineSuggestions'       => 'EXT:t3_cowriter/Resources/Public/JavaScript/Ckeditor/InlineSuggestions.js',

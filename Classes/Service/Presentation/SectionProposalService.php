@@ -15,6 +15,7 @@ use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\UntrustedDataFence;
 use Netresearch\T3Cowriter\Service\StructuredAnswer;
+use Netresearch\T3Cowriter\Service\Transparency\ModelUse;
 
 /**
  * Asks the model where a text without usable headings should be cut and how
@@ -53,23 +54,27 @@ final readonly class SectionProposalService
     /**
      * @param list<Block> $blocks
      *
-     * @return list<SectionBoundary> empty when the answer gives no usable split
+     * @return SectionProposal the sections are empty when the answer gives no usable split
      */
-    public function propose(array $blocks, string $elementHeader, LlmConfiguration $configuration, int $backendUserId): array
+    public function propose(array $blocks, string $elementHeader, LlmConfiguration $configuration, int $backendUserId): SectionProposal
     {
         $options = (new ChatOptions(temperature: 0.2))
             ->withSystemPrompt($this->buildSystemPrompt())
             ->withBeUserUid($backendUserId)
             ->withCallerSource(CallerSource::EXTENSION, self::OPERATION);
 
-        $answer = StructuredAnswer::payload($this->completionService->completeStructuredForConfiguration(
+        $response = $this->completionService->completeStructuredForConfiguration(
             $this->buildUserMessage($blocks, $elementHeader),
             $configuration,
             self::schema(count($blocks)),
             $options,
-        ));
+        );
+        $answer = StructuredAnswer::payload($response);
 
-        return $this->planner->fromModel($blocks, $answer['sections'] ?? null);
+        return new SectionProposal(
+            $this->planner->fromModel($blocks, $answer['sections'] ?? null),
+            ModelUse::fromResponse($configuration, $response->response),
+        );
     }
 
     /**

@@ -370,6 +370,112 @@ describe('AIService', () => {
         });
     });
 
+    describe('getImageContext', () => {
+        const ROUTE = '/typo3/ajax/cowriter/image/context?token=abc';
+
+        function respond(body, ok = true) {
+            globalThis.fetch = vi.fn().mockResolvedValue({ ok, json: async () => body });
+        }
+
+        function requested() {
+            return new URL(globalThis.fetch.mock.calls[0][0]);
+        }
+
+        beforeEach(() => {
+            TYPO3Mock.settings.ajaxUrls.tx_cowriter_image_context = ROUTE;
+        });
+
+        it('asks the context route with the record and field, keeping the route token', async () => {
+            respond({ success: true, purpose: 'Image of "Our team"', field: 'Images', proposal: 'Our team', about: { origin: 'x' } });
+            const service = new AIService();
+
+            const context = await service.getImageContext({ table: 'tt_content', uid: 34, field: 'image', pid: 12 });
+
+            const url = requested();
+            expect(url.pathname).toBe('/typo3/ajax/cowriter/image/context');
+            expect(url.searchParams.get('token')).toBe('abc');
+            expect(url.searchParams.get('table')).toBe('tt_content');
+            expect(url.searchParams.get('uid')).toBe('34');
+            expect(url.searchParams.get('field')).toBe('image');
+            expect(url.searchParams.get('pid')).toBe('12');
+            expect(globalThis.fetch.mock.calls[0][1]).toEqual({ headers: { Accept: 'application/json' } });
+            expect(context).toEqual({ purpose: 'Image of "Our team"', field: 'Images', proposal: 'Our team', about: { origin: 'x' } });
+        });
+
+        it('leaves out values that are empty or missing', async () => {
+            respond({ success: true, purpose: '', field: '', proposal: '' });
+            const service = new AIService();
+
+            await service.getImageContext({ table: 'tt_content', uid: '', field: null, pid: 0 });
+
+            const url = requested();
+            expect(url.searchParams.get('table')).toBe('tt_content');
+            expect(url.searchParams.has('uid')).toBe(false);
+            expect(url.searchParams.has('field')).toBe(false);
+            // 0 is a value: the server decides what a pid of 0 means.
+            expect(url.searchParams.get('pid')).toBe('0');
+        });
+
+        it('asks without record parameters for a null target', async () => {
+            respond({ success: true, purpose: 'x', field: '', proposal: '' });
+            const service = new AIService();
+
+            await service.getImageContext(null);
+
+            expect(Array.from(requested().searchParams.keys())).toEqual(['token']);
+        });
+
+        it('turns missing or non-string fields into empty strings and a missing about into null', async () => {
+            respond({ success: true, purpose: 42, proposal: null });
+            const service = new AIService();
+
+            await expect(service.getImageContext({ table: 'pages' }))
+                .resolves.toEqual({ purpose: '', field: '', proposal: '', about: null });
+        });
+
+        it('returns null without fetching when the route is not registered', async () => {
+            delete TYPO3Mock.settings.ajaxUrls.tx_cowriter_image_context;
+            globalThis.fetch = vi.fn();
+            const service = new AIService();
+
+            await expect(service.getImageContext({ table: 'pages' })).resolves.toBeNull();
+            expect(globalThis.fetch).not.toHaveBeenCalled();
+        });
+
+        it('returns null when the request fails', async () => {
+            globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+            const service = new AIService();
+
+            await expect(service.getImageContext({ table: 'pages' })).resolves.toBeNull();
+        });
+
+        it('returns null for an error status, whatever the body says', async () => {
+            respond({ success: true, purpose: 'x', field: '', proposal: 'y' }, false);
+            const service = new AIService();
+
+            await expect(service.getImageContext({ table: 'pages' })).resolves.toBeNull();
+        });
+
+        it.each([
+            ['false', { success: false, purpose: 'x' }],
+            ['missing', { purpose: 'x' }],
+            ['the string "true"', { success: 'true', purpose: 'x' }],
+            ['1', { success: 1, purpose: 'x' }],
+        ])('returns null when success is %s', async (_name, body) => {
+            respond(body);
+            const service = new AIService();
+
+            await expect(service.getImageContext({ table: 'pages' })).resolves.toBeNull();
+        });
+
+        it('returns null for a body that is not JSON', async () => {
+            globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => { throw new SyntaxError('Unexpected token <'); } });
+            const service = new AIService();
+
+            await expect(service.getImageContext({ table: 'pages' })).resolves.toBeNull();
+        });
+    });
+
     describe('constructor edge cases', () => {
         it('should handle partial TYPO3 settings with some routes missing', async () => {
             globalThis.TYPO3 = {

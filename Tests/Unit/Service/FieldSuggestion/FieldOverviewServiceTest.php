@@ -95,7 +95,7 @@ final class FieldOverviewServiceTest extends TestCase
         ]];
         $configuration = new LlmConfiguration();
 
-        $reviews = $this->subject()->review($this->context(), $this->profiles(), ['seo_title' => 'Old title'], $configuration, 'German (Germany)');
+        $reviews = $this->subject()->review($this->context(), $this->profiles(), ['seo_title' => 'Old title'], $configuration, 'German (Germany)')->items;
 
         self::assertCount(1, $this->completion->completeStructuredForConfigurationCalls);
         $call = $this->completion->completeStructuredForConfigurationCalls[0];
@@ -158,7 +158,7 @@ final class FieldOverviewServiceTest extends TestCase
     {
         $this->completion->structuredResult = ['fields' => 'none'];
 
-        self::assertSame([], $this->subject()->review($this->context(), $this->profiles(), [], new LlmConfiguration()));
+        self::assertSame([], $this->subject()->review($this->context(), $this->profiles(), [], new LlmConfiguration())->items);
     }
 
     #[Test]

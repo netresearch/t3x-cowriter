@@ -60,9 +60,13 @@ services:
 
   Netresearch\T3Cowriter\Controller\FieldSuggestionController:
     public: true
+    arguments:
+      $about: '@Netresearch\T3Cowriter\Service\Transparency\AboutBuilder'
 
   Netresearch\T3Cowriter\Controller\FieldOverviewController:
     public: true
+    arguments:
+      $about: '@Netresearch\T3Cowriter\Service\Transparency\AboutBuilder'
 
   Netresearch\T3Cowriter\Controller\SavedPromptController:
     public: true
@@ -72,6 +76,11 @@ services:
 
   Netresearch\T3Cowriter\Controller\ImageGenerationController:
     public: true
+    arguments:
+      $about: '@Netresearch\T3Cowriter\Service\Transparency\AboutBuilder'
+
+  Netresearch\T3Cowriter\Controller\ImageContextController:
+    public: true
 
   Netresearch\T3Cowriter\Controller\InlineSuggestionController:
     public: true
@@ -80,6 +89,8 @@ services:
 
   Netresearch\T3Cowriter\Controller\PresentationController:
     public: true
+    arguments:
+      $about: '@Netresearch\T3Cowriter\Service\Transparency\AboutBuilder'
 
   Netresearch\T3Cowriter\Controller\Backend\StatusController:
     public: true

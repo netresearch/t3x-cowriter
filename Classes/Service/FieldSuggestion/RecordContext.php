@@ -17,10 +17,13 @@ use Netresearch\T3Cowriter\Domain\DTO\FieldSuggestionRequest;
 final readonly class RecordContext
 {
     /**
-     * @param array<string, mixed>                               $record       the stored row, or the few known fields of a new record
-     * @param int                                                $slugPid      the pid TYPO3's SlugHelper derives the parent path from
-     * @param int                                                $maxCount     the most suggestions the field control is configured for
-     * @param array<string, array{label: string, value: string}> $recordFields text fields of the record the user may read, as plain text, by field name
+     * @param array<string, mixed>                               $record            the stored row, or the few known fields of a new record
+     * @param int                                                $slugPid           the pid TYPO3's SlugHelper derives the parent path from
+     * @param int                                                $maxCount          the most suggestions the field control is configured for
+     * @param array<string, array{label: string, value: string}> $recordFields      text fields of the record the user may read, as plain text, by field name
+     * @param array<string, array{label: string, value: string}> $pageFields        descriptive fields of the page the record is on, the user may read; empty for a page record, whose own fields are in $recordFields
+     * @param string                                             $parentPageTitle   the title of the parent page, '' when there is none or the user may not see it
+     * @param list<string>                                       $siblingPageTitles titles of neighbouring pages the user may see, in page tree order
      */
     public function __construct(
         public string $table,
@@ -32,6 +35,9 @@ final readonly class RecordContext
         public int $slugPid,
         public int $maxCount = FieldSuggestionRequest::MAX_COUNT,
         public array $recordFields = [],
+        public array $pageFields = [],
+        public string $parentPageTitle = '',
+        public array $siblingPageTitles = [],
     ) {}
 
     /**
@@ -51,27 +57,10 @@ final readonly class RecordContext
             slugPid: $this->slugPid,
             maxCount: $this->maxCount,
             recordFields: $this->recordFields,
+            pageFields: $this->pageFields,
+            parentPageTitle: $this->parentPageTitle,
+            siblingPageTitles: $this->siblingPageTitles,
         );
-    }
-
-    /**
-     * The record's text fields as lines for the model, so a content element's
-     * own text, not only the page around it, decides its headline.
-     *
-     * @param list<string> $skip fields that are listed elsewhere in the message
-     *
-     * @return list<string>
-     */
-    public function recordFieldLines(array $skip): array
-    {
-        $lines = [];
-        foreach ($this->recordFields as $field => $entry) {
-            if (!in_array($field, $skip, true) && trim($entry['value']) !== '') {
-                $lines[] = '- ' . $entry['label'] . ': ' . $entry['value'];
-            }
-        }
-
-        return $lines === [] ? [] : ['Other fields of the edited record:', ...$lines];
     }
 
     public function isSiteRoot(): bool

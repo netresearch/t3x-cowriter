@@ -155,6 +155,44 @@ describe('AlternativePresentation', () => {
         expect(document.querySelector('.cowriter-presentation .alert').textContent).toContain('stays unchanged');
     });
 
+    it('renders "About this suggestion" after the form, with the note of a proposal from the headings', async () => {
+        answer({
+            ...PROPOSAL,
+            about: {
+                origin: 'Cowriter, alternative presentation',
+                feature: 'alternative presentation',
+                configuration: '',
+                model: '',
+                note: 'No language model was asked: the sections follow the headings of the text.',
+                sources: [],
+                settings: [{ label: 'Feature', value: 'alternative presentation is switched on' }],
+                links: [],
+            },
+        }, null);
+        const { control } = await setup();
+
+        await openPanel(control);
+
+        const panel = document.getElementById(CONTROL_ID + '-panel');
+        const section = panel.querySelector('.cowriter-about');
+        expect(section).not.toBeNull();
+        expect(section.parentElement).toBe(panel);
+        expect(section.previousElementSibling).toBe(panel.querySelector('form'));
+        expect(panel.querySelector('form .cowriter-about')).toBeNull();
+        expect(section.querySelector('.cowriter-about-note').textContent)
+            .toBe('No language model was asked: the sections follow the headings of the text.');
+        expect(Array.from(section.querySelectorAll('dt')).map((dt) => dt.textContent)).not.toContain('Model');
+    });
+
+    it('renders no "About this suggestion" for a proposal without about data', async () => {
+        answer(PROPOSAL, null);
+        const { control } = await setup();
+
+        await openPanel(control);
+
+        expect(document.querySelector('.cowriter-presentation .cowriter-about')).toBeNull();
+    });
+
     it('says when the language model made the proposal', async () => {
         answer({ ...PROPOSAL, source: 'model' }, null);
         const { control } = await setup();

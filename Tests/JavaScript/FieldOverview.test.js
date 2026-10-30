@@ -181,6 +181,45 @@ describe('FieldOverview', () => {
         expect(document.activeElement).toBe(checkbox);
     });
 
+    describe('About this suggestion', () => {
+        const ABOUT = {
+            origin: 'Cowriter, suggestions for all fields',
+            feature: 'suggestions for all fields',
+            configuration: 'Default',
+            model: 'gpt-5 (OpenAI)',
+            note: '',
+            sources: ['Names and current values of 2 fields'],
+            settings: [{ label: 'Feature', value: 'suggestions for all fields is switched on' }],
+            links: [],
+        };
+
+        it('renders the section below the table', async () => {
+            await openOverview({ ...ANSWER, about: ABOUT });
+
+            const section = modal().querySelector('.cowriter-about');
+            expect(section).not.toBeNull();
+            const table = modal().querySelector('table');
+            expect(table.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+            expect(table.contains(section)).toBe(false);
+            expect(modal().querySelector('[role="status"] .cowriter-about')).toBeNull();
+            expect(section.querySelector('dd').textContent).toBe('Cowriter, suggestions for all fields');
+        });
+
+        it('renders the section also when no field came back', async () => {
+            await openOverview({ success: true, fields: [], about: ABOUT });
+
+            expect(modal().querySelector('table')).toBeNull();
+            expect(modal().querySelector('.cowriter-about')).not.toBeNull();
+        });
+
+        it('renders no section for an answer without about data', async () => {
+            await openOverview();
+
+            expect(modal().querySelector('table')).not.toBeNull();
+            expect(modal().querySelector('.cowriter-about')).toBeNull();
+        });
+    });
+
     it('renders model text as text, never as markup', async () => {
         const answer = structuredClone(ANSWER);
         answer.fields[0].reason = '<img src=x onerror="alert(1)">';

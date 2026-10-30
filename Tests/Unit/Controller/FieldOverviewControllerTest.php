@@ -30,6 +30,7 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\SuggestionNormalizer;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Transparency\AboutBuilder;
 use Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolverInterface;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
@@ -42,6 +43,8 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\AbstractLogger;
 use Stringable;
+use TYPO3\CMS\Backend\Module\ModuleProvider;
+use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 
@@ -101,7 +104,7 @@ final class FieldOverviewControllerTest extends TestCase
         return new RecordContext('pages', 'seo_title', $record, '', 'Air fryers', 'We tested twelve air fryers.', $slugPid);
     }
 
-    private function subject(?RecordLanguageResolverInterface $languageResolver = null): FieldOverviewController
+    private function subject(?RecordLanguageResolverInterface $languageResolver = null, ?AboutBuilder $about = null): FieldOverviewController
     {
         $logged = &$this->logged;
         $logger = new class ($logged) extends AbstractLogger {
@@ -129,6 +132,7 @@ final class FieldOverviewControllerTest extends TestCase
             $languageResolver,
             $context,
             $logger,
+            about: $about,
         );
     }
 
@@ -163,6 +167,22 @@ final class FieldOverviewControllerTest extends TestCase
     private function body(array $overrides = []): array
     {
         return $overrides + ['table' => 'pages', 'uid' => 12, 'pid' => 3, 'fields' => ['seo_title' => 'Old title', 'description' => 'Good description.']];
+    }
+
+    #[Test]
+    public function theAnswerSaysWhichModelAndContextProducedIt(): void
+    {
+        $this->completion->structuredResult = ['fields' => [['field' => 'seo_title', 'action' => 'keep', 'value' => '', 'reason' => 'Fine.']]];
+        $this->reader->method('suggestionFields')->willReturn(['seo_title' => 'SEO title']);
+        $about = new AboutBuilder($this->createStub(UriBuilder::class), $this->createStub(ModuleProvider::class));
+
+        $data = $this->json($this->subject(about: $about)->suggestAllAction($this->request($this->body())));
+
+        self::assertIsArray($data['about']);
+        self::assertSame(FakeCompletionService::STRUCTURED_MODEL, $data['about']['model']);
+        self::assertSame('Suggestions for all fields', $data['about']['feature']);
+        self::assertSame(['Page title', 'Current values of the reviewed fields', 'Content of 1 element'], $data['about']['sources']);
+        self::assertSame(['Feature', 'Fields with suggestions you may edit', 'Limits'], array_column($data['about']['settings'], 'label'));
     }
 
     #[Test]

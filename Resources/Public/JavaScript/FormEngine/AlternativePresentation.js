@@ -22,6 +22,7 @@
  * errors are announced through a polite live region.
  */
 import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
+import { showAbout } from '@netresearch/t3_cowriter/AboutSection';
 import DocumentService from '@typo3/core/document-service.js';
 import Viewport from '@typo3/backend/viewport.js';
 
@@ -306,6 +307,8 @@ export class AlternativePresentation {
 
         form.append(fieldset, list, ...this.notices(proposal), note, buttons);
         this.panel.replaceChildren(this.heading(), form);
+        // Where the proposal comes from; below the form, outside it.
+        showAbout(this.panel, proposal.about);
     }
 
     /**

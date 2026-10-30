@@ -1,0 +1,46 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","sorting","doktype","hidden","deleted","starttime","endtime","sys_language_uid","l10n_parent","perms_userid","perms_groupid","perms_user","perms_group","perms_everybody","nav_title","subtitle","abstract","description","keywords","author","TSconfig"
+,1,0,"Home","/",1,256,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,2,1,"Products","/products",0,256,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,3,2,"Office chairs","/products/office-chairs",0,256,1,0,0,0,0,0,0,1,1,31,31,31,"Chair overview","SUBTITLE-WITHOUT-RIGHT","Chairs for long working days.","Office chairs with lumbar support.","chairs, seating","AUTHOR-NEVER-SENT","TSCONFIG-NEVER-SENT = 1"
+,4,2,"Desks","/products/desks",0,128,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,5,2,"HIDDEN-SIBLING","/products/hidden",0,384,1,1,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,6,2,"DELETED-SIBLING","/products/deleted",0,512,1,0,1,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,7,2,"FUTURE-SIBLING","/products/future",0,640,1,0,0,4102444800,0,0,0,1,1,31,31,31,"","","","","","",""
+,8,2,"EXPIRED-SIBLING","/products/expired",0,700,1,0,0,0,946684800,0,0,1,1,31,31,31,"","","","","","",""
+,9,2,"FOLDER-SIBLING","/products/folder",0,768,254,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,10,2,"SPACER-SIBLING","/products/spacer",0,896,199,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,11,2,"RECYCLER-SIBLING","/products/recycler",0,960,255,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,12,2,"NO-SHOW-SIBLING","/products/no-show",0,1024,1,0,0,0,0,0,0,99,99,31,31,30,"","","","","","",""
+,13,2,"Lamps","/products/lamps",0,1152,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,14,2,"Shelves","/products/shelves",0,1280,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,15,2,"Sofas","/products/sofas",0,1408,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,16,2,"Tables","/products/tables",0,1536,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,17,2,"SIXTH-VISIBLE-SIBLING","/products/sixth",0,1664,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,20,2,"Bürostühle","/produkte/buerostuehle",0,256,1,0,0,0,0,1,3,1,1,31,31,31,"","","Für lange Arbeitstage.","Bürostühle mit Lordosenstütze.","","",""
+,21,1,"Produkte","/produkte",0,256,1,0,0,0,0,1,2,1,1,31,31,31,"","","","","","",""
+,22,2,"Schreibtische","/produkte/schreibtische",0,128,1,0,0,0,0,1,4,1,1,31,31,31,"","","","","","",""
+,23,2,"HIDDEN-TRANSLATION-LAMPEN","/produkte/lampen",0,1152,1,1,0,0,0,1,13,1,1,31,31,31,"","","","","","",""
+,24,2,"TRANSLATION-OF-HIDDEN-SIBLING","/produkte/versteckt",0,384,1,0,0,0,0,1,5,1,1,31,31,31,"","","","","","",""
+,40,1,"HIDDEN-PARENT","/hidden-section",0,512,1,1,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,41,40,"Child of hidden section","/hidden-section/child",0,256,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,42,40,"Sibling under hidden section","/hidden-section/sibling",0,512,1,0,0,0,0,0,0,1,1,31,31,31,"","","","","","",""
+,50,1,"Locked page","/locked",0,768,1,0,0,0,0,0,0,99,99,31,31,1,"","","","","","",""
+"tt_content"
+,"uid","pid","header","bodytext","CType","sys_language_uid","l18n_parent","sorting"
+,100,3,"Ergonomic chairs","<p>Adjustable seat height and lumbar support.</p>","text",0,0,256
+,101,3,"Ergonomische Stühle","<p>Verstellbare Sitzhöhe.</p>","text",1,100,256
+,104,41,"Lamp in a hidden section","A lamp.","text",0,0,256
+,105,50,"LOCKED-ELEMENT","LOCKED-BODY","text",0,0,256
+"be_groups"
+,"uid","pid","title","tables_modify","tables_select","non_exclude_fields","db_mountpoints","explicit_allowdeny"
+,1,0,"Editors","pages,tt_content","pages,tt_content","pages:nav_title,pages:abstract,pages:description,pages:keywords,pages:author","1","tt_content:CType:text"
+,2,0,"Editors mounted on page 3","pages,tt_content","pages,tt_content","pages:nav_title,pages:abstract,pages:description,pages:keywords,pages:author","3","tt_content:CType:text"
+,3,0,"Editors who may modify nr-llm configurations","pages,tt_content,tx_nrllm_configuration","pages,tt_content,tx_nrllm_configuration","pages:nav_title,pages:abstract,pages:description,pages:keywords,pages:author","1","tt_content:CType:text"
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,1,0,"admin",1,"",0
+,2,0,"editor",0,"1",0
+,3,0,"mounted-editor",0,"2",0
+,4,0,"admin-not-maintainer",1,"",0
+,5,0,"configuration-editor",0,"3",0

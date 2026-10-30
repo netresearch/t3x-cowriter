@@ -8,6 +8,7 @@
 
 import Modal from '@typo3/backend/modal.js';
 import { t } from '@netresearch/t3_cowriter/Labels';
+import { showAbout } from '@netresearch/t3_cowriter/AboutSection';
 
 /**
  * Longest description the server accepts (ImageGenerationRequest::MAX_PROMPT_LENGTH).
@@ -24,6 +25,13 @@ export const MAX_PROMPT_LENGTH = 1000;
  * Dialog for "image by prompt": the editor describes the image, the server
  * generates and stores it, and the dialog resolves with the stored file.
  *
+ * When the dialog knows the record the image is for, it asks the server
+ * (tx_cowriter_image_context, no model call) what the image is for, which it
+ * shows as its own line, and for a proposal of the description built from
+ * the record and its page, which it puts into the empty description field,
+ * marked as a proposal. Below, "About this suggestion" says that the
+ * Cowriter answers and that only the description is sent.
+ *
  * There is no preview step: every generated image is a stored and paid file,
  * so the one the editor asked for is the one that gets inserted. Every text
  * goes into the DOM as text, never as markup.
@@ -31,15 +39,21 @@ export const MAX_PROMPT_LENGTH = 1000;
 export class ImageDialog {
     /**
      * @param {import('./AIService.js').AIService} service
-     * @param {{returnFocus?: function(): void, promptHelp?: string, generating?: string}} [options]
+     * @param {{returnFocus?: function(): void, promptHelp?: string, generating?: string,
+     *     target?: {table?: string, uid?: number|string, field?: string, pid?: number|string}|null,
+     *     showField?: boolean}} [options]
      *     promptHelp and generating replace the texts that say where the image
-     *     goes; without them the dialog speaks of the rich text editor.
+     *     goes; without them the dialog speaks of the rich text editor. target
+     *     names the record and field the image is for; showField adds the
+     *     field's name to the purpose (file fields).
      */
     constructor(service, options = {}) {
         this._service = service;
         this._returnFocus = options.returnFocus ?? null;
         this._promptHelp = options.promptHelp ?? null;
         this._generating = options.generating ?? null;
+        this._target = options.target ?? null;
+        this._showField = options.showField === true;
     }
 
     /**
@@ -123,7 +137,7 @@ export class ImageDialog {
             };
 
             modal = Modal.advanced({
-                title: t('ckeditor.image.dialog.title', 'Generate image'),
+                title: t('ckeditor.image.dialog.title', 'Cowriter - Generate image'),
                 content: container,
                 size: Modal.sizes.medium,
                 buttons: [
@@ -160,7 +174,48 @@ export class ImageDialog {
             });
 
             modal?.updateComplete?.then?.(() => textarea.focus());
+            void this._prefill(container, textarea);
         });
+    }
+
+    /**
+     * Fill in what the server knows about the image's purpose. The proposal
+     * only goes into a description the editor has not started.
+     *
+     * @param {HTMLElement} container
+     * @param {HTMLTextAreaElement} textarea
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _prefill(container, textarea) {
+        const context = typeof this._service.getImageContext === 'function'
+            ? await this._service.getImageContext(this._target)
+            : null;
+        if (!context) {
+            return;
+        }
+
+        const purpose = /** @type {HTMLElement} */ (container.querySelector('[data-role="image-purpose"]'));
+        const parts = [context.purpose];
+        if (this._showField && context.field !== '') {
+            parts.push(t('ckeditor.image.dialog.field', 'Field "%s"', context.field));
+        }
+        const purposeText = parts.filter((part) => part !== '').join(', ');
+        if (purposeText !== '') {
+            const label = document.createElement('strong');
+            label.textContent = t('ckeditor.image.dialog.purpose', 'Purpose') + ': ';
+            purpose.replaceChildren(label, document.createTextNode(purposeText));
+            purpose.hidden = false;
+        }
+
+        if (context.proposal !== '' && textarea.value.trim() === '' && !textarea.disabled) {
+            textarea.value = context.proposal.slice(0, MAX_PROMPT_LENGTH);
+            const hint = /** @type {HTMLElement} */ (container.querySelector('[data-role="image-proposal"]'));
+            hint.hidden = false;
+            textarea.setAttribute('aria-describedby', hint.id + ' cowriter-image-prompt-help');
+        }
+
+        showAbout(/** @type {HTMLElement} */ (container.querySelector('[data-role="image-about"]')), context.about);
     }
 
     /**
@@ -170,6 +225,14 @@ export class ImageDialog {
     _buildContent() {
         const container = document.createElement('div');
         container.className = 'cowriter-image-dialog';
+
+        // What the image is for; filled in by _prefill(). Not part of the
+        // description, which becomes the image's alternative text.
+        const purpose = document.createElement('p');
+        purpose.className = 'cowriter-image-purpose';
+        purpose.dataset.role = 'image-purpose';
+        purpose.hidden = true;
+        container.appendChild(purpose);
 
         const label = document.createElement('label');
         label.className = 'form-label';
@@ -184,7 +247,22 @@ export class ImageDialog {
         textarea.maxLength = MAX_PROMPT_LENGTH;
         textarea.dataset.role = 'image-prompt';
         textarea.setAttribute('aria-describedby', 'cowriter-image-prompt-help');
+        // The 13.4 modal focuses [autofocus] once it is shown, and so does the
+        // native dialog of 14.3, which otherwise focuses its close button
+        // after the focus() below.
+        textarea.autofocus = true;
         container.appendChild(textarea);
+
+        const proposal = document.createElement('p');
+        proposal.id = 'cowriter-image-proposal';
+        proposal.className = 'form-text fst-italic';
+        proposal.dataset.role = 'image-proposal';
+        proposal.textContent = t(
+            'ckeditor.image.dialog.proposal',
+            'Proposal built from the page data, not by the model: check and change it before you generate the image.',
+        );
+        proposal.hidden = true;
+        container.appendChild(proposal);
 
         const help = document.createElement('p');
         help.id = 'cowriter-image-prompt-help';
@@ -202,6 +280,10 @@ export class ImageDialog {
         status.setAttribute('aria-live', 'polite');
         status.hidden = true;
         container.appendChild(status);
+
+        const about = document.createElement('div');
+        about.dataset.role = 'image-about';
+        container.appendChild(about);
 
         return container;
     }

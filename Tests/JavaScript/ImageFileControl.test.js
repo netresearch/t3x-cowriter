@@ -50,7 +50,9 @@ function setBody(html) {
     document.body.replaceChildren(document.createRange().createContextualFragment(html));
 }
 
-function fixture({ uids = '', max = 0, allowed = 'png' } = {}) {
+const RECORD = 'data-table="tt_content" data-uid="34" data-field="image" data-pid="12"';
+
+function fixture({ uids = '', max = 0, allowed = 'png', record = RECORD } = {}) {
     setBody(`
 <typo3-formengine-container-inline id="${FIELD_ID}" data-object-group="${FIELD_ID}-sys_file_reference">
   <div class="form-group t3js-formengine-validation-marker t3js-inline-controls">
@@ -60,7 +62,7 @@ function fixture({ uids = '', max = 0, allowed = 'png' } = {}) {
   <div id="${FIELD_ID}_customControls">
     <button type="button" class="btn btn-default t3js-cowriter-generate-image"
       data-file-irre-object="${FIELD_ID}-sys_file_reference" data-form-field-id="${FIELD_ID}"
-      data-form-field="${FIELD_NAME}" data-max-items="${max}" data-allowed-extensions="${allowed}"
+      data-form-field="${FIELD_NAME}" data-max-items="${max}" data-allowed-extensions="${allowed}" ${record}
       data-label-prompt-help="Help text for the field" data-label-generating="Generating for the field"
       data-label-full-title="Full" data-label-full-message="Remove a file first."
       data-label-not-accepted="Stored as %s, .%s is not accepted." data-label-not-added="Stored as %s, now full."
@@ -118,6 +120,37 @@ describe('ImageFileControl', () => {
         const options = ImageDialog.mock.calls[0][1];
         expect(options.promptHelp).toBe('Help text for the field');
         expect(options.generating).toBe('Generating for the field');
+    });
+
+    it('tells the dialog the record and field the image is for, and to name the field', async () => {
+        const control = fixture();
+
+        await generateFor(control);
+
+        const options = ImageDialog.mock.calls[0][1];
+        expect(options.target).toEqual({ table: 'tt_content', uid: '34', field: 'image', pid: '12' });
+        expect(options.showField).toBe(true);
+    });
+
+    it('passes an empty target for a control without record data', async () => {
+        const control = fixture({ record: '' });
+
+        await generateFor(control);
+
+        expect(ImageDialog.mock.calls[0][1].target).toEqual({ table: '', uid: '0', field: '', pid: '0' });
+    });
+
+    it('names the model that generated the image in the success message', async () => {
+        const control = fixture();
+        dialogResult(() => Promise.resolve({ ...generated, about: { model: 'gpt-image-2' } }));
+
+        await generateFor(control);
+
+        expect(Notification.success).toHaveBeenCalledWith(
+            'Added',
+            'Stored as 1:/user_upload/a-lighthouse-1a2b3c4d.png and added. Generated with gpt-image-2.',
+            8,
+        );
     });
 
     it('returns the focus to the control when the dialog closes', async () => {

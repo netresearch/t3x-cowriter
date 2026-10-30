@@ -107,7 +107,7 @@ function styleFields(style) {
 export class AIService {
     /**
      * TYPO3 AJAX route URLs - populated from TYPO3.settings.ajaxUrls
-     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, budgetStatus: string|null, imageGenerate: string|null, inlineSuggestion: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
+     * @type {{chat: string|null, complete: string|null, stream: string|null, tasks: string|null, taskExecute: string|null, context: string|null, vision: string|null, translate: string|null, templates: string|null, tools: string|null, pageSearch: string|null, budgetStatus: string|null, imageGenerate: string|null, imageContext: string|null, inlineSuggestion: string|null, tasksModule: string|null, llmModule: string|null, statusModule: string|null}}
      * @private
      */
     _routes = {
@@ -130,6 +130,7 @@ export class AIService {
         pageSearch: null,
         budgetStatus: null,
         imageGenerate: null,
+        imageContext: null,
         inlineSuggestion: null,
         tasksModule: null,
         llmModule: null,
@@ -158,6 +159,7 @@ export class AIService {
             this._routes.pageSearch = TYPO3.settings.ajaxUrls.tx_cowriter_page_search || null;
             this._routes.budgetStatus = TYPO3.settings.ajaxUrls.tx_cowriter_budget_status || null;
             this._routes.imageGenerate = TYPO3.settings.ajaxUrls.tx_cowriter_image_generate || null;
+            this._routes.imageContext = TYPO3.settings.ajaxUrls.tx_cowriter_image_context || null;
             this._routes.inlineSuggestion = TYPO3.settings.ajaxUrls.tx_cowriter_inline_suggestion || null;
             this._routes.tasksModule = TYPO3.settings.ajaxUrls.nrllm_tasks_module || null;
             this._routes.llmModule = TYPO3.settings.ajaxUrls.nrllm_module || null;
@@ -762,6 +764,43 @@ export class AIService {
         }
 
         return body;
+    }
+
+    /**
+     * What an image is for and a proposal for its description, built by the
+     * server from the record and its page without asking a model, plus the
+     * "About this suggestion" data. Optional for the dialog: any failure gives
+     * null, and the dialog opens with an empty description.
+     *
+     * @param {{table?: string, uid?: number|string, field?: string, pid?: number|string}|null} target
+     *     the record and field the image is for; null when unknown
+     * @returns {Promise<{purpose: string, field: string, proposal: string, about: unknown}|null>}
+     */
+    async getImageContext(target) {
+        if (!this._routes.imageContext) {
+            return null;
+        }
+
+        const url = new URL(this._routes.imageContext, window.location.href);
+        for (const key of ['table', 'uid', 'field', 'pid']) {
+            const value = target?.[key];
+            if (value !== undefined && value !== null && String(value) !== '') {
+                url.searchParams.set(key, String(value));
+            }
+        }
+
+        try {
+            const response = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+            const body = await response.json();
+            if (!response.ok || body?.success !== true) {
+                return null;
+            }
+            const text = (value) => (typeof value === 'string' ? value : '');
+
+            return { purpose: text(body.purpose), field: text(body.field), proposal: text(body.proposal), about: body.about ?? null };
+        } catch {
+            return null;
+        }
     }
 
     /**

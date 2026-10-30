@@ -31,6 +31,7 @@ import { MessageUtility } from '@typo3/backend/utility/message-utility.js';
 import Notification from '@typo3/backend/notification.js';
 import { AIService } from '@netresearch/t3_cowriter/AIService';
 import { ImageDialog } from '@netresearch/t3_cowriter/ImageDialog';
+import { withModel } from '@netresearch/t3_cowriter/AboutSection';
 import { t } from '@netresearch/t3_cowriter/Labels';
 
 export const CONTROL_SELECTOR = '.t3js-cowriter-generate-image';
@@ -139,6 +140,14 @@ export async function generateFor(control) {
             + 'If you close this dialog, the image is still added to the field when it is ready, '
             + 'as long as this record stays open; otherwise it is in your upload folder.',
         ),
+        // The record and field the image is for: the dialog proposes a description from them.
+        target: {
+            table: control.dataset.table || '',
+            uid: control.dataset.uid || '0',
+            field: control.dataset.field || '',
+            pid: control.dataset.pid || '0',
+        },
+        showField: true,
     });
 
     let result;
@@ -196,7 +205,7 @@ export async function generateFor(control) {
 
     Notification.success(
         text(control, 'doneTitle', 'Image added'),
-        text(control, 'doneMessage', 'Stored as %s and added to the field. Save the record to keep it.', file),
+        withModel(text(control, 'doneMessage', 'Stored as %s and added to the field. Save the record to keep it.', file), result),
         8,
     );
 }

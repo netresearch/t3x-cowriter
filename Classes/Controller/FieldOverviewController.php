@@ -26,6 +26,7 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\Transparency\AboutBuilder;
 use Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolverInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -64,6 +65,7 @@ final readonly class FieldOverviewController
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
         private BackendLabels $labels = new BackendLabels(),
         private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
+        private ?AboutBuilder $about = null,
     ) {}
 
     public function suggestAllAction(ServerRequestInterface $request): ResponseInterface
@@ -137,7 +139,7 @@ final readonly class FieldOverviewController
         }
 
         try {
-            $reviews = $this->fieldOverviewService->review(
+            $result = $this->fieldOverviewService->review(
                 $context,
                 $profiles,
                 $dto->fields,
@@ -160,6 +162,7 @@ final readonly class FieldOverviewController
             );
         }
 
+        $reviews = $result->items;
         if ($reviews === []) {
             return $this->jsonResponseWithRateLimitHeaders(
                 ['success' => false, 'error' => $this->labels->get('fieldSuggestions.error.noSuggestions')],
@@ -168,25 +171,33 @@ final readonly class FieldOverviewController
             );
         }
 
-        return $this->jsonResponseWithRateLimitHeaders(
-            [
-                'success' => true,
-                'fields'  => array_map(
-                    static fn (FieldReview $review): array => [
-                        'field'     => $review->field,
-                        'label'     => $profiles[$review->field]->label,
-                        'kind'      => $profiles[$review->field]->kind->value,
-                        'maxLength' => $profiles[$review->field]->maxLength,
-                        'current'   => $dto->fields[$review->field] ?? '',
-                        'action'    => $review->action,
-                        'value'     => $review->value,
-                        'reason'    => $review->reason,
-                    ],
-                    $reviews,
-                ),
-            ],
-            $rateLimitResult,
-        );
+        $payload = [
+            'success' => true,
+            'fields'  => array_map(
+                static fn (FieldReview $review): array => [
+                    'field'     => $review->field,
+                    'label'     => $profiles[$review->field]->label,
+                    'kind'      => $profiles[$review->field]->kind->value,
+                    'maxLength' => $profiles[$review->field]->maxLength,
+                    'current'   => $dto->fields[$review->field] ?? '',
+                    'action'    => $review->action,
+                    'value'     => $review->value,
+                    'reason'    => $review->reason,
+                ],
+                $reviews,
+            ),
+        ];
+        if ($this->about instanceof AboutBuilder) {
+            $payload['about'] = $this->about->fieldOverview(
+                $result->modelUse,
+                $result->sources,
+                $this->recordContextReader->suggestionFields($dto->table, $backendUser),
+                $rateLimitResult->limit,
+                $backendUser,
+            );
+        }
+
+        return $this->jsonResponseWithRateLimitHeaders($payload, $rateLimitResult);
     }
 
     /**
