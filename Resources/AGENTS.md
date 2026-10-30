@@ -17,7 +17,8 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 - **cowriter.js** - CKEditor 5 plugin integration
 - **CowriterDialog.js** - Task dialog UI (incl. status link on errors, the editor's AI usage table, budget refusals as notice)
 - **InlineSuggestions.js** - Inline suggestions while typing: `SuggestionScheduler` (pause, minimum interval, abort, back-off) and the CKEditor plugin (editing-view-only ghost text via a marker, Tab/Escape, live region, toolbar toggle); required by `cowriter.js`
-- **ImageDialog.js** - "Generate image" dialog: description, wait, resolves with the stored file (no preview: every generated image is stored and paid)
+- **ImageDialog.js** - "Generate image" dialog: purpose line and a description proposal from `tx_cowriter_image_context` (only into an empty field), description, wait, resolves with the stored file (no preview: every generated image is stored and paid)
+- **AboutSection.js** - "About this suggestion": renders a route's `about` object as a collapsed `<details>` (text nodes only, links in a new window); used by every dialog that calls a model
 - **HtmlSanitizer.js** - Allow-list sanitiser for every model answer shown as markup or inserted (dialog result, variants, stream, translation)
 - **UrlLoader.js** - CSP-compliant AJAX URL injection from data attributes
 - **FormEngine/FieldSuggestions.js** - "Suggest" field control for plain form fields (suggestion list, keyboard, live region)
@@ -35,6 +36,7 @@ Resources/
 │   │   └── ModuleIcon.legacy.svg  # Backend module icon, TYPO3 v13 (teal tile variant)
 │   └── JavaScript/
 │       ├── Ckeditor/
+│       │   ├── AboutSection.js    # "About this suggestion" section
 │       │   ├── AIService.js       # AJAX API client
 │       │   ├── cowriter.js        # CKEditor plugin
 │       │   ├── CowriterDialog.js  # Task dialog UI

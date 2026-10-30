@@ -602,8 +602,8 @@
                 <target>Cowriter - Bild erzeugen</target>
             </trans-unit>
             <trans-unit id="ckeditor.image.dialog.title" resname="ckeditor.image.dialog.title">
-                <source>Generate image</source>
-                <target>Bild erzeugen</target>
+                <source>Cowriter - Generate image</source>
+                <target>Cowriter - Bild erzeugen</target>
             </trans-unit>
             <trans-unit id="ckeditor.image.dialog.prompt" resname="ckeditor.image.dialog.prompt">
                 <source>Describe the image</source>
@@ -1280,6 +1280,210 @@
             <trans-unit id="presentation.error.createIncomplete" resname="presentation.error.createIncomplete">
                 <source>The new element could not be created completely, and what was created could not be removed. Check the page in the Layout module.</source>
                 <target>Das neue Element konnte nicht vollständig angelegt werden, und das Angelegte konnte nicht entfernt werden. Prüfen Sie die Seite im Layout-Modul.</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.about.title" resname="ckeditor.about.title">
+                <source>About this suggestion</source>
+                <target>Über diesen Vorschlag</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.about.label.origin" resname="ckeditor.about.label.origin">
+                <source>Created by</source>
+                <target>Erstellt von</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.about.label.configuration" resname="ckeditor.about.label.configuration">
+                <source>nr-llm configuration</source>
+                <target>nr-llm-Konfiguration</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.about.label.model" resname="ckeditor.about.label.model">
+                <source>Model</source>
+                <target>Modell</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.about.label.sources" resname="ckeditor.about.label.sources">
+                <source>Context sent to the model</source>
+                <target>An das Modell gesendeter Kontext</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.about.label.settings" resname="ckeditor.about.label.settings">
+                <source>Current settings</source>
+                <target>Aktuelle Einstellungen</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.about.label.links" resname="ckeditor.about.label.links">
+                <source>Change the settings</source>
+                <target>Einstellungen ändern</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.about.label.newWindow" resname="ckeditor.about.label.newWindow">
+                <source>(opens in a new window)</source>
+                <target>(öffnet in einem neuen Fenster)</target>
+            </trans-unit>
+            <trans-unit id="about.origin" resname="about.origin">
+                <source>The Cowriter extension (t3_cowriter), feature "%s"</source>
+                <target>Die Erweiterung Cowriter (t3_cowriter), Funktion „%s“</target>
+            </trans-unit>
+            <trans-unit id="about.feature.fieldSuggestions" resname="about.feature.fieldSuggestions">
+                <source>Field suggestions</source>
+                <target>Feldvorschläge</target>
+            </trans-unit>
+            <trans-unit id="about.feature.fieldOverview" resname="about.feature.fieldOverview">
+                <source>Suggestions for all fields</source>
+                <target>Vorschläge für alle Felder</target>
+            </trans-unit>
+            <trans-unit id="about.feature.image" resname="about.feature.image">
+                <source>Generate image</source>
+                <target>Bild erzeugen</target>
+            </trans-unit>
+            <trans-unit id="about.feature.presentation" resname="about.feature.presentation">
+                <source>Present as tabs or accordion</source>
+                <target>Als Tabs oder Akkordeon darstellen</target>
+            </trans-unit>
+            <trans-unit id="about.model.unknown" resname="about.model.unknown">
+                <source>not reported by nr-llm</source>
+                <target>von nr-llm nicht gemeldet</target>
+            </trans-unit>
+            <trans-unit id="about.note.noModel" resname="about.note.noModel">
+                <source>No language model was asked: the sections follow the h2 and h3 headings of the text.</source>
+                <target>Es wurde kein Sprachmodell gefragt: Die Abschnitte folgen den Überschriften h2 und h3 des Textes.</target>
+            </trans-unit>
+            <trans-unit id="about.source.pageTitle" resname="about.source.pageTitle">
+                <source>Page title</source>
+                <target>Seitentitel</target>
+            </trans-unit>
+            <trans-unit id="about.source.fieldValue" resname="about.source.fieldValue">
+                <source>Stored and typed value of the field</source>
+                <target>Gespeicherter und eingegebener Wert des Feldes</target>
+            </trans-unit>
+            <trans-unit id="about.source.reviewedValues" resname="about.source.reviewedValues">
+                <source>Current values of the reviewed fields</source>
+                <target>Aktuelle Werte der geprüften Felder</target>
+            </trans-unit>
+            <trans-unit id="about.source.pageFields" resname="about.source.pageFields">
+                <source>%d page fields</source>
+                <target>%d Seitenfelder</target>
+            </trans-unit>
+            <trans-unit id="about.source.pageFieldsSingular" resname="about.source.pageFieldsSingular">
+                <source>1 page field</source>
+                <target>1 Seitenfeld</target>
+            </trans-unit>
+            <trans-unit id="about.source.recordFields" resname="about.source.recordFields">
+                <source>%d other fields of this record</source>
+                <target>%d weitere Felder dieses Datensatzes</target>
+            </trans-unit>
+            <trans-unit id="about.source.recordFieldsSingular" resname="about.source.recordFieldsSingular">
+                <source>1 other field of this record</source>
+                <target>1 weiteres Feld dieses Datensatzes</target>
+            </trans-unit>
+            <trans-unit id="about.source.contentElements" resname="about.source.contentElements">
+                <source>Content of %d elements</source>
+                <target>Inhalt von %d Elementen</target>
+            </trans-unit>
+            <trans-unit id="about.source.contentElementsSingular" resname="about.source.contentElementsSingular">
+                <source>Content of 1 element</source>
+                <target>Inhalt von 1 Element</target>
+            </trans-unit>
+            <trans-unit id="about.source.parentTitle" resname="about.source.parentTitle">
+                <source>Title of the parent page</source>
+                <target>Titel der Elternseite</target>
+            </trans-unit>
+            <trans-unit id="about.source.siblingTitles" resname="about.source.siblingTitles">
+                <source>Titles of %d neighbouring pages</source>
+                <target>Titel von %d Nachbarseiten</target>
+            </trans-unit>
+            <trans-unit id="about.source.siblingTitlesSingular" resname="about.source.siblingTitlesSingular">
+                <source>Title of 1 neighbouring page</source>
+                <target>Titel von 1 Nachbarseite</target>
+            </trans-unit>
+            <trans-unit id="about.source.imagePrompt" resname="about.source.imagePrompt">
+                <source>Only your description of the image</source>
+                <target>Nur Ihre Beschreibung des Bildes</target>
+            </trans-unit>
+            <trans-unit id="about.source.elementHeader" resname="about.source.elementHeader">
+                <source>Heading of this element</source>
+                <target>Überschrift dieses Elements</target>
+            </trans-unit>
+            <trans-unit id="about.source.elementBlocks" resname="about.source.elementBlocks">
+                <source>The beginning of each of the %d text blocks of this element</source>
+                <target>Der Anfang jedes der %d Textblöcke dieses Elements</target>
+            </trans-unit>
+            <trans-unit id="about.setting.feature" resname="about.setting.feature">
+                <source>Feature</source>
+                <target>Funktion</target>
+            </trans-unit>
+            <trans-unit id="about.setting.featureOn" resname="about.setting.featureOn">
+                <source>%s, switched on</source>
+                <target>%s, eingeschaltet</target>
+            </trans-unit>
+            <trans-unit id="about.setting.fields" resname="about.setting.fields">
+                <source>Fields with suggestions you may edit</source>
+                <target>Felder mit Vorschlägen, die Sie bearbeiten dürfen</target>
+            </trans-unit>
+            <trans-unit id="about.setting.count" resname="about.setting.count">
+                <source>Number of suggestions</source>
+                <target>Anzahl der Vorschläge</target>
+            </trans-unit>
+            <trans-unit id="about.setting.limits" resname="about.setting.limits">
+                <source>Limits</source>
+                <target>Grenzen</target>
+            </trans-unit>
+            <trans-unit id="about.setting.imageModel" resname="about.setting.imageModel">
+                <source>Image model</source>
+                <target>Bildmodell</target>
+            </trans-unit>
+            <trans-unit id="about.imageModel.setting" resname="about.imageModel.setting">
+                <source>%s (set in the extension configuration)</source>
+                <target>%s (in der Erweiterungskonfiguration eingestellt)</target>
+            </trans-unit>
+            <trans-unit id="about.imageModel.default" resname="about.imageModel.default">
+                <source>%s (default image model of nr-llm)</source>
+                <target>%s (Standard-Bildmodell von nr-llm)</target>
+            </trans-unit>
+            <trans-unit id="about.limits.fieldSuggestions" resname="about.limits.fieldSuggestions">
+                <source>%1$d requests per minute; page content up to %2$d characters; titles of up to %3$d neighbouring pages; up to %4$d characters of data in total, not counting the values of the fields</source>
+                <target>%1$d Anfragen pro Minute; Seiteninhalt bis %2$d Zeichen; Titel von bis zu %3$d Nachbarseiten; insgesamt bis %4$d Zeichen Daten, ohne die Werte der Felder</target>
+            </trans-unit>
+            <trans-unit id="about.limits.image" resname="about.limits.image">
+                <source>Description up to %d characters; the image is stored in your upload folder</source>
+                <target>Beschreibung bis %d Zeichen; das Bild wird in Ihrem Upload-Ordner gespeichert</target>
+            </trans-unit>
+            <trans-unit id="about.limits.presentation" resname="about.limits.presentation">
+                <source>%1$d to %2$d sections; texts of up to %3$d blocks; the language model is asked only for a text without h2 or h3 headings</source>
+                <target>%1$d bis %2$d Abschnitte; Texte mit bis zu %3$d Blöcken; das Sprachmodell wird nur bei einem Text ohne Überschriften h2 oder h3 gefragt</target>
+            </trans-unit>
+            <trans-unit id="about.link.extensionConfiguration" resname="about.link.extensionConfiguration">
+                <source>Cowriter extension configuration (Settings, Configure extensions)</source>
+                <target>Erweiterungskonfiguration des Cowriters (Einstellungen, Erweiterungen konfigurieren)</target>
+            </trans-unit>
+            <trans-unit id="about.link.configuration" resname="about.link.configuration">
+                <source>Edit this nr-llm configuration</source>
+                <target>Diese nr-llm-Konfiguration bearbeiten</target>
+            </trans-unit>
+            <trans-unit id="about.purpose.page" resname="about.purpose.page">
+                <source>for page "%s"</source>
+                <target>für Seite „%s“</target>
+            </trans-unit>
+            <trans-unit id="about.purpose.element" resname="about.purpose.element">
+                <source>for element "%1$s" on page "%2$s"</source>
+                <target>für Element „%1$s“ auf Seite „%2$s“</target>
+            </trans-unit>
+            <trans-unit id="about.purpose.elementOnly" resname="about.purpose.elementOnly">
+                <source>for element "%s"</source>
+                <target>für Element „%s“</target>
+            </trans-unit>
+            <trans-unit id="about.purpose.untitled" resname="about.purpose.untitled">
+                <source>untitled</source>
+                <target>ohne Überschrift</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.dialog.purpose" resname="ckeditor.image.dialog.purpose">
+                <source>Purpose</source>
+                <target>Zweck</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.dialog.field" resname="ckeditor.image.dialog.field">
+                <source>Field "%s"</source>
+                <target>Feld „%s“</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.dialog.proposal" resname="ckeditor.image.dialog.proposal">
+                <source>Proposal built from the page data, not by the model: check and change it before you generate the image.</source>
+                <target>Vorschlag aus den Seitendaten, nicht vom Modell: Prüfen und ändern Sie ihn, bevor Sie das Bild erzeugen.</target>
+            </trans-unit>
+            <trans-unit id="ckeditor.image.done.model" resname="ckeditor.image.done.model">
+                <source>Generated with %s.</source>
+                <target>Erzeugt mit %s.</target>
             </trans-unit>
         </body>
     </file>

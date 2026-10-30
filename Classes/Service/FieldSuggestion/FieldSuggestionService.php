@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\StructuredAnswer;
+use Netresearch\T3Cowriter\Service\Transparency\ModelUse;
 
 /**
  * Asks the model for N alternative values of one field and returns them
@@ -34,11 +35,11 @@ final readonly class FieldSuggestionService
         private CompletionServiceInterface $completionService,
         private SlugSuggestionBuilder $slugSuggestionBuilder,
         private SuggestionNormalizer $normalizer = new SuggestionNormalizer(),
-        private UntrustedDataFence $fence = new UntrustedDataFence(),
+        private ContextComposer $composer = new ContextComposer(),
     ) {}
 
     /**
-     * @return list<string>
+     * @return SuggestionResult<string>
      */
     public function suggest(
         RecordContext $context,
@@ -46,7 +47,7 @@ final readonly class FieldSuggestionService
         string $currentValue,
         int $count,
         LlmConfiguration $configuration,
-    ): array {
+    ): SuggestionResult {
         // Instructions travel as the system prompt; the user message holds only
         // the fenced record data, which may contain text written to look like
         // instructions.
@@ -54,23 +55,28 @@ final readonly class FieldSuggestionService
             ->withSystemPrompt($this->buildSystemPrompt($context, $profile, $count))
             ->withCallerSource(CallerSource::EXTENSION, self::OPERATION);
 
-        $answer = StructuredAnswer::payload($this->completionService->completeStructuredForConfiguration(
-            $this->buildUserMessage($context, $currentValue),
+        $composed = $this->compose($context, $currentValue);
+        $response = $this->completionService->completeStructuredForConfiguration(
+            $composed->message,
             $configuration,
             self::schema($count),
             $options,
-        ));
+        );
+        $answer   = StructuredAnswer::payload($response);
+        $modelUse = ModelUse::fromResponse($configuration, $response->response);
 
         $raw = $answer['suggestions'] ?? [];
         if (!is_array($raw)) {
-            return [];
+            return new SuggestionResult([], $modelUse, $composed->sources);
         }
 
         $suggestions = $this->normalizer->normalize(array_values($raw), $profile, $count);
 
-        return $profile->kind === FieldKind::Slug
-            ? $this->slugs($suggestions, $context)
-            : $suggestions;
+        return new SuggestionResult(
+            $profile->kind === FieldKind::Slug ? $this->slugs($suggestions, $context) : $suggestions,
+            $modelUse,
+            $composed->sources,
+        );
     }
 
     /**
@@ -119,16 +125,20 @@ final readonly class FieldSuggestionService
      */
     public function buildUserMessage(RecordContext $context, string $currentValue): string
     {
-        $data = implode("\n", [
-            'Page title: ' . $this->orPlaceholder($context->pageTitle, '(none)'),
-            'Stored value of the field: ' . $this->orPlaceholder($context->storedValue, '(empty)'),
-            'Value typed into the form, not saved yet: ' . $this->orPlaceholder($currentValue, '(none)'),
-            ...$context->recordFieldLines([$context->field]),
-            'Page content:',
-            $this->orPlaceholder($context->pageContent, '(no content yet)'),
-        ]);
+        return $this->compose($context, $currentValue)->message;
+    }
 
-        return $this->fence->wrap($data);
+    private function compose(RecordContext $context, string $currentValue): ComposedContext
+    {
+        return $this->composer->compose(
+            $context,
+            [
+                'Stored value of the field: ' . $this->orPlaceholder($context->storedValue, '(empty)'),
+                'Value typed into the form, not saved yet: ' . $this->orPlaceholder($currentValue, '(none)'),
+            ],
+            [$context->field],
+            trim($context->storedValue) !== '' || trim($currentValue) !== '',
+        );
     }
 
     private function orPlaceholder(string $value, string $placeholder): string

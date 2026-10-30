@@ -187,6 +187,18 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.dialog.budget.noLimit',
         'ckeditor.dialog.budget.barAria',
         'ckeditor.dialog.budget.windows',
+        'ckeditor.about.title',
+        'ckeditor.about.label.origin',
+        'ckeditor.about.label.configuration',
+        'ckeditor.about.label.model',
+        'ckeditor.about.label.sources',
+        'ckeditor.about.label.settings',
+        'ckeditor.about.label.links',
+        'ckeditor.about.label.newWindow',
+        'ckeditor.image.dialog.purpose',
+        'ckeditor.image.dialog.field',
+        'ckeditor.image.dialog.proposal',
+        'ckeditor.image.done.model',
     ];
 
     public function __construct(
@@ -280,6 +292,8 @@ final readonly class InjectAjaxUrlsListener
                 ->buildUriFromRoute('ajax_tx_cowriter_budget_status'),
             'tx_cowriter_image_generate' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_image_generate'),
+            'tx_cowriter_image_context' => (string) $this->backendUriBuilder
+                ->buildUriFromRoute('ajax_tx_cowriter_image_context'),
             'tx_cowriter_inline_suggestion' => (string) $this->backendUriBuilder
                 ->buildUriFromRoute('ajax_tx_cowriter_inline_suggestion'),
             'nrllm_tasks_module' => (string) $this->backendUriBuilder

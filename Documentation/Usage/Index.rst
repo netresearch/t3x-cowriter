@@ -260,10 +260,21 @@ is disabled in an editor without the image plugin of rte-ckeditor-image.
 
 1.  Place the cursor where the image should go
 2.  Click the Generate image button
-3.  Describe the image (up to 1000 characters) and click
-    :guilabel:`Generate`
+3.  Check the proposed description, change it, or write your own (up to
+    1000 characters), and click :guilabel:`Generate`
 4.  Wait while the image is generated; this can take one or two minutes
 5.  The image is stored in your upload folder and inserted at the cursor
+
+The dialog :guilabel:`Cowriter - Generate image` says what the image is
+for, for example *for element "Our test" on page "Airfryer Test"*, and
+proposes a description built from the element's header, the page title
+and the beginning of the element's text. The proposal is marked as such:
+it is put together from the saved record, not written by the AI, and no
+request goes to the AI until you click :guilabel:`Generate`. It goes into
+the description field only while the field is empty, so text you started
+to type is never replaced. A new element that has not been saved yet gets
+no proposal. Below, :ref:`usage-about` names the image model and says that
+only your description is sent.
 
 The description becomes the image's alternative text. It says what you
 asked for, not what the model drew: check it and correct it where needed.
@@ -285,8 +296,8 @@ element, have a **Generate image** button below the list of files when
 the administrator switched the feature on.
 
 1.  Click :guilabel:`Generate image` below the field
-2.  Describe the image (up to 1000 characters) and click
-    :guilabel:`Generate`
+2.  Check the proposed description or write your own (up to 1000
+    characters) and click :guilabel:`Generate`
 3.  Wait while the image is generated; this can take one or two minutes
 4.  The image is stored in your upload folder and added to the field as a
     new file
@@ -295,7 +306,9 @@ the administrator switched the feature on.
 You can close the dialog while the image is generated: the image is still
 added to the field when it is ready, as long as the record stays open. If
 you save and close the record or leave the page in the meantime, it is not
-added; it is then in your upload folder. When the field is full, the button is
+added; it is then in your upload folder. The dialog names the field and the
+record the image is for and proposes a description from the record, as in
+the rich text editor. When the field is full, the button is
 hidden until you remove a file. Fields that do not accept PNG files have
 no button. The new file has no alternative text of its own: enter one
 in the file's :guilabel:`Alternative` field where needed.
@@ -408,13 +421,31 @@ Nothing is saved automatically: a picked suggestion only changes the form,
 exactly as if you had typed it, and :kbd:`Escape` closes the list without
 changing anything.
 
-The suggestions are generated from the page title, the current value of
-the field (including text you typed but have not saved yet), the other
-text fields of the record you may see (for a content element its header
-and text, so a headline describes the element and not the whole page)
-and the text of the content elements on the page. In a workspace, the
-page and its content elements are read as they look in your workspace;
-drafts of other workspaces are never used.
+The suggestions are generated from:
+
+*   the page title,
+*   the current value of the field, including text you typed but have not
+    saved yet,
+*   the other text fields of the record you may see (for a content element
+    its header and text, so a headline describes the element and not the
+    whole page; for a page its descriptive fields),
+*   for a content element, the descriptive fields of its page you may see:
+    navigation title, subtitle, abstract, description, keywords, the SEO
+    and social media titles and descriptions, and other page fields with
+    the light bulb button,
+*   the text of the content elements on the page,
+*   the title of the parent page and the titles of up to five neighbouring
+    pages (pages on the same level).
+
+Only visible pages you may see in the page tree are named: hidden,
+scheduled and deleted pages, folders, menu separators and the recycler
+never are. Titles are taken in the language of the record where the page
+has a visible translation; for a translated content element the page title
+and page fields come from the page translation too. In a workspace, pages
+and content elements are read as they look in your workspace; drafts of
+other workspaces are never used. The data sent is limited in size, see
+:ref:`configuration-field-suggestions-context`. Which of these sources went
+into a suggestion is listed under :ref:`usage-about`.
 
 Each field gets its own instruction and length limit, and a suggestion
 longer than the limit is shortened at a word boundary before you see it:
@@ -535,6 +566,54 @@ German element). In a workspace the new element is created in your
 workspace.
 
 The button only appears when you may create such an element on the page.
+Below the proposal, :ref:`usage-about` says whether the AI was asked: for a
+text divided at its headings it says that no language model was used.
+
+..  _usage-about:
+
+About this suggestion
+=====================
+
+Every Cowriter dialog that asks the AI has a collapsed section
+:guilabel:`About this suggestion` at its end: the list of field
+suggestions, the overview of all fields, the image dialog and the proposal
+for tabs or an accordion. Open it with a click, or move to it with
+:kbd:`Tab` and press :kbd:`Enter` or :kbd:`Space`. It shows:
+
+*   :guilabel:`Created by`: the Cowriter extension and the feature
+*   :guilabel:`nr-llm configuration`: the configuration that answered
+    (name and identifier)
+*   :guilabel:`Model`: the model and provider that answered, as nr-llm
+    reports them, or "not reported by nr-llm"
+*   :guilabel:`Context sent to the model`: the sources of the request as a
+    list of names and counts, for example "Page title", "12 page fields",
+    "Content of 5 elements", "Title of the parent page", "Titles of 3
+    neighbouring pages". The list never repeats the data itself. It is
+    counted after the size limit, so a source that was cut off is not
+    listed.
+*   :guilabel:`Current settings`: the feature, the fields with suggestions
+    you may edit, the number of suggestions and the limits (requests per
+    minute, size of the page content and of all data, number of
+    neighbouring pages). For images: the image model and where it is set.
+*   :guilabel:`Change the settings`: links to the Cowriter extension
+    configuration (for system maintainers, who may open the
+    :guilabel:`Settings` module) and to the nr-llm configuration record
+    (for administrators). The links open in a new window, so the record
+    you edit stays open.
+
+Nothing in the section is information you could not see otherwise: the
+configuration is one you may use, the fields are fields you may edit. The
+provider's address, keys and other configurations are never shown.
+
+..  figure:: /Images/Usage/AboutThisSuggestion.png
+    :alt: The list of AI suggestions below the Header field of a content
+          element, with the opened section "About this suggestion": the
+          extension and feature, the nr-llm configuration, the model, the
+          list of context sources sent and the current settings
+    :class: with-border with-shadow
+
+    :guilabel:`About this suggestion` below the field suggestions of a
+    content element header.
 
 ..  _usage-field-overview:
 
@@ -585,6 +664,9 @@ values and reasons are written in the language of the record. The server
 checks every field: a field you may not edit is left out of the request,
 and every value is shortened to the field's limit before you see it. Text
 from the AI is always shown and inserted as plain text.
+
+Below the table, :ref:`usage-about` names the model and the context the
+review was based on; the overview sends the same sources as a single field.
 
 The whole review is **one request**: it counts once against your rate limit
 of 20 requests per minute and is one call to the AI (nr-llm), however many

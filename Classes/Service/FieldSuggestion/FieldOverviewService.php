@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\StructuredAnswer;
+use Netresearch\T3Cowriter\Service\Transparency\ModelUse;
 
 /**
  * Reviews all suggestion fields of one record in a single model call: per
@@ -63,7 +64,7 @@ final readonly class FieldOverviewService
         private CompletionServiceInterface $completionService,
         private SlugSuggestionBuilder $slugSuggestionBuilder,
         private SuggestionNormalizer $normalizer = new SuggestionNormalizer(),
-        private UntrustedDataFence $fence = new UntrustedDataFence(),
+        private ContextComposer $composer = new ContextComposer(),
     ) {}
 
     /**
@@ -71,7 +72,7 @@ final readonly class FieldOverviewService
      * @param array<string, string>       $currentValues the values the form holds right now
      * @param string|null                 $languageName  the record's language ("German (Germany)"), null when unknown
      *
-     * @return list<FieldReview> in the order of $profiles; fields the answer left out are missing
+     * @return SuggestionResult<FieldReview> the reviews in the order of $profiles; fields the answer left out are missing
      */
     public function review(
         RecordContext $context,
@@ -79,7 +80,7 @@ final readonly class FieldOverviewService
         array $currentValues,
         LlmConfiguration $configuration,
         ?string $languageName = null,
-    ): array {
+    ): SuggestionResult {
         $options = (new ChatOptions(temperature: 0.4))
             ->withSystemPrompt($this->buildSystemPrompt($profiles, $languageName))
             ->withCallerSource(CallerSource::EXTENSION, self::OPERATION);
@@ -89,16 +90,21 @@ final readonly class FieldOverviewService
             $options = $options->withMaxTokens($maxTokens);
         }
 
-        $answer = StructuredAnswer::payload($this->completionService->completeStructuredForConfiguration(
-            $this->buildUserMessage($context, $profiles, $currentValues),
+        $composed = $this->compose($context, $profiles, $currentValues);
+        $response = $this->completionService->completeStructuredForConfiguration(
+            $composed->message,
             $configuration,
             self::schema(),
             $options,
-        ));
-
+        );
+        $answer  = StructuredAnswer::payload($response);
         $entries = $answer['fields'] ?? [];
 
-        return is_array($entries) ? $this->parse(array_values($entries), $context, $profiles, $currentValues) : [];
+        return new SuggestionResult(
+            is_array($entries) ? $this->parse(array_values($entries), $context, $profiles, $currentValues) : [],
+            ModelUse::fromResponse($configuration, $response->response),
+            $composed->sources,
+        );
     }
 
     /**
@@ -216,23 +222,24 @@ final readonly class FieldOverviewService
      */
     public function buildUserMessage(RecordContext $context, array $profiles, array $currentValues): string
     {
-        $currentLines = [];
+        return $this->compose($context, $profiles, $currentValues)->message;
+    }
+
+    /**
+     * @param array<string, FieldProfile> $profiles
+     * @param array<string, string>       $currentValues
+     */
+    private function compose(RecordContext $context, array $profiles, array $currentValues): ComposedContext
+    {
+        $currentLines = ['Current values of the fields to review:'];
+        $valuesSent   = false;
         foreach (array_keys($profiles) as $field) {
             $value          = trim($currentValues[$field] ?? '');
             $currentLines[] = sprintf('- %s: %s', $field, $value !== '' ? $value : '(empty)');
+            $valuesSent     = $valuesSent || $value !== '';
         }
 
-        $pageTitle   = trim($context->pageTitle);
-        $pageContent = trim($context->pageContent);
-
-        return $this->fence->wrap(implode("\n", [
-            'Page title: ' . ($pageTitle !== '' ? $pageTitle : '(none)'),
-            'Current values of the fields to review:',
-            ...$currentLines,
-            ...$context->recordFieldLines(array_keys($profiles)),
-            'Page content:',
-            $pageContent !== '' ? $pageContent : '(no content yet)',
-        ]));
+        return $this->composer->compose($context, $currentLines, array_keys($profiles), $valuesSent, true);
     }
 
     /**

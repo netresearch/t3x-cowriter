@@ -27,6 +27,7 @@ import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
 import Modal from '@typo3/backend/modal.js';
 import Notification from '@typo3/backend/notification.js';
 import { applyValue, findField } from '@netresearch/t3_cowriter/FieldValue';
+import { showAbout } from '@netresearch/t3_cowriter/AboutSection';
 
 export const BUTTON_SELECTOR = '.t3js-cowriter-suggest-all';
 
@@ -175,15 +176,18 @@ export class FieldOverview {
         container.setAttribute('aria-busy', 'true');
         const modal = this.modal;
         try {
-            const fields = await this.fetchFields(controls);
+            const { fields, about } = await this.fetchFields(controls);
             if (modal !== this.modal) {
                 return;
             }
             if (fields.length === 0) {
                 this.setStatus(this.labels.empty, true);
+                showAbout(this.results, about);
                 return;
             }
             this.renderTable(fields, controls);
+            // Below the table: where the values come from.
+            showAbout(this.results, about);
             const changes = fields.filter((field) => field.action === 'change').length;
             this.setStatus(format(this.labels.loaded, changes, fields.length), false);
             this.setApplyEnabled(this.rows.length > 0);
@@ -221,7 +225,8 @@ export class FieldOverview {
 
     /**
      * @param {HTMLElement[]} controls
-     * @returns {Promise<object[]>}
+     * @returns {Promise<{fields: object[], about: unknown}>} the reviewed fields and the
+     *     route's "about this suggestion" data
      */
     async fetchFields(controls) {
         const url = this.button.dataset.url;
@@ -256,10 +261,13 @@ export class FieldOverview {
             throw new Error(typeof result?.error === 'string' ? result.error : this.labels.error);
         }
         const known = new Set(controls.map((control) => control.dataset.field));
-        return result.fields.filter((entry) => entry
-            && typeof entry.field === 'string' && known.has(entry.field)
-            && (entry.action === 'change' || entry.action === 'keep')
-            && typeof entry.reason === 'string');
+        return {
+            fields: result.fields.filter((entry) => entry
+                && typeof entry.field === 'string' && known.has(entry.field)
+                && (entry.action === 'change' || entry.action === 'keep')
+                && typeof entry.reason === 'string'),
+            about: result.about ?? null,
+        };
     }
 
     async errorMessage(failure) {

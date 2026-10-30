@@ -22,7 +22,7 @@ AI-powered content writing assistant for the TYPO3 CKEditor 5 RTE. Adds toolbar 
 
 Component map, AJAX route table, and data flow: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Short form: CKEditor plugin (`Resources/Public/JavaScript/Ckeditor/`) and the FormEngine field control (`Resources/Public/JavaScript/FormEngine/`) → 25 backend AJAX routes ([Configuration/Backend/AjaxRoutes.php](Configuration/Backend/AjaxRoutes.php)) → controllers in `Classes/Controller/` → nr-llm (`LlmServiceManagerInterface`, `CompletionServiceInterface`) → provider API. A backend status module (`cowriter_status`) surfaces `DiagnosticService` results for setup troubleshooting.
+Short form: CKEditor plugin (`Resources/Public/JavaScript/Ckeditor/`) and the FormEngine field control (`Resources/Public/JavaScript/FormEngine/`) → 26 backend AJAX routes ([Configuration/Backend/AjaxRoutes.php](Configuration/Backend/AjaxRoutes.php)) → controllers in `Classes/Controller/` → nr-llm (`LlmServiceManagerInterface`, `CompletionServiceInterface`) → provider API. A backend status module (`cowriter_status`) surfaces `DiagnosticService` results for setup troubleshooting.
 
 ## Commands
 

@@ -12,6 +12,7 @@ import { Collection } from "@ckeditor/ckeditor5-utils";
 import { AIService } from "@netresearch/t3_cowriter/AIService";
 import { CowriterDialog } from "@netresearch/t3_cowriter/CowriterDialog";
 import { ImageDialog } from "@netresearch/t3_cowriter/ImageDialog";
+import { withModel } from "@netresearch/t3_cowriter/AboutSection";
 import { InlineSuggestions } from "@netresearch/t3_cowriter/InlineSuggestions";
 import { t } from "@netresearch/t3_cowriter/Labels";
 import { imageSourcesOf, sanitizeHtml } from "@netresearch/t3_cowriter/HtmlSanitizer";
@@ -224,6 +225,22 @@ export class Cowriter extends Plugin {
         }
 
         return null;
+    }
+
+    /**
+     * The record the generated image is for, or null. The description
+     * proposal is optional: a record that cannot be found never stops the
+     * image dialog.
+     *
+     * @returns {{table: string, uid: number, field: string}|null}
+     * @private
+     */
+    _imageTarget() {
+        try {
+            return this._getRecordContext();
+        } catch {
+            return null;
+        }
     }
 
     /**
@@ -528,6 +545,8 @@ export class Cowriter extends Plugin {
                 try {
                     const dialog = new ImageDialog(this._service, {
                         returnFocus: () => editor.editing.view.focus(),
+                        // The edited record: the dialog proposes a description from it.
+                        target: this._imageTarget(),
                     });
                     // Also resolves when the editor closed the dialog while the
                     // image was generated: the image is paid for and stored.
@@ -546,7 +565,10 @@ export class Cowriter extends Plugin {
                     this._insertGeneratedImage(result, insertionPoint);
                     Notification.success(
                         t('ckeditor.image.done.title', 'Image inserted'),
-                        t('ckeditor.image.done.message', 'Stored as %s. Check the alternative text: it is your description, not a description of the generated image.', file),
+                        withModel(
+                            t('ckeditor.image.done.message', 'Stored as %s. Check the alternative text: it is your description, not a description of the generated image.', file),
+                            result,
+                        ),
                         8,
                     );
                 } catch (error) {

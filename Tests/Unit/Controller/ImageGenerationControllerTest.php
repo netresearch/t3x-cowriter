@@ -31,6 +31,7 @@ use Netresearch\T3Cowriter\Service\Image\ImageRejectedException;
 use Netresearch\T3Cowriter\Service\Image\StoredImage;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Transparency\AboutBuilder;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -50,6 +51,9 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
 use Stringable;
+use TYPO3\CMS\Backend\Module\ModuleProvider;
+use TYPO3\CMS\Backend\Routing\UriBuilder;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Resource\Folder;
@@ -150,6 +154,33 @@ final class ImageGenerationControllerTest extends TestCase
         yield 'empty' => [''];
         yield 'true as text' => ['true'];
         yield 'missing' => [null];
+    }
+
+    #[Test]
+    public function theAnswerNamesTheModelThatGeneratedTheImage(): void
+    {
+        $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
+        $about              = new AboutBuilder($this->createStub(UriBuilder::class), $this->createStub(ModuleProvider::class));
+
+        try {
+            $data = $this->decode($this->controller(settings: ['enable' => '1', 'model' => 'gpt-image-2'], about: $about)
+                ->generateAction($this->jsonRequest(['prompt' => 'A lighthouse'])));
+        } finally {
+            unset($GLOBALS['BE_USER']);
+        }
+
+        self::assertTrue($data['success']);
+        self::assertStringStartsWith('gpt-image-2', $data['about']['model']);
+        self::assertSame('', $data['about']['configuration']);
+        self::assertSame('gpt-image-2 (set in the extension configuration)', $data['about']['settings'][1]['value']);
+    }
+
+    #[Test]
+    public function withoutTheAboutBuilderTheAnswerHasNoAbout(): void
+    {
+        $data = $this->decode($this->controller()->generateAction($this->jsonRequest(['prompt' => 'A lighthouse'])));
+
+        self::assertArrayNotHasKey('about', $data);
     }
 
     #[Test]
@@ -586,6 +617,7 @@ final class ImageGenerationControllerTest extends TestCase
         bool $vaultHasKey = true,
         int $providerStatus = 200,
         array $imageData = ['b64_json' => self::PNG_BASE64],
+        ?AboutBuilder $about = null,
     ): ImageGenerationController {
         $rateLimiter = $this->createStub(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(new RateLimitResult($rateLimitAllowed, 20, 19, time() + 60));
@@ -607,6 +639,7 @@ final class ImageGenerationControllerTest extends TestCase
             $rateLimiter,
             $context,
             $this->recordingLogger(),
+            about: $about,
         );
     }
 

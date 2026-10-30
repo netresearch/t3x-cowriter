@@ -53,7 +53,7 @@ final class SectionProposalServiceTest extends TestCase
         $blocks                             = (new BlockParser())->parse('<p>Chairs for every office.</p><h4>Note</h4><p>Five years warranty.</p>');
         $this->completion->structuredResult = ['sections' => [['title' => 'Chairs', 'start' => 0], ['title' => 'Warranty', 'start' => 1]]];
 
-        $boundaries = $this->subject->propose($blocks, 'Office chairs', $this->configuration, 7);
+        $boundaries = $this->subject->propose($blocks, 'Office chairs', $this->configuration, 7)->sections;
 
         self::assertEquals([new SectionBoundary('Chairs', 0), new SectionBoundary('Warranty', 1)], $boundaries);
 
@@ -142,7 +142,7 @@ final class SectionProposalServiceTest extends TestCase
     {
         $this->completion->structuredResult = ['sections' => 'nonsense'];
 
-        self::assertSame([], $this->subject->propose((new BlockParser())->parse('<p>a</p><p>b</p>'), '', $this->configuration, 1));
+        self::assertSame([], $this->subject->propose((new BlockParser())->parse('<p>a</p><p>b</p>'), '', $this->configuration, 1)->sections);
     }
 
     #[Test]

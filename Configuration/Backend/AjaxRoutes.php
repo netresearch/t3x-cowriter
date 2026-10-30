@@ -11,6 +11,7 @@ use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Controller\BudgetStatusController;
 use Netresearch\T3Cowriter\Controller\FieldOverviewController;
 use Netresearch\T3Cowriter\Controller\FieldSuggestionController;
+use Netresearch\T3Cowriter\Controller\ImageContextController;
 use Netresearch\T3Cowriter\Controller\ImageGenerationController;
 use Netresearch\T3Cowriter\Controller\InlineSuggestionController;
 use Netresearch\T3Cowriter\Controller\PresentationController;
@@ -117,6 +118,11 @@ return [
         'path'    => '/cowriter/image-generate',
         'target'  => ImageGenerationController::class . '::generateAction',
         'methods' => ['POST'],
+    ],
+    'tx_cowriter_image_context' => [
+        'path'    => '/cowriter/image-context',
+        'target'  => ImageContextController::class . '::contextAction',
+        'methods' => ['GET'],
     ],
     'tx_cowriter_inline_suggestion' => [
         'path'    => '/cowriter/inline-suggestion',

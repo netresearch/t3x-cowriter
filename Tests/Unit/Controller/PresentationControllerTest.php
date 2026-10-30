@@ -32,6 +32,7 @@ use Netresearch\T3Cowriter\Service\Presentation\SectionContent;
 use Netresearch\T3Cowriter\Service\Presentation\SectionProposalService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Transparency\AboutBuilder;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\RecordingLogger;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
@@ -46,6 +47,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use RuntimeException;
 use Throwable;
+use TYPO3\CMS\Backend\Module\ModuleProvider;
 use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
@@ -136,7 +138,7 @@ final class PresentationControllerTest extends TestCase
         return $writer;
     }
 
-    private function subject(): PresentationController
+    private function subject(?AboutBuilder $about = null): PresentationController
     {
         $extensionConfiguration = $this->createStub(ExtensionConfiguration::class);
         $extensionConfiguration->method('get')->willReturn($this->enabled ? '1' : '0');
@@ -163,7 +165,13 @@ final class PresentationControllerTest extends TestCase
             $uriBuilder,
             $context,
             $this->logger,
+            about: $about,
         );
+    }
+
+    private function about(): AboutBuilder
+    {
+        return new AboutBuilder($this->createStub(UriBuilder::class), $this->createStub(ModuleProvider::class));
     }
 
     /**
@@ -232,6 +240,31 @@ final class PresentationControllerTest extends TestCase
             'images'   => 0,
         ], $this->json($response));
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
+    }
+
+    #[Test]
+    public function aProposalFromHeadingsSaysNoModelWasAsked(): void
+    {
+        $about = $this->json($this->subject($this->about())->proposeAction($this->request(['uid' => 10])))['about'];
+
+        self::assertIsArray($about);
+        self::assertSame(['', ''], [$about['configuration'], $about['model']]);
+        self::assertSame([], $about['sources']);
+        self::assertStringStartsWith('No language model was asked', $about['note']);
+    }
+
+    #[Test]
+    public function aProposalFromTheModelNamesTheModelAndTheBlocksSent(): void
+    {
+        $this->useElement($this->element(self::WITHOUT_HEADINGS));
+        $this->completion->structuredResult = ['sections' => [['title' => 'Chairs', 'start' => 0], ['title' => 'Warranty', 'start' => 2]]];
+
+        $about = $this->json($this->subject($this->about())->proposeAction($this->request(['uid' => 10])))['about'];
+
+        self::assertIsArray($about);
+        self::assertSame(FakeCompletionService::STRUCTURED_MODEL, $about['model']);
+        self::assertSame('', $about['note']);
+        self::assertSame(['Heading of this element', 'The beginning of each of the 3 text blocks of this element'], $about['sources']);
     }
 
     #[Test]

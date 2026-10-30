@@ -116,7 +116,7 @@ final class FieldSuggestionServiceTest extends TestCase
             'office chairs',
         ]];
 
-        $result = $this->subject()->suggest($this->context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 3, new LlmConfiguration());
+        $result = $this->subject()->suggest($this->context(), new FieldProfile(FieldKind::SeoTitle, 60), '', 3, new LlmConfiguration())->items;
 
         self::assertSame(['Ergonomic office chairs with lumbar support for long working', 'Office chairs'], $result);
     }
@@ -126,7 +126,7 @@ final class FieldSuggestionServiceTest extends TestCase
     {
         $this->completion->structuredResult = ['suggestions' => 'Just one string'];
 
-        self::assertSame([], $this->subject()->suggest($this->context(), new FieldProfile(FieldKind::Text, 60), '', 3, new LlmConfiguration()));
+        self::assertSame([], $this->subject()->suggest($this->context(), new FieldProfile(FieldKind::Text, 60), '', 3, new LlmConfiguration())->items);
     }
 
     #[Test]
@@ -146,7 +146,7 @@ final class FieldSuggestionServiceTest extends TestCase
             },
         );
 
-        $result = $this->subject($slugBuilder)->suggest($context, new FieldProfile(FieldKind::Slug, 60), '', 4, new LlmConfiguration());
+        $result = $this->subject($slugBuilder)->suggest($context, new FieldProfile(FieldKind::Slug, 60), '', 4, new LlmConfiguration())->items;
 
         self::assertSame(['/products/ergonomic-chairs', '/products/office-seating'], $result);
     }

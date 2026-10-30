@@ -31,6 +31,7 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Transparency\AboutBuilder;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -45,6 +46,8 @@ use Psr\Log\AbstractLogger;
 use RuntimeException;
 use Stringable;
 use Throwable;
+use TYPO3\CMS\Backend\Module\ModuleProvider;
+use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 
@@ -99,7 +102,7 @@ final class FieldSuggestionControllerTest extends TestCase
         return new RecordContext('pages', $field, $record, '', 'Office chairs', 'Ergonomic chairs.', $slugPid, $maxCount);
     }
 
-    private function subject(): FieldSuggestionController
+    private function subject(?AboutBuilder $about = null): FieldSuggestionController
     {
         $logged = &$this->logged;
         $logger = new class ($logged) extends AbstractLogger {
@@ -122,6 +125,7 @@ final class FieldSuggestionControllerTest extends TestCase
             $context,
             $logger,
             new LlmErrorClassifier(),
+            about: $about,
         );
     }
 
@@ -156,6 +160,27 @@ final class FieldSuggestionControllerTest extends TestCase
     private function body(array $overrides = []): array
     {
         return $overrides + ['table' => 'pages', 'field' => 'seo_title', 'uid' => 12, 'pid' => 12, 'count' => 3];
+    }
+
+    #[Test]
+    public function theAnswerSaysWhichModelConfigurationAndContextProducedIt(): void
+    {
+        $this->completion->structuredResult = ['suggestions' => ['Office chairs', 'Ergonomic office chairs', 'Chairs for your office']];
+        $this->reader->method('suggestionFields')->willReturn(['seo_title' => 'SEO title', 'slug' => 'URL segment']);
+
+        $about = $this->json($this->subject(new AboutBuilder($this->createStub(UriBuilder::class), $this->createStub(ModuleProvider::class)))
+            ->suggestAction($this->request($this->body(['count' => 4]))))['about'];
+
+        self::assertIsArray($about);
+        self::assertSame(FakeCompletionService::STRUCTURED_MODEL, $about['model']);
+        self::assertSame(['Page title', 'Content of 1 element'], $about['sources']);
+        self::assertSame([
+            ['label' => 'Feature', 'value' => 'Field suggestions, switched on'],
+            ['label' => 'Fields with suggestions you may edit', 'value' => 'SEO title, URL segment'],
+            // The count asked for, within the field control's maximum.
+            ['label' => 'Number of suggestions', 'value' => '4'],
+        ], array_slice($about['settings'], 0, 3));
+        self::assertStringStartsWith('20 requests per minute', $about['settings'][3]['value']);
     }
 
     #[Test]

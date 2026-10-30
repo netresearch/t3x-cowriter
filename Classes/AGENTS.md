@@ -53,6 +53,8 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Controller/FieldOverviewController.php | AJAX: one value or "keep" with a reason for every suggestion field of a record (one LLM call) |
 | EventListener/AddFieldOverviewButtonListener.php | Hidden "Suggest values for all fields" button in the record form's document header |
 | Service/FieldSuggestion/ | Field suggestions: permission-checked record context (`RecordContextReader`, `RecordFinder`), prompt + schema (`FieldSuggestionService`), limits (`SuggestionNormalizer`, `FieldProfile`), slugs (`SlugSuggestionBuilder`) |
+| Controller/ImageContextController.php | Read-only route for the image dialog: purpose, description proposal from the record (`Service/Image/ImagePurpose.php`), `about`; no model call, not rate-limited |
+| Service/Transparency/ | "About this suggestion": `ModelUse` (configuration + model/provider from nr-llm's response), `ContextSources` (what was sent, as names and counts), `AboutBuilder` (the `about` payload; links only with module access / admin) |
 | Service/CallerSource.php | Extension key + pipeline metadata naming this extension to nr-llm telemetry |
 | Service/DiagnosticService.php | 8-step LLM config chain checker |
 | Service/Dto/Severity.php | Check severity enum (Ok/Warning/Error) |

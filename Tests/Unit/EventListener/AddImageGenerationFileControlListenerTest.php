@@ -84,6 +84,28 @@ final class AddImageGenerationFileControlListenerTest extends TestCase
     }
 
     #[Test]
+    public function theControlNamesTheRecordTheImageIsFor(): void
+    {
+        $button = $this->button($this->dispatch(self::IMAGE_CONFIG, databaseRow: ['uid' => 34, 'pid' => 7]));
+
+        self::assertSame(['tt_content', 'image', '34', '7'], [
+            $button->getAttribute('data-table'),
+            $button->getAttribute('data-field'),
+            $button->getAttribute('data-uid'),
+            $button->getAttribute('data-pid'),
+        ]);
+    }
+
+    #[Test]
+    public function aNewRecordHasNoUidYet(): void
+    {
+        $button = $this->button($this->dispatch(self::IMAGE_CONFIG, databaseRow: ['uid' => 'NEW5f1', 'pid' => '7']));
+
+        self::assertSame(['0', '7'], [$button->getAttribute('data-uid'), $button->getAttribute('data-pid')]);
+        self::assertSame('0', $this->button($this->dispatch(self::IMAGE_CONFIG, databaseRow: []))->getAttribute('data-pid'));
+    }
+
+    #[Test]
     public function theControlCarriesTheTextsOfTheModule(): void
     {
         $button = $this->button($this->dispatch(self::IMAGE_CONFIG));
@@ -238,6 +260,7 @@ final class AddImageGenerationFileControlListenerTest extends TestCase
         bool $folder = true,
         ?GeneratedImageStorageInterface $storage = null,
         array $resultArray = ['javaScriptModules' => []],
+        array $databaseRow = ['uid' => 34],
     ): CustomFileControlsEvent {
         $extensionConfiguration = $this->createStub(ExtensionConfiguration::class);
         $extensionConfiguration->method('get')->willReturnMap([['t3_cowriter', 'image/enable', $enable]]);
@@ -259,7 +282,7 @@ final class AddImageGenerationFileControlListenerTest extends TestCase
             $resultArray,
             'tt_content',
             'image',
-            ['uid' => 34],
+            $databaseRow,
             $config,
             self::FIELD_ID,
             self::FIELD_NAME,

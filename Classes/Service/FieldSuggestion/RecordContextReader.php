@@ -35,6 +35,39 @@ class RecordContextReader
      */
     public const MAX_RECORD_FIELD_LENGTH = 1000;
 
+    /**
+     * Neighbouring pages whose titles are handed to the model at most.
+     */
+    public const MAX_SIBLING_PAGES = 5;
+
+    /**
+     * Page types whose title says nothing about the topic of a page: menu
+     * separator, folder, recycler. They are never listed as a neighbour or
+     * named as the parent.
+     */
+    public const EXCLUDED_DOKTYPES = [199, 254, 255];
+
+    /**
+     * The descriptive fields of a page, by name: the short text an editor
+     * writes about the page. The same principle as the suggestion fields:
+     * chosen by name, never by TCA type, so fields holding names, addresses,
+     * identifiers or code (author, author_email, target, cache_tags, TSconfig)
+     * are never read. Page fields that carry the suggestion control are read
+     * as well; the title travels on its own line.
+     */
+    public const PAGE_FIELDS = [
+        'nav_title',
+        'subtitle',
+        'abstract',
+        'seo_title',
+        'description',
+        'keywords',
+        'og_title',
+        'og_description',
+        'twitter_title',
+        'twitter_description',
+    ];
+
     public function __construct(
         private readonly RecordFinder $recordFinder,
         private readonly RecordEditAccess $recordEditAccess = new RecordEditAccess(),
@@ -121,6 +154,51 @@ class RecordContextReader
     }
 
     /**
+     * The record and page an image is generated for, with the same checks as
+     * a field suggestion except the suggestion control: the user may modify
+     * the table, edit the field and the record, on a page he may edit
+     * content on. Only the record's own fields and the page title are read.
+     *
+     * @throws FieldSuggestionException when the field does not exist, the
+     *                                  record does not exist or the user may
+     *                                  not edit it
+     */
+    public function readForImage(string $table, string $field, int $uid, int $pid, BackendUserAuthentication $backendUser): RecordContext
+    {
+        $column = Tca::column($table, $field);
+        if ($column === null) {
+            throw FieldSuggestionException::notEnabled();
+        }
+
+        if (!$backendUser->check('tables_modify', $table) || !$this->mayEditField($backendUser, $table, $field, $column)) {
+            throw FieldSuggestionException::accessDenied();
+        }
+
+        return $this->readRecord($table, $field, $uid, $pid, $backendUser, 1, false);
+    }
+
+    /**
+     * The fields of $table with the suggestion control the user may edit,
+     * as field name => label, in TCA order.
+     *
+     * @return array<string, string>
+     */
+    public function suggestionFields(string $table, BackendUserAuthentication $backendUser): array
+    {
+        $fields = [];
+        foreach (Tca::columns($table) as $field => $column) {
+            if (is_string($field) && is_array($column)
+                && $this->enabledColumn($table, $field) !== null
+                && $this->mayEditField($backendUser, $table, $field, $column)
+            ) {
+                $fields[$field] = FieldProfile::columnLabel($field, $column);
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
      * @param array<array-key, mixed> $column
      */
     private function mayEditField(BackendUserAuthentication $backendUser, string $table, string $field, array $column): bool
@@ -129,11 +207,14 @@ class RecordContextReader
         return !(bool) ($column['exclude'] ?? false) || $backendUser->check('non_exclude_fields', $table . ':' . $field);
     }
 
-    private function readRecord(string $table, string $field, int $uid, int $pid, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
+    /**
+     * @param bool $surroundings false: only the record and the page title, no page content, page fields or neighbours
+     */
+    private function readRecord(string $table, string $field, int $uid, int $pid, BackendUserAuthentication $backendUser, int $maxCount, bool $surroundings = true): RecordContext
     {
         return $uid <= 0
-            ? $this->readNewRecord($table, $field, $pid, $backendUser, $maxCount)
-            : $this->readExistingRecord($table, $field, $uid, $backendUser, $maxCount);
+            ? $this->readNewRecord($table, $field, $pid, $backendUser, $maxCount, $surroundings)
+            : $this->readExistingRecord($table, $field, $uid, $backendUser, $maxCount, $surroundings);
     }
 
     /**
@@ -178,7 +259,7 @@ class RecordContextReader
         return $column;
     }
 
-    private function readExistingRecord(string $table, string $field, int $uid, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
+    private function readExistingRecord(string $table, string $field, int $uid, BackendUserAuthentication $backendUser, int $maxCount, bool $surroundings): RecordContext
     {
         $workspaceId = $this->workspaceId($backendUser);
         $record      = $this->recordFinder->findRecord($table, $uid, $workspaceId);
@@ -186,7 +267,8 @@ class RecordContextReader
             throw FieldSuggestionException::accessDenied();
         }
 
-        $pid = $this->intValue($record['pid'] ?? 0);
+        $pid        = $this->intValue($record['pid'] ?? 0);
+        $languageId = $this->languageId($table, $record);
 
         if ($table === 'pages') {
             // A page translation has neither permissions nor content elements
@@ -196,9 +278,12 @@ class RecordContextReader
                 throw FieldSuggestionException::accessDenied();
             }
 
-            $page = ['uid' => $defaultPage['uid'] ?? 0, 'title' => $record['title'] ?? ''];
+            $page = ['uid' => $defaultPage['uid'] ?? 0, 'pid' => $defaultPage['pid'] ?? 0, 'title' => $record['title'] ?? ''];
+            // The page's own fields are the record's fields.
+            $localizedPage = null;
         } else {
-            $page = $this->pageForContentEdit($pid, $backendUser, $workspaceId);
+            $page          = $this->pageForContentEdit($pid, $backendUser, $workspaceId);
+            $localizedPage = $page === null ? null : $this->localizedPage($page, $languageId, $workspaceId);
         }
 
         // Language, editlock and explicit allow/deny of the record itself.
@@ -206,20 +291,26 @@ class RecordContextReader
             throw FieldSuggestionException::accessDenied();
         }
 
+        $titlePage = $localizedPage ?? $page;
+        $pageUid   = $page === null ? 0 : $this->intValue($page['uid'] ?? 0);
+
         return new RecordContext(
             table: $table,
             field: $field,
             record: $record,
             storedValue: $this->stringValue($record[$field] ?? ''),
-            pageTitle: $page === null ? '' : $this->stringValue($page['title'] ?? ''),
-            pageContent: $page === null ? '' : $this->pageContent($page, $this->languageId($table, $record), $backendUser, $workspaceId),
+            pageTitle: $titlePage === null ? '' : $this->stringValue($titlePage['title'] ?? ''),
+            pageContent: $page === null || !$surroundings ? '' : $this->pageContent($page, $languageId, $backendUser, $workspaceId),
             slugPid: $pid,
             maxCount: $maxCount,
             recordFields: $this->recordFields($table, $record, $backendUser),
+            pageFields: $localizedPage === null || !$surroundings ? [] : $this->pageFields($localizedPage, $backendUser),
+            parentPageTitle: $page === null || !$surroundings ? '' : $this->parentTitle($this->intValue($page['pid'] ?? 0), $languageId, $backendUser, $workspaceId),
+            siblingPageTitles: $page === null || !$surroundings ? [] : $this->siblingTitles($this->intValue($page['pid'] ?? 0), $pageUid, $languageId, $backendUser, $workspaceId),
         );
     }
 
-    private function readNewRecord(string $table, string $field, int $pid, BackendUserAuthentication $backendUser, int $maxCount): RecordContext
+    private function readNewRecord(string $table, string $field, int $pid, BackendUserAuthentication $backendUser, int $maxCount, bool $surroundings): RecordContext
     {
         $workspaceId = $this->workspaceId($backendUser);
 
@@ -242,17 +333,186 @@ class RecordContextReader
             }
         }
 
+        if ($page === null || !$surroundings) {
+            return new RecordContext(
+                table: $table,
+                field: $field,
+                record: ['pid' => $pid],
+                storedValue: '',
+                pageTitle: $page === null ? '' : $this->stringValue($page['title'] ?? ''),
+                pageContent: '',
+                slugPid: $pid,
+                maxCount: $maxCount,
+            );
+        }
+
+        $isPage = $table === 'pages';
+
         return new RecordContext(
             table: $table,
             field: $field,
             record: ['pid' => $pid],
             storedValue: '',
             // A new page has no content yet: its parent page is the context.
-            pageTitle: $page === null ? '' : $this->stringValue($page['title'] ?? ''),
-            pageContent: $page === null ? '' : $this->pageContent($page, 0, $backendUser, $workspaceId),
+            pageTitle: $this->stringValue($page['title'] ?? ''),
+            pageContent: $this->pageContent($page, 0, $backendUser, $workspaceId),
             slugPid: $pid,
             maxCount: $maxCount,
+            pageFields: $isPage ? [] : $this->pageFields($page, $backendUser),
+            // A new page's parent is the page above, already named as the page title;
+            // its neighbours are the subpages of that page.
+            parentPageTitle: $isPage ? '' : $this->parentTitle($this->intValue($page['pid'] ?? 0), 0, $backendUser, $workspaceId),
+            siblingPageTitles: $isPage
+                ? $this->siblingTitles($pid, 0, 0, $backendUser, $workspaceId)
+                : $this->siblingTitles($this->intValue($page['pid'] ?? 0), $pid, 0, $backendUser, $workspaceId),
         );
+    }
+
+    /**
+     * The page's translation into $languageId when there is one, else the page.
+     *
+     * @param array<string, mixed> $page
+     *
+     * @return array<string, mixed>
+     */
+    private function localizedPage(array $page, int $languageId, int $workspaceId): array
+    {
+        if ($languageId <= 0) {
+            return $page;
+        }
+
+        return $this->recordFinder->findPageTranslation($this->intValue($page['uid'] ?? 0), $languageId, $workspaceId) ?? $page;
+    }
+
+    /**
+     * The descriptive fields of a page the user may read, as plain text.
+     *
+     * @param array<string, mixed> $page
+     *
+     * @return array<string, array{label: string, value: string}>
+     */
+    private function pageFields(array $page, BackendUserAuthentication $backendUser): array
+    {
+        if (!$backendUser->check('tables_select', 'pages')) {
+            return [];
+        }
+
+        $fields = [];
+        foreach (Tca::columns('pages') as $field => $column) {
+            if (!is_string($field) || !is_array($column) || !$this->isDescriptivePageField($field, $column)
+                || !$this->mayEditField($backendUser, 'pages', $field, $column)
+            ) {
+                continue;
+            }
+
+            $value = mb_substr($this->plainText($page[$field] ?? ''), 0, self::MAX_RECORD_FIELD_LENGTH, 'UTF-8');
+            if ($value !== '') {
+                $fields[$field] = ['label' => FieldProfile::columnLabel($field, $column), 'value' => $value];
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * A page field with text about the page: by name (PAGE_FIELDS), or one
+     * the suggestion control is configured for. Never the title (it has its
+     * own line) and never a slug.
+     *
+     * @param array<array-key, mixed> $column
+     */
+    private function isDescriptivePageField(string $field, array $column): bool
+    {
+        if ($field === 'title' || (Tca::config($column)['type'] ?? null) === 'slug') {
+            return false;
+        }
+
+        return in_array($field, self::PAGE_FIELDS, true) || $this->enabledColumn('pages', $field) !== null;
+    }
+
+    /**
+     * The title of the parent page in $languageId (else in the default
+     * language), when the user may see that page and it is a visible content
+     * page; '' otherwise.
+     */
+    private function parentTitle(int $parentUid, int $languageId, BackendUserAuthentication $backendUser, int $workspaceId): string
+    {
+        if ($parentUid <= 0) {
+            return '';
+        }
+
+        $parent = $this->recordFinder->findRecord('pages', $parentUid, $workspaceId);
+        if ($parent === null || !$this->isListablePage($parent, $backendUser)) {
+            return '';
+        }
+
+        return $this->pageTitleIn($parent, $languageId, $workspaceId);
+    }
+
+    /**
+     * The titles of up to MAX_SIBLING_PAGES other subpages of $parentUid the
+     * user may see, in page tree order, in $languageId where a visible
+     * translation exists.
+     *
+     * @return list<string>
+     */
+    private function siblingTitles(int $parentUid, int $pageUid, int $languageId, BackendUserAuthentication $backendUser, int $workspaceId): array
+    {
+        // A page on the root level has no parent page to share.
+        if ($parentUid <= 0) {
+            return [];
+        }
+
+        $titles = [];
+        foreach ($this->recordFinder->findVisibleSubpages($parentUid, $workspaceId) as $sibling) {
+            if ($this->intValue($sibling['uid'] ?? 0) === $pageUid || !$this->isListablePage($sibling, $backendUser)) {
+                continue;
+            }
+
+            $title = $this->pageTitleIn($sibling, $languageId, $workspaceId);
+            if ($title !== '') {
+                $titles[] = $title;
+            }
+
+            if (count($titles) >= self::MAX_SIBLING_PAGES) {
+                break;
+            }
+        }
+
+        return $titles;
+    }
+
+    /**
+     * Visible to visitors, a content page and one the user may see in the
+     * page tree (show permission, inside a web mount).
+     *
+     * @param array<string, mixed> $page
+     */
+    private function isListablePage(array $page, BackendUserAuthentication $backendUser): bool
+    {
+        return $backendUser->check('tables_select', 'pages')
+            && $this->recordFinder->isVisibleRow($page)
+            && !in_array($this->intValue($page['doktype'] ?? 0), self::EXCLUDED_DOKTYPES, true)
+            && $backendUser->doesUserHaveAccess($page, Permission::PAGE_SHOW);
+    }
+
+    /**
+     * The title of a default-language page in $languageId when it has a
+     * visible translation there, else its own title, as plain text.
+     *
+     * @param array<string, mixed> $page
+     */
+    private function pageTitleIn(array $page, int $languageId, int $workspaceId): string
+    {
+        $translation = $this->recordFinder->findPageTranslation($this->intValue($page['uid'] ?? 0), $languageId, $workspaceId);
+        if ($translation !== null && $this->recordFinder->isVisibleRow($translation)) {
+            $title = $this->plainText($translation['title'] ?? '');
+            if ($title !== '') {
+                return $title;
+            }
+        }
+
+        return $this->plainText($page['title'] ?? '');
     }
 
     /**
@@ -322,8 +582,9 @@ class RecordContextReader
 
     /**
      * The record's own text the user may read, as context for the model: its
-     * label field, the fields with the suggestion control and the bodytext.
-     * Excluded fields count only when the user has access to them.
+     * label field, the fields with the suggestion control and the bodytext;
+     * of a page also its descriptive fields (PAGE_FIELDS). Excluded fields
+     * count only when the user has access to them.
      *
      * @param array<string, mixed> $record
      *
@@ -338,7 +599,8 @@ class RecordContextReader
                 continue;
             }
 
-            $isContext = $field === $labelField || $field === 'bodytext' || $this->enabledColumn($table, $field) !== null;
+            $isContext = $field === $labelField || $field === 'bodytext' || $this->enabledColumn($table, $field) !== null
+                || ($table === 'pages' && in_array($field, self::PAGE_FIELDS, true));
             if (!$isContext || !$this->mayEditField($backendUser, $table, $field, $column)) {
                 continue;
             }

@@ -21,6 +21,7 @@ import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
 import DocumentService from '@typo3/core/document-service.js';
 import { applyValue as writeFieldValue, findField } from '@netresearch/t3_cowriter/FieldValue';
 import FieldOverview from '@netresearch/t3_cowriter/FieldOverview';
+import { showAbout } from '@netresearch/t3_cowriter/AboutSection';
 
 const DEFAULT_LABELS = {
     heading: 'AI suggestions',
@@ -115,7 +116,12 @@ export class FieldSuggestions {
         this.list = document.createElement('div');
         this.list.className = 'list-group cowriter-suggestions-list';
 
-        this.panel.append(header, this.list);
+        // "About this suggestion", below the list: the list's keyboard
+        // handling only ever looks at the list's own buttons.
+        this.about = document.createElement('div');
+        this.about.className = 'cowriter-suggestions-about';
+
+        this.panel.append(header, this.list, this.about);
         this.panel.addEventListener('keydown', (event) => this.onPanelKeydown(event));
 
         // The live region stays outside the panel so the confirmation after
@@ -146,15 +152,17 @@ export class FieldSuggestions {
         this.panel.hidden = false;
         this.control.setAttribute('aria-expanded', 'true');
         this.list.replaceChildren();
+        this.about.replaceChildren();
         this.setStatus(this.labels.loading, false);
         this.control.setAttribute('aria-busy', 'true');
         const token = ++this.requestToken;
 
         try {
-            const suggestions = await this.fetchSuggestions();
+            const { suggestions, about } = await this.fetchSuggestions();
             if (token !== this.requestToken) {
                 return;
             }
+            showAbout(this.about, about);
             if (suggestions.length === 0) {
                 this.setStatus(this.labels.empty, true);
                 return;
@@ -187,7 +195,8 @@ export class FieldSuggestions {
     }
 
     /**
-     * @returns {Promise<string[]>}
+     * @returns {Promise<{suggestions: string[], about: unknown}>} the suggestions and the
+     *     route's "about this suggestion" data
      */
     async fetchSuggestions() {
         const data = this.control.dataset;
@@ -220,7 +229,10 @@ export class FieldSuggestions {
         if (!result || result.success !== true || !Array.isArray(result.suggestions)) {
             throw new Error(result && typeof result.error === 'string' ? result.error : this.labels.error);
         }
-        return result.suggestions.filter((value) => typeof value === 'string' && value !== '');
+        return {
+            suggestions: result.suggestions.filter((value) => typeof value === 'string' && value !== ''),
+            about: result.about ?? null,
+        };
     }
 
     /**

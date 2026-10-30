@@ -28,6 +28,7 @@ const sharedAliases = {
     '@netresearch/t3_cowriter/AIService': resolve(__dirname, 'Resources/Public/JavaScript/Ckeditor/AIService.js'),
     '@netresearch/t3_cowriter/CowriterDialog': resolve(__dirname, 'Resources/Public/JavaScript/Ckeditor/CowriterDialog.js'),
     '@netresearch/t3_cowriter/Labels': resolve(__dirname, 'Resources/Public/JavaScript/Ckeditor/Labels.js'),
+    '@netresearch/t3_cowriter/AboutSection': resolve(__dirname, 'Resources/Public/JavaScript/Ckeditor/AboutSection.js'),
     '@netresearch/t3_cowriter/HtmlSanitizer': resolve(__dirname, 'Resources/Public/JavaScript/Ckeditor/HtmlSanitizer.js'),
     '@netresearch/t3_cowriter/ImageDialog': resolve(__dirname, 'Resources/Public/JavaScript/Ckeditor/ImageDialog.js'),
     '@netresearch/t3_cowriter/InlineSuggestions': resolve(

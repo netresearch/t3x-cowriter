@@ -601,6 +601,8 @@ describe('Cowriter Plugin', () => {
         let mockEditor;
         let componentCallbacks;
         let dialogShow;
+        /** The options each ImageDialog was constructed with. */
+        let dialogOptions;
         let cursor;
         let marker;
         /** Where the remembered insertion point is when the image arrives. */
@@ -624,6 +626,7 @@ describe('Cowriter Plugin', () => {
         beforeEach(async () => {
             vi.resetModules();
             dialogShow = vi.fn().mockResolvedValue(generated);
+            dialogOptions = [];
             marker = null;
             markerStart = undefined;
 
@@ -638,6 +641,10 @@ describe('Cowriter Plugin', () => {
             vi.doMock('../../Resources/Public/JavaScript/Ckeditor/ImageDialog.js', () => ({
                 ImageDialog: class MockImageDialog {
                     show = dialogShow;
+
+                    constructor(_service, options) {
+                        dialogOptions.push(options);
+                    }
                 },
             }));
 
@@ -819,6 +826,45 @@ describe('Cowriter Plugin', () => {
 
             expect(mockEditor.model.insertObject).not.toHaveBeenCalled();
             expect(Notification.error).not.toHaveBeenCalled();
+        });
+
+        it('tells the dialog the edited record, for a description proposal', async () => {
+            vi.spyOn(plugin, '_getRecordContext').mockReturnValue({ table: 'tt_content', uid: 7, field: 'bodytext' });
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(dialogOptions).toHaveLength(1);
+            expect(dialogOptions[0].target).toEqual({ table: 'tt_content', uid: 7, field: 'bodytext' });
+            expect(dialogOptions[0].showField).toBeUndefined();
+        });
+
+        it('opens the dialog without a target when the record cannot be found', async () => {
+            vi.spyOn(plugin, '_getRecordContext').mockImplementation(() => { throw new Error('no DOM root'); });
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(dialogOptions[0].target).toBeNull();
+            expect(dialogShow).toHaveBeenCalledTimes(1);
+            expect(mockEditor.model.insertObject).toHaveBeenCalledTimes(1);
+        });
+
+        it('names the model that generated the image in the success message', async () => {
+            dialogShow.mockResolvedValue({ ...generated, about: { model: 'gpt-image-2' } });
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(Notification.success).toHaveBeenCalledWith(
+                'Image inserted',
+                expect.stringMatching(/1:\/user_upload\/a-lighthouse-0a1b2c3d\.png.* Generated with gpt-image-2\.$/),
+                8,
+            );
+        });
+
+        it('names no model when the answer carries none', async () => {
+            const button = componentCallbacks['cowriterImage']();
+            await button.fire('execute');
+
+            expect(Notification.success.mock.calls[0][1]).not.toContain('Generated with');
         });
 
         it('ignores a second click while the dialog is open', async () => {

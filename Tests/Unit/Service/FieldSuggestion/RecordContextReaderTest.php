@@ -583,7 +583,8 @@ final class RecordContextReaderTest extends TestCase
     public function theUsersWorkspaceIsPassedToEveryRead(): void
     {
         $finder = $this->createMock(RecordFinder::class);
-        $finder->expects(self::exactly(2))->method('findRecord')->willReturnCallback(
+        // The element, its page and the page's parent.
+        $finder->expects(self::exactly(3))->method('findRecord')->willReturnCallback(
             static function (string $table, int $uid, int $workspaceId): array {
                 self::assertSame(4, $workspaceId);
 
@@ -591,6 +592,7 @@ final class RecordContextReaderTest extends TestCase
             },
         );
         $finder->expects(self::once())->method('findPageContent')->with(12, 0, 4)->willReturn([]);
+        $finder->expects(self::once())->method('findVisibleSubpages')->with(3, 4)->willReturn([]);
         $user            = $this->editor();
         $user->workspace = 4;
 

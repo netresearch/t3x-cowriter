@@ -143,6 +143,15 @@ final readonly class AddImageGenerationFileControlListener
     }
 
     /**
+     * A uid or pid as a string, '0' for anything that is none ("NEW…" ids of
+     * unsaved records).
+     */
+    private function positiveNumber(mixed $value): string
+    {
+        return is_numeric($value) && (int) $value > 0 ? (string) (int) $value : '0';
+    }
+
+    /**
      * @return list<string>
      */
     private static function extensionList(mixed $value): array
@@ -165,6 +174,7 @@ final readonly class AddImageGenerationFileControlListener
     private function renderControl(CustomFileControlsEvent $event, array $config, array $extensions): string
     {
         $label    = $this->labels->get(self::LABEL_PREFIX . 'button');
+        $row      = $event->getDatabaseRow();
         $inline   = is_array($config['inline'] ?? null) ? $config['inline'] : [];
         $maxItems = is_numeric($config['maxitems'] ?? null) ? (int) $config['maxitems'] : 0;
 
@@ -177,6 +187,12 @@ final readonly class AddImageGenerationFileControlListener
             'data-form-field'         => $event->getFormFieldName(),
             'data-max-items'          => (string) $maxItems,
             'data-allowed-extensions' => implode(',', $extensions),
+            // The record the image is for: the dialog asks tx_cowriter_image_context
+            // what it is for and proposes a description. A new record has no uid yet.
+            'data-table' => $event->getTableName(),
+            'data-field' => $event->getFieldName(),
+            'data-uid'   => $this->positiveNumber($row['uid'] ?? null),
+            'data-pid'   => $this->positiveNumber($row['pid'] ?? null),
         ];
         // Core sets this flag to false when the field is full (and when it is
         // read-only, which never gets here).

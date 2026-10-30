@@ -408,6 +408,93 @@ describe('FieldSuggestions', () => {
         delete globalThis.TYPO3;
     });
 
+    describe('About this suggestion', () => {
+        const ABOUT = {
+            origin: 'Cowriter, field suggestions',
+            feature: 'field suggestions',
+            configuration: 'Default',
+            model: 'gpt-5 (OpenAI)',
+            note: '',
+            sources: ['Field name and current value'],
+            settings: [{ label: 'Feature', value: 'field suggestions is switched on' }],
+            links: [{ label: 'LLM configurations', url: '/typo3/module/nrllm' }],
+        };
+
+        function list() {
+            return panel().querySelector('.cowriter-suggestions-list');
+        }
+
+        it('renders the section in the panel below the list, outside the list and the live region', async () => {
+            const { subject } = await setup();
+
+            await openWith(subject, { success: true, suggestions: ['A', 'B'], about: ABOUT });
+
+            const section = panel().querySelector('.cowriter-about');
+            expect(section).not.toBeNull();
+            expect(section.parentElement.classList.contains('cowriter-suggestions-about')).toBe(true);
+            expect(list().nextElementSibling).toBe(section.parentElement);
+            expect(list().querySelector('.cowriter-about')).toBeNull();
+            expect(status().querySelector('.cowriter-about')).toBeNull();
+            expect(section.querySelector('dd').textContent).toBe('Cowriter, field suggestions');
+        });
+
+        it('also renders the section when no suggestion came back', async () => {
+            const { subject } = await setup();
+
+            await openWith(subject, { success: true, suggestions: [], about: ABOUT });
+
+            expect(panel().querySelector('.cowriter-suggestions-about .cowriter-about')).not.toBeNull();
+            expect(status().textContent).toBe('No suggestions were returned.');
+        });
+
+        it('keeps the arrow keys between the suggestion buttons', async () => {
+            const { subject } = await setup();
+            await openWith(subject, { success: true, suggestions: ['A', 'B'], about: ABOUT });
+            const buttons = suggestionButtons();
+            const press = (key) => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+
+            press('ArrowDown');
+            expect(document.activeElement).toBe(buttons[1]);
+            press('ArrowDown');
+            expect(document.activeElement).toBe(buttons[0]);
+            press('End');
+            expect(document.activeElement).toBe(buttons[1]);
+        });
+
+        it('clears the section of the previous answer when the panel opens again', async () => {
+            const { subject } = await setup();
+            await openWith(subject, { success: true, suggestions: ['A'], about: ABOUT });
+            subject.close();
+            let finish;
+            AjaxRequest.nextPost = () => new Promise((resolve) => { finish = resolve; });
+
+            const pending = subject.open();
+
+            expect(panel().querySelector('.cowriter-about')).toBeNull();
+            finish(jsonResponse({ success: true, suggestions: ['B'] }));
+            await pending;
+        });
+
+        it('shows no section after a failed request that followed one with a section', async () => {
+            const { subject } = await setup();
+            await openWith(subject, { success: true, suggestions: ['A'], about: ABOUT });
+            subject.close();
+            AjaxRequest.nextPost = () => Promise.reject(jsonResponse({ success: false, error: 'Refused.' }));
+
+            await subject.open();
+
+            expect(panel().querySelector('.cowriter-about')).toBeNull();
+        });
+
+        it('renders no section for an answer without about data', async () => {
+            const { subject } = await setup();
+
+            await openWith(subject, { success: true, suggestions: ['A'] });
+
+            expect(panel().querySelector('.cowriter-about')).toBeNull();
+        });
+    });
+
     it('falls back to English labels when the control carries none', async () => {
         render(INPUT_FIXTURE);
         const control = document.getElementById(CONTROL_ID);

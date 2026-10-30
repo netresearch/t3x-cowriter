@@ -32,9 +32,11 @@ use Netresearch\T3Cowriter\Service\Presentation\PresentationSwitchToken;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationWriter;
 use Netresearch\T3Cowriter\Service\Presentation\SectionBoundary;
 use Netresearch\T3Cowriter\Service\Presentation\SectionPlanner;
+use Netresearch\T3Cowriter\Service\Presentation\SectionProposal;
 use Netresearch\T3Cowriter\Service\Presentation\SectionProposalService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\Transparency\AboutBuilder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -91,6 +93,7 @@ final readonly class PresentationController
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
         private BackendLabels $labels = new BackendLabels(),
         private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
+        private ?AboutBuilder $about = null,
     ) {}
 
     public function proposeAction(ServerRequestInterface $request): ResponseInterface
@@ -136,28 +139,32 @@ final readonly class PresentationController
             return $this->failure($this->labels->get($e->getLabelKey()), $rateLimitResult, $e->getHttpStatus());
         }
 
+        $modelUse = null;
         if ($source === 'model') {
             $proposal = $this->proposeWithModel($blocks, $element, $rateLimitResult);
             if ($proposal instanceof ResponseInterface) {
                 return $proposal;
             }
 
-            $sections = $proposal;
+            $sections = $proposal->sections;
+            $modelUse = $proposal->modelUse;
         }
 
         // The layouts are backed enums, encoded as their value.
-        return $this->jsonResponseWithRateLimitHeaders(
-            [
-                'success'     => true,
-                'source'      => $source,
-                'fingerprint' => $element->fingerprint(),
-                'layouts'     => $element->layouts,
-                'sections'    => $this->preview($blocks, $sections),
-                'warnings'    => $this->warnings($element),
-                'images'      => count($element->fileReferences),
-            ],
-            $rateLimitResult,
-        );
+        $payload = [
+            'success'     => true,
+            'source'      => $source,
+            'fingerprint' => $element->fingerprint(),
+            'layouts'     => $element->layouts,
+            'sections'    => $this->preview($blocks, $sections),
+            'warnings'    => $this->warnings($element),
+            'images'      => count($element->fileReferences),
+        ];
+        if ($this->about instanceof AboutBuilder) {
+            $payload['about'] = $this->about->presentation($modelUse, count($blocks), $backendUser);
+        }
+
+        return $this->jsonResponseWithRateLimitHeaders($payload, $rateLimitResult);
     }
 
     public function createAction(ServerRequestInterface $request): ResponseInterface
@@ -267,9 +274,9 @@ final readonly class PresentationController
     /**
      * @param list<Block> $blocks
      *
-     * @return list<SectionBoundary>|ResponseInterface
+     * @return SectionProposal|ResponseInterface the proposal; never one without sections
      */
-    private function proposeWithModel(array $blocks, PresentationElement $element, RateLimitResult $rateLimitResult): array|ResponseInterface
+    private function proposeWithModel(array $blocks, PresentationElement $element, RateLimitResult $rateLimitResult): SectionProposal|ResponseInterface
     {
         $selection     = $this->configurationSelector->trySelect(null);
         $configuration = $selection->configuration;
@@ -278,7 +285,7 @@ final readonly class PresentationController
         }
 
         try {
-            $sections = $this->proposalService->propose($blocks, $element->header, $configuration, $this->userId());
+            $proposal = $this->proposalService->propose($blocks, $element->header, $configuration, $this->userId());
         } catch (Throwable $e) {
             $refusal = BudgetRefusal::find($e);
             if ($refusal instanceof BudgetCheckResult) {
@@ -291,13 +298,13 @@ final readonly class PresentationController
             return $this->failure($this->errorMessage($e), $rateLimitResult, 502);
         }
 
-        if ($sections === []) {
+        if ($proposal->sections === []) {
             $refusal = PresentationException::noSplit();
 
             return $this->failure($this->labels->get($refusal->getLabelKey()), $rateLimitResult, $refusal->getHttpStatus());
         }
 
-        return $sections;
+        return $proposal;
     }
 
     /**

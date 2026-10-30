@@ -26,10 +26,13 @@ use Netresearch\T3Cowriter\Service\Image\ImageGenerationConfiguration;
 use Netresearch\T3Cowriter\Service\Image\ImageRejectedException;
 use Netresearch\T3Cowriter\Service\Image\StoredImage;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
+use Netresearch\T3Cowriter\Service\Transparency\AboutBuilder;
+use Netresearch\T3Cowriter\Service\Transparency\ModelUse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Resource\Folder;
 
@@ -63,6 +66,7 @@ final readonly class ImageGenerationController
         private LoggerInterface $logger,
         private BackendLabels $labels = new BackendLabels(),
         private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
+        private ?AboutBuilder $about = null,
     ) {}
 
     public function generateAction(ServerRequestInterface $request): ResponseInterface
@@ -203,10 +207,17 @@ final readonly class ImageGenerationController
             );
         }
 
-        return $this->jsonResponseWithRateLimitHeaders(
-            $this->successPayload($stored, $imageRequest->prompt),
-            $rateLimitResult,
-        );
+        $payload = $this->successPayload($stored, $imageRequest->prompt);
+        $user    = $GLOBALS['BE_USER'] ?? null;
+        if ($this->about instanceof AboutBuilder && $user instanceof BackendUserAuthentication) {
+            // The model nr-llm reports for the answer; the requested one when it reports none.
+            $modelUse = $configuration instanceof LlmConfiguration
+                ? new ModelUse($configuration->getIdentifier(), $configuration->getName(), (int) $configuration->getUid(), $result->model !== '' ? $result->model : $model, $result->provider)
+                : ModelUse::withoutConfiguration($result->model !== '' ? $result->model : $model, $result->provider);
+            $payload['about'] = $this->about->imageGeneration($modelUse, $this->imageConfiguration->model() !== null, ImageGenerationRequest::MAX_PROMPT_LENGTH, $user);
+        }
+
+        return $this->jsonResponseWithRateLimitHeaders($payload, $rateLimitResult);
     }
 
     /**
