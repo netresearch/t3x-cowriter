@@ -46,10 +46,12 @@ final class PresentationSwitcherTest extends TestCase
 
     private RecordingLogger $logger;
 
+    private int $translations = 0;
+
     protected function setUp(): void
     {
         $GLOBALS['TCA'] = ['tt_content' => [
-            'ctrl'    => ['enablecolumns' => ['disabled' => 'hidden']],
+            'ctrl'    => ['enablecolumns' => ['disabled' => 'hidden'], 'languageField' => 'sys_language_uid', 'transOrigPointerField' => 'l18n_parent'],
             'columns' => ['hidden' => ['exclude' => true, 'config' => ['type' => 'check']]],
         ]];
         $this->logger  = new RecordingLogger();
@@ -97,6 +99,9 @@ final class PresentationSwitcherTest extends TestCase
         $finder = $this->createStub(RecordFinder::class);
         $finder->method('findRecord')->willReturnCallback(
             fn (string $table, int $uid, int $workspaceId): ?array => $this->records[$table . ':' . $uid . ':' . $workspaceId] ?? null,
+        );
+        $finder->method('countTranslations')->willReturnCallback(
+            fn (string $table, string $pointerField, int $uid, int $workspaceId): int => $table === 'tt_content' && $pointerField === 'l18n_parent' && $uid === 10 ? $this->translations : 0,
         );
 
         return new PresentationSwitcher($finder, $this->logger);
@@ -238,5 +243,49 @@ final class PresentationSwitcherTest extends TestCase
         $this->expectExceptionObject(PresentationException::switchFailed());
 
         $this->switcher()->switch(20, 10, $this->editor());
+    }
+
+    #[Test]
+    public function anOriginalWithTranslationsIsNotHidden(): void
+    {
+        $this->translations = 1;
+
+        try {
+            $this->switcher()->switch(20, 10, $this->editor());
+            self::fail('The switch must be refused');
+        } catch (PresentationException $e) {
+            self::assertSame(['presentation.switchNote.translations', 409], [$e->getLabelKey(), $e->getHttpStatus()]);
+        }
+
+        self::assertSame([], $this->started);
+    }
+
+    #[Test]
+    public function aConnectedTranslationIsNotHidden(): void
+    {
+        $this->records['tt_content:10:0'] = ['sys_language_uid' => 1, 'l18n_parent' => 5] + self::ORIGINAL;
+
+        try {
+            $this->switcher()->switch(20, 10, $this->editor());
+            self::fail('The switch must be refused');
+        } catch (PresentationException $e) {
+            self::assertSame(['presentation.switchNote.connectedTranslation', 409], [$e->getLabelKey(), $e->getHttpStatus()]);
+        }
+
+        self::assertSame([], $this->started);
+    }
+
+    #[Test]
+    public function aFreeTranslationIsHidden(): void
+    {
+        // Its translations are not counted: a translation has none.
+        $this->translations               = 1;
+        $this->records['tt_content:10:0'] = ['sys_language_uid' => 1, 'l18n_parent' => 0] + self::ORIGINAL;
+        $this->records['tt_content:20:0'] = ['sys_language_uid' => 1] + self::NEW;
+        $this->queueDataHandler();
+
+        $this->switcher()->switch(20, 10, $this->editor());
+
+        self::assertCount(1, $this->started);
     }
 }

@@ -402,7 +402,15 @@ export class AlternativePresentation {
             buttons.append(this.button(this.labels.open, 'btn btn-default cowriter-presentation-edit', () => this.navigate(result.editUrl)));
         }
 
-        this.panel.replaceChildren(this.heading(), message, buttons);
+        const parts = [this.heading(), message];
+        if (!this.switched && typeof result.switchNote === 'string' && result.switchNote !== '') {
+            // Why there is no switch: the original has translations or is a connected one.
+            const note = document.createElement('p');
+            note.className = 'alert alert-warning cowriter-presentation-switch-note';
+            note.textContent = result.switchNote;
+            parts.push(note);
+        }
+        this.panel.replaceChildren(...parts, buttons);
         this.setStatus(message.textContent, false);
         this.panel.querySelector('button')?.focus();
     }
@@ -454,7 +462,11 @@ export class AlternativePresentation {
      * @param {number} uid
      */
     syncHiddenField(uid) {
-        const name = 'data[tt_content][' + uid + '][hidden]';
+        const field = this.control.dataset.hiddenField;
+        if (!field) {
+            return;
+        }
+        const name = 'data[tt_content][' + uid + '][' + field + ']';
         const stored = document.querySelector('input[type="hidden"][name="' + CSS.escape(name) + '"]');
         if (!stored || stored.value === '1') {
             return;

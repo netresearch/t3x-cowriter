@@ -337,8 +337,8 @@ final class PresentationWriterTest extends FunctionalTestCase
         }
 
         self::assertSame([], $this->liveContentOf('tab'));
-        // Elements 10, 11, 13, 14, 15, 17 and 18: no element of the default type was left behind.
-        self::assertCount(7, $this->liveContentOf('text'));
+        // Elements 10, 11, 13, 14, 15, 17, 18 and 20: no element of the default type was left behind.
+        self::assertCount(8, $this->liveContentOf('text'));
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_bootstrappackage_tab_item');
         $queryBuilder->getRestrictions()->removeAll();
         self::assertSame(0, (int) $queryBuilder->count('uid')->from('tx_bootstrappackage_tab_item')
@@ -382,8 +382,9 @@ final class PresentationWriterTest extends FunctionalTestCase
     {
         $backendUser = $this->editor(2);
 
-        $original = $this->reader()->read(10, $backendUser);
-        self::assertSame([1, false], [$original->translationCount, $original->connectedTranslation], 'element 18 translates element 10');
+        $original = $this->reader()->read(20, $backendUser);
+        self::assertSame([1, false], [$original->translationCount, $original->connectedTranslation], 'element 18 translates element 20');
+        self::assertSame(0, $this->reader()->read(10, $backendUser)->translationCount);
 
         $translation = $this->reader()->read(18, $backendUser);
         self::assertSame([0, true], [$translation->translationCount, $translation->connectedTranslation]);
@@ -439,8 +440,10 @@ final class PresentationWriterTest extends FunctionalTestCase
         self::assertSame(['A grey office chair', 'Its backrest'], array_column($references, 'alternative'));
         self::assertSame(['media', 'media'], array_column($references, 'fieldname'));
 
-        // The original keeps its own.
-        self::assertCount(2, $this->fileReferencesOf('tt_content', 19));
+        // The original keeps its own; the reference left in "image", which
+        // the form of a Text & Media element does not show, is not copied.
+        self::assertCount(3, $this->fileReferencesOf('tt_content', 19));
+        self::assertNotContains('Left over', array_column($references, 'title'));
     }
 
     #[Test]

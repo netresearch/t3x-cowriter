@@ -42,6 +42,7 @@ use Throwable;
 use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Http\JsonResponse;
 
 /**
  * "Present as tabs or accordion" for a text element, in two steps.
@@ -204,6 +205,13 @@ final readonly class PresentationController
         }
 
         $pageUrl = $this->pageUrl($element->pageUid, $element->languageId, $uid);
+        // No switch for an original with translations or a connected
+        // translation (see PresentationSwitcher); the editor reads why.
+        $switchRefusal = match (true) {
+            $element->translationCount > 0 => PresentationException::switchHasTranslations(),
+            $element->connectedTranslation => PresentationException::switchConnectedTranslation(),
+            default                        => null,
+        };
 
         return $this->jsonResponseWithRateLimitHeaders(
             [
@@ -211,7 +219,8 @@ final readonly class PresentationController
                 'uid'         => $uid,
                 'originalUid' => $element->uid,
                 'layout'      => $dto->layout->value,
-                'switchToken' => $this->switchToken->issue($uid, $element->uid, $this->userId(), $backendUser->workspace),
+                'switchToken' => $switchRefusal instanceof PresentationException ? '' : $this->switchToken->issue($uid, $element->uid, $this->userId(), $backendUser->workspace),
+                'switchNote'  => $switchRefusal instanceof PresentationException ? $this->labels->get($switchRefusal->getLabelKey()) : '',
                 'pageUrl'     => $pageUrl,
                 'editUrl'     => $this->editUrl($uid, $pageUrl),
             ],
@@ -219,27 +228,26 @@ final readonly class PresentationController
         );
     }
 
+    /**
+     * Not counted against the rate limit of the model routes: the switch asks
+     * no model, needs the token of a pair this user just created, and only
+     * sets the hidden field of those two records.
+     */
     public function switchAction(ServerRequestInterface $request): ResponseInterface
     {
-        $rateLimitResult = $this->rateLimiter->checkLimit((string) $this->userId());
-        if (!$rateLimitResult->allowed) {
-            return $this->rateLimitedResponse($rateLimitResult);
-        }
-
-        $refusal = $this->refuseUnlessEnabled($rateLimitResult);
-        if ($refusal instanceof ResponseInterface) {
-            return $refusal;
+        if (!$this->presentationConfiguration->isEnabled()) {
+            return new JsonResponse(['success' => false, 'error' => $this->labels->get('presentation.error.disabled')], 403);
         }
 
         $body = $this->parseJsonBody($request);
         $dto  = PresentationSwitchRequest::fromArray($body ?? []);
         if ($body === null || !$dto->isValid()) {
-            return $this->failure('Invalid request.', $rateLimitResult, 400);
+            return new JsonResponse(['success' => false, 'error' => 'Invalid request.'], 400);
         }
 
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if (!$backendUser instanceof BackendUserAuthentication) {
-            return $this->failure('No backend user session.', $rateLimitResult, 403);
+            return new JsonResponse(['success' => false, 'error' => 'No backend user session.'], 403);
         }
 
         try {
@@ -250,10 +258,10 @@ final readonly class PresentationController
 
             $this->switcher->switch($dto->newUid, $dto->originalUid, $backendUser);
         } catch (PresentationException $e) {
-            return $this->failure($this->labels->get($e->getLabelKey()), $rateLimitResult, $e->getHttpStatus());
+            return new JsonResponse(['success' => false, 'error' => $this->labels->get($e->getLabelKey())], $e->getHttpStatus());
         }
 
-        return $this->jsonResponseWithRateLimitHeaders(['success' => true], $rateLimitResult);
+        return new JsonResponse(['success' => true]);
     }
 
     /**

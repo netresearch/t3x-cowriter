@@ -15,8 +15,9 @@
 ,15,5,"Elsewhere","<h2>One</h2><p>A</p><h2>Two</h2><p>B</p>","text",0,0,256,0,"",0,0,"0","default","","",0,0
 ,16,2,"Deutsch","<h2>Eins</h2><p>A</p><h2>Zwei</h2><p>B</p>","textmedia",0,1,1024,0,"",0,0,"0","default","","",0,0
 ,17,2,"Members only","<h2>Seat</h2><p>Adjustable.</p><h2>Warranty</h2><p>Five years.</p>","text",0,0,1280,1,"-2",1700000000,4102444800,"2","ruler-before","small","large",0,0
-,18,2,"Bürostühle","<p>Für jedes Büro.</p><h2>Sitz</h2><p>Verstellbar.</p><h2>Garantie</h2><p>Fünf Jahre.</p>","text",1,1,1536,0,"",0,0,"0","default","","",10,0
+,18,2,"Bürostühle","<p>Für jedes Büro.</p><h2>Sitz</h2><p>Verstellbar.</p><h2>Garantie</h2><p>Fünf Jahre.</p>","text",1,1,1536,0,"",0,0,"0","default","","",20,0
 ,19,2,"With images","<h2>Front</h2><p>A</p><h2>Back</h2><p>B</p>","textmedia",0,0,1792,0,"",0,0,"0","default","","",0,2
+,20,2,"Desks","<p>For every office.</p><h2>Height</h2><p>Adjustable.</p><h2>Warranty</h2><p>Five years.</p>","text",1,0,2048,0,"",0,0,"0","default","","",0,0
 "be_groups"
 ,"uid","pid","title","tables_select","tables_modify","non_exclude_fields","explicit_allowdeny","allowed_languages","db_mountpoints","workspace_perms"
 ,1,0,"Editors","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item,sys_file_reference","pages,tt_content,tx_bootstrappackage_tab_item,tx_bootstrappackage_accordion_item,sys_file_reference","tx_bootstrappackage_tab_item:header,tx_bootstrappackage_accordion_item:header,tx_bootstrappackage_tab_item:sys_language_uid,tx_bootstrappackage_accordion_item:sys_language_uid,tt_content:sys_language_uid,tt_content:colPos,tt_content:hidden,tt_content:fe_group,tt_content:starttime,tt_content:endtime,tt_content:header_layout,tt_content:frame_class,tt_content:space_before_class,tt_content:space_after_class,tx_bootstrappackage_tab_item:media,tx_bootstrappackage_accordion_item:media,sys_file_reference:title,sys_file_reference:alternative,sys_file_reference:description,sys_file_reference:link,sys_file_reference:crop,sys_file_reference:hidden","tt_content:CType:text,tt_content:CType:textmedia,tt_content:CType:tab,tt_content:CType:accordion","","1",1

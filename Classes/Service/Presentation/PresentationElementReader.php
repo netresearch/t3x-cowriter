@@ -51,7 +51,8 @@ class PresentationElementReader
 
         $languageId     = $this->intValue($element['sys_language_uid'] ?? 0);
         $pointerField   = Tca::transOrigPointerField('tt_content');
-        $fileFields     = array_values(array_filter(PresentationAccess::FILE_FIELDS, static fn (string $field): bool => Tca::column('tt_content', $field) !== null));
+        $fileField      = PresentationAccess::FILE_FIELD_BY_CTYPE[$this->stringValue($element['CType'] ?? '')] ?? null;
+        $fileFields     = $fileField !== null && Tca::column('tt_content', $fileField) !== null ? [$fileField] : [];
         $fileReferences = $this->recordFinder->findFileReferences('tt_content', $uid, $fileFields, $workspaceId);
 
         return new PresentationElement(

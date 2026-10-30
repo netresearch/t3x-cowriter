@@ -76,6 +76,24 @@ final class PresentationException extends RuntimeException
         return new self('presentation.error.switchFailed', 500);
     }
 
+    /**
+     * The original has translations: hiding a default-language element hides
+     * its translations too on sites with overlays (fallback, strict).
+     */
+    public static function switchHasTranslations(): self
+    {
+        return new self('presentation.switchNote.translations', 409);
+    }
+
+    /**
+     * The original is a connected translation: hiding it brings back the
+     * default-language element on sites with fallback.
+     */
+    public static function switchConnectedTranslation(): self
+    {
+        return new self('presentation.switchNote.connectedTranslation', 409);
+    }
+
     public function getLabelKey(): string
     {
         return $this->labelKey;

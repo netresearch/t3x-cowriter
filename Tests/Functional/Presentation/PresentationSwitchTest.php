@@ -299,4 +299,64 @@ final class PresentationSwitchTest extends FunctionalTestCase
         self::assertSame([0, 1], [$this->hidden((int) $created['uid'], 1), $this->hidden(10, 1)]);
         self::assertSame(0, $this->hidden(10, 0), 'live still shows the original');
     }
+
+    /**
+     * A token for the pair as the creation would issue it, for the routes'
+     * own refusal.
+     *
+     * @param array<string, mixed> $created
+     */
+    private function mintedToken(array $created, BackendUserAuthentication $backendUser): string
+    {
+        return (new PresentationSwitchToken(new HashService()))->issue((int) $created['uid'], (int) $created['originalUid'], (int) $backendUser->user['uid'], 0);
+    }
+
+    #[Test]
+    public function anOriginalWithTranslationsIsNotSwitched(): void
+    {
+        // Element 18 translates element 20: hiding 20 would hide 18 on the
+        // translated page too.
+        $backendUser = $this->editor(2);
+        $created     = $this->create(20);
+        self::assertSame('', $created['switchToken']);
+        self::assertStringContainsString('translations', (string) $created['switchNote']);
+
+        $response = $this->switchPair($created, ['token' => $this->mintedToken($created, $backendUser)]);
+
+        self::assertSame(409, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame([1, 0, 0], [$this->hidden((int) $created['uid'], 0), $this->hidden(20, 0), $this->hidden(18, 0)]);
+    }
+
+    #[Test]
+    public function aTranslationAddedAfterTheCreationStopsTheSwitch(): void
+    {
+        $this->editor(2);
+        $created = $this->create(10);
+        self::assertNotSame('', $created['switchToken']);
+        self::assertSame('', $created['switchNote']);
+
+        $this->getConnectionPool()->getConnectionForTable('tt_content')->insert('tt_content', [
+            'pid' => 2, 'header' => 'Bürostühle', 'CType' => 'text', 'colPos' => 1, 'sys_language_uid' => 1, 'l18n_parent' => 10, 'sorting' => 300,
+        ]);
+        $response = $this->switchPair($created);
+
+        self::assertSame(409, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame([1, 0], [$this->hidden((int) $created['uid'], 0), $this->hidden(10, 0)]);
+    }
+
+    #[Test]
+    public function aConnectedTranslationIsNotSwitched(): void
+    {
+        // Element 18 is connected to element 20: on a site with fallback the
+        // default-language element would come back next to the new one.
+        $backendUser = $this->editor(2);
+        $created     = $this->create(18);
+        self::assertSame('', $created['switchToken']);
+        self::assertStringContainsString('falls back', (string) $created['switchNote']);
+
+        $response = $this->switchPair($created, ['token' => $this->mintedToken($created, $backendUser)]);
+
+        self::assertSame(409, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame([1, 0], [$this->hidden((int) $created['uid'], 0), $this->hidden(18, 0)]);
+    }
 }

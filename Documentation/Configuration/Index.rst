@@ -582,7 +582,9 @@ Requirements:
     them over from the original. With modify rights for
     ``sys_file_reference`` and the right on the item field ``media``, the
     images of a :guilabel:`Text & Images` or :guilabel:`Text & Media`
-    element (fields ``image`` and ``assets``) are copied into the first
+    element (``image`` for :guilabel:`Text & Images`, ``assets`` for
+    :guilabel:`Text & Media`; references left in the other field, which
+    the form does not show, are ignored) are copied into the first
     item, as new file references with their title, alternative text,
     description, link and crop (those of these fields the editor may edit);
     without, they are not taken over and the proposal says so.
@@ -591,8 +593,7 @@ Requirements:
     connected translation (``l18n_parent`` set) turns into a new element
     of its own in that language, which makes a page in connected mode
     mixed; the proposal warns about it. Translations of the original are
-    not converted; the proposal warns when there are any, because deleting
-    the original would delete them too. Hiding it keeps them.
+    not converted; the proposal warns when there are any.
 *   The switch (:guilabel:`Show the new element and hide the original`) is
     accepted only for the pair the creation just made: the creation returns
     a token over both uids, the backend user and the workspace (an HMAC
@@ -600,7 +601,20 @@ Requirements:
     both elements as the workspace shows them, requires them on the same
     page, the right to edit both and to write ``hidden``, and reads the
     result back. It changes only ``hidden``: access restrictions of the new
-    element stay as they were taken over.
+    element stay as they were taken over. It does not count against the
+    Cowriter rate limit, because it asks no model.
+*   The switch is refused, and not offered, when the original has
+    translations or is a connected translation (``l18n_parent`` set); the
+    route counts the translations again, since one can be added after the
+    creation. With ``fallbackType`` ``fallback`` or ``strict``, the
+    frontend selects content elements of the default language and overlays
+    their translations, so a hidden default-language element hides its
+    translations as well. Hiding a connected translation lets a ``fallback``
+    language show the default-language element again: next to the new one
+    on TYPO3 14.3, and instead of it on 13.4, where a ``fallback`` language
+    shows no element without a default-language counterpart.
+*   In a workspace both elements change in the workspace; publish them
+    together.
 
 How the text is cut:
 
@@ -633,7 +647,8 @@ How the text is cut:
     saved text changes between the preview and the confirmation, the
     creation is refused and the editor lets the sections be proposed again.
 
-Both routes count against the Cowriter rate limit of the backend user.
+The proposal and the creation count against the Cowriter rate limit of the
+backend user; the switch does not.
 
 Task configuration
 ==================

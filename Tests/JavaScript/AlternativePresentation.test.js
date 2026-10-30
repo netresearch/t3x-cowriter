@@ -28,6 +28,7 @@ const FIXTURE = `
             data-propose-url="/typo3/ajax/cowriter/presentation-propose?token=a"
             data-create-url="/typo3/ajax/cowriter/presentation-create?token=b"
             data-switch-url="/typo3/ajax/cowriter/presentation-switch?token=c"
+            data-hidden-field="disabled"
             data-uid="10" data-layouts="tab,accordion"
             data-label-heading="Present as tabs or accordion" data-label-layout-tab="Tabs (label)"
             data-label-title-required="Every section needs a title."
@@ -39,8 +40,8 @@ const FIXTURE = `
 </div>
 <div class="form-check form-switch">
   <input type="checkbox" class="form-check-input" checked
-    data-formengine-input-name="data[tt_content][10][hidden]" id="hidden-toggle" />
-  <input type="hidden" name="data[tt_content][10][hidden]" value="0" />
+    data-formengine-input-name="data[tt_content][10][disabled]" id="hidden-toggle" />
+  <input type="hidden" name="data[tt_content][10][disabled]" value="0" />
 </div>`;
 
 const CREATED = {
@@ -301,14 +302,44 @@ describe('AlternativePresentation', () => {
         expect(document.getElementById(CONTROL_ID + '-status').textContent).toBe('The new element is visible now and this element is hidden.');
         expect(document.activeElement).toBe(document.querySelector('.cowriter-presentation-page'));
         // The form now submits the stored state of the original.
-        expect(document.querySelector('input[name="data[tt_content][10][hidden]"]').value).toBe('1');
+        expect(document.querySelector('input[name="data[tt_content][10][disabled]"]').value).toBe('1');
         expect(document.getElementById('hidden-toggle').checked).toBe(false);
+    });
+
+    it('uses the hidden field the server names, and none without it', async () => {
+        answer(PROPOSAL, CREATED);
+        const { control } = await setup();
+        delete control.dataset.hiddenField;
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        document.querySelector('.cowriter-presentation-switch').click();
+        await flush();
+
+        expect(document.querySelector('.cowriter-presentation-result').textContent).toBe('The new element is visible now and this element is hidden.');
+        expect(document.querySelector('input[name="data[tt_content][10][disabled]"]').value).toBe('0');
+        expect(document.getElementById('hidden-toggle').checked).toBe(true);
+    });
+
+    it('says why there is no switch for an original with translations', async () => {
+        answer(PROPOSAL, { ...CREATED, switchToken: '', switchNote: 'Not switched: this element has translations.' });
+        const { control } = await setup();
+        await openPanel(control);
+        document.querySelector('.cowriter-presentation-create').click();
+        await flush();
+
+        expect(document.querySelector('.cowriter-presentation-switch')).toBeNull();
+        const note = document.querySelector('.cowriter-presentation-switch-note');
+        expect(note.textContent).toBe('Not switched: this element has translations.');
+        expect(note.classList.contains('alert-warning')).toBe(true);
+        expect(document.querySelector('.cowriter-presentation-page')).not.toBeNull();
     });
 
     it('leaves a form field that already says hidden alone', async () => {
         answer(PROPOSAL, CREATED);
         const { control } = await setup();
-        document.querySelector('input[name="data[tt_content][10][hidden]"]').value = '1';
+        document.querySelector('input[name="data[tt_content][10][disabled]"]').value = '1';
         await openPanel(control);
         document.querySelector('.cowriter-presentation-create').click();
         await flush();
@@ -336,7 +367,7 @@ describe('AlternativePresentation', () => {
         expect(status.textContent).toBe('The elements could not be switched.');
         expect(status.classList.contains('text-danger')).toBe(true);
         expect(document.querySelector('.cowriter-presentation-switch').disabled).toBe(false);
-        expect(document.querySelector('input[name="data[tt_content][10][hidden]"]').value).toBe('0');
+        expect(document.querySelector('input[name="data[tt_content][10][disabled]"]').value).toBe('0');
     });
 
     it('shows the result again instead of a second proposal after creating', async () => {

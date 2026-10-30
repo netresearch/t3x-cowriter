@@ -160,7 +160,8 @@ final class PresentationProposalTest extends FunctionalTestCase
     {
         $this->germanEditor(2);
 
-        self::assertSame(['translations'], $this->propose(10)['warnings']);
+        self::assertSame(['translations'], $this->propose(20)['warnings']);
+        self::assertSame([], $this->propose(10)['warnings']);
         self::assertSame(['connectedTranslation'], $this->propose(18)['warnings']);
         self::assertSame([], $this->propose(16)['warnings']);
     }
@@ -169,8 +170,12 @@ final class PresentationProposalTest extends FunctionalTestCase
     public function theProposalCountsTheImagesAndWarnsWhenTheyCannotBeTaken(): void
     {
         $this->germanEditor(2);
+        // Element 19 (Text & Media) has two images in "assets" and one left in
+        // "image", which its form does not show; element 10 (Text) has one
+        // left in "image" too.
         $proposal = $this->propose(19);
         self::assertSame([[], 2], [$proposal['warnings'], $proposal['images']]);
+        self::assertSame([[], 0], [$this->propose(10)['warnings'], $this->propose(10)['images']]);
 
         // Editor 6 may not modify file references.
         $this->germanEditor(6);

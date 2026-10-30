@@ -1,0 +1,8 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","sys_language_uid","l10n_parent"
+,1,0,"Home","/",1,1,0,0
+,2,0,"Start","/",1,1,1,1
+"tt_content"
+,"uid","pid","header","CType","colPos","sys_language_uid","l18n_parent","sorting","hidden"
+,10,1,"Original","text",0,0,0,256,0
+,11,1,"Translation","text",0,1,10,256,0

@@ -1162,16 +1162,24 @@
                 <target>Die Elemente konnten nicht getauscht werden. Prüfen Sie beide Elemente im Layout-Modul.</target>
             </trans-unit>
             <trans-unit id="presentation.warning.translations" resname="presentation.warning.translations">
-                <source>This element has translations. Do not delete it: deleting it deletes its translations too. Hide it instead; the switch after creating does that. The translations keep their text; present each of them on its own.</source>
-                <target>Dieses Element hat Übersetzungen. Löschen Sie es nicht: Damit würden auch seine Übersetzungen gelöscht. Verbergen Sie es stattdessen; der Tausch nach dem Anlegen tut das. Die Übersetzungen behalten ihren Text; stellen Sie jede für sich dar.</target>
+                <source>This element has translations. Translated pages show them only while this element is visible, so the switch is not offered: translated pages keep showing this element until each translation has its own new element. Do not delete this element; that deletes its translations too.</source>
+                <target>Dieses Element hat Übersetzungen. Übersetzte Seiten zeigen sie nur, solange dieses Element sichtbar ist, deshalb wird der Tausch nicht angeboten: Übersetzte Seiten zeigen dieses Element weiter, bis jede Übersetzung ein eigenes neues Element hat. Löschen Sie dieses Element nicht; das löscht auch seine Übersetzungen.</target>
             </trans-unit>
             <trans-unit id="presentation.warning.connectedTranslation" resname="presentation.warning.connectedTranslation">
-                <source>This element is a translation connected to the default language. The new element becomes a translation of its own, not connected to it, so the Layout module shows the page in mixed mode.</source>
-                <target>Dieses Element ist eine Übersetzung, die mit der Standardsprache verbunden ist. Das neue Element wird eine eigenständige, nicht verbundene Übersetzung; das Layout-Modul zeigt die Seite dann im gemischten Modus.</target>
+                <source>This element is a translation connected to the default language. The new element becomes an element of its own in this language, not connected to the default language, so the Layout module shows the page in mixed mode. The switch is not offered: on a site that falls back to the default language, hiding this translation shows the default-language element again, instead of or next to the new one.</source>
+                <target>Dieses Element ist eine Übersetzung, die mit der Standardsprache verbunden ist. Das neue Element wird ein eigenständiges Element dieser Sprache, nicht mit der Standardsprache verbunden; das Layout-Modul zeigt die Seite dann im gemischten Modus. Der Tausch wird nicht angeboten: Auf einer Website, die auf die Standardsprache zurückfällt, erscheint nach dem Verbergen dieser Übersetzung wieder das Element der Standardsprache, statt des neuen oder daneben.</target>
             </trans-unit>
             <trans-unit id="presentation.warning.imagesNotTaken" resname="presentation.warning.imagesNotTaken">
                 <source>The images of this element are not taken over: you may not add images to the new element. Add them yourself.</source>
                 <target>Die Bilder dieses Elements werden nicht übernommen: Sie dürfen dem neuen Element keine Bilder hinzufügen. Fügen Sie sie selbst hinzu.</target>
+            </trans-unit>
+            <trans-unit id="presentation.switchNote.translations" resname="presentation.switchNote.translations">
+                <source>Not switched: this element has translations, and hiding it would hide them on translated pages too. Translated pages keep showing this element until each translation has its own new element. Hide this element yourself once that is done.</source>
+                <target>Nicht getauscht: Dieses Element hat Übersetzungen, und es zu verbergen würde sie auf übersetzten Seiten mit verbergen. Übersetzte Seiten zeigen dieses Element weiter, bis jede Übersetzung ein eigenes neues Element hat. Verbergen Sie dieses Element selbst, wenn das erledigt ist.</target>
+            </trans-unit>
+            <trans-unit id="presentation.switchNote.connectedTranslation" resname="presentation.switchNote.connectedTranslation">
+                <source>Not switched: on a site that falls back to the default language, hiding this translation would show the default-language element again, instead of or next to the new one. Decide in the Layout module how this language should show it.</source>
+                <target>Nicht getauscht: Auf einer Website, die auf die Standardsprache zurückfällt, würde nach dem Verbergen dieser Übersetzung wieder das Element der Standardsprache erscheinen, statt des neuen oder daneben. Entscheiden Sie im Layout-Modul, wie diese Sprache es zeigen soll.</target>
             </trans-unit>
             <trans-unit id="presentation.imagesTaken" resname="presentation.imagesTaken">
                 <source>Images of this element: %d. They go into the first section.</source>

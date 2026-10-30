@@ -9,3 +9,5 @@
 ,"uid","pid","uid_local","uid_foreign","tablenames","fieldname","sorting_foreign","title","alternative","sys_language_uid"
 ,1,2,1,19,"tt_content","assets",1,"Front view","A grey office chair",0
 ,2,2,2,19,"tt_content","assets",2,"Back view","Its backrest",0
+,3,2,1,19,"tt_content","image",1,"Left over","Not shown by the form",0
+,4,2,1,10,"tt_content","image",1,"Left over","Not shown by the form",0

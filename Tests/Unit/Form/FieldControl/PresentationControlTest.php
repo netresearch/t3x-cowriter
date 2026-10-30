@@ -40,11 +40,13 @@ final class PresentationControlTest extends TestCase
         );
         $GLOBALS['LANG']    = $languageService;
         $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
+        // The hidden field the switch names for the form.
+        $GLOBALS['TCA'] = ['tt_content' => ['ctrl' => ['enablecolumns' => ['disabled' => 'is_hidden']]]];
     }
 
     protected function tearDown(): void
     {
-        unset($GLOBALS['LANG'], $GLOBALS['BE_USER']);
+        unset($GLOBALS['LANG'], $GLOBALS['BE_USER'], $GLOBALS['TCA']);
         parent::tearDown();
     }
 
@@ -97,6 +99,7 @@ final class PresentationControlTest extends TestCase
         self::assertSame('/typo3/ajax/ajax_tx_cowriter_presentation_propose?token=abc', $attributes['data-propose-url']);
         self::assertSame('/typo3/ajax/ajax_tx_cowriter_presentation_create?token=abc', $attributes['data-create-url']);
         self::assertSame('/typo3/ajax/ajax_tx_cowriter_presentation_switch?token=abc', $attributes['data-switch-url']);
+        self::assertSame('is_hidden', $attributes['data-hidden-field'], 'the field from ctrl.enablecolumns.disabled');
         self::assertSame('12', $attributes['data-uid']);
         self::assertSame('accordion,tab', $attributes['data-layouts']);
 

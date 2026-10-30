@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Form\FieldControl;
 
 use Netresearch\T3Cowriter\Service\Presentation\Layout;
+use Netresearch\T3Cowriter\Service\Presentation\PresentationAccess;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationElementReader;
 use Throwable;
@@ -74,15 +75,16 @@ final class PresentationControl extends AbstractNode
 
         $id             = StringUtility::getUniqueId('t3js-cowriter-presentation-');
         $linkAttributes = [
-            'id'               => $id,
-            'role'             => 'button',
-            'aria-expanded'    => 'false',
-            'aria-controls'    => $id . '-panel',
-            'data-propose-url' => $proposeUrl,
-            'data-create-url'  => $createUrl,
-            'data-switch-url'  => $switchUrl,
-            'data-uid'         => (string) $element->uid,
-            'data-layouts'     => implode(',', array_map(static fn (Layout $layout): string => $layout->value, $element->layouts)),
+            'id'                => $id,
+            'role'              => 'button',
+            'aria-expanded'     => 'false',
+            'aria-controls'     => $id . '-panel',
+            'data-propose-url'  => $proposeUrl,
+            'data-create-url'   => $createUrl,
+            'data-switch-url'   => $switchUrl,
+            'data-hidden-field' => (string) PresentationAccess::hiddenField(),
+            'data-uid'          => (string) $element->uid,
+            'data-layouts'      => implode(',', array_map(static fn (Layout $layout): string => $layout->value, $element->layouts)),
         ];
 
         $languageService = $this->getLanguageService();

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Service\Presentation;
 
 use Netresearch\T3Cowriter\Service\FieldSuggestion\RecordFinder;
+use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
@@ -53,6 +54,10 @@ class PresentationSwitcher
             throw PresentationException::notAvailable();
         }
 
+        // Checked again here: a translation may have been added since the
+        // creation.
+        $this->refuseForTranslations($originalUid, $original, $workspaceId);
+
         $dataHandler = GeneralUtility::makeInstance(DataHandler::class);
         $dataHandler->start(['tt_content' => [
             $newUid      => [$hiddenField => 0],
@@ -74,6 +79,36 @@ class PresentationSwitcher
         ]);
 
         throw PresentationException::switchFailed();
+    }
+
+    /**
+     * The frontend selects default-language content elements and overlays
+     * their translations (fallbackType fallback and strict): hiding a
+     * default-language original hides its translations too. Hiding a
+     * connected translation lets a site with fallback show the
+     * default-language element again, next to the new one.
+     *
+     * @param array<string, mixed> $original
+     */
+    private function refuseForTranslations(int $originalUid, array $original, int $workspaceId): void
+    {
+        $pointerField  = Tca::transOrigPointerField('tt_content');
+        $languageField = Tca::languageField('tt_content');
+        if ($pointerField === null || $languageField === null) {
+            return;
+        }
+
+        if ($this->intValue($original[$languageField] ?? 0) > 0) {
+            if ($this->intValue($original[$pointerField] ?? 0) > 0) {
+                throw PresentationException::switchConnectedTranslation();
+            }
+
+            return;
+        }
+
+        if ($this->recordFinder->countTranslations('tt_content', $pointerField, $originalUid, $workspaceId) > 0) {
+            throw PresentationException::switchHasTranslations();
+        }
     }
 
     /**

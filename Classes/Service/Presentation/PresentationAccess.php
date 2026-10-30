@@ -37,9 +37,11 @@ final readonly class PresentationAccess
     public const SOURCE_CTYPES = ['text', 'textpic', 'textmedia'];
 
     /**
-     * Fields of a text element that hold its images.
+     * The field that holds the images of each text CType: the form shows
+     * only this one, so a value left in the other field is not part of the
+     * element.
      */
-    public const FILE_FIELDS = ['image', 'assets'];
+    public const FILE_FIELD_BY_CTYPE = ['textpic' => 'image', 'textmedia' => 'assets'];
 
     /**
      * Appearance fields the new element takes over where the editor may

@@ -484,6 +484,7 @@ final class PresentationControllerTest extends TestCase
             'originalUid' => 10,
             'layout'      => 'accordion',
             'switchToken' => (new PresentationSwitchToken(new HashService()))->issue(17, 10, 7, 0),
+            'switchNote'  => '',
             'pageUrl'     => '/typo3/module/web/layout?id=2#element-tt_content-17',
             'editUrl'     => '/typo3/record/edit?x=17',
         ], $this->json($response));
@@ -491,6 +492,39 @@ final class PresentationControllerTest extends TestCase
             ['web_layout', ['id' => 2, 'language' => 0, 'languages' => [0]]],
             ['record_edit', ['edit' => ['tt_content' => [17 => 'edit']], 'returnUrl' => '/typo3/module/web/layout?id=2#element-tt_content-17']],
         ], $this->builtUris);
+    }
+
+    /**
+     * @return iterable<string, array{int, bool, string}>
+     */
+    public static function originalsWithoutSwitch(): iterable
+    {
+        yield 'with translations' => [2, false, 'Not switched: this element has translations'];
+        yield 'a connected translation' => [0, true, 'Not switched: on a site that falls back'];
+    }
+
+    #[Test]
+    #[DataProvider('originalsWithoutSwitch')]
+    public function anOriginalWithTranslationsOrAConnectedOneGetsNoSwitchToken(int $translations, bool $connected, string $note): void
+    {
+        $this->useElement(new PresentationElement(
+            10,
+            2,
+            $connected ? 1 : 0,
+            1,
+            'Office chairs',
+            self::WITH_HEADINGS,
+            [Layout::Tabs, Layout::Accordion],
+            translationCount: $translations,
+            connectedTranslation: $connected,
+        ));
+        $this->writerMock()->expects(self::once())->method('create')->willReturn(17);
+
+        $data = $this->json($this->subject()->createAction($this->request($this->createBody())));
+
+        self::assertTrue($data['success'] ?? false);
+        self::assertSame('', $data['switchToken'] ?? null);
+        self::assertStringStartsWith($note, (string) ($data['switchNote'] ?? ''));
     }
 
     #[Test]
@@ -789,7 +823,7 @@ final class PresentationControllerTest extends TestCase
     }
 
     #[Test]
-    public function aSwitchIsRateLimitedSwitchedOffAndNeedsABackendUser(): void
+    public function aSwitchIsSwitchedOffAndNeedsABackendUser(): void
     {
         $this->switcherMock()->expects(self::never())->method('switch');
 
@@ -799,11 +833,32 @@ final class PresentationControllerTest extends TestCase
         $this->enabled = true;
         unset($GLOBALS['BE_USER']);
         self::assertSame(403, $this->subject()->switchAction($this->request($this->switchBody()))->getStatusCode());
+    }
 
-        $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
-        $this->rateLimiter  = $this->createStub(RateLimiterInterface::class);
-        $this->rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(false, 20, 0, time() + 60));
-        self::assertSame(429, $this->subject()->switchAction($this->request($this->switchBody()))->getStatusCode());
+    #[Test]
+    public function aSwitchDoesNotCountAgainstTheModelRateLimit(): void
+    {
+        $rateLimiter = $this->createMock(RateLimiterInterface::class);
+        $rateLimiter->expects(self::never())->method('checkLimit');
+        $this->rateLimiter = $rateLimiter;
+        $this->switcherMock()->expects(self::once())->method('switch');
+
+        $response = $this->subject()->switchAction($this->request($this->switchBody()));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame([], array_filter($response->getHeaders(), static fn (string $name): bool => str_starts_with(strtolower($name), 'x-ratelimit'), ARRAY_FILTER_USE_KEY));
+    }
+
+    #[Test]
+    public function aSwitchRefusedForTranslationsIsA409WithItsMessage(): void
+    {
+        $this->switcher = $this->createStub(PresentationSwitcher::class);
+        $this->switcher->method('switch')->willThrowException(PresentationException::switchHasTranslations());
+
+        $response = $this->subject()->switchAction($this->request($this->switchBody()));
+
+        self::assertSame(409, $response->getStatusCode());
+        self::assertStringStartsWith('Not switched: this element has translations', (string) ($this->json($response)['error'] ?? ''));
     }
 
     #[Test]

@@ -434,7 +434,10 @@ proposal you then have three buttons:
 
 *   :guilabel:`Show the new element and hide the original` makes the new
     element visible and hides this one, in one step. In a workspace both
-    changes are part of your workspace.
+    changes are part of your workspace: publish the two elements together,
+    so the live page never shows both or neither. The button is not
+    offered for an element with translations or for a connected
+    translation (see below).
 *   :guilabel:`Open the page in the Layout module` shows the page with the
     new element, so you can check it first.
 *   :guilabel:`Open the new element` opens it for editing.
@@ -443,10 +446,13 @@ If the form has unsaved changes, the last two buttons ask first, as every
 link out of the form does. :kbd:`Escape` or :guilabel:`Cancel` closes the
 proposal without creating anything.
 
-Hide the original rather than delete it. Deleting an element in the
-default language also deletes its translations; the proposal warns when
-the element has translations. They are not converted: create the new
-element for each translation separately.
+An element with translations is not switched. Translated pages show a
+translation only while the element in the default language is visible:
+hiding this element would hide its translations too. So translated pages
+keep showing this element (in their language) until each translation has
+its own new element; create those first, then hide this element yourself.
+Do not delete it: deleting an element in the default language also deletes
+its translations. The proposal and the result say so.
 
 What the new element takes over from the original: the header, the
 column, the language, its access restrictions (:guilabel:`Usergroup
@@ -461,7 +467,10 @@ categories) is not taken over.
 A translation that is connected to its default-language element becomes a
 new element of its own in that language, not connected to the default
 language (the proposal says so). On a page in connected translation mode
-the page module then reports the page as mixed.
+the page module then reports the page as mixed. Such a translation is not
+switched either: on a site that falls back to the default language,
+hiding it would show the default-language element again, instead of or
+next to the new one.
 
 A text with headings is divided at its headings; the heading becomes the
 title of its tab and text before the first heading becomes an
