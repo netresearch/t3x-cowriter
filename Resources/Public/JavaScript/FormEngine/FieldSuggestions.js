@@ -144,7 +144,9 @@ export class FieldSuggestions {
         if (this.isOpen()) {
             this.close();
         } else {
-            this.open();
+            // open() catches its own failures and shows them in the status
+            // line, so the returned promise never rejects.
+            void this.open();
         }
     }
 

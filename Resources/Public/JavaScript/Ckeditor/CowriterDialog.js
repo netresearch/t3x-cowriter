@@ -517,6 +517,23 @@ export class CowriterDialog {
     }
 
     /**
+     * Fill an optional part of the dialog once its data arrives. Nothing waits
+     * for it, so a failure (a malformed entry in the list, for instance) must
+     * not escape as an unhandled rejection: it is logged, and the dialog stays
+     * usable without that part.
+     *
+     * @template T
+     * @param {Promise<T>} request
+     * @param {(value: T) => void} offer
+     * @private
+     */
+    _offerWhenReady(request, offer) {
+        request.then(offer).catch((error) => {
+            console.error('[Cowriter]', error);
+        });
+    }
+
+    /**
      * Fill the configuration picker and show it. Leaves it hidden when there is
      * nothing to choose from, so the dialog looks as it did without the list.
      *
@@ -895,10 +912,10 @@ export class CowriterDialog {
         const container = this._buildDialogContent(
             tasks, selectedText, fullContent, recordContext, referenceAbortControllers, preSelectedTaskUid,
         );
-        configurationsRequest.then((configurations) => this._offerConfigurations(container, configurations));
+        this._offerWhenReady(configurationsRequest, (configurations) => this._offerConfigurations(container, configurations));
         void this._refreshBudget(container);
-        styleRequest.then((options) => this._offerStyleOptions(container, options));
-        promptsRequest.then((prompts) => this._offerSavedPrompts(container, prompts));
+        this._offerWhenReady(styleRequest, (options) => this._offerStyleOptions(container, options));
+        this._offerWhenReady(promptsRequest, (prompts) => this._offerSavedPrompts(container, prompts));
         container.querySelector('[data-role="prompt-save"]')
             ?.addEventListener('click', () => this._savePrompt(container));
         container.querySelector('[data-role="prompt-delete"]')

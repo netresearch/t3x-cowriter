@@ -879,6 +879,41 @@ describe('CowriterDialog', () => {
         });
     });
 
+    describe('optional lists with a malformed entry', () => {
+        it.each([
+            ['configurations', (service) => {
+                service.getConfigurations = vi.fn().mockResolvedValue({ success: true, configurations: [null] });
+            }],
+            ['style options', (service) => {
+                service.getStyleOptions = vi.fn().mockResolvedValue({ success: true, audiences: [null], tones: [] });
+            }],
+            ['saved prompts', (service) => {
+                service.getSavedPrompts = vi.fn().mockResolvedValue({ success: true, prompts: [null] });
+            }],
+        ])('logs a failure to show the %s and keeps the dialog usable', async (_name, arrange) => {
+            arrange(mockService);
+            const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const unhandled = vi.fn();
+            process.on('unhandledRejection', unhandled);
+            try {
+                const showPromise = new CowriterDialog(mockService).show('my selected text', 'full');
+
+                await vi.waitFor(() => expect(logged).toHaveBeenCalledWith('[Cowriter]', expect.any(TypeError)));
+                await new Promise((r) => setTimeout(r, 0));
+                expect(unhandled).not.toHaveBeenCalled();
+
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalled());
+
+                document.querySelector('[name="cancel"]').click();
+                await expect(showPromise).rejects.toThrow('User cancelled');
+            } finally {
+                process.off('unhandledRejection', unhandled);
+                logged.mockRestore();
+            }
+        });
+    });
+
     describe('versions', () => {
         it('should ask for two versions without streaming and insert the one the editor picks', async () => {
             mockService._routes = { taskStream: '/typo3/ajax/tx_cowriter_task_stream' };
