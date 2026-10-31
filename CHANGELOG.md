@@ -2,6 +2,12 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.22.1 (2026-10-31)
+
+### BUGFIX
+
+- A malformed entry in one of the Cowriter dialog's optional lists (LLM configurations, audiences and tones, saved prompts) no longer ends in an unhandled promise rejection: the error is logged to the browser console and the dialog stays usable without that list (#244).
+
 ## 3.22.0 (2026-10-30)
 
 ### FEATURE
