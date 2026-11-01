@@ -972,6 +972,15 @@ If the translate button shows "Translation failed", check:
 3.  The provider supports the ``translation`` feature
 4.  Check the TYPO3 system log for detailed error messages
 
+An answer is stopped with a reason
+----------------------------------
+
+A term list or another guardrail of the LLM extension can stop an answer. The
+editor sees the reason in place of the answer, and in the dialog the previous
+answer stays in place. Their own text stays untouched on every route. The list
+that stopped it is named in the message: change it under
+:guilabel:`AI` > :guilabel:`Authoring` > :guilabel:`Term Lists`.
+
 No tasks in dropdown
 --------------------
 
