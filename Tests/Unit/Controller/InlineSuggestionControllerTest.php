@@ -15,6 +15,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\BudgetExceededException;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Controller\InlineSuggestionController;
 use Netresearch\T3Cowriter\Domain\DTO\InlineSuggestionRequest;
@@ -313,6 +314,16 @@ final class InlineSuggestionControllerTest extends TestCase
             'budgetExceeded' => true,
             'exceededLimit'  => BudgetCheckResult::LIMIT_CONFIGURATION_DAILY_COST,
         ], $this->json($response));
+    }
+
+    #[Test]
+    public function aGuardrailStopShowsItsReason(): void
+    {
+        $this->completion->throwable = new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.');
+
+        $response = $this->subject()->suggestAction($this->request(['text' => self::TEXT]));
+
+        self::assertSame(['success' => false, 'error' => 'Es enthält Rabatt.'], $this->json($response));
     }
 
     #[Test]

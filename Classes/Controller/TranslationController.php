@@ -311,10 +311,11 @@ final readonly class TranslationController
     private function getUserFriendlyError(Throwable $e): string
     {
         return match ($this->errorClassifier->classify($e)) {
-            LlmErrorKind::Configuration  => $this->configurationErrorMessage(),
-            LlmErrorKind::Authentication => $this->labels->get('error.translation.authentication'),
-            LlmErrorKind::RateLimit      => $this->labels->get('error.providerRateLimit'),
-            LlmErrorKind::Unknown        => $this->labels->get('error.translation.failed'),
+            LlmErrorKind::Configuration    => $this->configurationErrorMessage(),
+            LlmErrorKind::Authentication   => $this->labels->get('error.translation.authentication'),
+            LlmErrorKind::RateLimit        => $this->labels->get('error.providerRateLimit'),
+            LlmErrorKind::GuardrailRefusal => LlmErrorClassifier::guardrailReason($e) ?? $this->labels->get('error.translation.failed'),
+            LlmErrorKind::Unknown          => $this->labels->get('error.translation.failed'),
         };
     }
 

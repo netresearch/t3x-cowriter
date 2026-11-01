@@ -15,6 +15,7 @@ use Netresearch\NrLlm\Domain\Model\TranslationResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\BudgetExceededException;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Provider\Middleware\MiddlewarePipeline;
@@ -347,6 +348,20 @@ final class TranslationControllerTest extends TestCase
         $data = json_decode((string) $response->getBody(), true);
         self::assertSame('The request was refused. This limit is used up: your monthly number of requests.', $data['error']);
         self::assertTrue($data['budgetExceeded']);
+    }
+
+    #[Test]
+    public function aGuardrailStopShowsItsReason(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+        $this->translationServiceStub->method('translate')
+            ->willThrowException(new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.'));
+
+        $response = $this->subject->translateAction($this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']));
+
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertSame('Es enthält Rabatt.', $data['error']);
     }
 
     #[Test]

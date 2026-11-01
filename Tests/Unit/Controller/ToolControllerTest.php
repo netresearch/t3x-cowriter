@@ -16,6 +16,7 @@ use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
 use Netresearch\NrLlm\Exception\BudgetExceededException;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Service\BudgetServiceInterface;
 use Netresearch\NrLlm\Service\Option\ToolOptions;
 use Netresearch\NrLlm\Service\Tool\ToolExecutionContext;
@@ -302,6 +303,23 @@ final class ToolControllerTest extends TestCase
         self::assertSame(429, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
         self::assertSame('The request was refused because a limit of your AI budget is used up.', $data['error']);
+    }
+
+    #[Test]
+    public function aGuardrailStopInTheLoopShowsItsReason(): void
+    {
+        $this->allowRateLimit();
+        $loop = $this->createStub(ToolLoopServiceInterface::class);
+        $loop->method('runLoop')->willThrowException(new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.'));
+        $context = $this->createStub(Context::class);
+        $context->method('getPropertyFromAspect')->willReturn(1);
+
+        $response = (new ToolController($loop, ConfigurationAccessDouble::selector($this->configRepositoryStub), $this->rateLimiterStub, $context, new NullLogger()))
+            ->executeAction($this->createJsonRequest(['prompt' => 'Query']));
+
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($data);
+        self::assertSame('Es enthält Rabatt.', $data['error']);
     }
 
     #[Test]

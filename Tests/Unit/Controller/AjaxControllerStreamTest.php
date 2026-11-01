@@ -17,6 +17,7 @@ use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\PromptSnippetRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Prompt\PromptSnippetComposer;
@@ -243,6 +244,21 @@ final class AjaxControllerStreamTest extends TestCase
         $this->subject()->executeTaskStreamAction($this->request());
 
         self::assertSame('An unexpected error occurred.', $this->stream->events[0]['error']);
+        self::assertCount(1, $this->stream->events);
+    }
+
+    #[Test]
+    public function aGuardrailStopDuringTheStreamShowsItsReason(): void
+    {
+        $this->llm->method('streamChatWithConfiguration')->willReturnCallback(static function (): Generator {
+            yield from [];
+
+            throw new GuardrailViolationException('Guardrail', 'Dieser Text enthält Rabatt.');
+        });
+
+        $this->subject()->executeTaskStreamAction($this->request());
+
+        self::assertSame('Dieser Text enthält Rabatt.', $this->stream->events[0]['error']);
         self::assertCount(1, $this->stream->events);
     }
 

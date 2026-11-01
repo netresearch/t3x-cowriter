@@ -15,6 +15,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\BudgetExceededException;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Controller\FieldSuggestionController;
@@ -420,6 +421,16 @@ final class FieldSuggestionControllerTest extends TestCase
 
         self::assertSame(502, $response->getStatusCode());
         self::assertSame(['success' => false, 'error' => 'The AI returned no usable suggestions. Please try again.'], $this->json($response));
+    }
+
+    #[Test]
+    public function aGuardrailStopShowsItsReason(): void
+    {
+        $this->completion->throwable = new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.');
+
+        $response = $this->subject()->suggestAction($this->request($this->body()));
+
+        self::assertSame('Es enthält Rabatt.', $this->json($response)['error']);
     }
 
     #[Test]

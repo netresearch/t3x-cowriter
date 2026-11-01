@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\BudgetExceededException;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Controller\PresentationController;
@@ -338,6 +339,17 @@ final class PresentationControllerTest extends TestCase
 
         self::assertSame(429, $response->getStatusCode());
         self::assertTrue($this->json($response)['budgetExceeded'] ?? false);
+    }
+
+    #[Test]
+    public function aGuardrailStopShowsItsReason(): void
+    {
+        $this->useElement($this->element(self::WITHOUT_HEADINGS));
+        $this->completion->throwable = new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.');
+
+        $response = $this->subject()->proposeAction($this->request(['uid' => 10]));
+
+        self::assertSame('Es enthält Rabatt.', json_decode((string) $response->getBody(), true)['error'] ?? null);
     }
 
     #[Test]
