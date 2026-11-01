@@ -2252,6 +2252,83 @@ describe('CowriterDialog', () => {
             await expect(showPromise).rejects.toThrow('User cancelled');
         });
 
+        describe('a refinement that fails', () => {
+            const firstAnswerThen = async (failure) => {
+                mockService.executeTask
+                    .mockResolvedValueOnce({ success: true, content: '<p>First result</p>', model: 'gpt-4o' });
+                failure(mockService.executeTask);
+
+                const dialog = new CowriterDialog(mockService);
+                const showPromise = dialog.show('original text', 'full');
+                showPromise.catch(() => {});
+                await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(document.querySelector('[data-role="result-preview"]').textContent).toContain('First result'));
+
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(2));
+                await vi.waitFor(() => expect(document.querySelector('[name="execute"]').disabled).toBeFalsy());
+
+                return { showPromise };
+            };
+
+            const expectTheAnswerIsStillThere = () => {
+                expect(document.querySelector('[data-role="result-preview"]').textContent).toContain('First result');
+                expect(document.querySelector('[data-role="result-preview"]').classList.contains('cowriter-result--empty')).toBe(false);
+                expect(document.querySelector('[name="insert"]').style.display).not.toBe('none');
+                expect(document.querySelector('[name="reset"]').style.display).not.toBe('none');
+            };
+
+            it('keeps the answer and says why when a guardrail stops it', async () => {
+                await firstAnswerThen((task) => task.mockResolvedValueOnce({ success: false, error: 'Der Text enthält "Rabatt".' }));
+
+                expectTheAnswerIsStillThere();
+                const notice = document.querySelector('[data-role="run-notice"]');
+                expect(notice.textContent).toContain('Der Text enthält "Rabatt".');
+                expect(notice.getAttribute('role')).toBe('alert');
+            });
+
+            it('keeps the answer when the request fails', async () => {
+                await firstAnswerThen((task) => task.mockRejectedValueOnce(new Error('API timeout')));
+
+                expectTheAnswerIsStillThere();
+                expect(document.querySelector('[data-role="run-notice"]').textContent).toContain('API timeout');
+            });
+
+            it('keeps the answer when the request is cancelled', async () => {
+                const aborted = new Error('aborted');
+                aborted.name = 'AbortError';
+                await firstAnswerThen((task) => task.mockRejectedValueOnce(aborted));
+
+                expectTheAnswerIsStillThere();
+            });
+
+            it('inserts the answer it kept', async () => {
+                const { showPromise } = await firstAnswerThen((task) => task.mockResolvedValueOnce({ success: false, error: 'stopped' }));
+
+                document.querySelector('[name="insert"]').click();
+
+                await expect(showPromise).resolves.toEqual({ content: expect.stringContaining('First result') });
+            });
+
+            it('removes the notice with the next attempt and with Reset', async () => {
+                await firstAnswerThen((task) => task
+                    .mockResolvedValueOnce({ success: false, error: 'stopped' })
+                    .mockResolvedValueOnce({ success: true, content: 'Next result', model: 'gpt-4o' })
+                    .mockResolvedValueOnce({ success: false, error: 'stopped again' }));
+
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(document.querySelector('[data-role="result-preview"]').textContent).toContain('Next result'));
+                expect(document.querySelector('[data-role="run-notice"]')).toBeNull();
+
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(document.querySelector('[data-role="run-notice"]')).not.toBeNull());
+                document.querySelector('[name="reset"]').click();
+                expect(document.querySelector('[data-role="run-notice"]')).toBeNull();
+            });
+        });
+
         it('should reject promise when cancelled during loading', async () => {
             mockService.executeTask.mockReturnValue(new Promise(() => {}));
 
@@ -2287,10 +2364,7 @@ describe('CowriterDialog', () => {
             // Second execute fails
             document.querySelector('[name="execute"]').click();
             await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(2));
-            await vi.waitFor(() => {
-                const result = document.querySelector('[data-role="result-preview"]');
-                return result.textContent.includes('Error:');
-            });
+            await vi.waitFor(() => expect(document.querySelector('[data-role="run-notice"]')).not.toBeNull());
 
             // Third execute (retry) — context should be sanitized "First result" (from chaining)
             document.querySelector('[name="execute"]').click();

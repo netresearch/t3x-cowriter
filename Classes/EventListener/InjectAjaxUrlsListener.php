@@ -102,6 +102,7 @@ final readonly class InjectAjaxUrlsListener
         'ckeditor.dialog.model',
         'ckeditor.dialog.tokens',
         'ckeditor.dialog.noContent',
+        'ckeditor.dialog.refineAborted',
         'ckeditor.dialog.error',
         'ckeditor.dialog.task',
         'ckeditor.dialog.customInstruction',

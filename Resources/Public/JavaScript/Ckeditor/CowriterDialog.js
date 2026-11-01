@@ -943,9 +943,36 @@ export class CowriterDialog {
                 }
             };
 
+            // A refinement that fails leaves the answer it refined: the editor can
+            // still insert it, and it is what the next attempt continues from.
+            const keepTheAnswer = (message, statusUrl) => {
+                if (!resultContent) {
+                    return false;
+                }
+
+                const preview = container.querySelector('[data-role="result-preview"]');
+                preview.replaceChildren(...Array.from(this._sanitizeHtml(resultContent).childNodes));
+
+                const notice = document.createElement('div');
+                notice.className = 'alert alert-warning';
+                notice.setAttribute('role', 'alert');
+                notice.dataset.role = 'run-notice';
+                notice.textContent = message;
+                if (statusUrl) {
+                    this._appendStatusLink(notice, statusUrl);
+                }
+                preview.before(notice);
+
+                state = 'result';
+                this._updateButtonVisibility(modal, 'result');
+
+                return true;
+            };
+
             const resetTrigger = () => {
                 activeRequest?.abort();
                 state = 'idle';
+                container.querySelector('[data-role="run-notice"]')?.remove();
                 resultContent = '';
                 currentContext = originalContext;
 
@@ -967,6 +994,7 @@ export class CowriterDialog {
                 state = 'loading';
                 this._setButtonsDisabled(modal, true);
                 this._updateButtonVisibility(modal, 'loading');
+                container.querySelector('[data-role="run-notice"]')?.remove();
 
                 const preview = container.querySelector('[data-role="result-preview"]');
                 const modelInfo = container.querySelector('[data-role="model-info"]');
@@ -1061,43 +1089,49 @@ export class CowriterDialog {
                         this._showDebugDetails(container, result, inputText, instruction);
                         this._updateButtonVisibility(modal, 'result');
                     } else {
-                        preview.textContent = result.error || t('ckeditor.dialog.noContent', 'No content returned');
-                        if (result.statusUrl) {
-                            this._appendStatusLink(preview, result.statusUrl);
-                        }
-                        preview.classList.add('cowriter-result--empty');
+                        const message = result.error || t('ckeditor.dialog.noContent', 'No content returned');
                         this._showDebugDetails(container, result, inputText, instruction);
-                        resultContent = '';
-                        state = 'idle';
-                        this._updateButtonVisibility(modal, 'idle');
+                        if (!keepTheAnswer(message, result.statusUrl)) {
+                            preview.textContent = message;
+                            if (result.statusUrl) {
+                                this._appendStatusLink(preview, result.statusUrl);
+                            }
+                            preview.classList.add('cowriter-result--empty');
+                            state = 'idle';
+                            this._updateButtonVisibility(modal, 'idle');
+                        }
                     }
                 } catch (error) {
                     activeRequest = null;
                     if (error?.name === 'AbortError') {
-                        state = 'idle';
-                        this._updateButtonVisibility(modal, 'idle');
+                        if (!keepTheAnswer(t('ckeditor.dialog.refineAborted', 'Cancelled. The previous answer is still here.'))) {
+                            state = 'idle';
+                            this._updateButtonVisibility(modal, 'idle');
+                        }
                         this._setButtonsDisabled(modal, false);
                         void this._refreshBudget(container);
                         return;
                     }
                     if (error?.budgetExceeded) {
-                        // The budget refused the request: a notice, not an error.
-                        preview.textContent = error.message;
                         const budget = container.querySelector('[data-role="budget"]');
                         if (budget) {
                             budget.open = true;
                         }
-                    } else {
-                        preview.textContent = t('ckeditor.dialog.error', 'Error: %s', error.message);
                     }
-                    if (error.statusUrl) {
-                        this._appendStatusLink(preview, error.statusUrl);
-                    }
-                    preview.classList.add('cowriter-result--empty');
+                    // The budget refused the request: a notice, not an error.
+                    const message = error?.budgetExceeded
+                        ? error.message
+                        : t('ckeditor.dialog.error', 'Error: %s', error.message);
                     this._showDebugDetails(container, {error: error.message}, currentContext, '');
-                    resultContent = '';
-                    state = 'idle';
-                    this._updateButtonVisibility(modal, 'idle');
+                    if (!keepTheAnswer(message, error.statusUrl)) {
+                        preview.textContent = message;
+                        if (error.statusUrl) {
+                            this._appendStatusLink(preview, error.statusUrl);
+                        }
+                        preview.classList.add('cowriter-result--empty');
+                        state = 'idle';
+                        this._updateButtonVisibility(modal, 'idle');
+                    }
                 }
 
                 this._setButtonsDisabled(modal, false);

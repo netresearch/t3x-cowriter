@@ -745,6 +745,10 @@
                 <source>%s tokens</source>
                 <target>%s Tokens</target>
             </trans-unit>
+            <trans-unit id="ckeditor.dialog.refineAborted" resname="ckeditor.dialog.refineAborted">
+                <source>Cancelled. The previous answer is still here.</source>
+                <target>Abgebrochen. Die vorherige Antwort steht noch hier.</target>
+            </trans-unit>
             <trans-unit id="ckeditor.dialog.noContent" resname="ckeditor.dialog.noContent">
                 <source>No content returned</source>
                 <target>Kein Inhalt zurückgegeben</target>
