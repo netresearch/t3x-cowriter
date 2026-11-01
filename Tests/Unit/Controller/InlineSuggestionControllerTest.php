@@ -15,6 +15,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\BudgetExceededException;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Controller\InlineSuggestionController;
 use Netresearch\T3Cowriter\Domain\DTO\InlineSuggestionRequest;
@@ -316,6 +317,16 @@ final class InlineSuggestionControllerTest extends TestCase
     }
 
     #[Test]
+    public function aGuardrailStopShowsItsReason(): void
+    {
+        $this->completion->throwable = new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.');
+
+        $response = $this->subject()->suggestAction($this->request(['text' => self::TEXT]));
+
+        self::assertSame(['success' => false, 'error' => 'Es enthält Rabatt.', 'guardrailStop' => true], $this->json($response));
+    }
+
+    #[Test]
     public function aFailedCallIsA502WithoutTheTextInTheLog(): void
     {
         $this->completion->throwable = new RuntimeException('provider said no');
@@ -323,7 +334,7 @@ final class InlineSuggestionControllerTest extends TestCase
         $response = $this->subject()->suggestAction($this->request(['text' => self::TEXT]));
 
         self::assertSame(502, $response->getStatusCode());
-        self::assertSame(['success' => false, 'error' => 'No suggestion could be created.'], $this->json($response));
+        self::assertSame(['success' => false, 'error' => 'No suggestion could be created.', 'guardrailStop' => false], $this->json($response));
         self::assertSame('error', $this->logged[0][0]);
         self::assertSame(['exception' => 'provider said no'], $this->logged[0][2]);
         self::assertStringNotContainsString('lighthouse', (string) json_encode($this->logged));

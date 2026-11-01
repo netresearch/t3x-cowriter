@@ -64,17 +64,25 @@ class AIServiceError extends Error {
     budgetExceeded = false;
 
     /**
+     * A guardrail stopped the answer, and the message says why.
+     * @type {boolean}
+     */
+    guardrailStop = false;
+
+    /**
      * @param {string} message
      * @param {string|null} [statusUrl]
      * @param {number|null} [status]
      * @param {boolean} [budgetExceeded]
+     * @param {boolean} [guardrailStop]
      */
-    constructor(message, statusUrl = null, status = null, budgetExceeded = false) {
+    constructor(message, statusUrl = null, status = null, budgetExceeded = false, guardrailStop = false) {
         super(message);
         this.name = 'AIServiceError';
         this.statusUrl = statusUrl;
         this.status = status;
         this.budgetExceeded = budgetExceeded;
+        this.guardrailStop = guardrailStop;
     }
 }
 
@@ -201,6 +209,7 @@ export class AIService {
             body.statusUrl || null,
             response.status,
             body.budgetExceeded === true,
+            body.guardrailStop === true,
         );
     }
 

@@ -16,6 +16,7 @@ use Netresearch\T3Cowriter\Domain\DTO\VisionRequest;
 use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\CallerSource;
+use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\Vision\AltTextPrompt;
 use Psr\Http\Message\ResponseInterface;
@@ -122,7 +123,7 @@ final readonly class VisionController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->labels->get('error.vision')],
+                ['success' => false, 'error' => LlmErrorClassifier::guardrailReason($e) ?? $this->labels->get('error.vision')],
                 $rateLimitResult,
                 500,
             );

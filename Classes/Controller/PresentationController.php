@@ -426,10 +426,11 @@ final readonly class PresentationController
     private function errorMessage(Throwable $exception): string
     {
         return match ($this->errorClassifier->classify($exception)) {
-            LlmErrorKind::Configuration  => $this->labels->get('error.checkSetupStatus', $this->labels->get('error.notConfigured')),
-            LlmErrorKind::Authentication => $this->labels->get('error.providerAuthentication'),
-            LlmErrorKind::RateLimit      => $this->labels->get('error.providerRateLimit'),
-            LlmErrorKind::Unknown        => $this->labels->get('presentation.error.noSplit'),
+            LlmErrorKind::Configuration    => $this->labels->get('error.checkSetupStatus', $this->labels->get('error.notConfigured')),
+            LlmErrorKind::Authentication   => $this->labels->get('error.providerAuthentication'),
+            LlmErrorKind::RateLimit        => $this->labels->get('error.providerRateLimit'),
+            LlmErrorKind::GuardrailRefusal => LlmErrorClassifier::guardrailReason($exception) ?? $this->labels->get('presentation.error.noSplit'),
+            LlmErrorKind::Unknown          => $this->labels->get('presentation.error.noSplit'),
         };
     }
 

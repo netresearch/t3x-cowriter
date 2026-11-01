@@ -215,10 +215,11 @@ final readonly class FieldOverviewController
         }
 
         return match ($kind) {
-            LlmErrorKind::Configuration  => $this->labels->get('error.checkSetupStatus', $this->labels->get('error.notConfigured')),
-            LlmErrorKind::Authentication => $this->labels->get('error.providerAuthentication'),
-            LlmErrorKind::RateLimit      => $this->labels->get('error.providerRateLimit'),
-            LlmErrorKind::Unknown        => $this->labels->get('fieldSuggestions.error.unknown'),
+            LlmErrorKind::Configuration    => $this->labels->get('error.checkSetupStatus', $this->labels->get('error.notConfigured')),
+            LlmErrorKind::Authentication   => $this->labels->get('error.providerAuthentication'),
+            LlmErrorKind::RateLimit        => $this->labels->get('error.providerRateLimit'),
+            LlmErrorKind::GuardrailRefusal => LlmErrorClassifier::guardrailReason($exception) ?? $this->labels->get('fieldSuggestions.error.unknown'),
+            LlmErrorKind::Unknown          => $this->labels->get('fieldSuggestions.error.unknown'),
         };
     }
 }

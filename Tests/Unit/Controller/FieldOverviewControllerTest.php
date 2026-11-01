@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Exception\BudgetExceededException;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Controller\FieldOverviewController;
@@ -365,6 +366,16 @@ final class FieldOverviewControllerTest extends TestCase
 
         self::assertSame(429, $response->getStatusCode());
         self::assertTrue($this->json($response)['budgetExceeded']);
+    }
+
+    #[Test]
+    public function aGuardrailStopShowsItsReason(): void
+    {
+        $this->completion->throwable = new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.');
+
+        $response = $this->subject()->suggestAllAction($this->request($this->body()));
+
+        self::assertStringContainsString('Es enthält Rabatt.', json_decode((string) $response->getBody(), true)['error']);
     }
 
     #[Test]

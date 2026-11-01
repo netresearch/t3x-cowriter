@@ -20,6 +20,7 @@ use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
+use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -164,7 +165,7 @@ final readonly class ToolController
             ]);
 
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->labels->get('error.tool')],
+                ['success' => false, 'error' => LlmErrorClassifier::guardrailReason($e) ?? $this->labels->get('error.tool')],
                 $rateLimitResult,
                 500,
             );

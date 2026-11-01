@@ -13,6 +13,7 @@ use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Model\VisionResponse;
 use Netresearch\NrLlm\Exception\BudgetExceededException;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Service\Feature\VisionServiceInterface;
 use Netresearch\NrLlm\Service\Option\VisionOptions;
 use Netresearch\T3Cowriter\Controller\VisionController;
@@ -271,6 +272,20 @@ final class VisionControllerTest extends TestCase
         self::assertSame('The request was refused. This limit is used up: your daily cost.', $data['error']);
         self::assertTrue($data['budgetExceeded']);
         self::assertSame('19', $response->getHeaderLine('X-RateLimit-Remaining'));
+    }
+
+    #[Test]
+    public function aGuardrailStopShowsItsReason(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+        $this->visionServiceStub->method('analyzeImageFull')
+            ->willThrowException(new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.'));
+
+        $response = $this->subject->analyzeAction($this->createJsonRequest(['imageUrl' => 'https://example.com/image.jpg']));
+
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertSame('Es enthält Rabatt.', $data['error']);
     }
 
     #[Test]

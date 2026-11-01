@@ -11,6 +11,7 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Service;
 
 use Netresearch\NrLlm\Exception\ConfigurationInactiveException;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
@@ -92,6 +93,30 @@ final class LlmErrorClassifierTest extends TestCase
             LlmErrorKind::Unknown,
             $this->subject->classify(new ProviderException('some other provider error', 6273324883)),
         );
+    }
+
+    #[Test]
+    public function aGuardrailStopIsARefusalWithItsReason(): void
+    {
+        $stop = new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.');
+
+        self::assertSame(LlmErrorKind::GuardrailRefusal, $this->subject->classify($stop));
+        self::assertSame('Es enthält Rabatt.', LlmErrorClassifier::guardrailReason($stop));
+    }
+
+    #[Test]
+    public function aWrappedGuardrailStopIsFound(): void
+    {
+        $wrapped = new RuntimeException('wrapper', 0, new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.'));
+
+        self::assertSame(LlmErrorKind::GuardrailRefusal, $this->subject->classify($wrapped));
+        self::assertSame('Es enthält Rabatt.', LlmErrorClassifier::guardrailReason($wrapped));
+    }
+
+    #[Test]
+    public function anyOtherFailureHasNoGuardrailReason(): void
+    {
+        self::assertNull(LlmErrorClassifier::guardrailReason(new RuntimeException('boom')));
     }
 
     #[Test]

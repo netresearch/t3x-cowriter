@@ -427,7 +427,7 @@ final readonly class AjaxController
                 'trace'     => $e->getTraceAsString(),
             ]);
 
-            return $this->sseErrorResponse($this->labels->get('error.unexpected'), 500);
+            return $this->sseErrorResponse(LlmErrorClassifier::guardrailReason($e) ?? $this->labels->get('error.unexpected'), 500);
         }
     }
 
@@ -1200,10 +1200,11 @@ final readonly class AjaxController
     private function enrichErrorMessage(string $fallback, Throwable $exception): string
     {
         return match ($this->errorClassifier->classify($exception)) {
-            LlmErrorKind::Configuration  => $this->configurationErrorMessage(),
-            LlmErrorKind::Authentication => $this->labels->get('error.providerAuthentication'),
-            LlmErrorKind::RateLimit      => $this->labels->get('error.providerRateLimit'),
-            LlmErrorKind::Unknown        => $fallback,
+            LlmErrorKind::Configuration    => $this->configurationErrorMessage(),
+            LlmErrorKind::Authentication   => $this->labels->get('error.providerAuthentication'),
+            LlmErrorKind::RateLimit        => $this->labels->get('error.providerRateLimit'),
+            LlmErrorKind::GuardrailRefusal => LlmErrorClassifier::guardrailReason($exception) ?? $fallback,
+            LlmErrorKind::Unknown          => $fallback,
         };
     }
 

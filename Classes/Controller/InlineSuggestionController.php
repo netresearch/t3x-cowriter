@@ -20,6 +20,7 @@ use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\InlineSuggestion\InlineSuggestionConfiguration;
 use Netresearch\T3Cowriter\Service\InlineSuggestion\SuggestionText;
+use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\Vision\RecordLanguageResolverInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -143,8 +144,10 @@ final readonly class InlineSuggestionController
             // The editor's text is not logged: it is the record's content.
             $this->logger->error('Inline suggestion failed', ['exception' => $e->getMessage()]);
 
+            $reason = LlmErrorClassifier::guardrailReason($e);
+
             return $this->jsonResponseWithRateLimitHeaders(
-                ['success' => false, 'error' => $this->labels->get('error.inlineSuggestion.failed')],
+                ['success' => false, 'error' => $reason ?? $this->labels->get('error.inlineSuggestion.failed'), 'guardrailStop' => $reason !== null],
                 $rateLimitResult,
                 502,
             );

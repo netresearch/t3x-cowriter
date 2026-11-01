@@ -28,4 +28,7 @@ enum LlmErrorKind
 
     /** Anything else — surface a generic "check the log" message. */
     case Unknown;
+
+    /** A guardrail stopped the answer; its message says why. */
+    case GuardrailRefusal;
 }

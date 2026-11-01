@@ -17,6 +17,7 @@ use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
+use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
@@ -1221,6 +1222,20 @@ final class AjaxControllerTest extends TestCase
         $this->assertTrue($lastEvent['done']);
         // Raw content — frontend sanitizes before DOM insertion
         $this->assertSame("test-model's", $lastEvent['model']);
+    }
+
+    #[Test]
+    public function streamActionShowsTheReasonOfAGuardrailStop(): void
+    {
+        $this->configRepositoryMock->method('findDefault')->willReturn($this->createConfigurationMock());
+        $this->llmServiceManagerMock
+            ->method('streamChatWithConfiguration')
+            ->willThrowException(new GuardrailViolationException('Guardrail', 'Es enthält Rabatt.'));
+
+        $response = $this->subject->streamAction($this->createRequestWithJsonBody(['prompt' => 'Test']));
+
+        $response->getBody()->rewind();
+        $this->assertStringContainsString('Es enth', $response->getBody()->getContents());
     }
 
     #[Test]

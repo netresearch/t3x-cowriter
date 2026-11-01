@@ -11,6 +11,7 @@ namespace Netresearch\T3Cowriter\Service;
 
 use Netresearch\NrLlm\Exception\ConfigurationInactiveException;
 use Netresearch\NrLlm\Exception\ConfigurationNotFoundException;
+use Netresearch\NrLlm\Exception\GuardrailPolicyException;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Throwable;
@@ -30,6 +31,9 @@ use Throwable;
  *   → Authentication, 429 → RateLimit. This also covers the dedicated 401/429
  *   subclasses nr-llm may add (they *are* ProviderResponseExceptions carrying
  *   the same httpStatus), so no change is needed when they land.
+ * - A {@see GuardrailPolicyException}, also when another exception wraps it →
+ *   GuardrailRefusal. Its message is written for the person who asked and says
+ *   why nothing came back, so it is the one nr-llm message shown as it is.
  */
 final class LlmErrorClassifier
 {
@@ -40,8 +44,27 @@ final class LlmErrorClassifier
      */
     private const NO_DEFAULT_PROVIDER_CODE = 4867297358;
 
+    /**
+     * The reason a guardrail gave for stopping an answer, also when another
+     * exception wraps it; null for any other failure.
+     */
+    public static function guardrailReason(Throwable $error): ?string
+    {
+        for ($current = $error; $current instanceof Throwable; $current = $current->getPrevious()) {
+            if ($current instanceof GuardrailPolicyException) {
+                return $current->getMessage();
+            }
+        }
+
+        return null;
+    }
+
     public function classify(Throwable $error): LlmErrorKind
     {
+        if (self::guardrailReason($error) !== null) {
+            return LlmErrorKind::GuardrailRefusal;
+        }
+
         if ($error instanceof ConfigurationNotFoundException || $error instanceof ConfigurationInactiveException) {
             return LlmErrorKind::Configuration;
         }
