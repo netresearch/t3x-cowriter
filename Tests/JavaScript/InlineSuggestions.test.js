@@ -26,6 +26,8 @@ describe('SuggestionScheduler', () => {
     let requests;
     /** @type {string[]} */
     let shown;
+    /** @type {string[]} */
+    let notices;
     let current;
     let prepared;
 
@@ -33,6 +35,7 @@ describe('SuggestionScheduler', () => {
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
         requests = [];
         shown = [];
+        notices = [];
         current = true;
         prepared = 'Some text before the cursor';
     });
@@ -49,6 +52,7 @@ describe('SuggestionScheduler', () => {
                 requests.push({ text, signal, resolve, reject });
             }),
             show: (suggestion) => shown.push(suggestion),
+            notify: (reason) => notices.push(reason),
         });
     }
 
@@ -215,6 +219,23 @@ describe('SuggestionScheduler', () => {
         expect(requests).toHaveLength(1);
         await vi.advanceTimersByTimeAsync(1);
         expect(requests).toHaveLength(2);
+    });
+
+    it('tells the editor once why a guardrail stopped a suggestion', async () => {
+        const subject = scheduler();
+        const stop = () => Object.assign(new Error('Es enthält Rabatt.'), { status: 502, guardrailStop: true });
+
+        subject.schedule();
+        await vi.advanceTimersByTimeAsync(DELAY);
+        requests[0].reject(stop());
+        await vi.advanceTimersByTimeAsync(0);
+
+        subject.schedule();
+        await vi.advanceTimersByTimeAsync(FAILURE_PAUSE);
+        requests[1].reject(stop());
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(notices).toEqual(['Es enthält Rabatt.']);
     });
 
     it('pauses after a failed request', async () => {

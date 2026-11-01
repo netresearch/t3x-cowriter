@@ -127,15 +127,17 @@ export class SuggestionScheduler {
      *     what to ask for, or null when no suggestion fits right now
      * @param {function(string, AbortSignal): Promise<string>} options.request
      * @param {function(string): void} options.show
+     * @param {function(string): void} [options.notify] - tells the editor why a suggestion was stopped
      * @param {number} [options.minInterval]
      * @param {function(): number} [options.now]
      * @param {{setTimeout: function(function(): void, number): any, clearTimeout: function(any): void}} [options.timers]
      */
-    constructor({ delay, prepare, request, show, minInterval = MIN_INTERVAL, now = () => Date.now(), timers = globalThis }) {
+    constructor({ delay, prepare, request, show, notify = () => {}, minInterval = MIN_INTERVAL, now = () => Date.now(), timers = globalThis }) {
         this._delay = delay;
         this._prepare = prepare;
         this._request = request;
         this._show = show;
+        this._notify = notify;
         this._minInterval = minInterval;
         this._now = now;
         this._timers = timers;
@@ -228,6 +230,12 @@ export class SuggestionScheduler {
                     this._pausedUntil = this._now() + (Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 60000);
                 } else {
                     this._pausedUntil = this._now() + FAILURE_PAUSE;
+                    // Once per reason: a ghost text nobody asked for must not
+                    // repeat the same notice on every pause.
+                    if (error?.guardrailStop === true && error.message !== this._notified) {
+                        this._notified = error.message;
+                        this._notify(error.message);
+                    }
                 }
             },
         );
@@ -325,6 +333,9 @@ export class InlineSuggestions extends Plugin {
             prepare: () => this._prepare(),
             request: (text, signal) => this._service.inlineSuggestion(text, this._recordContext(), signal),
             show: (suggestion) => this._showSuggestion(suggestion),
+            notify: (reason) => {
+                import('@typo3/backend/notification.js').then(({ default: Notification }) => Notification.warning('', reason, 8));
+            },
         });
 
         this._setUpConversion();

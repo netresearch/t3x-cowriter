@@ -323,7 +323,7 @@ final class InlineSuggestionControllerTest extends TestCase
 
         $response = $this->subject()->suggestAction($this->request(['text' => self::TEXT]));
 
-        self::assertSame(['success' => false, 'error' => 'Es enthält Rabatt.'], $this->json($response));
+        self::assertSame(['success' => false, 'error' => 'Es enthält Rabatt.', 'guardrailStop' => true], $this->json($response));
     }
 
     #[Test]
@@ -334,7 +334,7 @@ final class InlineSuggestionControllerTest extends TestCase
         $response = $this->subject()->suggestAction($this->request(['text' => self::TEXT]));
 
         self::assertSame(502, $response->getStatusCode());
-        self::assertSame(['success' => false, 'error' => 'No suggestion could be created.'], $this->json($response));
+        self::assertSame(['success' => false, 'error' => 'No suggestion could be created.', 'guardrailStop' => false], $this->json($response));
         self::assertSame('error', $this->logged[0][0]);
         self::assertSame(['exception' => 'provider said no'], $this->logged[0][2]);
         self::assertStringNotContainsString('lighthouse', (string) json_encode($this->logged));
