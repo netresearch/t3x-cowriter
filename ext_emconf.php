@@ -12,14 +12,14 @@ $EM_CONF[$_EXTKEY] = [
     'author'         => 'Team der Netresearch DTT GmbH',
     'author_email'   => '',
     'author_company' => 'Netresearch DTT GmbH',
-    'version'        => '3.22.2',
+    'version'        => '3.23.0',
     'state'          => 'stable',
     'constraints'    => [
         'depends' => [
             'php'          => '8.2.0-8.9.99',
             'typo3'        => '13.4.0-14.99.99',
             'rte_ckeditor' => '13.4.0-14.99.99',
-            'nr_llm'       => '0.41.14-0.42.99',
+            'nr_llm'       => '0.41.14-0.43.99',
         ],
         'conflicts' => [],
         'suggests'  => [],

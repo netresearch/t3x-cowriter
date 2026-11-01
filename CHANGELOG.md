@@ -2,6 +2,20 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.23.0 (2026-11-01)
+
+### FEATURE
+
+- The dialog shows why a guardrail stopped an answer (#249).
+
+### BUGFIX
+
+- A failed refinement keeps the answer it refined (#250).
+
+### TASK
+
+- `netresearch/nr-llm` is accepted at `^0.41.14 || ^0.42 || ^0.43` (`ext_emconf.php`: `0.41.14-0.43.99`).
+
 ## 3.22.2 (2026-11-01)
 
 ### TASK

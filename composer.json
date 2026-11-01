@@ -56,7 +56,7 @@
         "typo3/cms-core": "^13.4 || ^14.3",
         "typo3/cms-backend": "^13.4 || ^14.3",
         "typo3/cms-rte-ckeditor": "^13.4 || ^14.3",
-        "netresearch/nr-llm": "^0.41.14 || ^0.42"
+        "netresearch/nr-llm": "^0.41.14 || ^0.42 || ^0.43"
     },
     "require-dev": {
         "bk2k/bootstrap-package": "^16.0.1",
