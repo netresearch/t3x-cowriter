@@ -334,7 +334,10 @@ export class InlineSuggestions extends Plugin {
             request: (text, signal) => this._service.inlineSuggestion(text, this._recordContext(), signal),
             show: (suggestion) => this._showSuggestion(suggestion),
             notify: (reason) => {
-                import('@typo3/backend/notification.js').then(({ default: Notification }) => Notification.warning('', reason, 8));
+                import('@typo3/backend/notification.js').then(
+                    ({ default: Notification }) => Notification.warning('', reason, 8),
+                    (error) => console.warn('The notice could not be shown', error),
+                );
             },
         });
 
