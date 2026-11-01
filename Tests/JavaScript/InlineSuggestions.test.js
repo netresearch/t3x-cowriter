@@ -223,19 +223,24 @@ describe('SuggestionScheduler', () => {
 
     it('tells the editor once why a guardrail stopped a suggestion', async () => {
         const subject = scheduler();
-        const stop = () => Object.assign(new Error('Es enthält Rabatt.'), { status: 502, guardrailStop: true });
+        const stop = (reason) => Object.assign(new Error(reason), { status: 502, guardrailStop: true });
 
         subject.schedule();
         await vi.advanceTimersByTimeAsync(DELAY);
-        requests[0].reject(stop());
+        requests[0].reject(stop('Es enthält Rabatt.'));
         await vi.advanceTimersByTimeAsync(0);
 
         subject.schedule();
         await vi.advanceTimersByTimeAsync(FAILURE_PAUSE);
-        requests[1].reject(stop());
+        requests[1].reject(stop('Es enthält Sale.'));
         await vi.advanceTimersByTimeAsync(0);
 
-        expect(notices).toEqual(['Es enthält Rabatt.']);
+        subject.schedule();
+        await vi.advanceTimersByTimeAsync(FAILURE_PAUSE);
+        requests[2].reject(stop('Es enthält Rabatt.'));
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(notices).toEqual(['Es enthält Rabatt.', 'Es enthält Sale.']);
     });
 
     it('pauses after a failed request', async () => {

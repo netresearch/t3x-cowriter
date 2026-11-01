@@ -138,6 +138,7 @@ export class SuggestionScheduler {
         this._request = request;
         this._show = show;
         this._notify = notify;
+        this._notified = new Set();
         this._minInterval = minInterval;
         this._now = now;
         this._timers = timers;
@@ -232,8 +233,8 @@ export class SuggestionScheduler {
                     this._pausedUntil = this._now() + FAILURE_PAUSE;
                     // Once per reason: a ghost text nobody asked for must not
                     // repeat the same notice on every pause.
-                    if (error?.guardrailStop === true && error.message !== this._notified) {
-                        this._notified = error.message;
+                    if (error?.guardrailStop === true && !this._notified.has(error.message)) {
+                        this._notified.add(error.message);
                         this._notify(error.message);
                     }
                 }
