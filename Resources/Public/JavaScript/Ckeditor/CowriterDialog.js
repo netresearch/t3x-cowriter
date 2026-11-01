@@ -1104,10 +1104,8 @@ export class CowriterDialog {
                 } catch (error) {
                     activeRequest = null;
                     if (error?.name === 'AbortError') {
-                        if (!keepTheAnswer(t('ckeditor.dialog.refineAborted', 'Cancelled. The previous answer is still here.'))) {
-                            state = 'idle';
-                            this._updateButtonVisibility(modal, 'idle');
-                        }
+                        state = 'idle';
+                        this._updateButtonVisibility(modal, 'idle');
                         this._setButtonsDisabled(modal, false);
                         void this._refreshBudget(container);
                         return;

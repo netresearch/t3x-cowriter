@@ -2296,14 +2296,6 @@ describe('CowriterDialog', () => {
                 expect(document.querySelector('[data-role="run-notice"]').textContent).toContain('API timeout');
             });
 
-            it('keeps the answer when the request is cancelled', async () => {
-                const aborted = new Error('aborted');
-                aborted.name = 'AbortError';
-                await firstAnswerThen((task) => task.mockRejectedValueOnce(aborted));
-
-                expectTheAnswerIsStillThere();
-            });
-
             it('inserts the answer it kept', async () => {
                 const { showPromise } = await firstAnswerThen((task) => task.mockResolvedValueOnce({ success: false, error: 'stopped' }));
 
