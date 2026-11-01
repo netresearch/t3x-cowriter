@@ -2,6 +2,12 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.22.2 (2026-11-01)
+
+### TASK
+
+- `netresearch/nr-llm` is accepted at `^0.41.14 || ^0.42` (`ext_emconf.php`: `0.41.14-0.42.99`). On a 0.x version a caret does not admit the next minor, so an installation could not move to nr-llm 0.42.0. No code change.
+
 ## 3.22.1 (2026-10-31)
 
 ### BUGFIX
