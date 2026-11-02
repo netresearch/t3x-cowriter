@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.24.0 (2026-11-02)
+
+### FEATURE
+
+- A task about a record runs on the LLM configuration the record's site names in its settings, when neither the editor nor the task chose one; the call carries the site, so site-bound term lists apply (#252). The dialog's first configuration option now reads "Site setting or default".
+
+### TASK
+
+- `netresearch/nr-llm` is required at `^0.43.4` (`ext_emconf.php`: `0.43.4-0.43.99`).
+
 ## 3.23.0 (2026-11-01)
 
 ### FEATURE
