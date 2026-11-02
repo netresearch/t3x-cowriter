@@ -680,7 +680,7 @@ final readonly class AjaxController
     {
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if ($dto->useTools && $this->toolRunner instanceof UnattendedToolRunner && $backendUser instanceof BackendUserAuthentication) {
-            $result = $this->toolRunner->run($messages, $configuration, $backendUser);
+            $result = $this->toolRunner->run($messages, $configuration, $backendUser, $site);
             if ($result instanceof ToolLoopResult && $result->terminationReason === AgentRunTerminationReason::BUDGET_EXHAUSTED) {
                 // The tool loop ends a budget refusal without the exception
                 // and without the limit; ask the budget for it.

@@ -21,6 +21,7 @@ use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\RecordSite;
 use Netresearch\T3Cowriter\Service\Tool\UnattendedToolRunner;
 use Psr\Log\NullLogger;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
@@ -41,6 +42,7 @@ trait TaskRouteControllerTrait
         ?UnattendedToolRunner $toolRunner = null,
         ?RecordingEventStream $eventStream = null,
         BudgetRefusal $budgetRefusal = new BudgetRefusal(),
+        ?RecordSite $recordSite = null,
     ): AjaxController {
         $configuration = $this->createStub(LlmConfiguration::class);
         $configuration->method('getIdentifier')->willReturn('default');
@@ -75,6 +77,7 @@ trait TaskRouteControllerTrait
             completionService: $completionService,
             toolRunner: $toolRunner,
             budgetRefusal: $budgetRefusal,
+            recordSite: $recordSite,
         );
     }
 }

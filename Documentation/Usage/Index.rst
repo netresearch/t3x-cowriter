@@ -63,7 +63,9 @@ The Cowriter dialog lets you choose what to do with your content:
     (:ref:`nrllm:administration-site-settings`), and without one the
     default configuration. A site setting that names a configuration that
     does not exist or is inactive stops the task with a message instead
-    of using the default. The list shows only the configurations your
+    of using the default. Only the task dialog does this; inline and
+    field suggestions, the chat and translations keep the default. The
+    list shows only the configurations your
     backend groups may use; a configuration restricted to other groups is
     neither listed nor accepted. The picker appears once the list has
     loaded and stays hidden when there is nothing to choose.

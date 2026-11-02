@@ -58,7 +58,7 @@ final readonly class UnattendedToolRunner
      *
      * @throws ToolNeedsApprovalException when a tool asks for an approval all the same
      */
-    public function run(array $messages, LlmConfiguration $configuration, BackendUserAuthentication $user): ?ToolLoopResult
+    public function run(array $messages, LlmConfiguration $configuration, BackendUserAuthentication $user, ?string $site = null): ?ToolLoopResult
     {
         $tools = $this->offerable($configuration, $user);
         if ($tools === []) {
@@ -68,14 +68,22 @@ final readonly class UnattendedToolRunner
         try {
             // The tool loop does not look the user up itself: without the uid
             // nr-llm's per-user budget would not apply to these model calls.
+            $options = ToolOptions::auto()
+                ->withBeUserUid($user->getUserId() ?? 0)
+                ->withCallerSource(CallerSource::EXTENSION, 'taskTools');
+
+            // The record's site, so its term lists apply to every turn of the
+            // loop (nr-llm ADR-238, ADR-244).
+            if ($site !== null && $site !== '') {
+                $options = $options->withSite($site);
+            }
+
             return $this->toolLoop->runLoop(
                 $messages,
                 $configuration,
                 ToolExecutionContext::fromBackendUser($user),
                 $tools,
-                ToolOptions::auto()
-                    ->withBeUserUid($user->getUserId() ?? 0)
-                    ->withCallerSource(CallerSource::EXTENSION, 'taskTools'),
+                $options,
             );
         } catch (ToolApprovalRequiredException $e) {
             throw new ToolNeedsApprovalException('A tool asked for an approval.', 1790200001, $e);

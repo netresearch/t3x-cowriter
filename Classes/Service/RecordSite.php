@@ -44,8 +44,7 @@ final readonly class RecordSite
             return null;
         }
 
-        $pid  = $row['pid'] ?? 0;
-        $page = $record['table'] === 'pages' ? $record['uid'] : (is_numeric($pid) ? (int) $pid : 0);
+        $page = $record['table'] === 'pages' ? $this->defaultLanguagePage($record['uid'], $row) : $this->intValue($row['pid'] ?? 0);
         if ($page <= 0) {
             return null;
         }
@@ -55,5 +54,24 @@ final readonly class RecordSite
         } catch (SiteNotFoundException) {
             return null;
         }
+    }
+
+    /**
+     * A translated page stands for its default-language page: a translated
+     * site root has only itself in its rootline, and the site is keyed by the
+     * default-language root (as core's SiteResolving form data provider does).
+     *
+     * @param array<string, mixed> $row
+     */
+    private function defaultLanguagePage(int $uid, array $row): int
+    {
+        $parent = $this->intValue($row['l10n_parent'] ?? 0);
+
+        return $parent > 0 ? $parent : $uid;
+    }
+
+    private function intValue(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
     }
 }

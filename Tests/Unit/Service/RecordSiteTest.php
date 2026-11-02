@@ -34,6 +34,12 @@ final class RecordSiteTest extends TestCase
     }
 
     #[Test]
+    public function aTranslatedPageBelongsToTheSiteOfItsDefaultLanguagePage(): void
+    {
+        self::assertSame('shop', $this->subject()->identifierFor(['table' => 'pages', 'uid' => 11, 'field' => 'title']));
+    }
+
+    #[Test]
     public function noRecordAnUnreadableRecordAndAPageOutsideEverySiteHaveNoSite(): void
     {
         $subject = $this->subject();
@@ -47,7 +53,9 @@ final class RecordSiteTest extends TestCase
     private function subject(): RecordSite
     {
         $rows = [
-            'pages:10'     => ['uid' => 10, 'pid' => 1],
+            'pages:10' => ['uid' => 10, 'pid' => 1],
+            // The German translation of the site root: a root itself.
+            'pages:11'     => ['uid' => 11, 'pid' => 0, 'l10n_parent' => 10],
             'tt_content:5' => ['uid' => 5, 'pid' => 10],
             'tt_content:6' => ['uid' => 6, 'pid' => 99],
             'tt_content:7' => ['uid' => 7, 'pid' => 0],
