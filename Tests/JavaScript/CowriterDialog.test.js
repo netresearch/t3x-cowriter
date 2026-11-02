@@ -565,7 +565,7 @@ describe('CowriterDialog', () => {
             taskSelect.dispatchEvent(new Event('change'));
 
             expect(document.querySelector('[data-role="configuration-task-setting"]').textContent)
-                .toBe('Default configuration');
+                .toBe('Site setting or default');
 
             document.querySelector('[name="cancel"]').click();
             await expect(showPromise).rejects.toThrow('User cancelled');

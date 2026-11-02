@@ -93,6 +93,31 @@ final class UnattendedToolRunnerTest extends TestCase
         self::assertSame(7, $captured->getBeUserUid());
         self::assertSame('t3_cowriter', $captured->getCallerSourceExtension());
         self::assertSame('taskTools', $captured->getCallerSourceOperation());
+        self::assertNull($captured->getSite());
+    }
+
+    #[Test]
+    public function theLoopRunsForTheSiteOfTheRecord(): void
+    {
+        $policy = $this->createStub(ToolCallPolicyInterface::class);
+        $policy->method('filterOfferable')->willReturn(['search_content']);
+        $filter = $this->createStub(UnattendedToolFilterInterface::class);
+        $filter->method('unattended')->willReturn(['search_content']);
+
+        $captured = null;
+        $loop     = $this->createStub(ToolLoopServiceInterface::class);
+        $loop->method('runLoop')->willReturnCallback(
+            function (array $messages, LlmConfiguration $config, ToolExecutionContext $context, ?array $tools, ?ToolOptions $options = null) use (&$captured): ToolLoopResult {
+                $captured = $options;
+
+                return new ToolLoopResult('<p>Two pages.</p>', [], 2, false, new UsageStatistics(10, 5, 15));
+            },
+        );
+
+        (new UnattendedToolRunner($loop, $policy, $filter))->run(self::MESSAGES, new LlmConfiguration(), $this->user(), 'shop');
+
+        self::assertInstanceOf(ToolOptions::class, $captured);
+        self::assertSame('shop', $captured->getSite());
     }
 
     #[Test]
