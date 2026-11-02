@@ -58,11 +58,15 @@ The Cowriter dialog lets you choose what to do with your content:
 **LLM configuration**
     Choose which :ref:`LLM configuration <nrllm:configuration-llm>` runs
     the task. The first option, "Task setting", keeps the configuration
-    the task names, or the default configuration when the task names
-    none. The list shows only the configurations your backend groups may
-    use; a configuration restricted to other groups is neither listed
-    nor accepted. The picker appears once the list has loaded and stays
-    hidden when there is nothing to choose.
+    the task names. When the task names none, the configuration the
+    record's site names in its settings runs
+    (:ref:`nrllm:administration-site-settings`), and without one the
+    default configuration. A site setting that names a configuration that
+    does not exist or is inactive stops the task with a message instead
+    of using the default. The list shows only the configurations your
+    backend groups may use; a configuration restricted to other groups is
+    neither listed nor accepted. The picker appears once the list has
+    loaded and stays hidden when there is nothing to choose.
 
 **Audience, tone of voice and length** (optional)
     Pick an audience and a tone of voice from the prompt snippets the

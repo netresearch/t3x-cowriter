@@ -21,15 +21,20 @@ use Netresearch\NrLlm\Exception\GuardrailViolationException;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Exception\ProviderResponseException;
 use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
+use Netresearch\NrLlm\Provider\Middleware\ProviderCallContext;
 use Netresearch\NrLlm\Provider\Middleware\TelemetryMiddleware;
+use Netresearch\NrLlm\Service\ConfigurationResolver;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
+use Netresearch\NrLlm\Service\Site\SiteLlmSettings;
 use Netresearch\T3Cowriter\Controller\AjaxController;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticResult;
+use Netresearch\T3Cowriter\Service\FieldSuggestion\RecordFinder;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\RecordSite;
 use Netresearch\T3Cowriter\Tests\Support\ConfigurationAccessDouble;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
@@ -54,6 +59,10 @@ use TYPO3\CMS\Core\Database\Query\Expression\ExpressionBuilder;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Http\JsonResponse;
 use TYPO3\CMS\Core\Http\Uri;
+use TYPO3\CMS\Core\Settings\Settings;
+use TYPO3\CMS\Core\Site\Entity\Site;
+use TYPO3\CMS\Core\Site\Entity\SiteSettings;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 #[CoversClass(AjaxController::class)]
@@ -2383,6 +2392,66 @@ final class AjaxControllerTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertTrue($body['success']);
+    }
+
+    /**
+     * A task about a record of a site that names a configuration runs on that
+     * configuration and states the site for the term lists (nr-llm ADR-244).
+     */
+    #[Test]
+    public function executeTaskActionRunsOnTheConfigurationOfTheRecordsSite(): void
+    {
+        $shop = $this->createConfigurationMock('shop-writer', 'Shop', false);
+        $this->configRepositoryMock->method('findDefault')->willReturn($this->createConfigurationMock());
+        $this->configRepositoryMock->method('findOneByIdentifier')->willReturnCallback(
+            static fn (string $identifier): ?LlmConfiguration => $identifier === 'shop-writer' ? $shop : null,
+        );
+
+        $this->llmServiceManagerMock
+            ->expects(self::once())
+            ->method('chatWithConfiguration')
+            ->with(
+                self::anything(),
+                self::identicalTo($shop),
+                self::callback(static fn (array $metadata): bool => ($metadata[ProviderCallContext::METADATA_SITE] ?? null) === 'shop'),
+            )
+            ->willReturn($this->createCompletionResponse('Result'));
+
+        $records = $this->createStub(RecordFinder::class);
+        $records->method('findRecord')->willReturn(['uid' => 42, 'pid' => 10]);
+        $sites = $this->createStub(SiteFinder::class);
+        $sites->method('getSiteByPageId')->willReturn(new Site('shop', 1, []));
+        $sites->method('getSiteByIdentifier')->willReturn(
+            new Site('shop', 1, [], SiteSettings::create(new Settings(['nrllm.configuration' => 'shop-writer']))),
+        );
+
+        $subject = new AjaxController(
+            $this->llmServiceManagerMock,
+            new ConfigurationSelector(
+                $this->configRepositoryMock,
+                new ConfigurationAccessDouble([], null, $this->configRepositoryMock),
+                new ConfigurationResolver($this->configRepositoryMock, new SiteLlmSettings($sites)),
+            ),
+            $this->taskRepositoryMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
+            $this->loggerMock,
+            $this->contextAssemblyMock,
+            $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
+            $this->diagnosticServiceMock,
+            recordSite: new RecordSite($records, $sites),
+        );
+
+        $response = $subject->executeTaskAction($this->createRequestWithJsonBody([
+            'taskUid'       => 0,
+            'context'       => 'original text',
+            'contextType'   => 'selection',
+            'instruction'   => 'Shorten it',
+            'recordContext' => ['table' => 'tt_content', 'uid' => 42, 'field' => 'bodytext'],
+        ]));
+
+        self::assertSame(200, $response->getStatusCode());
     }
 
     #[Test]

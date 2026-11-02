@@ -20,6 +20,7 @@ use Netresearch\NrLlm\Domain\ValueObject\ToolLoopResult;
 use Netresearch\NrLlm\Exception\BudgetExceededException;
 use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Provider\Middleware\BudgetMiddleware;
+use Netresearch\NrLlm\Provider\Middleware\ProviderCallContext;
 use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
@@ -41,6 +42,7 @@ use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
+use Netresearch\T3Cowriter\Service\RecordSite;
 use Netresearch\T3Cowriter\Service\StructuredAnswer;
 use Netresearch\T3Cowriter\Service\Style\StyleInstruction;
 use Netresearch\T3Cowriter\Service\Style\StyleInstructionBuilder;
@@ -141,6 +143,9 @@ final readonly class AjaxController
         // answered without them.
         private ?UnattendedToolRunner $toolRunner = null,
         private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
+        // Optional so manual constructions keep working; without it a task
+        // request runs without its record's site (nr-llm ADR-244).
+        private ?RecordSite $recordSite = null,
     ) {}
 
     /**
@@ -571,15 +576,15 @@ final readonly class AjaxController
             return $prepared;
         }
 
-        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords] = $prepared;
+        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords, 'site' => $site] = $prepared;
 
         // A tools request answers once: the versions path makes no tool calls.
         if ($dto->variants > 1 && !$dto->useTools && $this->completionService instanceof CompletionServiceInterface) {
-            return $this->executeVariants($dto, $task, $messages, $configuration, $targetWords, $rateLimitResult);
+            return $this->executeVariants($dto, $task, $messages, $configuration, $targetWords, $rateLimitResult, $site);
         }
 
         try {
-            ['response' => $response, 'toolIterations' => $toolIterations] = $this->answerTask($dto, $task, $messages, $configuration);
+            ['response' => $response, 'toolIterations' => $toolIterations] = $this->answerTask($dto, $task, $messages, $configuration, $site);
 
             // Post-process: convert markdown to HTML if the model ignored the formatting instruction
             $rawContent       = $response->content;
@@ -671,7 +676,7 @@ final readonly class AjaxController
      * @throws ToolNeedsApprovalException
      * @throws BudgetExceededException    when the budget stopped the tool loop
      */
-    private function answerTask(ExecuteTaskRequest $dto, ?Task $task, array $messages, LlmConfiguration $configuration): array
+    private function answerTask(ExecuteTaskRequest $dto, ?Task $task, array $messages, LlmConfiguration $configuration, ?string $site = null): array
     {
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if ($dto->useTools && $this->toolRunner instanceof UnattendedToolRunner && $backendUser instanceof BackendUserAuthentication) {
@@ -702,7 +707,7 @@ final readonly class AjaxController
             'response' => $this->llmServiceManager->chatWithConfiguration(
                 $messages,
                 $configuration,
-                $this->callMetadata($this->taskOperation($task)),
+                $this->callMetadata($this->taskOperation($task), $site),
             ),
             'toolIterations' => null,
         ];
@@ -714,7 +719,7 @@ final readonly class AjaxController
      * build the messages and choose the configuration. A refusal comes back
      * as the JSON response to send.
      *
-     * @return array{dto: ExecuteTaskRequest, task: Task|null, messages: list<array{role: string, content: string}>, configuration: LlmConfiguration, targetWords: int|null}|ResponseInterface
+     * @return array{dto: ExecuteTaskRequest, task: Task|null, messages: list<array{role: string, content: string}>, configuration: LlmConfiguration, targetWords: int|null, site: string|null}|ResponseInterface
      */
     private function prepareTaskCall(ServerRequestInterface $request, RateLimitResult $rateLimitResult): array|ResponseInterface
     {
@@ -729,8 +734,10 @@ final readonly class AjaxController
             $messages = $this->buildTaskMessages($dto, $this->surroundingContext($dto), $style->message);
 
             // The configuration the editor chose wins over the task's own, which
-            // wins over the default. Each must be one the editor may use.
-            $selection     = $this->configurationSelector->trySelect($dto->configuration, $task?->getConfiguration());
+            // wins over the one the record's site names, which wins over the
+            // default. Each must be one the editor may use.
+            $site          = $this->recordSite?->identifierFor($dto->recordContext, $this->currentWorkspaceId());
+            $selection     = $this->configurationSelector->trySelect($dto->configuration, $task?->getConfiguration(), $site);
             $configuration = $selection->configuration;
             if (!$configuration instanceof LlmConfiguration) {
                 throw new TaskCallRefusedException($this->labels->get($selection->errorLabel), $selection->status);
@@ -749,6 +756,7 @@ final readonly class AjaxController
             'messages'      => $messages,
             'configuration' => $configuration,
             'targetWords'   => $style->targetWords,
+            'site'          => $site,
         ];
     }
 
@@ -901,7 +909,7 @@ final readonly class AjaxController
             return $prepared;
         }
 
-        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords] = $prepared;
+        ['dto' => $dto, 'task' => $task, 'messages' => $messages, 'configuration' => $configuration, 'targetWords' => $targetWords, 'site' => $site] = $prepared;
 
         // The event stream opens below, before nr-llm is called, so nr-llm's own
         // budget check would arrive after the 200. Checking first lets a refusal
@@ -938,7 +946,7 @@ final readonly class AjaxController
                 $messages,
                 $configuration,
                 [],
-                $this->callMetadata($this->taskOperation($task)),
+                $this->callMetadata($this->taskOperation($task), $site),
             );
             foreach ($chunks as $chunk) {
                 if ($chunk === '') {
@@ -1012,6 +1020,7 @@ final readonly class AjaxController
         LlmConfiguration $configuration,
         ?int $targetWords,
         RateLimitResult $rateLimitResult,
+        ?string $site = null,
     ): ResponseInterface {
         $system = [];
         $prompt = '';
@@ -1033,9 +1042,12 @@ final readonly class AjaxController
                 $prompt,
                 $configuration,
                 $this->variantsSchema($dto->variants),
-                (new ChatOptions())
-                    ->withSystemPrompt(implode("\n\n", $system))
-                    ->withCallerSource(CallerSource::EXTENSION, $this->taskOperation($task)),
+                $this->withSite(
+                    (new ChatOptions())
+                        ->withSystemPrompt(implode("\n\n", $system))
+                        ->withCallerSource(CallerSource::EXTENSION, $this->taskOperation($task)),
+                    $site,
+                ),
             ));
 
             $variants = [];
@@ -1318,14 +1330,39 @@ final readonly class AjaxController
      * middleware), plus the caller identity so Analytics attributes the call to
      * this extension instead of listing it as unattributed.
      *
+     * The site of the record the request is about, when known, so the call's
+     * site-bound term lists apply (nr-llm ADR-238, ADR-244).
+     *
      * @param string $operation the editor action that triggered the call
      *
      * @return array<string, int|string>
      */
-    private function callMetadata(string $operation): array
+    private function callMetadata(string $operation, ?string $site = null): array
     {
-        return [BudgetMiddleware::METADATA_BE_USER_UID => $this->currentBackendUserId()]
+        $metadata = [BudgetMiddleware::METADATA_BE_USER_UID => $this->currentBackendUserId()]
             + CallerSource::metadata($operation);
+
+        if ($site !== null && $site !== '') {
+            $metadata[ProviderCallContext::METADATA_SITE] = $site;
+        }
+
+        return $metadata;
+    }
+
+    private function withSite(ChatOptions $options, ?string $site): ChatOptions
+    {
+        return $site !== null && $site !== '' ? $options->withSite($site) : $options;
+    }
+
+    /**
+     * The workspace of the current backend user, 0 for live or no session.
+     */
+    private function currentWorkspaceId(): int
+    {
+        /** @var int|string $workspace */
+        $workspace = $this->context->getPropertyFromAspect('workspace', 'id', 0);
+
+        return max(0, (int) $workspace);
     }
 
     /**
