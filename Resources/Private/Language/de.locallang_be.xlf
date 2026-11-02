@@ -830,8 +830,8 @@
                 <target>Einstellung der Aufgabe (%s)</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.configuration.default" resname="ckeditor.dialog.configuration.default">
-                <source>Default configuration</source>
-                <target>Standardkonfiguration</target>
+                <source>Site setting or default</source>
+                <target>Einstellung der Site oder Standard</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.configuration.defaultMarker" resname="ckeditor.dialog.configuration.defaultMarker">
                 <source>%s (default)</source>

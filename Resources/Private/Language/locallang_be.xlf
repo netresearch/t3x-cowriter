@@ -624,7 +624,7 @@
                 <source>Task setting (%s)</source>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.configuration.default" resname="ckeditor.dialog.configuration.default">
-                <source>Default configuration</source>
+                <source>Site setting or default</source>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.configuration.defaultMarker" resname="ckeditor.dialog.configuration.defaultMarker">
                 <source>%s (default)</source>

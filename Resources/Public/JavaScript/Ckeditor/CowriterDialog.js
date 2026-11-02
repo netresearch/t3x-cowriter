@@ -796,7 +796,7 @@ export class CowriterDialog {
     _taskSettingLabel(taskConfigurationName) {
         return taskConfigurationName
             ? t('ckeditor.dialog.configuration.task', 'Task setting (%s)', taskConfigurationName)
-            : t('ckeditor.dialog.configuration.default', 'Default configuration');
+            : t('ckeditor.dialog.configuration.default', 'Site setting or default');
     }
 
     /**
