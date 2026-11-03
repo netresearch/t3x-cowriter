@@ -60,7 +60,9 @@ use Psr\Http\Message\UriInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
 use stdClass;
+use TYPO3\CMS\Backend\Module\ModuleProvider;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Http\Uri;
@@ -448,10 +450,11 @@ final class TranslationControllerTest extends TestCase
                 ),
             ]));
 
-        $controller = $this->createControllerWith($this->translationServiceStub, diagnosticService: $diagnosticStub);
+        $controller = $this->createControllerWith($this->translationServiceStub, diagnosticService: $diagnosticStub, moduleProvider: $this->overviewAccess(true));
 
         $request  = $this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']);
         $response = $controller->translateAction($request);
+        unset($GLOBALS['BE_USER']);
 
         self::assertSame(500, $response->getStatusCode());
         $data = json_decode((string) $response->getBody(), true);
@@ -461,6 +464,25 @@ final class TranslationControllerTest extends TestCase
             $data['error'],
         );
         self::assertSame('/typo3/module/cowriter/status', $data['statusUrl']);
+    }
+
+    #[Test]
+    public function translateActionOmitsTheOverviewLinkForAUserWhoMayNotOpenIt(): void
+    {
+        $this->rateLimiterStub->method('checkLimit')
+            ->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
+        $this->translationServiceStub->method('translate')
+            ->willThrowException(new ProviderException('No provider specified and no default provider configured', 4867297358));
+
+        $controller = $this->createControllerWith($this->translationServiceStub, moduleProvider: $this->overviewAccess(false));
+
+        $response = $controller->translateAction($this->createJsonRequest(['text' => 'Hello', 'targetLanguage' => 'de']));
+        unset($GLOBALS['BE_USER']);
+
+        self::assertSame(500, $response->getStatusCode());
+        $data = json_decode((string) $response->getBody(), true);
+        self::assertStringEndsWith('The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.', $data['error']);
+        self::assertArrayNotHasKey('statusUrl', $data);
     }
 
     #[Test]
@@ -1141,6 +1163,7 @@ final class TranslationControllerTest extends TestCase
         ?LlmConfigurationRepository $configurationRepository = null,
         ?DiagnosticService $diagnosticService = null,
         ?TranslationPolishConfiguration $polishConfiguration = null,
+        ?ModuleProvider $moduleProvider = null,
     ): TranslationController {
         $contextStub = $this->createStub(Context::class);
         $contextStub->method('getPropertyFromAspect')->willReturn(1);
@@ -1154,7 +1177,24 @@ final class TranslationControllerTest extends TestCase
             $this->backendUriBuilderStub,
             $diagnosticService ?? $this->diagnosticServiceStub,
             $polishConfiguration ?? $this->polishConfiguration([]),
+            moduleProvider: $moduleProvider,
         );
+    }
+
+    /**
+     * A module provider that grants or refuses the overview module, with a
+     * backend user to ask it about.
+     */
+    private function overviewAccess(bool $granted): ModuleProvider
+    {
+        $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
+
+        $modules = $this->createStub(ModuleProvider::class);
+        $modules->method('accessGranted')->willReturnCallback(
+            static fn (string $identifier): bool => $granted && $identifier === 'cowriter_status',
+        );
+
+        return $modules;
     }
 
     /**

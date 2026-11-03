@@ -20,6 +20,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use TYPO3\CMS\Backend\Module\ModuleProvider;
 use TYPO3\CMS\Backend\Routing\Router;
+use TYPO3\CMS\Core\Configuration\SiteWriter;
 use TYPO3\CMS\Core\Core\SystemEnvironmentBuilder;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\NormalizedParams;
@@ -54,6 +55,17 @@ final class OverviewTest extends FunctionalTestCase
     {
         parent::setUp();
         $this->importCSVDataSet(__DIR__ . '/Fixtures/overview.csv');
+
+        // A site that names the group-restricted default as its configuration.
+        $siteWriter = $this->get(SiteWriter::class);
+        self::assertInstanceOf(SiteWriter::class, $siteWriter);
+        $siteWriter->write('main', [
+            'rootPageId' => 1,
+            'base'       => 'https://example.com/',
+            'languages'  => [['languageId' => 0, 'title' => 'English', 'locale' => 'en_US.UTF-8', 'base' => '/']],
+        ]);
+        $siteWriter->writeSettings('main', ['nrllm' => ['configuration' => 'default']]);
+
         $this->now = strtotime('2026-06-30 12:00:00');
 
         // A seven-day period starts on 2026-06-24 at 00:00.
@@ -100,29 +112,70 @@ final class OverviewTest extends FunctionalTestCase
     }
 
     /**
-     * The default configuration's provider has no key while another provider
-     * has one: the default path is not ready, whatever the other provider has.
+     * The default's provider has no key, so writing without a pick fails; the
+     * picker offers the pilot "Local", which runs.
      */
     #[Test]
-    public function writingIsNotReadyWhenTheDefaultsProviderHasNoKey(): void
+    public function theDialogIsPartlyReadyWhenOnlyAPickableConfigurationRuns(): void
     {
-        $writing = $this->row($this->variables(3), ReadinessAction::Writing);
+        $dialog = $this->row($this->variables(3), ReadinessAction::Dialog);
 
-        self::assertSame(ReadinessState::NotReady, $writing['row']->state);
-        self::assertSame(ReadinessReason::ProviderKeyMissing, $writing['row']->reason);
-        self::assertSame(['Keyless'], $writing['row']->arguments);
-        // The editor may not open the provider list.
-        self::assertNull($writing['fixUrl']);
-        self::assertTrue($writing['askAdministrator']);
+        self::assertSame(ReadinessState::Partly, $dialog['row']->state);
+        self::assertSame(ReadinessReason::PickableReady, $dialog['row']->reason);
+        self::assertSame(['Local'], $dialog['row']->arguments);
+        // The editor may not open the configuration list.
+        self::assertNull($dialog['fixUrl']);
+        self::assertTrue($dialog['askAdministrator']);
     }
 
+    /**
+     * Outside the pilots' group neither the default nor "Local" is theirs.
+     * The picker offers them "Claude", whose provider's adapter this check
+     * does not know: not checked, never ready.
+     */
     #[Test]
-    public function anEditorOutsideTheDefaultsGroupsMayNotUseIt(): void
+    public function anEditorOutsideTheDefaultsGroupsIsOfferedOnlyWhatCannotBeChecked(): void
     {
-        $writing = $this->row($this->variables(4), ReadinessAction::Writing);
+        $dialog = $this->row($this->variables(4), ReadinessAction::Dialog);
 
-        self::assertSame(ReadinessState::NotReady, $writing['row']->state);
-        self::assertSame(ReadinessReason::ConfigurationDenied, $writing['row']->reason);
+        self::assertSame(ReadinessState::NotChecked, $dialog['row']->state);
+        self::assertSame(ReadinessReason::PickableNotChecked, $dialog['row']->reason);
+        self::assertSame(['Claude'], $dialog['row']->arguments);
+    }
+
+    /**
+     * "Summarize" runs on its own configuration; "Shorten" has none and takes
+     * the default, which fails. The inactive task does not count.
+     */
+    #[Test]
+    public function tasksAreCountedWithTheViewersAccess(): void
+    {
+        $pilot = $this->row($this->variables(3), ReadinessAction::Tasks);
+        self::assertSame(ReadinessState::Partly, $pilot['row']->state);
+        self::assertSame(['1', '2', 'Shorten'], $pilot['row']->arguments);
+        self::assertTrue($pilot['askAdministrator']);
+
+        $outsider = $this->row($this->variables(4), ReadinessAction::Tasks);
+        self::assertSame(ReadinessState::NotReady, $outsider['row']->state);
+        self::assertSame(['2', '2', 'Summarize, Shorten'], $outsider['row']->arguments);
+    }
+
+    /**
+     * An editor sees the site that names its own configuration, checked with
+     * their own access.
+     */
+    #[Test]
+    public function anEditorSeesTheSiteRowsCheckedWithTheirAccess(): void
+    {
+        $pilot = $this->variables(3)['siteReadiness'];
+        self::assertCount(1, $pilot);
+        self::assertSame('main', $pilot[0]['row']->site);
+        self::assertSame(ReadinessReason::ProviderKeyMissing, $pilot[0]['row']->reason);
+
+        $outsider = $this->variables(4)['siteReadiness'];
+        self::assertCount(1, $outsider);
+        self::assertSame(ReadinessState::NotReady, $outsider[0]['row']->state);
+        self::assertSame(ReadinessReason::ConfigurationDenied, $outsider[0]['row']->reason);
     }
 
     /**
@@ -143,7 +196,7 @@ final class OverviewTest extends FunctionalTestCase
     {
         $variables = $this->variables(1);
 
-        self::assertSame('/typo3/module/nrllm/providers', $this->path($this->row($variables, ReadinessAction::Writing)['fixUrl']));
+        self::assertSame('/typo3/module/nrllm/tasks', $this->path($this->row($variables, ReadinessAction::Tasks)['fixUrl']));
         self::assertNotSame([], $variables['settings']);
         self::assertSame(0, $variables['promptsAwaiting']);
         self::assertSame(OverviewController::ACTION_MODULES, array_column($variables['actions'], 'module'));
@@ -163,7 +216,7 @@ final class OverviewTest extends FunctionalTestCase
         self::assertNull($variables['promptsAwaiting']);
         self::assertNull($variables['promptsUrl']);
         self::assertNull($variables['providersUrl']);
-        self::assertSame([], $variables['siteReadiness']);
+        self::assertNull($variables['siteReadiness'][0]['fixUrl']);
 
         self::assertSame([], array_column($this->variables(4)['actions'], 'module'));
     }

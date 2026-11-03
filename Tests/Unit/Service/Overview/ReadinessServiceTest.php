@@ -12,9 +12,11 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Service\Overview;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Model;
 use Netresearch\NrLlm\Domain\Model\Provider;
+use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\ModelRepository;
 use Netresearch\NrLlm\Domain\Repository\ProviderRepository;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Middleware\MiddlewarePipeline;
 use Netresearch\NrLlm\Service\BudgetServiceInterface;
 use Netresearch\NrLlm\Service\ConfigurationResolver;
@@ -78,6 +80,12 @@ final class ReadinessServiceTest extends TestCase
 
     private bool $hasAccess = true;
 
+    /** @var list<string> configurations the viewer may not use */
+    private array $denied = [];
+
+    /** @var list<Task> tasks of the dialog's category */
+    private array $tasks = [];
+
     private bool $openAiKeyStored = false;
 
     private bool $hasUploadFolder = true;
@@ -100,7 +108,7 @@ final class ReadinessServiceTest extends TestCase
     {
         $this->default = $this->configuration('default', $this->model('GPT', $this->provider('OpenAI', 'openai', true)));
 
-        $row = $this->service()->row(ReadinessAction::Writing);
+        $row = $this->service()->row(ReadinessAction::Dialog);
 
         self::assertSame(ReadinessState::Ready, $row->state);
         self::assertSame(ReadinessReason::ConfigurationReady, $row->reason);
@@ -123,7 +131,7 @@ final class ReadinessServiceTest extends TestCase
         unset($GLOBALS['LANG']);
 
         GeneralUtility::purgeInstances();
-        $row = $this->service()->row(ReadinessAction::Writing);
+        $row = $this->service()->row(ReadinessAction::Dialog);
 
         self::assertSame(ReadinessState::NotReady, $row->state);
         self::assertSame(ReadinessReason::ProviderKeyMissing, $row->reason);
@@ -136,7 +144,7 @@ final class ReadinessServiceTest extends TestCase
     {
         $this->default = $this->configuration('default', $this->model('Llama', $this->provider('Local', 'ollama', false)));
 
-        self::assertSame(ReadinessState::Ready, $this->service()->row(ReadinessAction::Writing)->state);
+        self::assertSame(ReadinessState::Ready, $this->service()->row(ReadinessAction::Dialog)->state);
     }
 
     #[Test]
@@ -145,7 +153,7 @@ final class ReadinessServiceTest extends TestCase
         $this->default   = $this->configuration('default', $this->model('GPT', $this->provider('OpenAI', 'openai', true)));
         $this->hasAccess = false;
 
-        $row = $this->service()->row(ReadinessAction::Writing);
+        $row = $this->service()->row(ReadinessAction::Dialog);
 
         self::assertSame(ReadinessState::NotReady, $row->state);
         self::assertSame(ReadinessReason::ConfigurationDenied, $row->reason);
@@ -155,7 +163,7 @@ final class ReadinessServiceTest extends TestCase
     #[Test]
     public function writingIsNotReadyWithoutADefault(): void
     {
-        $row = $this->service()->row(ReadinessAction::Writing);
+        $row = $this->service()->row(ReadinessAction::Dialog);
 
         self::assertSame(ReadinessState::NotReady, $row->state);
         self::assertSame(ReadinessReason::NoConfiguration, $row->reason);
@@ -170,7 +178,7 @@ final class ReadinessServiceTest extends TestCase
 
         $this->default = $this->configuration('default', $model);
 
-        $row = $this->service()->row(ReadinessAction::Writing);
+        $row = $this->service()->row(ReadinessAction::Dialog);
 
         self::assertSame(ReadinessReason::ModelInactive, $row->reason);
         self::assertSame(['GPT'], $row->arguments);
@@ -185,7 +193,7 @@ final class ReadinessServiceTest extends TestCase
 
         $this->default = $this->configuration('default', $this->model('GPT', $provider));
 
-        self::assertSame(ReadinessReason::ProviderInactive, $this->service()->row(ReadinessAction::Writing)->reason);
+        self::assertSame(ReadinessReason::ProviderInactive, $this->service()->row(ReadinessAction::Dialog)->reason);
         GeneralUtility::purgeInstances();
     }
 
@@ -194,7 +202,7 @@ final class ReadinessServiceTest extends TestCase
     {
         $this->default = $this->configuration('default', $this->model('GPT', null));
 
-        self::assertSame(ReadinessReason::ProviderMissing, $this->service()->row(ReadinessAction::Writing)->reason);
+        self::assertSame(ReadinessReason::ProviderMissing, $this->service()->row(ReadinessAction::Dialog)->reason);
     }
 
     #[Test]
@@ -203,7 +211,7 @@ final class ReadinessServiceTest extends TestCase
         $this->default = $this->configuration('default', $this->model('GPT', $this->provider('OpenAI', 'openai', true)));
         $this->default->setModelSelectionMode('criteria');
 
-        $row = $this->service()->row(ReadinessAction::Writing);
+        $row = $this->service()->row(ReadinessAction::Dialog);
 
         self::assertSame(ReadinessState::NotChecked, $row->state);
         self::assertSame(ReadinessReason::ModelChosenPerRequest, $row->reason);
@@ -215,7 +223,7 @@ final class ReadinessServiceTest extends TestCase
     {
         $this->default = $this->configuration('default', $this->model('GPT', $this->provider('Odd', 'no-such-adapter', false)));
 
-        $row = $this->service()->row(ReadinessAction::Writing);
+        $row = $this->service()->row(ReadinessAction::Dialog);
 
         self::assertSame(ReadinessState::NotChecked, $row->state);
         self::assertSame(ReadinessReason::AdapterUnknown, $row->reason);
@@ -260,7 +268,7 @@ final class ReadinessServiceTest extends TestCase
 
         $service = $this->service();
 
-        self::assertSame(ReadinessState::Ready, $service->row(ReadinessAction::Writing)->state);
+        self::assertSame(ReadinessState::Ready, $service->row(ReadinessAction::Dialog)->state);
 
         $vision = $service->row(ReadinessAction::Vision);
         self::assertSame(ReadinessState::NotReady, $vision->state);
@@ -290,6 +298,7 @@ final class ReadinessServiceTest extends TestCase
             'llm'   => ['identifier' => 'llm', 'name' => 'Language model', 'available' => true],
             'deepl' => ['identifier' => 'deepl', 'name' => 'DeepL', 'available' => true],
         ];
+        $this->default = $this->usable('default');
 
         $row = $this->service()->row(ReadinessAction::Translation);
 
@@ -311,6 +320,195 @@ final class ReadinessServiceTest extends TestCase
 
         self::assertSame(ReadinessState::NotReady, $row->state);
         self::assertSame(ReadinessReason::ProviderKeyMissing, $row->reason);
+    }
+
+    /**
+     * Pairs DeepL does not support go through the generic call; without a
+     * default it can run, those pairs fail.
+     */
+    #[Test]
+    public function translationIsPartlyReadyWhenTheOtherPairsHaveNoGenericDefault(): void
+    {
+        $this->translators = ['deepl' => ['identifier' => 'deepl', 'name' => 'DeepL', 'available' => true]];
+
+        $row = $this->service()->row(ReadinessAction::Translation);
+
+        self::assertSame(ReadinessState::Partly, $row->state);
+        self::assertSame(ReadinessReason::TranslatorWithoutFallback, $row->reason);
+        self::assertSame(['DeepL'], $row->arguments);
+        self::assertSame('nrllm_configurations', $row->fixRoute());
+    }
+
+    #[Test]
+    public function translationIsNotCheckedWhenTheGenericDefaultChoosesItsModelPerRequest(): void
+    {
+        $this->translators = ['deepl' => ['identifier' => 'deepl', 'name' => 'DeepL', 'available' => true]];
+        $this->default     = $this->usable('default');
+        $this->default->setModelSelectionMode('criteria');
+
+        $row = $this->service()->row(ReadinessAction::Translation);
+
+        self::assertSame(ReadinessState::NotChecked, $row->state);
+        self::assertSame(ReadinessReason::TranslatorFallbackUnknown, $row->reason);
+        GeneralUtility::purgeInstances();
+    }
+
+    /**
+     * A default limited to other groups: the picker still offers the viewer
+     * configurations that run, so writing works once they pick one.
+     */
+    #[Test]
+    public function theDialogIsPartlyReadyWhenTheDefaultIsDeniedButThePickerOffersAUsableConfiguration(): void
+    {
+        $this->default             = $this->usable('default');
+        $this->denied              = ['default'];
+        $this->byIdentifier['own'] = $this->usable('own');
+        $this->byIdentifier['bad'] = $this->unusable('bad');
+
+        $row = $this->service()->row(ReadinessAction::Dialog);
+
+        self::assertSame(ReadinessState::Partly, $row->state);
+        self::assertSame(ReadinessReason::PickableReady, $row->reason);
+        self::assertSame(['own'], $row->arguments);
+        self::assertSame('nrllm_configurations', $row->fixRoute());
+        GeneralUtility::purgeInstances();
+    }
+
+    #[Test]
+    public function theDialogIsPartlyReadyWithoutADefaultWhenThePickerOffersAUsableConfiguration(): void
+    {
+        $this->byIdentifier['own'] = $this->usable('own');
+
+        self::assertSame(ReadinessState::Partly, $this->service()->row(ReadinessAction::Dialog)->state);
+        GeneralUtility::purgeInstances();
+    }
+
+    #[Test]
+    public function theDialogKeepsTheDefaultsReasonWhenNothingPickableRuns(): void
+    {
+        $this->default             = $this->unusable('default');
+        $this->byIdentifier['bad'] = $this->unusable('bad');
+
+        $row = $this->service()->row(ReadinessAction::Dialog);
+
+        self::assertSame(ReadinessState::NotReady, $row->state);
+        self::assertSame(ReadinessReason::ProviderKeyMissing, $row->reason);
+        GeneralUtility::purgeInstances();
+    }
+
+    #[Test]
+    public function theDialogIsNotCheckedWhenOnlyAPickableConfigurationThatChoosesItsModelPerRequestRemains(): void
+    {
+        $this->denied               = ['default'];
+        $this->default              = $this->usable('default');
+        $this->byIdentifier['auto'] = $this->usable('auto');
+        $this->byIdentifier['auto']->setModelSelectionMode('criteria');
+
+        $row = $this->service()->row(ReadinessAction::Dialog);
+
+        self::assertSame(ReadinessState::NotChecked, $row->state);
+        self::assertSame(ReadinessReason::PickableNotChecked, $row->reason);
+        self::assertSame(['auto'], $row->arguments);
+        GeneralUtility::purgeInstances();
+    }
+
+    /**
+     * No default, but every task names its own configuration: tasks run.
+     */
+    #[Test]
+    public function tasksAreReadyWhenEveryTaskRunsOnItsOwnConfigurationWithoutADefault(): void
+    {
+        $this->tasks = [$this->task('Summarize', $this->usable('a')), $this->task('Shorten', $this->usable('b'))];
+
+        $row = $this->service()->row(ReadinessAction::Tasks);
+
+        self::assertSame(ReadinessState::Ready, $row->state);
+        self::assertSame(ReadinessReason::TasksReady, $row->reason);
+        self::assertSame(['2'], $row->arguments);
+        GeneralUtility::purgeInstances();
+    }
+
+    /**
+     * Only active tasks count; one without its own configuration falls back
+     * to the default and fails with it.
+     */
+    #[Test]
+    public function tasksArePartlyReadyAndNameTheTasksThatCannotRun(): void
+    {
+        $this->default = $this->unusable('default');
+        $this->tasks   = [
+            $this->task('Summarize', $this->usable('a')),
+            $this->task('Shorten', null),
+            $this->task('Retired', null, false),
+        ];
+
+        $row = $this->service()->row(ReadinessAction::Tasks);
+
+        self::assertSame(ReadinessState::Partly, $row->state);
+        self::assertSame(ReadinessReason::TasksFailing, $row->reason);
+        self::assertSame(['1', '2', 'Shorten'], $row->arguments);
+        self::assertSame('nrllm_tasks', $row->fixRoute());
+        GeneralUtility::purgeInstances();
+    }
+
+    #[Test]
+    public function tasksAreNotReadyWhenNoneCanRun(): void
+    {
+        $pinned       = $this->usable('pinned');
+        $this->denied = ['pinned'];
+        $this->tasks  = [$this->task('Summarize', $pinned), $this->task('Shorten', null)];
+
+        $row = $this->service()->row(ReadinessAction::Tasks);
+
+        self::assertSame(ReadinessState::NotReady, $row->state);
+        self::assertSame(['2', '2', 'Summarize, Shorten'], $row->arguments);
+        GeneralUtility::purgeInstances();
+    }
+
+    #[Test]
+    public function manyTasksThatCannotRunAreCountedNotNamed(): void
+    {
+        $this->default = $this->usable('default');
+        $this->tasks   = [$this->task('Ok', null)];
+        for ($i = 1; $i <= ReadinessService::NAMED_FAILING_TASKS + 1; ++$i) {
+            $this->tasks[] = $this->task('Broken ' . $i, $this->unusable('broken' . $i));
+        }
+
+        $row = $this->service()->row(ReadinessAction::Tasks);
+
+        self::assertSame(ReadinessState::Partly, $row->state);
+        self::assertSame(ReadinessReason::TasksFailingMany, $row->reason);
+        self::assertSame(['4', '5'], $row->arguments);
+        GeneralUtility::purgeInstances();
+    }
+
+    #[Test]
+    public function tasksThatCanOnlyBeCheckedPerRequestAreNotChecked(): void
+    {
+        $auto = $this->usable('auto');
+        $auto->setModelSelectionMode('criteria');
+
+        $this->tasks = [$this->task('Summarize', $this->usable('a')), $this->task('Shorten', $auto)];
+
+        $row = $this->service()->row(ReadinessAction::Tasks);
+
+        self::assertSame(ReadinessState::NotChecked, $row->state);
+        self::assertSame(ReadinessReason::TasksNotChecked, $row->reason);
+        self::assertSame(['1', '2'], $row->arguments);
+        GeneralUtility::purgeInstances();
+    }
+
+    #[Test]
+    public function tasksAreOffWithoutAnActiveTask(): void
+    {
+        $this->tasks = [$this->task('Retired', $this->usable('a'), false)];
+
+        $row = $this->service()->row(ReadinessAction::Tasks);
+
+        self::assertSame(ReadinessState::Off, $row->state);
+        self::assertSame(ReadinessReason::NoTasks, $row->reason);
+        self::assertSame('nrllm_tasks', $row->fixRoute());
+        GeneralUtility::purgeInstances();
     }
 
     #[Test]
@@ -468,6 +666,26 @@ final class ReadinessServiceTest extends TestCase
         unset($GLOBALS['BE_USER']);
     }
 
+    /**
+     * A site row is the viewer's: a configuration the site names but the
+     * viewer may not use is refused for them.
+     */
+    #[Test]
+    public function aSiteRowIsEvaluatedWithTheViewersAccess(): void
+    {
+        $this->siteConfigurations   = ['main' => 'site'];
+        $this->byIdentifier['site'] = $this->usable('site');
+        $this->denied               = ['site'];
+        $GLOBALS['BE_USER']         = null;
+
+        $rows = $this->service()->siteRows();
+
+        self::assertSame(ReadinessAction::Tasks, $rows[0]->action);
+        self::assertSame(ReadinessState::NotReady, $rows[0]->state);
+        self::assertSame(ReadinessReason::ConfigurationDenied, $rows[0]->reason);
+        unset($GLOBALS['BE_USER']);
+    }
+
     private function service(): ReadinessService
     {
         $repository = $this->createStub(LlmConfigurationRepository::class);
@@ -477,7 +695,15 @@ final class ReadinessServiceTest extends TestCase
         );
 
         $access = $this->createStub(LlmConfigurationServiceInterface::class);
-        $access->method('hasAccess')->willReturnCallback(fn (): bool => $this->hasAccess);
+        $access->method('hasAccess')->willReturnCallback($this->mayUse(...));
+        $access->method('getAccessibleConfigurations')->willReturnCallback(
+            fn (): array => array_values(array_filter([$this->default, ...array_values($this->byIdentifier)], fn (?LlmConfiguration $configuration): bool => $configuration instanceof LlmConfiguration && $this->mayUse($configuration))),
+        );
+
+        $taskRepository = $this->createStub(TaskRepository::class);
+        $taskRepository->method('findByCategory')->willReturnCallback(
+            fn (string $category): TestQueryResult => new TestQueryResult($category === 'content' ? $this->tasks : []),
+        );
 
         $sites = [];
         foreach (array_keys($this->siteConfigurations) as $identifier) {
@@ -513,7 +739,34 @@ final class ReadinessServiceTest extends TestCase
             new FieldSuggestionConfiguration($extensionConfiguration),
             new PresentationConfiguration($extensionConfiguration),
             $siteFinder,
+            $taskRepository,
         );
+    }
+
+    private function mayUse(LlmConfiguration $configuration): bool
+    {
+        return $this->hasAccess && !in_array($configuration->getIdentifier(), $this->denied, true);
+    }
+
+    private function task(string $name, ?LlmConfiguration $configuration, bool $active = true): Task
+    {
+        $task = new Task();
+        $task->setName($name);
+        $task->setCategory('content');
+        $task->setConfiguration($configuration);
+        $task->setIsActive($active);
+
+        return $task;
+    }
+
+    private function usable(string $identifier): LlmConfiguration
+    {
+        return $this->configuration($identifier, $this->model('GPT', $this->provider('Local', 'ollama', false)));
+    }
+
+    private function unusable(string $identifier): LlmConfiguration
+    {
+        return $this->configuration($identifier, $this->model('GPT', $this->provider('Keyless', 'openai', false)));
     }
 
     private function extensionConfiguration(): ExtensionConfiguration

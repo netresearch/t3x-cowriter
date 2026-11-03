@@ -158,12 +158,16 @@
                 <target>Sites mit eigener Konfiguration</target>
             </trans-unit>
             <trans-unit id="readiness.sites.intro" resname="readiness.sites.intro">
-                <source>These sites name their own configuration in their site settings. A task run on one of their records uses it instead of the default; writing in the dialog and field suggestions keep the default.</source>
-                <target>Diese Sites nennen in ihren Site-Einstellungen eine eigene Konfiguration. Eine Aufgabe zu einem ihrer Datensätze nutzt sie statt der Standardkonfiguration; das Schreiben im Dialog und die Feldvorschläge bleiben bei der Standardkonfiguration.</target>
+                <source>These sites name their own configuration in their site settings. A task without its own configuration, run on one of their records, uses it instead of the default; writing in the dialog and field suggestions keep the default. Each row is checked with your access.</source>
+                <target>Diese Sites nennen in ihren Site-Einstellungen eine eigene Konfiguration. Eine Aufgabe ohne eigene Konfiguration nutzt sie für einen ihrer Datensätze statt der Standardkonfiguration; das Schreiben im Dialog und die Feldvorschläge bleiben bei der Standardkonfiguration. Jede Zeile wird mit Ihren Rechten geprüft.</target>
             </trans-unit>
-            <trans-unit id="readiness.action.writing" resname="readiness.action.writing">
-                <source>Write, rewrite and tasks</source>
-                <target>Schreiben, überarbeiten und Aufgaben</target>
+            <trans-unit id="readiness.action.dialog" resname="readiness.action.dialog">
+                <source>Write and rewrite in the dialog</source>
+                <target>Im Dialog schreiben und überarbeiten</target>
+            </trans-unit>
+            <trans-unit id="readiness.action.tasks" resname="readiness.action.tasks">
+                <source>Tasks</source>
+                <target>Aufgaben</target>
             </trans-unit>
             <trans-unit id="readiness.action.vision" resname="readiness.action.vision">
                 <source>Describe an image (alt text)</source>
@@ -196,6 +200,10 @@
             <trans-unit id="readiness.state.notReady" resname="readiness.state.notReady">
                 <source>Not ready</source>
                 <target>Nicht bereit</target>
+            </trans-unit>
+            <trans-unit id="readiness.state.partly" resname="readiness.state.partly">
+                <source>Partly ready</source>
+                <target>Teilweise bereit</target>
             </trans-unit>
             <trans-unit id="readiness.state.off" resname="readiness.state.off">
                 <source>Off</source>
@@ -284,6 +292,42 @@
             <trans-unit id="readiness.reason.bootstrapPackageMissing" resname="readiness.reason.bootstrapPackageMissing">
                 <source>The tab and accordion elements of bootstrap_package are not available.</source>
                 <target>Die Tab- und Akkordeon-Elemente von bootstrap_package sind nicht verfügbar.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.pickableReady" resname="readiness.reason.pickableReady">
+                <source>You cannot use the default configuration. Choose %s in the dialog.</source>
+                <target>Die Standardkonfiguration können Sie nicht nutzen. Wählen Sie im Dialog %s.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.pickableNotChecked" resname="readiness.reason.pickableNotChecked">
+                <source>You cannot use the default configuration. The dialog offers %s; whether it works can only be checked when a request runs.</source>
+                <target>Die Standardkonfiguration können Sie nicht nutzen. Der Dialog bietet %s an; ob das funktioniert, lässt sich erst bei einer Anfrage prüfen.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.noTasks" resname="readiness.reason.noTasks">
+                <source>The dialog offers no active task.</source>
+                <target>Der Dialog bietet keine aktive Aufgabe an.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.tasksReady" resname="readiness.reason.tasksReady">
+                <source>All %s active tasks run on a configuration that is set up.</source>
+                <target>Alle %s aktiven Aufgaben laufen mit einer eingerichteten Konfiguration.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.tasksFailing" resname="readiness.reason.tasksFailing">
+                <source>%1$s of %2$s active tasks cannot run: %3$s. A task without its own configuration takes the default.</source>
+                <target>%1$s von %2$s aktiven Aufgaben können nicht laufen: %3$s. Eine Aufgabe ohne eigene Konfiguration nimmt die Standardkonfiguration.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.tasksFailingMany" resname="readiness.reason.tasksFailingMany">
+                <source>%1$s of %2$s active tasks cannot run. A task without its own configuration takes the default.</source>
+                <target>%1$s von %2$s aktiven Aufgaben können nicht laufen. Eine Aufgabe ohne eigene Konfiguration nimmt die Standardkonfiguration.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.tasksNotChecked" resname="readiness.reason.tasksNotChecked">
+                <source>%1$s of %2$s active tasks use a configuration that can only be checked when a request runs; the others are set up.</source>
+                <target>%1$s von %2$s aktiven Aufgaben nutzen eine Konfiguration, die sich erst bei einer Anfrage prüfen lässt; die anderen sind eingerichtet.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.translatorWithoutFallback" resname="readiness.reason.translatorWithoutFallback">
+                <source>%s translates the language pairs it supports. The other pairs go to the language model, which cannot run: there is no default configuration with a model, without backend-group restriction and with a usable provider.</source>
+                <target>%s übersetzt die Sprachpaare, die es unterstützt. Die anderen Paare gehen an das Sprachmodell, und das kann nicht laufen: Es gibt keine Standardkonfiguration mit Modell, ohne Beschränkung auf Backend-Gruppen und mit nutzbarem Anbieter.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.translatorFallbackUnknown" resname="readiness.reason.translatorFallbackUnknown">
+                <source>%s translates the language pairs it supports. Whether the language model can translate the other pairs can only be checked when a request runs.</source>
+                <target>%s übersetzt die Sprachpaare, die es unterstützt. Ob das Sprachmodell die anderen Paare übersetzen kann, lässt sich erst bei einer Anfrage prüfen.</target>
             </trans-unit>
             <trans-unit id="usage.title" resname="usage.title">
                 <source>Usage</source>

@@ -14,11 +14,13 @@ use Netresearch\NrLlm\Domain\Model\AdapterType;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Model;
 use Netresearch\NrLlm\Domain\Model\Provider;
+use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Service\ConfigurationResolver;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
 use Netresearch\NrLlm\Specialized\Image\DallEImageService;
 use Netresearch\NrLlm\Specialized\Translation\LlmTranslator;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
+use Netresearch\T3Cowriter\Service\DialogTasks;
 use Netresearch\T3Cowriter\Service\Dto\ConfigurationSelection;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldSuggestionConfiguration;
 use Netresearch\T3Cowriter\Service\Image\GeneratedImageStorageInterface;
@@ -34,13 +36,17 @@ use TYPO3\CMS\Core\Site\SiteFinder;
  * Whether each cowriter action can run for the viewing backend user, decided
  * along the path the action takes at runtime:
  *
- * - writing, field suggestions, presentation and inline suggestions pick their
- *   configuration through {@see ConfigurationSelector} (with the viewer's
- *   group access), exactly as their controllers do;
+ * - writing in the dialog, tasks, field suggestions, presentation and inline
+ *   suggestions pick their configuration through {@see ConfigurationSelector}
+ *   (with the viewer's group access), exactly as their controllers do: the
+ *   dialog takes the default unless the editor picks one of
+ *   {@see ConfigurationSelector::selectable()}, a task its own configuration
+ *   before the default;
  * - image description and the language-model translation run through nr-llm's
  *   generic call, which takes the default configuration only when it has a
  *   model and no group restriction ({@see ConfigurationResolver::resolveDefaultConfiguration()});
- * - translation prefers an available specialized translator such as DeepL;
+ * - translation prefers an available specialized translator such as DeepL for
+ *   the pairs it supports and takes the generic call for the others;
  * - image generation needs its switch, nr-llm's OpenAI key and an upload folder.
  *
  * Nothing here calls a provider. What cannot be decided without a call (a
@@ -50,6 +56,9 @@ use TYPO3\CMS\Core\Site\SiteFinder;
  */
 final readonly class ReadinessService
 {
+    /** Up to this many failing tasks are named; more are only counted. */
+    public const NAMED_FAILING_TASKS = 3;
+
     public function __construct(
         private ConfigurationSelector $configurationSelector,
         private ConfigurationResolver $configurationResolver,
@@ -61,6 +70,7 @@ final readonly class ReadinessService
         private FieldSuggestionConfiguration $fieldSuggestionConfiguration,
         private PresentationConfiguration $presentationConfiguration,
         private SiteFinder $siteFinder,
+        private TaskRepository $taskRepository,
     ) {}
 
     /**
@@ -76,7 +86,8 @@ final readonly class ReadinessService
     public function row(ReadinessAction $action): ReadinessRow
     {
         return match ($action) {
-            ReadinessAction::Writing           => $this->selectedRow($action, $this->configurationSelector->trySelect(null)),
+            ReadinessAction::Dialog            => $this->dialogRow(),
+            ReadinessAction::Tasks             => $this->tasksRow(),
             ReadinessAction::Vision            => $this->genericRow($action, ModelCapability::VISION),
             ReadinessAction::Translation       => $this->translationRow(),
             ReadinessAction::Image             => $this->imageRow(),
@@ -88,9 +99,10 @@ final readonly class ReadinessService
 
     /**
      * The task path once more for every site that names its own configuration
-     * (nr-llm site setting), for an administrator. Only a task run passes the
-     * record's site to {@see ConfigurationSelector}; the dialog's own writing
-     * and the field suggestions take the installation default.
+     * (nr-llm site setting), with the viewer's access. Only a task run passes
+     * the record's site to {@see ConfigurationSelector}, and the site's
+     * configuration replaces the default there, not a task's own one; writing
+     * in the dialog and the field suggestions take the installation default.
      *
      * @return list<ReadinessRow>
      */
@@ -103,7 +115,7 @@ final readonly class ReadinessService
                 continue;
             }
 
-            $row    = $this->selectedRow(ReadinessAction::Writing, $this->configurationSelector->trySelect(null, null, $identifier));
+            $row    = $this->selectedRow(ReadinessAction::Tasks, $this->configurationSelector->trySelect(null, null, $identifier));
             $rows[] = new ReadinessRow($row->action, $row->state, $row->reason, $row->arguments, $identifier);
         }
 
@@ -124,6 +136,80 @@ final readonly class ReadinessService
         }
     }
 
+    /**
+     * The dialog sends no configuration unless the editor picks one, so the
+     * default decides. When the viewer cannot use it, the picker's
+     * configurations still can: writing works once the editor picks one.
+     */
+    private function dialogRow(): ReadinessRow
+    {
+        $default = $this->selectedRow(ReadinessAction::Dialog, $this->configurationSelector->trySelect(null));
+        if ($default->state !== ReadinessState::NotReady) {
+            return $default;
+        }
+
+        $ready      = [];
+        $notChecked = [];
+        foreach ($this->configurationSelector->selectable() as $configuration) {
+            $state = $this->chainRow(ReadinessAction::Dialog, $configuration, null)->state;
+            if ($state === ReadinessState::Ready) {
+                $ready[] = $configuration->getName();
+            } elseif ($state === ReadinessState::NotChecked) {
+                $notChecked[] = $configuration->getName();
+            }
+        }
+
+        return match (true) {
+            $ready !== []      => new ReadinessRow(ReadinessAction::Dialog, ReadinessState::Partly, ReadinessReason::PickableReady, [implode(', ', $ready)]),
+            $notChecked !== [] => new ReadinessRow(ReadinessAction::Dialog, ReadinessState::NotChecked, ReadinessReason::PickableNotChecked, [implode(', ', $notChecked)]),
+            default            => $default,
+        };
+    }
+
+    /**
+     * Every task the dialog offers, through the rule a task run takes: its own
+     * configuration, else the default. A site's configuration is in
+     * {@see self::siteRows()}.
+     */
+    private function tasksRow(): ReadinessRow
+    {
+        $tasks = DialogTasks::active($this->taskRepository);
+        if ($tasks === []) {
+            return new ReadinessRow(ReadinessAction::Tasks, ReadinessState::Off, ReadinessReason::NoTasks);
+        }
+
+        $failing    = [];
+        $notChecked = 0;
+        foreach ($tasks as $task) {
+            $state = $this->selectedRow(ReadinessAction::Tasks, $this->configurationSelector->trySelect(null, $task->getConfiguration()))->state;
+            if ($state === ReadinessState::NotReady) {
+                $failing[] = $task->getName();
+            } elseif ($state === ReadinessState::NotChecked) {
+                ++$notChecked;
+            }
+        }
+
+        $total = (string) count($tasks);
+        if ($failing !== []) {
+            $state = count($failing) === count($tasks) ? ReadinessState::NotReady : ReadinessState::Partly;
+
+            return count($failing) <= self::NAMED_FAILING_TASKS
+                ? new ReadinessRow(ReadinessAction::Tasks, $state, ReadinessReason::TasksFailing, [(string) count($failing), $total, implode(', ', $failing)])
+                : new ReadinessRow(ReadinessAction::Tasks, $state, ReadinessReason::TasksFailingMany, [(string) count($failing), $total]);
+        }
+
+        if ($notChecked > 0) {
+            return new ReadinessRow(ReadinessAction::Tasks, ReadinessState::NotChecked, ReadinessReason::TasksNotChecked, [(string) $notChecked, $total]);
+        }
+
+        return new ReadinessRow(ReadinessAction::Tasks, ReadinessState::Ready, ReadinessReason::TasksReady, [$total]);
+    }
+
+    /**
+     * A specialized translator serves only the pairs it supports; the
+     * controller sends the others through the generic call, which needs a
+     * usable generic default.
+     */
     private function translationRow(): ReadinessRow
     {
         $translators = [];
@@ -135,11 +221,18 @@ final readonly class ReadinessService
             $translators[] = $info['name'] !== '' ? $info['name'] : $identifier;
         }
 
-        if ($translators !== []) {
-            return new ReadinessRow(ReadinessAction::Translation, ReadinessState::Ready, ReadinessReason::TranslatorAvailable, [implode(', ', $translators)]);
+        $generic = $this->genericRow(ReadinessAction::Translation, null);
+        if ($translators === []) {
+            return $generic;
         }
 
-        return $this->genericRow(ReadinessAction::Translation, null);
+        $names = [implode(', ', $translators)];
+
+        return match ($generic->state) {
+            ReadinessState::Ready      => new ReadinessRow(ReadinessAction::Translation, ReadinessState::Ready, ReadinessReason::TranslatorAvailable, $names),
+            ReadinessState::NotChecked => new ReadinessRow(ReadinessAction::Translation, ReadinessState::NotChecked, ReadinessReason::TranslatorFallbackUnknown, $names),
+            default                    => new ReadinessRow(ReadinessAction::Translation, ReadinessState::Partly, ReadinessReason::TranslatorWithoutFallback, $names),
+        };
     }
 
     private function imageRow(): ReadinessRow

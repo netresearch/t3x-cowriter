@@ -37,7 +37,9 @@ use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\NullLogger;
+use TYPO3\CMS\Backend\Module\ModuleProvider;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\JsonResponse;
@@ -226,10 +228,39 @@ final class AjaxControllerStreamTest extends TestCase
             throw new ProviderException('No default provider configured', 4867297358);
         });
 
-        $this->subject()->executeTaskStreamAction($this->request());
+        $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
+        $this->subject(moduleProvider: $this->overviewAccess(true))->executeTaskStreamAction($this->request());
+        unset($GLOBALS['BE_USER']);
 
         self::assertArrayHasKey('statusUrl', $this->stream->events[0]);
         self::assertFalse($this->stream->events[0]['success']);
+    }
+
+    #[Test]
+    public function aConfigurationErrorDuringTheStreamCarriesNoLinkForAUserWhoMayNotOpenTheOverview(): void
+    {
+        $this->llm->method('streamChatWithConfiguration')->willReturnCallback(static function (): Generator {
+            yield from [];
+
+            throw new ProviderException('No default provider configured', 4867297358);
+        });
+
+        $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
+        $this->subject(moduleProvider: $this->overviewAccess(false))->executeTaskStreamAction($this->request());
+        unset($GLOBALS['BE_USER']);
+
+        self::assertFalse($this->stream->events[0]['success']);
+        self::assertArrayNotHasKey('statusUrl', $this->stream->events[0]);
+    }
+
+    private function overviewAccess(bool $granted): ModuleProvider
+    {
+        $modules = $this->createStub(ModuleProvider::class);
+        $modules->method('accessGranted')->willReturnCallback(
+            static fn (string $identifier): bool => $granted && $identifier === 'cowriter_status',
+        );
+
+        return $modules;
     }
 
     #[Test]
@@ -276,7 +307,7 @@ final class AjaxControllerStreamTest extends TestCase
     /**
      * @param list<string> $deniedIdentifiers
      */
-    private function subject(array $deniedIdentifiers = [], ?int $targetWords = null): AjaxController
+    private function subject(array $deniedIdentifiers = [], ?int $targetWords = null, ?ModuleProvider $moduleProvider = null): AjaxController
     {
         $rateLimiter = $this->createStub(RateLimiterInterface::class);
         $rateLimiter->method('checkLimit')->willReturn(new RateLimitResult(true, 20, 19, time() + 60));
@@ -307,6 +338,7 @@ final class AjaxControllerStreamTest extends TestCase
                     }
                 },
             ),
+            moduleProvider: $moduleProvider,
         );
     }
 

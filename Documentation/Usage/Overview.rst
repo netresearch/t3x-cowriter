@@ -23,10 +23,10 @@ Administrators see it without further setup. An editor sees it when one of
 their backend groups grants the module :guilabel:`Cowriter` in the field
 :guilabel:`Modules` (``groupMods``) of the group record.
 
-An editor sees their own readiness, their own usage and their own budget.
-An administrator also sees the usage of the whole installation, the
-extension settings, the sites with their own configuration and the links
-that fix a problem. The page never shows another person's name, prompt or
+An editor sees their own readiness, including the sites with their own
+configuration, their own usage and their own budget. An administrator also
+sees the usage of the whole installation, the extension settings and the
+links that fix a problem. The page never shows another person's name, prompt or
 text. The usage per person stays in :guilabel:`AI` > :guilabel:`Operation` >
 :guilabel:`Analytics`, which only administrators open.
 
@@ -52,10 +52,15 @@ One row per action, checked the way the action runs for the person viewing
 the page. Nothing is sent to a provider, so whether a provider answers is not
 checked; the provider list has a connection test for that.
 
-Each row has one of four states:
+Each row has one of five states:
 
 Ready
     The action finds everything it needs.
+
+Partly ready
+    The action runs on some of its paths and fails on others, and the reason
+    names which. An administrator gets a link to the module that fixes it; an
+    editor is asked to contact an administrator.
 
 Not ready
     Something it needs is missing. The reason names it. An administrator
@@ -72,17 +77,32 @@ Not checked
 
 What each action needs:
 
-Write, rewrite and tasks, field suggestions
+Write and rewrite in the dialog
     The default configuration of the AI section, which the person may use
     (it is not limited to backend groups they are not in), with an active
     model whose provider is active and has an API key when its adapter needs
-    one. A task with its own configuration uses that one instead.
+    one. When the person cannot use the default, the dialog's configuration
+    picker may still offer one that runs: the row is then partly ready and
+    names it, because writing works only after picking it.
+
+Field suggestions
+    The same default configuration. Field suggestions have no configuration
+    picker, so without a usable default they are not ready.
+
+Tasks
+    Every active task the dialog offers, checked the way a task runs: on its
+    own configuration, or on the default when it has none. The row counts
+    the tasks that cannot run and names them when there are at most three.
+    It is partly ready when some tasks run and others do not, and off when
+    there is no active task.
 
 Describe an image and translate
     nr-llm's generic call, which runs on the default configuration only when
     that has a model and is not limited to backend groups. Image descriptions
     also need a model marked as able to read images. Translation uses a
-    specialized translator such as DeepL first when one is available.
+    specialized translator such as DeepL first when one is available; the
+    language pairs it does not support go to the generic call. Without a
+    default the generic call can run on, translation is partly ready.
 
 Generate an image
     The setting :ref:`image.enable <configuration-image-generation>`, the
@@ -99,9 +119,10 @@ Tabs or accordion
     <configuration-alternative-presentation>`, the tab and accordion elements
     of bootstrap_package and the default configuration.
 
-For administrators a second table lists every site that names its own
-configuration in its site settings. A task run on a record of such a site
-uses that configuration instead of the default.
+A second table lists every site that names its own configuration in its site
+settings, checked with the access of the person viewing the page. A task
+without its own configuration, run on a record of such a site, uses that
+configuration instead of the default.
 
 Configuration
 =============

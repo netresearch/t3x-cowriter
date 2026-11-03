@@ -17,8 +17,11 @@ namespace Netresearch\T3Cowriter\Service\Overview;
  */
 enum ReadinessAction: string
 {
-    /** Cowriter dialog, tasks and templates: ConfigurationSelector's default path. */
-    case Writing = 'writing';
+    /** Writing in the dialog without a task: the default, or a configuration the dialog's picker offers. */
+    case Dialog = 'dialog';
+
+    /** The dialog's tasks: each through ConfigurationSelector with its own configuration, else the default. */
+    case Tasks = 'tasks';
 
     /** Image description: nr-llm's generic default configuration (VisionService). */
     case Vision = 'vision';

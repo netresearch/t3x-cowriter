@@ -37,6 +37,15 @@ enum ReadinessReason: string
     case NoUploadFolder            = 'noUploadFolder';
     case ImageReady                = 'imageReady';
     case BootstrapPackageMissing   = 'bootstrapPackageMissing';
+    case PickableReady             = 'pickableReady';
+    case PickableNotChecked        = 'pickableNotChecked';
+    case NoTasks                   = 'noTasks';
+    case TasksReady                = 'tasksReady';
+    case TasksFailing              = 'tasksFailing';
+    case TasksFailingMany          = 'tasksFailingMany';
+    case TasksNotChecked           = 'tasksNotChecked';
+    case TranslatorWithoutFallback = 'translatorWithoutFallback';
+    case TranslatorFallbackUnknown = 'translatorFallbackUnknown';
 
     /**
      * The backend module whose records or settings fix this reason; null when
@@ -46,7 +55,9 @@ enum ReadinessReason: string
     {
         return match ($this) {
             self::ConfigurationDenied, self::NoConfiguration, self::ConfigurationNotFound,
-            self::SiteConfigurationUnusable, self::NoGenericDefault                => 'nrllm_configurations',
+            self::SiteConfigurationUnusable, self::NoGenericDefault,
+            self::PickableReady, self::TranslatorWithoutFallback                   => 'nrllm_configurations',
+            self::NoTasks, self::TasksFailing, self::TasksFailingMany              => 'nrllm_tasks',
             self::ModelInactive, self::ModelLacksVision, self::ProviderMissing     => 'nrllm_models',
             self::ProviderInactive, self::ProviderKeyMissing, self::AdapterUnknown => 'nrllm_providers',
             self::SwitchedOff, self::NoSuggestionFields, self::ImageKeyMissing     => 'tools_toolssettings',

@@ -52,6 +52,15 @@ final class ReadinessReasonTest extends TestCase
         yield 'no upload folder' => [ReadinessReason::NoUploadFolder, null];
         yield 'image ready' => [ReadinessReason::ImageReady, null];
         yield 'no bootstrap_package' => [ReadinessReason::BootstrapPackageMissing, null];
+        yield 'pickable configuration runs' => [ReadinessReason::PickableReady, 'nrllm_configurations'];
+        yield 'pickable configuration not checked' => [ReadinessReason::PickableNotChecked, null];
+        yield 'no task' => [ReadinessReason::NoTasks, 'nrllm_tasks'];
+        yield 'tasks ready' => [ReadinessReason::TasksReady, null];
+        yield 'tasks failing' => [ReadinessReason::TasksFailing, 'nrllm_tasks'];
+        yield 'many tasks failing' => [ReadinessReason::TasksFailingMany, 'nrllm_tasks'];
+        yield 'tasks not checked' => [ReadinessReason::TasksNotChecked, null];
+        yield 'translator without fallback' => [ReadinessReason::TranslatorWithoutFallback, 'nrllm_configurations'];
+        yield 'translator fallback unknown' => [ReadinessReason::TranslatorFallbackUnknown, null];
     }
 
     #[Test]
@@ -68,17 +77,18 @@ final class ReadinessReasonTest extends TestCase
     }
 
     /**
-     * A fix link belongs to a row that is not ready or off; a ready row and
-     * a row that could not be checked link nothing.
+     * A fix link belongs to a row that is not ready, partly ready or off; a
+     * ready row and a row that could not be checked link nothing.
      */
     #[Test]
-    public function onlyARowThatIsNotReadyOrOffLinksAFix(): void
+    public function onlyARowThatIsNotReadyPartlyReadyOrOffLinksAFix(): void
     {
         $reason = ReadinessReason::ProviderKeyMissing;
 
-        self::assertSame('nrllm_providers', (new ReadinessRow(ReadinessAction::Writing, ReadinessState::NotReady, $reason))->fixRoute());
-        self::assertSame('nrllm_providers', (new ReadinessRow(ReadinessAction::Writing, ReadinessState::Off, $reason))->fixRoute());
-        self::assertNull((new ReadinessRow(ReadinessAction::Writing, ReadinessState::Ready, $reason))->fixRoute());
-        self::assertNull((new ReadinessRow(ReadinessAction::Writing, ReadinessState::NotChecked, $reason))->fixRoute());
+        self::assertSame('nrllm_providers', (new ReadinessRow(ReadinessAction::Dialog, ReadinessState::NotReady, $reason))->fixRoute());
+        self::assertSame('nrllm_providers', (new ReadinessRow(ReadinessAction::Dialog, ReadinessState::Off, $reason))->fixRoute());
+        self::assertSame('nrllm_providers', (new ReadinessRow(ReadinessAction::Dialog, ReadinessState::Partly, $reason))->fixRoute());
+        self::assertNull((new ReadinessRow(ReadinessAction::Dialog, ReadinessState::Ready, $reason))->fixRoute());
+        self::assertNull((new ReadinessRow(ReadinessAction::Dialog, ReadinessState::NotChecked, $reason))->fixRoute());
     }
 }

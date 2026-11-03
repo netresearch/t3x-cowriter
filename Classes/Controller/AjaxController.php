@@ -35,11 +35,13 @@ use Netresearch\T3Cowriter\Service\CallerSource;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
+use Netresearch\T3Cowriter\Service\DialogTasks;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use Netresearch\T3Cowriter\Service\EventStream\EventStreamEmitterInterface;
 use Netresearch\T3Cowriter\Service\EventStream\ServerSentEventEmitter;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
+use Netresearch\T3Cowriter\Service\OverviewLink;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Service\RecordSite;
@@ -52,6 +54,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Backend\Module\ModuleProvider;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
@@ -146,6 +149,9 @@ final readonly class AjaxController
         // Optional so manual constructions keep working; without it a task
         // request runs without its record's site (nr-llm ADR-244).
         private ?RecordSite $recordSite = null,
+        // Optional for the same reason; without it an error carries no link
+        // to the overview module.
+        private ?ModuleProvider $moduleProvider = null,
     ) {}
 
     /**
@@ -484,18 +490,8 @@ final readonly class AjaxController
      */
     public function getTasksAction(ServerRequestInterface $request): ResponseInterface
     {
-        $tasks = $this->taskRepository->findByCategory('content');
-
         $list = [];
-        foreach ($tasks as $task) {
-            if (!$task instanceof Task) {
-                continue;
-            }
-
-            if (!$task->isActive()) {
-                continue;
-            }
-
+        foreach (DialogTasks::active($this->taskRepository) as $task) {
             $list[] = [
                 'uid'            => $task->getUid(),
                 'identifier'     => $task->getIdentifier(),
@@ -1189,11 +1185,9 @@ final readonly class AjaxController
         $response    = CompleteResponse::error($userMessage)->jsonSerialize();
 
         if ($this->isConfigurationError($exception)) {
-            try {
-                $response['statusUrl'] = (string) $this->backendUriBuilder
-                    ->buildUriFromRoute('cowriter_status');
-            } catch (Throwable) {
-                // Route resolution failed — omit status URL
+            $statusUrl = OverviewLink::forCurrentUser($this->moduleProvider, $this->backendUriBuilder);
+            if ($statusUrl !== null) {
+                $response['statusUrl'] = $statusUrl;
             }
         }
 

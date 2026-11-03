@@ -26,6 +26,7 @@ use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\Dto\DiagnosticCheck;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
 use Netresearch\T3Cowriter\Service\LlmErrorKind;
+use Netresearch\T3Cowriter\Service\OverviewLink;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Service\Translation\TranslationPolishConfiguration;
@@ -33,6 +34,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use TYPO3\CMS\Backend\Module\ModuleProvider;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Context\Context;
 
@@ -59,6 +61,9 @@ final readonly class TranslationController
         private LlmErrorClassifier $errorClassifier = new LlmErrorClassifier(),
         private BackendLabels $labels = new BackendLabels(),
         private BudgetRefusal $budgetRefusal = new BudgetRefusal(),
+        // Optional so manual constructions keep working; without it an error
+        // carries no link to the overview module.
+        private ?ModuleProvider $moduleProvider = null,
     ) {}
 
     public function translateAction(ServerRequestInterface $request): ResponseInterface
@@ -217,11 +222,9 @@ final readonly class TranslationController
             $errorData = ['success' => false, 'error' => $userError];
 
             if ($this->isConfigurationError($e)) {
-                try {
-                    $errorData['statusUrl'] = (string) $this->backendUriBuilder
-                        ->buildUriFromRoute('cowriter_status');
-                } catch (Throwable) {
-                    // Route resolution failed — omit status URL
+                $statusUrl = OverviewLink::forCurrentUser($this->moduleProvider, $this->backendUriBuilder);
+                if ($statusUrl !== null) {
+                    $errorData['statusUrl'] = $statusUrl;
                 }
             }
 

@@ -30,7 +30,7 @@ final readonly class ReadinessRow
 
     public function fixRoute(): ?string
     {
-        return $this->state === ReadinessState::NotReady || $this->state === ReadinessState::Off
+        return in_array($this->state, [ReadinessState::NotReady, ReadinessState::Partly, ReadinessState::Off], true)
             ? $this->reason->fixRoute()
             : null;
     }

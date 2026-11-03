@@ -131,7 +131,8 @@ try {
     return CompleteResponse::success($response);
 } catch (ProviderException $e) {
     // enrichErrorMessage classifies the failure via LlmErrorClassifier and adds
-    // a link to the overview module (cowriter_status) for configuration errors.
+    // a link to the overview module (cowriter_status) for configuration errors,
+    // when the user may open the module (OverviewLink).
     return $this->buildErrorResponse('LLM provider error occurred.', $e);
 } catch (\Throwable $e) {
     return $this->buildErrorResponse('An unexpected error occurred.', $e);

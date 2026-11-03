@@ -36,9 +36,9 @@ use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
  * whether each action can run for the viewer, how much it was used, the
  * extension settings, and links to where it is set up.
  *
- * Every viewer sees their own readiness, usage and budget. Administrators see
- * the installation's usage, the extension settings and the per-site rows; a
- * link is rendered only when the viewer may open its module.
+ * Every viewer sees their own readiness, including the per-site rows, usage
+ * and budget. Administrators see the installation's usage and the extension
+ * settings; a link is rendered only when the viewer may open its module.
  *
  * @internal
  */
@@ -95,7 +95,7 @@ final readonly class OverviewController
             'isAdmin'       => $isAdmin,
             'surfaces'      => $this->surfaces->all(),
             'readiness'     => $this->readinessRows($this->readiness->rows(), $user),
-            'siteReadiness' => $isAdmin ? $this->readinessRows($this->readiness->siteRows(), $user) : [],
+            'siteReadiness' => $this->readinessRows($this->readiness->siteRows(), $user),
             'providersUrl'  => $this->moduleUrl('nrllm_providers', $user),
             'usage'         => $usage,
             'usageFigures'  => $usage instanceof UsageOverview ? [
@@ -134,7 +134,7 @@ final readonly class OverviewController
                 'badge'  => $row->state->badge(),
                 'fixUrl' => $fixUrl,
                 // An editor cannot open anything that fixes it.
-                'askAdministrator' => $fixUrl === null && $row->state === ReadinessState::NotReady && !$user->isAdmin(),
+                'askAdministrator' => $fixUrl === null && in_array($row->state, [ReadinessState::NotReady, ReadinessState::Partly], true) && !$user->isAdmin(),
             ];
         }
 
