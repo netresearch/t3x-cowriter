@@ -87,9 +87,6 @@ final readonly class VisionController
             // model/confidence/usage metadata the response surfaces.
             // withCallerSource() names this extension on the telemetry row so
             // Analytics attributes alt-text generation to it (nr-llm ADR-177).
-            // nr-llm 0.31.1 does not deliver it yet: analyzeImageFull() rebuilds
-            // the options object without the field, so these calls stay
-            // unattributed until nr-llm#845 lands.
             $options = VisionOptions::altText()
                 ->withBeUserUid((int) $userId)
                 ->withCallerSource(CallerSource::EXTENSION, 'altText');

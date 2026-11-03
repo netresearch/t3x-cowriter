@@ -1,0 +1,363 @@
+<f:comment>
+    SPDX-License-Identifier: GPL-3.0-or-later
+    SPDX-FileCopyrightText: Netresearch DTT GmbH
+</f:comment>
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+      xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
+      data-namespace-typo3-fluid="true">
+
+<f:layout name="Module" />
+
+<f:section name="Content">
+    <h1><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:overview.title" /></h1>
+    <p class="lead"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:overview.intro" /></p>
+
+    <f:render section="Understanding" arguments="{_all}" />
+    <f:render section="Readiness" arguments="{_all}" />
+    <f:if condition="{isAdmin}">
+        <f:render section="Configuration" arguments="{_all}" />
+    </f:if>
+    <f:render section="Usage" arguments="{_all}" />
+    <f:render section="Actions" arguments="{_all}" />
+
+    <p class="text-body-secondary mt-4"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:overview.footer" /></p>
+</f:section>
+
+<f:section name="Understanding">
+    <section class="mt-4" aria-labelledby="cowriter-understanding">
+        <h2 id="cowriter-understanding"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:understanding.title" /></h2>
+        <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:understanding.text" /></p>
+        <h3><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:understanding.places" /></h3>
+        <div class="table-fit">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:understanding.column.place" /></th>
+                        <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:understanding.column.state" /></th>
+                        <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:understanding.column.setting" /></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <f:for each="{surfaces}" as="surface">
+                        <tr>
+                            <th scope="row"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:surface.{surface.key}" /></th>
+                            <td>
+                                <f:if condition="{surface.enabled}">
+                                    <f:then><span class="badge badge-success"><core:icon identifier="actions-check-circle" size="small" /> <f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:state.on" /></span></f:then>
+                                    <f:else><span class="badge badge-secondary"><core:icon identifier="actions-minus-circle" size="small" /> <f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:state.off" /></span></f:else>
+                                </f:if>
+                            </td>
+                            <td>
+                                <f:if condition="{surface.setting}">
+                                    <f:then><code>{surface.setting}</code></f:then>
+                                    <f:else><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:understanding.alwaysOn" /></f:else>
+                                </f:if>
+                            </td>
+                        </tr>
+                    </f:for>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-body-secondary"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:understanding.presetNote" /></p>
+    </section>
+</f:section>
+
+<f:section name="Readiness">
+    <section class="mt-4" aria-labelledby="cowriter-readiness">
+        <h2 id="cowriter-readiness"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.title" /></h2>
+        <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.intro" /></p>
+        <f:render section="ReadinessTable" arguments="{entries: readiness, withSite: 0}" />
+        <p class="text-body-secondary">
+            <f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.providerCheck" />
+            <f:if condition="{providersUrl}">
+                <a href="{providersUrl}"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.providerCheck.link" /></a>
+            </f:if>
+        </p>
+        <f:if condition="{siteReadiness}">
+            <h3><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.sites.title" /></h3>
+            <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.sites.intro" /></p>
+            <f:render section="ReadinessTable" arguments="{entries: siteReadiness, withSite: 1}" />
+        </f:if>
+    </section>
+</f:section>
+
+<f:section name="ReadinessTable">
+    <div class="table-fit">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <f:if condition="{withSite}">
+                        <f:then><th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.column.site" /></th></f:then>
+                        <f:else><th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.column.action" /></th></f:else>
+                    </f:if>
+                    <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.column.state" /></th>
+                    <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.column.reason" /></th>
+                    <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.column.fix" /></th>
+                </tr>
+            </thead>
+            <tbody>
+                <f:for each="{entries}" as="entry">
+                    <tr>
+                        <f:if condition="{withSite}">
+                            <f:then><th scope="row"><code>{entry.row.site}</code></th></f:then>
+                            <f:else><th scope="row"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.action.{entry.row.action.value}" /></th></f:else>
+                        </f:if>
+                        <td><span class="badge badge-{entry.badge}"><core:icon identifier="{entry.icon}" size="small" /> <f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.state.{entry.row.state.value}" /></span></td>
+                        <td><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.reason.{entry.row.reason.value}" arguments="{entry.row.arguments}" /></td>
+                        <td>
+                            <f:if condition="{entry.fixUrl}">
+                                <f:then>
+                                    <a href="{entry.fixUrl}" class="btn btn-default btn-sm"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.fix" /></a>
+                                </f:then>
+                                <f:else>
+                                    <f:if condition="{entry.askAdministrator}">
+                                        <f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:readiness.askAdministrator" />
+                                    </f:if>
+                                </f:else>
+                            </f:if>
+                        </td>
+                    </tr>
+                </f:for>
+            </tbody>
+        </table>
+    </div>
+</f:section>
+
+<f:section name="Usage">
+    <section class="mt-4" aria-labelledby="cowriter-usage">
+        <h2 id="cowriter-usage"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.title" /></h2>
+        <form method="get" action="{periodForm.action}" class="row g-2 align-items-end mb-3">
+            <f:for each="{periodForm.hidden}" as="value" key="name">
+                <input type="hidden" name="{name}" value="{value}" />
+            </f:for>
+            <div class="col-auto">
+                <label class="form-label" for="cowriter-period"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.period.label" /></label>
+                <select class="form-select" id="cowriter-period" name="period">
+                    <f:for each="{periods}" as="days">
+                        <f:if condition="{days} == {period}">
+                            <f:then><option value="{days}" selected="selected"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.period.option" arguments="{0: days}" /></option></f:then>
+                            <f:else><option value="{days}"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.period.option" arguments="{0: days}" /></option></f:else>
+                        </f:if>
+                    </f:for>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-default"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.period.submit" /></button>
+            </div>
+        </form>
+
+        <f:if condition="{usage}">
+            <f:then>
+                <p>
+                    <f:if condition="{usage.ownOnly}">
+                        <f:then><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.scope.own" arguments="{0: usage.days, 1: '{usage.from -> f:format.date()}'}" /></f:then>
+                        <f:else><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.scope.installation" arguments="{0: usage.days, 1: '{usage.from -> f:format.date()}'}" /></f:else>
+                    </f:if>
+                </p>
+                <div class="table-fit">
+                    <table class="table">
+                        <caption class="visually-hidden"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.totals" /></caption>
+                        <tbody>
+                            <tr><th scope="row"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.cost" /></th><td>{usageFigures.cost}</td></tr>
+                            <tr><th scope="row"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.requests" /></th><td>{usageFigures.requests}</td></tr>
+                            <tr><th scope="row"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.tokens" /></th><td>{usageFigures.tokens}</td></tr>
+                            <tr><th scope="row"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.calls" /></th><td>{usageFigures.calls}</td></tr>
+                            <tr><th scope="row"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.failed" /></th><td>{usageFigures.failed}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-body-secondary"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.costNote" /></p>
+
+                <f:if condition="!{usage.telemetryEnabled}">
+                    <f:be.infobox state="1" title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.coverage.disabled.title')}">
+                        <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.coverage.disabled" /></p>
+                    </f:be.infobox>
+                </f:if>
+                <f:if condition="{usage.completeFrom}">
+                    <f:be.infobox state="-1" title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.coverage.incomplete.title')}">
+                        <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.coverage.incomplete" arguments="{0: '{usage.completeFrom -> f:format.date()}'}" /></p>
+                    </f:be.infobox>
+                </f:if>
+
+                <h3><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.operations.title" /></h3>
+                <f:if condition="{usage.operations}">
+                    <f:then>
+                        <div class="table-fit">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.column.operation" /></th>
+                                        <th scope="col" class="text-end"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.column.calls" /></th>
+                                        <th scope="col" class="text-end"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.column.failed" /></th>
+                                        <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.column.lastCall" /></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <f:for each="{usage.operations}" as="operation">
+                                        <tr>
+                                            <th scope="row">
+                                                <f:if condition="{operation.labelKey}">
+                                                    <f:then><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.operation.{operation.labelKey}" arguments="{0: operation.labelArgument}" /></f:then>
+                                                    <f:else>{operation.labelArgument}</f:else>
+                                                </f:if>
+                                            </th>
+                                            <td class="text-end">{operation.calls}</td>
+                                            <td class="text-end">{operation.failedCalls}</td>
+                                            <td>{operation.lastCallAt -> f:format.date()}</td>
+                                        </tr>
+                                    </f:for>
+                                </tbody>
+                            </table>
+                        </div>
+                    </f:then>
+                    <f:else>
+                        <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.operations.empty" /></p>
+                    </f:else>
+                </f:if>
+                <f:if condition="{usage.ownOnly}">
+                    <f:else><p class="text-body-secondary"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.perUser" /></p></f:else>
+                </f:if>
+            </f:then>
+            <f:else>
+                <f:be.infobox state="2" title="{f:translate(key: 'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.unavailable.title')}">
+                    <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:usage.unavailable" /></p>
+                </f:be.infobox>
+            </f:else>
+        </f:if>
+
+        <f:render section="Budget" arguments="{_all}" />
+        <f:if condition="{isAdmin}">
+            <f:render section="Prompts" arguments="{_all}" />
+        </f:if>
+    </section>
+</f:section>
+
+<f:section name="Budget">
+    <h3><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.title" /></h3>
+    <f:if condition="{budget}">
+        <f:then>
+            <p>
+                <f:if condition="{budget.hasPersonalLimit}">
+                    <f:then><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.limited" /></f:then>
+                    <f:else><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.unlimited" /></f:else>
+                </f:if>
+            </p>
+            <div class="table-fit">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <td></td>
+                            <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.column.requests" /></th>
+                            <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.column.tokens" /></th>
+                            <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.column.cost" /></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.today" /></th>
+                            <td><f:render section="Meter" arguments="{meter: budget.today.requests}" /></td>
+                            <td><f:render section="Meter" arguments="{meter: budget.today.tokens}" /></td>
+                            <td><f:render section="Meter" arguments="{meter: budget.today.cost}" /></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.month" /></th>
+                            <td><f:render section="Meter" arguments="{meter: budget.month.requests}" /></td>
+                            <td><f:render section="Meter" arguments="{meter: budget.month.tokens}" /></td>
+                            <td><f:render section="Meter" arguments="{meter: budget.month.cost}" /></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </f:then>
+        <f:else>
+            <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.unavailable" /></p>
+        </f:else>
+    </f:if>
+</f:section>
+
+<f:section name="Meter">
+    <f:if condition="{meter.limited}">
+        <f:then><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.meter" arguments="{0: meter.usedFormatted, 1: meter.limitFormatted}" /></f:then>
+        <f:else><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:budget.meter.noLimit" arguments="{0: meter.usedFormatted}" /></f:else>
+    </f:if>
+</f:section>
+
+<f:section name="Prompts">
+    <h3><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:prompts.title" /></h3>
+    <p>
+        <f:if condition="{promptsAwaiting} > 0">
+            <f:then><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:prompts.awaiting" arguments="{0: promptsAwaiting}" /></f:then>
+            <f:else><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:prompts.none" /></f:else>
+        </f:if>
+        <f:if condition="{promptsUrl}">
+            <a href="{promptsUrl}"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:prompts.link" /></a>
+        </f:if>
+    </p>
+</f:section>
+
+<f:section name="Configuration">
+    <section class="mt-4" aria-labelledby="cowriter-configuration">
+        <h2 id="cowriter-configuration"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:configuration.title" /></h2>
+        <p><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:configuration.intro" /></p>
+        <div class="table-fit">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:configuration.column.setting" /></th>
+                        <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:configuration.column.value" /></th>
+                        <th scope="col"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:configuration.column.source" /></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <f:for each="{settings}" as="setting">
+                        <tr>
+                            <th scope="row"><code>{setting.key}</code></th>
+                            <td>
+                                <f:if condition="{setting.boolean}">
+                                    <f:then>
+                                        <f:if condition="{setting.on}">
+                                            <f:then><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:state.on" /></f:then>
+                                            <f:else><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:state.off" /></f:else>
+                                        </f:if>
+                                    </f:then>
+                                    <f:else>
+                                        <f:if condition="{setting.value} != ''">
+                                            <f:then>{setting.value}</f:then>
+                                            <f:else><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:configuration.value.empty" /></f:else>
+                                        </f:if>
+                                    </f:else>
+                                </f:if>
+                            </td>
+                            <td>
+                                <f:if condition="{setting.unchanged}">
+                                    <f:then><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:configuration.source.default" /></f:then>
+                                    <f:else><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:configuration.source.changed" /></f:else>
+                                </f:if>
+                            </td>
+                        </tr>
+                    </f:for>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</f:section>
+
+<f:section name="Actions">
+    <section class="mt-4" aria-labelledby="cowriter-actions">
+        <h2 id="cowriter-actions"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:actions.title" /></h2>
+        <ul class="list-unstyled">
+            <f:for each="{actions}" as="action">
+                <li class="mb-2">
+                    <a href="{action.url}"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:actions.module.{action.module}" /></a>
+                    <span class="text-body-secondary">– <f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:actions.module.{action.module}.description" /></span>
+                </li>
+            </f:for>
+            <li class="mb-2">
+                <a href="{documentationUrl}" target="_blank" rel="noopener noreferrer"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:actions.documentation" /></a>
+                <span class="text-body-secondary">– <f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:actions.documentation.description" /></span>
+            </li>
+        </ul>
+    </section>
+</f:section>
+
+</html>

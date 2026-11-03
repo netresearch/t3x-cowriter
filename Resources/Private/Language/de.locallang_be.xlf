@@ -226,8 +226,8 @@
                 <target>Das LLM ist noch nicht konfiguriert.</target>
             </trans-unit>
             <trans-unit id="error.checkSetupStatus" resname="error.checkSetupStatus">
-                <source>%s Ask an administrator to check the Cowriter Setup Status page for details.</source>
-                <target>%s Bitten Sie einen Administrator, die Details auf der Seite „Cowriter-Einrichtungsstatus“ zu prüfen.</target>
+                <source>%s The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.</source>
+                <target>%s Was fehlt, zeigt die Seite „Cowriter“ im Bereich „AI“; können Sie sie nicht öffnen, wenden Sie sich an eine Administratorin oder einen Administrator.</target>
             </trans-unit>
             <trans-unit id="error.providerAuthentication" resname="error.providerAuthentication">
                 <source>The LLM provider rejected the API key. Please ask an administrator to check the provider settings.</source>
@@ -994,8 +994,8 @@
                 <target>Passende Seiten</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.openSetupStatus" resname="ckeditor.dialog.openSetupStatus">
-                <source>Open Setup Status</source>
-                <target>Einrichtungsstatus öffnen</target>
+                <source>Open the Cowriter overview</source>
+                <target>Cowriter-Überblick öffnen</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.summary" resname="ckeditor.dialog.debug.summary">
                 <source>Debug info</source>

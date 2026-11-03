@@ -171,7 +171,7 @@
                 <source>LLM is not configured yet.</source>
             </trans-unit>
             <trans-unit id="error.checkSetupStatus" resname="error.checkSetupStatus">
-                <source>%s Ask an administrator to check the Cowriter Setup Status page for details.</source>
+                <source>%s The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.</source>
             </trans-unit>
             <trans-unit id="error.providerAuthentication" resname="error.providerAuthentication">
                 <source>The LLM provider rejected the API key. Please ask an administrator to check the provider settings.</source>
@@ -747,7 +747,7 @@
                 <source>Matching pages</source>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.openSetupStatus" resname="ckeditor.dialog.openSetupStatus">
-                <source>Open Setup Status</source>
+                <source>Open the Cowriter overview</source>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.summary" resname="ckeditor.dialog.debug.summary">
                 <source>Debug info</source>

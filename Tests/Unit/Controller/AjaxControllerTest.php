@@ -517,7 +517,7 @@ final class AjaxControllerTest extends TestCase
         $data = $this->decodeJsonResponse($response);
         self::assertFalse($data['success']);
         self::assertSame(
-            'LLM is not configured yet. Ask an administrator to check the Cowriter Setup Status page for details.',
+            'LLM is not configured yet. The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.',
             $data['error'],
         );
         self::assertSame('/typo3/module/cowriter/status', $data['statusUrl']);

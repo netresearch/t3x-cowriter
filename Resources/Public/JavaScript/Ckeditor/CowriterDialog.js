@@ -2104,7 +2104,7 @@ export class CowriterDialog {
         }
         const link = document.createElement('a');
         link.href = url;
-        link.textContent = ' ' + t('ckeditor.dialog.openSetupStatus', 'Open Setup Status');
+        link.textContent = ' ' + t('ckeditor.dialog.openSetupStatus', 'Open the Cowriter overview');
         link.className = 'ms-1';
         link.target = '_blank';
         link.rel = 'noopener noreferrer';

@@ -1,0 +1,24 @@
+"be_groups"
+,"uid","pid","title","groupMods"
+,20,0,"AI pilots","cowriter_status,nrllm_aitasks"
+,21,0,"Editors","cowriter_status"
+"be_users"
+,"uid","pid","username","admin","usergroup","realName","tstamp","crdate","disable","deleted"
+,1,0,"admin",1,"","Ada Admin",1703347200,1703347200,0,0
+,3,0,"pilot",0,"20","Pia Pilot",1703347200,1703347200,0,0
+,4,0,"outsider",0,"21","Otto Outsider",1703347200,1703347200,0,0
+"tx_nrllm_provider"
+,"uid","pid","identifier","name","adapter_type","api_key","is_active","tstamp","crdate","deleted","hidden","sorting"
+,1,0,"keyless","Keyless","openai","",1,1703347200,1703347200,0,0,1
+,2,0,"keyed","Keyed","claude","vault-identifier-of-the-keyed-provider",1,1703347200,1703347200,0,0,2
+"tx_nrllm_model"
+,"uid","pid","identifier","name","provider_uid","model_id","capabilities","is_active","tstamp","crdate","deleted","hidden","sorting"
+,10,0,"gpt","GPT","1","gpt-4o","chat,vision",1,1703347200,1703347200,0,0,1
+,11,0,"sonnet","Sonnet","2","claude-sonnet","chat,vision",1,1703347200,1703347200,0,0,2
+"tx_nrllm_configuration"
+,"uid","pid","identifier","name","model_uid","is_active","is_default","allowed_groups","tstamp","crdate","deleted","hidden","sorting"
+,200,0,"default","Default","10",1,1,1,1703347200,1703347200,0,0,1
+,201,0,"claude","Claude","11",1,0,0,1703347200,1703347200,0,0,2
+"tx_nrllm_configuration_begroups_mm"
+,"uid_local","uid_foreign","sorting","sorting_foreign"
+,200,20,1,0

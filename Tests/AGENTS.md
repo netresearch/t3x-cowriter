@@ -119,17 +119,18 @@ Tests/
 │   │                   # ExecuteTaskRequest, ToolRequest, TranslationRequest, UsageData, VisionRequest
 │   ├── EventListener/  # InjectAjaxUrlsListenerTest.php
 │   ├── Localization/   # GermanTranslationTest: every xlf has a de. file with the same ids and placeholders
-│   └── Service/        # ContextAssemblyService, DiagnosticService, LlmErrorClassifier,
+│   └── Service/        # ContextAssemblyService, DiagnosticService, LlmErrorClassifier, Overview/ (readiness, usage, surfaces, settings),
 │                       # RateLimiterService, RateLimitResult tests
 ├── Functional/         # FieldSuggestion/: TCA registration and the suggestion endpoint against a real DB (sqlite in CI)
 │                       # Localization/: TYPO3 resolves the de. language files
 │                       # Context/: task context read rules (tables_select, language, root level, workspaces)
 │                       # Image/: a generated image written through FAL as a backend user (mounts, read-only mount)
 │                       # Transparency/: page neighbourhood and page fields of the suggestion context (permissions, workspace, translations), the sources counted after the cap, "About this suggestion" links per user, the image context route
+│                       # Overview/: the overview module from the container on real nr-llm records and nr-llm's usage reader (other extension, other user, day before the period), readiness as the viewer, links per module access, rendering
 │                       # Presentation/: tab/accordion element written through DataHandler with bootstrap_package's TCA (live, workspace, language, access fields, images, translations, refusals), the switch to the new element, the proposal's warnings and introduction title, the control in FormEngine, a TYPO3 without bootstrap_package
 ├── Integration/
 │   ├── AbstractIntegrationTestCase.php
-│   └── Controller/     # Ajax, Template, Translation, Vision + Backend/Status integration tests
+│   └── Controller/     # Ajax, Template, Translation, Vision integration tests
 ├── E2E/
 │   ├── AbstractE2ETestCase.php, CowriterWorkflowTest.php, NewFeatureWorkflowTest.php  # PHP E2E
 │   ├── *.spec.ts       # Playwright specs (toolbar, dialog, tasks, translate, vision, context zoom)
@@ -149,7 +150,7 @@ $factory = (new \ReflectionClass(ModuleTemplateFactory::class))
     ->newInstanceWithoutConstructor();
 
 // Test private methods via reflection
-$method = new ReflectionMethod(StatusController::class, 'buildFixUrls');
+$method = new ReflectionMethod(AjaxController::class, 'buildErrorResponse');
 $result = $method->invoke($controller, $checks);
 ```
 

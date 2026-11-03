@@ -185,6 +185,37 @@ final class SavedPromptControllerTest extends FunctionalTestCase
         self::assertSame(400, $this->subject()->deleteAction($this->request('POST', ['uid' => '11']))->getStatusCode());
     }
 
+    /**
+     * The overview's count for administrators: shared, not approved, not
+     * deleted or hidden — 12 (the editor's) and 22 (the colleague's), not 26
+     * (hidden), 27 (deleted), 23 (approved) or 11 (not shared).
+     */
+    #[Test]
+    public function sharedPromptsAwaitingApprovalAreCounted(): void
+    {
+        self::assertSame(2, $this->repository()->countAwaitingApproval());
+    }
+
+    #[Test]
+    public function noPromptAwaitsApprovalWhenNoneIsRequired(): void
+    {
+        self::assertSame(0, $this->repository(approvalRequired: false)->countAwaitingApproval());
+    }
+
+    private function repository(bool $approvalRequired = true): SavedPromptRepository
+    {
+        $extensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class);
+        if (!$approvalRequired) {
+            $extensionConfiguration = $this->createStub(ExtensionConfiguration::class);
+            $extensionConfiguration->method('get')->willReturn('0');
+        }
+
+        return new SavedPromptRepository(
+            GeneralUtility::makeInstance(ConnectionPool::class),
+            new PromptSharingConfiguration($extensionConfiguration),
+        );
+    }
+
     private function subject(bool $approvalRequired = true): SavedPromptController
     {
         $rateLimiter = $this->createStub(RateLimiterInterface::class);

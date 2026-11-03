@@ -2,88 +2,616 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 <xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
-    <file source-language="en" target-language="de" datatype="plaintext" original="messages" date="2026-09-25T00:00:00Z" product-name="t3_cowriter">
+    <file source-language="en" target-language="de" datatype="plaintext" original="messages" date="2026-11-03T00:00:00Z" product-name="t3_cowriter">
         <header/>
         <body>
             <trans-unit id="mlang_tabs_tab" resname="mlang_tabs_tab">
-                <source>Cowriter Status</source>
-                <target>Cowriter-Status</target>
+                <source>Cowriter</source>
+                <target>Cowriter</target>
             </trans-unit>
             <trans-unit id="mlang_labels_tabdescr" resname="mlang_labels_tabdescr">
-                <source>Check LLM configuration status for the Cowriter extension.</source>
-                <target>LLM-Konfiguration der Erweiterung Cowriter prüfen.</target>
+                <source>What the cowriter does, whether it is ready for you, how much it was used, and where it is set up.</source>
+                <target>Was der Cowriter tut, ob er für Sie bereitsteht, wie viel er genutzt wurde und wo er eingerichtet wird.</target>
             </trans-unit>
             <trans-unit id="mlang_labels_tablabel" resname="mlang_labels_tablabel">
-                <source>Cowriter Setup Status</source>
-                <target>Cowriter-Einrichtungsstatus</target>
+                <source>Cowriter: overview, readiness and usage</source>
+                <target>Cowriter: Überblick, Bereitschaft und Nutzung</target>
             </trans-unit>
-            <trans-unit id="status.intro" resname="status.intro">
-                <source>This page checks whether the LLM configuration required by the Cowriter extension is complete.</source>
-                <target>Diese Seite prüft, ob die LLM-Konfiguration, die die Erweiterung Cowriter benötigt, vollständig ist.</target>
+            <trans-unit id="overview.title" resname="overview.title">
+                <source>Cowriter</source>
+                <target>Cowriter</target>
             </trans-unit>
-            <trans-unit id="status.ok.title" resname="status.ok.title">
-                <source>Everything is configured correctly</source>
-                <target>Alles ist korrekt konfiguriert</target>
+            <trans-unit id="overview.intro" resname="overview.intro">
+                <source>The cowriter writes, rewrites, translates and describes content with AI inside the editor. It uses the providers, models and configurations of the AI section.</source>
+                <target>Der Cowriter schreibt, überarbeitet, übersetzt und beschreibt Inhalte mit KI direkt im Editor. Er nutzt die Anbieter, Modelle und Konfigurationen aus dem Bereich „AI“.</target>
             </trans-unit>
-            <trans-unit id="status.ok.message" resname="status.ok.message">
-                <source>All required LLM components are set up. The Cowriter is ready to use.</source>
-                <target>Alle erforderlichen LLM-Komponenten sind eingerichtet. Der Cowriter ist einsatzbereit.</target>
+            <trans-unit id="overview.footer" resname="overview.footer">
+                <source>Every cowriter request goes through the AI section and counts against the AI budget of the person who makes it.</source>
+                <target>Jede Anfrage des Cowriters läuft über den Bereich „AI“ und zählt zum KI-Budget der Person, die sie stellt.</target>
             </trans-unit>
-            <trans-unit id="status.incomplete.title" resname="status.incomplete.title">
-                <source>Configuration incomplete</source>
-                <target>Konfiguration unvollständig</target>
+            <trans-unit id="state.on" resname="state.on">
+                <source>On</source>
+                <target>An</target>
             </trans-unit>
-            <trans-unit id="status.incomplete.message" resname="status.incomplete.message">
-                <source>One or more required configuration steps are missing. See the details below.</source>
-                <target>Mindestens ein erforderlicher Konfigurationsschritt fehlt. Die Details stehen unten.</target>
+            <trans-unit id="state.off" resname="state.off">
+                <source>Off</source>
+                <target>Aus</target>
             </trans-unit>
-            <trans-unit id="status.column.check" resname="status.column.check">
-                <source>Check</source>
-                <target>Prüfung</target>
+            <trans-unit id="understanding.title" resname="understanding.title">
+                <source>What the cowriter is</source>
+                <target>Was der Cowriter ist</target>
             </trans-unit>
-            <trans-unit id="status.column.status" resname="status.column.status">
-                <source>Status</source>
-                <target>Status</target>
+            <trans-unit id="understanding.text" resname="understanding.text">
+                <source>Editors find the cowriter in the toolbar of the rich text editor, as a “Suggest” button next to text fields, as a button in the record editor that suggests values for all fields, and next to image fields. It proposes text; the editor decides what is saved.</source>
+                <target>Redakteure finden den Cowriter in der Werkzeugleiste des Rich-Text-Editors, als Schaltfläche „Vorschlagen“ neben Textfeldern, als Schaltfläche im Datensatz-Editor, die Werte für alle Felder vorschlägt, und neben Bildfeldern. Er schlägt Text vor; was gespeichert wird, entscheidet die Redakteurin oder der Redakteur.</target>
             </trans-unit>
-            <trans-unit id="status.fix" resname="status.fix">
+            <trans-unit id="understanding.places" resname="understanding.places">
+                <source>Where editors find it</source>
+                <target>Wo Redakteure ihn finden</target>
+            </trans-unit>
+            <trans-unit id="understanding.column.place" resname="understanding.column.place">
+                <source>Place</source>
+                <target>Stelle</target>
+            </trans-unit>
+            <trans-unit id="understanding.column.state" resname="understanding.column.state">
+                <source>State</source>
+                <target>Zustand</target>
+            </trans-unit>
+            <trans-unit id="understanding.column.setting" resname="understanding.column.setting">
+                <source>Switched by</source>
+                <target>Geschaltet durch</target>
+            </trans-unit>
+            <trans-unit id="understanding.alwaysOn" resname="understanding.alwaysOn">
+                <source>No setting: always part of the cowriter preset</source>
+                <target>Keine Einstellung: immer Teil der Cowriter-Voreinstellung</target>
+            </trans-unit>
+            <trans-unit id="understanding.presetNote" resname="understanding.presetNote">
+                <source>The toolbar buttons appear in rich text fields that use the cowriter preset (for example RTE.default.preset = cowriter in page TSconfig). Which preset a field uses is not checked here.</source>
+                <target>Die Schaltflächen der Werkzeugleiste erscheinen in Rich-Text-Feldern, die die Cowriter-Voreinstellung nutzen (zum Beispiel RTE.default.preset = cowriter im Seiten-TSconfig). Welche Voreinstellung ein Feld nutzt, wird hier nicht geprüft.</target>
+            </trans-unit>
+            <trans-unit id="surface.cowriter" resname="surface.cowriter">
+                <source>Toolbar: Cowriter (write and rewrite, tasks)</source>
+                <target>Werkzeugleiste: Cowriter (schreiben und überarbeiten, Aufgaben)</target>
+            </trans-unit>
+            <trans-unit id="surface.cowriterVision" resname="surface.cowriterVision">
+                <source>Toolbar: describe an image (alt text)</source>
+                <target>Werkzeugleiste: Bild beschreiben (Alternativtext)</target>
+            </trans-unit>
+            <trans-unit id="surface.cowriterTranslate" resname="surface.cowriterTranslate">
+                <source>Toolbar: translate</source>
+                <target>Werkzeugleiste: übersetzen</target>
+            </trans-unit>
+            <trans-unit id="surface.cowriterTemplates" resname="surface.cowriterTemplates">
+                <source>Toolbar: saved prompts and templates</source>
+                <target>Werkzeugleiste: gespeicherte Prompts und Vorlagen</target>
+            </trans-unit>
+            <trans-unit id="surface.cowriterImage" resname="surface.cowriterImage">
+                <source>Toolbar: generate an image</source>
+                <target>Werkzeugleiste: Bild erzeugen</target>
+            </trans-unit>
+            <trans-unit id="surface.cowriterInlineSuggestions" resname="surface.cowriterInlineSuggestions">
+                <source>Toolbar: inline suggestions while typing</source>
+                <target>Werkzeugleiste: Vorschläge beim Tippen</target>
+            </trans-unit>
+            <trans-unit id="surface.fieldSuggestions" resname="surface.fieldSuggestions">
+                <source>“Suggest” button next to text fields</source>
+                <target>Schaltfläche „Vorschlagen“ neben Textfeldern</target>
+            </trans-unit>
+            <trans-unit id="surface.fieldOverview" resname="surface.fieldOverview">
+                <source>Record editor: suggest values for all fields</source>
+                <target>Datensatz-Editor: Werte für alle Felder vorschlagen</target>
+            </trans-unit>
+            <trans-unit id="surface.imageFieldControl" resname="surface.imageFieldControl">
+                <source>Image fields: generate an image</source>
+                <target>Bildfelder: Bild erzeugen</target>
+            </trans-unit>
+            <trans-unit id="surface.presentation" resname="surface.presentation">
+                <source>Text elements: present as tabs or accordion</source>
+                <target>Textelemente: als Tabs oder Akkordeon darstellen</target>
+            </trans-unit>
+            <trans-unit id="readiness.title" resname="readiness.title">
+                <source>Readiness</source>
+                <target>Bereitschaft</target>
+            </trans-unit>
+            <trans-unit id="readiness.intro" resname="readiness.intro">
+                <source>Each action is checked the way it runs for you: which configuration it takes, whether you may use it, and whether its model and provider are set up. Nothing is sent to a provider.</source>
+                <target>Jede Aktion wird so geprüft, wie sie für Sie läuft: welche Konfiguration sie nimmt, ob Sie diese nutzen dürfen und ob Modell und Anbieter eingerichtet sind. Dabei wird nichts an einen Anbieter gesendet.</target>
+            </trans-unit>
+            <trans-unit id="readiness.providerCheck" resname="readiness.providerCheck">
+                <source>Whether a provider answers is not checked here.</source>
+                <target>Ob ein Anbieter antwortet, wird hier nicht geprüft.</target>
+            </trans-unit>
+            <trans-unit id="readiness.providerCheck.link" resname="readiness.providerCheck.link">
+                <source>Test the connection in the provider list.</source>
+                <target>Verbindung in der Anbieterliste testen.</target>
+            </trans-unit>
+            <trans-unit id="readiness.column.action" resname="readiness.column.action">
+                <source>Action</source>
+                <target>Aktion</target>
+            </trans-unit>
+            <trans-unit id="readiness.column.state" resname="readiness.column.state">
+                <source>State</source>
+                <target>Zustand</target>
+            </trans-unit>
+            <trans-unit id="readiness.column.reason" resname="readiness.column.reason">
+                <source>Reason</source>
+                <target>Grund</target>
+            </trans-unit>
+            <trans-unit id="readiness.column.fix" resname="readiness.column.fix">
                 <source>Fix</source>
                 <target>Beheben</target>
             </trans-unit>
-            <trans-unit id="status.footer" resname="status.footer">
-                <source>The Cowriter extension requires a working LLM configuration from the NR LLM extension. Use the "Fix" buttons to resolve any issues.</source>
-                <target>Die Erweiterung Cowriter benötigt eine funktionierende LLM-Konfiguration aus der Erweiterung NR LLM. Probleme lassen sich über die Schaltflächen „Beheben“ lösen.</target>
+            <trans-unit id="readiness.column.site" resname="readiness.column.site">
+                <source>Site</source>
+                <target>Site</target>
             </trans-unit>
-            <trans-unit id="status.check.provider_exists" resname="status.check.provider_exists">
-                <source>Provider exists</source>
-                <target>Anbieter vorhanden</target>
+            <trans-unit id="readiness.fix" resname="readiness.fix">
+                <source>Fix</source>
+                <target>Beheben</target>
             </trans-unit>
-            <trans-unit id="status.check.provider_active" resname="status.check.provider_active">
-                <source>Provider active</source>
-                <target>Anbieter aktiv</target>
+            <trans-unit id="readiness.askAdministrator" resname="readiness.askAdministrator">
+                <source>Ask an administrator.</source>
+                <target>Bitte wenden Sie sich an eine Administratorin oder einen Administrator.</target>
             </trans-unit>
-            <trans-unit id="status.check.provider_has_api_key" resname="status.check.provider_has_api_key">
-                <source>Provider has an API key</source>
-                <target>Anbieter hat einen API-Schlüssel</target>
+            <trans-unit id="readiness.sites.title" resname="readiness.sites.title">
+                <source>Sites with their own configuration</source>
+                <target>Sites mit eigener Konfiguration</target>
             </trans-unit>
-            <trans-unit id="status.check.model_exists" resname="status.check.model_exists">
-                <source>Model exists</source>
-                <target>Modell vorhanden</target>
+            <trans-unit id="readiness.sites.intro" resname="readiness.sites.intro">
+                <source>These sites name their own configuration in their site settings. A task run on one of their records uses it instead of the default; writing in the dialog and field suggestions keep the default.</source>
+                <target>Diese Sites nennen in ihren Site-Einstellungen eine eigene Konfiguration. Eine Aufgabe zu einem ihrer Datensätze nutzt sie statt der Standardkonfiguration; das Schreiben im Dialog und die Feldvorschläge bleiben bei der Standardkonfiguration.</target>
             </trans-unit>
-            <trans-unit id="status.check.model_active" resname="status.check.model_active">
-                <source>Model active</source>
-                <target>Modell aktiv</target>
+            <trans-unit id="readiness.action.writing" resname="readiness.action.writing">
+                <source>Write, rewrite and tasks</source>
+                <target>Schreiben, überarbeiten und Aufgaben</target>
             </trans-unit>
-            <trans-unit id="status.check.configuration_exists" resname="status.check.configuration_exists">
-                <source>Configuration exists</source>
-                <target>Konfiguration vorhanden</target>
+            <trans-unit id="readiness.action.vision" resname="readiness.action.vision">
+                <source>Describe an image (alt text)</source>
+                <target>Bild beschreiben (Alternativtext)</target>
             </trans-unit>
-            <trans-unit id="status.check.configuration_active" resname="status.check.configuration_active">
-                <source>Configuration active</source>
-                <target>Konfiguration aktiv</target>
+            <trans-unit id="readiness.action.translation" resname="readiness.action.translation">
+                <source>Translate</source>
+                <target>Übersetzen</target>
             </trans-unit>
-            <trans-unit id="status.check.configuration_default" resname="status.check.configuration_default">
-                <source>Default configuration set</source>
-                <target>Standardkonfiguration festgelegt</target>
+            <trans-unit id="readiness.action.image" resname="readiness.action.image">
+                <source>Generate an image</source>
+                <target>Bild erzeugen</target>
+            </trans-unit>
+            <trans-unit id="readiness.action.inlineSuggestions" resname="readiness.action.inlineSuggestions">
+                <source>Inline suggestions</source>
+                <target>Vorschläge beim Tippen</target>
+            </trans-unit>
+            <trans-unit id="readiness.action.fieldSuggestions" resname="readiness.action.fieldSuggestions">
+                <source>Field suggestions</source>
+                <target>Feldvorschläge</target>
+            </trans-unit>
+            <trans-unit id="readiness.action.presentation" resname="readiness.action.presentation">
+                <source>Tabs or accordion</source>
+                <target>Tabs oder Akkordeon</target>
+            </trans-unit>
+            <trans-unit id="readiness.state.ready" resname="readiness.state.ready">
+                <source>Ready</source>
+                <target>Bereit</target>
+            </trans-unit>
+            <trans-unit id="readiness.state.notReady" resname="readiness.state.notReady">
+                <source>Not ready</source>
+                <target>Nicht bereit</target>
+            </trans-unit>
+            <trans-unit id="readiness.state.off" resname="readiness.state.off">
+                <source>Off</source>
+                <target>Aus</target>
+            </trans-unit>
+            <trans-unit id="readiness.state.notChecked" resname="readiness.state.notChecked">
+                <source>Not checked</source>
+                <target>Nicht geprüft</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.configurationReady" resname="readiness.reason.configurationReady">
+                <source>Configuration “%1$s” with model “%2$s” of provider “%3$s”.</source>
+                <target>Konfiguration „%1$s“ mit Modell „%2$s“ des Anbieters „%3$s“.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.configurationDenied" resname="readiness.reason.configurationDenied">
+                <source>The configuration this action uses is limited to backend groups you are not in.</source>
+                <target>Die Konfiguration dieser Aktion ist auf Backend-Gruppen beschränkt, denen Sie nicht angehören.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.noConfiguration" resname="readiness.reason.noConfiguration">
+                <source>There is no active default configuration.</source>
+                <target>Es gibt keine aktive Standardkonfiguration.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.configurationNotFound" resname="readiness.reason.configurationNotFound">
+                <source>The configuration “%s” set for this action does not exist or is inactive.</source>
+                <target>Die für diese Aktion eingestellte Konfiguration „%s“ existiert nicht oder ist inaktiv.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.siteConfigurationUnusable" resname="readiness.reason.siteConfigurationUnusable">
+                <source>The site names a configuration that does not exist, is inactive or is not available to you.</source>
+                <target>Die Site nennt eine Konfiguration, die nicht existiert, inaktiv ist oder Ihnen nicht zur Verfügung steht.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.modelChosenPerRequest" resname="readiness.reason.modelChosenPerRequest">
+                <source>Configuration “%s” chooses its model for each request, so model and provider can only be checked then.</source>
+                <target>Die Konfiguration „%s“ wählt ihr Modell bei jeder Anfrage; Modell und Anbieter lassen sich erst dann prüfen.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.modelInactive" resname="readiness.reason.modelInactive">
+                <source>The model “%s” is inactive.</source>
+                <target>Das Modell „%s“ ist inaktiv.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.modelLacksVision" resname="readiness.reason.modelLacksVision">
+                <source>The model “%s” is not marked as able to read images.</source>
+                <target>Das Modell „%s“ ist nicht als bildfähig gekennzeichnet.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.providerMissing" resname="readiness.reason.providerMissing">
+                <source>The model “%s” has no provider.</source>
+                <target>Das Modell „%s“ hat keinen Anbieter.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.providerInactive" resname="readiness.reason.providerInactive">
+                <source>The provider “%s” is inactive.</source>
+                <target>Der Anbieter „%s“ ist inaktiv.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.providerKeyMissing" resname="readiness.reason.providerKeyMissing">
+                <source>The provider “%s” has no API key.</source>
+                <target>Der Anbieter „%s“ hat keinen API-Schlüssel.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.adapterUnknown" resname="readiness.reason.adapterUnknown">
+                <source>The provider “%s” uses an adapter this check does not know.</source>
+                <target>Der Anbieter „%s“ nutzt einen Adapter, den diese Prüfung nicht kennt.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.noGenericDefault" resname="readiness.reason.noGenericDefault">
+                <source>This action runs on the default configuration only when it has a model and is not limited to backend groups. There is no such default, so the AI section refuses the request.</source>
+                <target>Diese Aktion läuft nur mit einer Standardkonfiguration, die ein Modell hat und nicht auf Backend-Gruppen beschränkt ist. Eine solche gibt es nicht, deshalb lehnt der Bereich „AI“ die Anfrage ab.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.translatorAvailable" resname="readiness.reason.translatorAvailable">
+                <source>%s translates the language pairs it supports; other pairs go to the language model.</source>
+                <target>%s übersetzt die Sprachpaare, die es unterstützt; andere Paare übersetzt das Sprachmodell.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.switchedOff" resname="readiness.reason.switchedOff">
+                <source>Switched off in the extension configuration.</source>
+                <target>In der Erweiterungskonfiguration ausgeschaltet.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.noSuggestionFields" resname="readiness.reason.noSuggestionFields">
+                <source>No field is configured for suggestions.</source>
+                <target>Für Vorschläge ist kein Feld eingestellt.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.imageKeyMissing" resname="readiness.reason.imageKeyMissing">
+                <source>The AI section has no OpenAI API key for image generation in its extension configuration.</source>
+                <target>Der Bereich „AI“ hat in seiner Erweiterungskonfiguration keinen OpenAI-API-Schlüssel für die Bilderzeugung.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.noUploadFolder" resname="readiness.reason.noUploadFolder">
+                <source>You have no default upload folder you may write to.</source>
+                <target>Sie haben keinen Standard-Upload-Ordner, in den Sie schreiben dürfen.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.imageReady" resname="readiness.reason.imageReady">
+                <source>Images are generated with the model “%s”.</source>
+                <target>Bilder werden mit dem Modell „%s“ erzeugt.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.bootstrapPackageMissing" resname="readiness.reason.bootstrapPackageMissing">
+                <source>The tab and accordion elements of bootstrap_package are not available.</source>
+                <target>Die Tab- und Akkordeon-Elemente von bootstrap_package sind nicht verfügbar.</target>
+            </trans-unit>
+            <trans-unit id="usage.title" resname="usage.title">
+                <source>Usage</source>
+                <target>Nutzung</target>
+            </trans-unit>
+            <trans-unit id="usage.period.label" resname="usage.period.label">
+                <source>Period</source>
+                <target>Zeitraum</target>
+            </trans-unit>
+            <trans-unit id="usage.period.option" resname="usage.period.option">
+                <source>Last %d days</source>
+                <target>Letzte %d Tage</target>
+            </trans-unit>
+            <trans-unit id="usage.period.submit" resname="usage.period.submit">
+                <source>Show</source>
+                <target>Anzeigen</target>
+            </trans-unit>
+            <trans-unit id="usage.scope.own" resname="usage.scope.own">
+                <source>Your own requests through the cowriter in the last %1$d days, from %2$s on.</source>
+                <target>Ihre eigenen Anfragen über den Cowriter in den letzten %1$d Tagen, ab dem %2$s.</target>
+            </trans-unit>
+            <trans-unit id="usage.scope.installation" resname="usage.scope.installation">
+                <source>All requests through the cowriter in this installation in the last %1$d days, from %2$s on.</source>
+                <target>Alle Anfragen über den Cowriter in dieser Installation in den letzten %1$d Tagen, ab dem %2$s.</target>
+            </trans-unit>
+            <trans-unit id="usage.perUser" resname="usage.perUser">
+                <source>Usage per person is shown in AI &gt; Operation &gt; Analytics.</source>
+                <target>Die Nutzung pro Person zeigt AI &gt; Betrieb &gt; Analyse.</target>
+            </trans-unit>
+            <trans-unit id="usage.totals" resname="usage.totals">
+                <source>Totals for the period</source>
+                <target>Summen für den Zeitraum</target>
+            </trans-unit>
+            <trans-unit id="usage.cost" resname="usage.cost">
+                <source>Estimated cost</source>
+                <target>Geschätzte Kosten</target>
+            </trans-unit>
+            <trans-unit id="usage.requests" resname="usage.requests">
+                <source>Requests</source>
+                <target>Anfragen</target>
+            </trans-unit>
+            <trans-unit id="usage.tokens" resname="usage.tokens">
+                <source>Tokens</source>
+                <target>Tokens</target>
+            </trans-unit>
+            <trans-unit id="usage.calls" resname="usage.calls">
+                <source>Actions run</source>
+                <target>Ausgeführte Aktionen</target>
+            </trans-unit>
+            <trans-unit id="usage.failed" resname="usage.failed">
+                <source>Failed actions</source>
+                <target>Fehlgeschlagene Aktionen</target>
+            </trans-unit>
+            <trans-unit id="usage.costNote" resname="usage.costNote">
+                <source>Cost is the estimate recorded with each request, in US dollars.</source>
+                <target>Die Kosten sind die mit jeder Anfrage gespeicherte Schätzung in US-Dollar.</target>
+            </trans-unit>
+            <trans-unit id="usage.coverage.disabled.title" resname="usage.coverage.disabled.title">
+                <source>Actions are not counted</source>
+                <target>Aktionen werden nicht gezählt</target>
+            </trans-unit>
+            <trans-unit id="usage.coverage.disabled" resname="usage.coverage.disabled">
+                <source>Telemetry is switched off in the AI section: new requests are not counted per action. Cost, requests and tokens are still recorded.</source>
+                <target>Die Telemetrie ist im Bereich „AI“ ausgeschaltet: Neue Anfragen werden nicht pro Aktion gezählt. Kosten, Anfragen und Tokens werden weiter erfasst.</target>
+            </trans-unit>
+            <trans-unit id="usage.coverage.incomplete.title" resname="usage.coverage.incomplete.title">
+                <source>Counts per action start later</source>
+                <target>Zählung pro Aktion beginnt später</target>
+            </trans-unit>
+            <trans-unit id="usage.coverage.incomplete" resname="usage.coverage.incomplete">
+                <source>The counts per action are complete from %s on: older records were deleted after the retention period set in the AI section. Cost, requests and tokens cover the whole period.</source>
+                <target>Die Zählung pro Aktion ist ab dem %s vollständig: Ältere Einträge wurden nach der im Bereich „AI“ eingestellten Aufbewahrungsfrist gelöscht. Kosten, Anfragen und Tokens umfassen den ganzen Zeitraum.</target>
+            </trans-unit>
+            <trans-unit id="usage.unavailable.title" resname="usage.unavailable.title">
+                <source>Usage not available</source>
+                <target>Nutzung nicht verfügbar</target>
+            </trans-unit>
+            <trans-unit id="usage.unavailable" resname="usage.unavailable">
+                <source>The usage figures could not be read. The error is in the TYPO3 log.</source>
+                <target>Die Nutzungszahlen konnten nicht gelesen werden. Der Fehler steht im TYPO3-Log.</target>
+            </trans-unit>
+            <trans-unit id="usage.operations.title" resname="usage.operations.title">
+                <source>Per action</source>
+                <target>Pro Aktion</target>
+            </trans-unit>
+            <trans-unit id="usage.operations.empty" resname="usage.operations.empty">
+                <source>No cowriter action was recorded in this period.</source>
+                <target>In diesem Zeitraum wurde keine Aktion des Cowriters erfasst.</target>
+            </trans-unit>
+            <trans-unit id="usage.column.operation" resname="usage.column.operation">
+                <source>Action</source>
+                <target>Aktion</target>
+            </trans-unit>
+            <trans-unit id="usage.column.calls" resname="usage.column.calls">
+                <source>Runs</source>
+                <target>Ausführungen</target>
+            </trans-unit>
+            <trans-unit id="usage.column.failed" resname="usage.column.failed">
+                <source>Failed</source>
+                <target>Fehlgeschlagen</target>
+            </trans-unit>
+            <trans-unit id="usage.column.lastCall" resname="usage.column.lastCall">
+                <source>Last run</source>
+                <target>Zuletzt</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.chat" resname="usage.operation.chat">
+                <source>Cowriter dialog: chat</source>
+                <target>Cowriter-Dialog: Chat</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.complete" resname="usage.operation.complete">
+                <source>Cowriter dialog: write or rewrite</source>
+                <target>Cowriter-Dialog: schreiben oder überarbeiten</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.streamComplete" resname="usage.operation.streamComplete">
+                <source>Cowriter dialog: write or rewrite (streamed)</source>
+                <target>Cowriter-Dialog: schreiben oder überarbeiten (gestreamt)</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.customInstruction" resname="usage.operation.customInstruction">
+                <source>Task with your own instruction</source>
+                <target>Aufgabe mit eigener Anweisung</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.executeTask" resname="usage.operation.executeTask">
+                <source>Task without identifier</source>
+                <target>Aufgabe ohne Kennung</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.taskTools" resname="usage.operation.taskTools">
+                <source>Task with tools</source>
+                <target>Aufgabe mit Werkzeugen</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.toolCall" resname="usage.operation.toolCall">
+                <source>Tool call</source>
+                <target>Werkzeugaufruf</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.altText" resname="usage.operation.altText">
+                <source>Image description (alt text)</source>
+                <target>Bildbeschreibung (Alternativtext)</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.translate" resname="usage.operation.translate">
+                <source>Translation</source>
+                <target>Übersetzung</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.generateImage" resname="usage.operation.generateImage">
+                <source>Image generation</source>
+                <target>Bilderzeugung</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.inlineSuggestion" resname="usage.operation.inlineSuggestion">
+                <source>Inline suggestion</source>
+                <target>Vorschlag beim Tippen</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.fieldSuggestions" resname="usage.operation.fieldSuggestions">
+                <source>Field suggestion</source>
+                <target>Feldvorschlag</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.fieldSuggestionsOverview" resname="usage.operation.fieldSuggestionsOverview">
+                <source>Suggestions for all fields</source>
+                <target>Vorschläge für alle Felder</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.alternativePresentation" resname="usage.operation.alternativePresentation">
+                <source>Tabs or accordion</source>
+                <target>Tabs oder Akkordeon</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.task" resname="usage.operation.task">
+                <source>Task “%s”</source>
+                <target>Aufgabe „%s“</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.unnamed" resname="usage.operation.unnamed">
+                <source>Without action name</source>
+                <target>Ohne Aktionsnamen</target>
+            </trans-unit>
+            <trans-unit id="budget.title" resname="budget.title">
+                <source>Your AI budget</source>
+                <target>Ihr KI-Budget</target>
+            </trans-unit>
+            <trans-unit id="budget.limited" resname="budget.limited">
+                <source>Your own usage of all AI features against your personal limits.</source>
+                <target>Ihre eigene Nutzung aller KI-Funktionen im Vergleich zu Ihren persönlichen Grenzen.</target>
+            </trans-unit>
+            <trans-unit id="budget.unlimited" resname="budget.unlimited">
+                <source>No personal limit applies to you. Your own usage of all AI features:</source>
+                <target>Für Sie gilt keine persönliche Grenze. Ihre eigene Nutzung aller KI-Funktionen:</target>
+            </trans-unit>
+            <trans-unit id="budget.unavailable" resname="budget.unavailable">
+                <source>Your budget could not be read.</source>
+                <target>Ihr Budget konnte nicht gelesen werden.</target>
+            </trans-unit>
+            <trans-unit id="budget.column.requests" resname="budget.column.requests">
+                <source>Requests</source>
+                <target>Anfragen</target>
+            </trans-unit>
+            <trans-unit id="budget.column.tokens" resname="budget.column.tokens">
+                <source>Tokens</source>
+                <target>Tokens</target>
+            </trans-unit>
+            <trans-unit id="budget.column.cost" resname="budget.column.cost">
+                <source>Cost</source>
+                <target>Kosten</target>
+            </trans-unit>
+            <trans-unit id="budget.today" resname="budget.today">
+                <source>Today</source>
+                <target>Heute</target>
+            </trans-unit>
+            <trans-unit id="budget.month" resname="budget.month">
+                <source>This month</source>
+                <target>Dieser Monat</target>
+            </trans-unit>
+            <trans-unit id="budget.meter" resname="budget.meter">
+                <source>%1$s of %2$s</source>
+                <target>%1$s von %2$s</target>
+            </trans-unit>
+            <trans-unit id="budget.meter.noLimit" resname="budget.meter.noLimit">
+                <source>%s (no limit)</source>
+                <target>%s (ohne Grenze)</target>
+            </trans-unit>
+            <trans-unit id="prompts.title" resname="prompts.title">
+                <source>Shared prompts</source>
+                <target>Geteilte Prompts</target>
+            </trans-unit>
+            <trans-unit id="prompts.awaiting" resname="prompts.awaiting">
+                <source>%d shared prompts await approval.</source>
+                <target>%d geteilte Prompts warten auf Freigabe.</target>
+            </trans-unit>
+            <trans-unit id="prompts.none" resname="prompts.none">
+                <source>No shared prompt awaits approval.</source>
+                <target>Kein geteilter Prompt wartet auf Freigabe.</target>
+            </trans-unit>
+            <trans-unit id="prompts.link" resname="prompts.link">
+                <source>Open them in the List module (root level).</source>
+                <target>Im Modul „Liste“ öffnen (Wurzelebene).</target>
+            </trans-unit>
+            <trans-unit id="configuration.title" resname="configuration.title">
+                <source>Configuration</source>
+                <target>Konfiguration</target>
+            </trans-unit>
+            <trans-unit id="configuration.intro" resname="configuration.intro">
+                <source>The cowriter's extension settings and their values. They are changed in Settings &gt; Extension Configuration &gt; t3_cowriter.</source>
+                <target>Die Erweiterungseinstellungen des Cowriters und ihre Werte. Geändert werden sie unter Einstellungen &gt; Erweiterungskonfiguration &gt; t3_cowriter.</target>
+            </trans-unit>
+            <trans-unit id="configuration.column.setting" resname="configuration.column.setting">
+                <source>Setting</source>
+                <target>Einstellung</target>
+            </trans-unit>
+            <trans-unit id="configuration.column.value" resname="configuration.column.value">
+                <source>Value</source>
+                <target>Wert</target>
+            </trans-unit>
+            <trans-unit id="configuration.column.source" resname="configuration.column.source">
+                <source>Source</source>
+                <target>Herkunft</target>
+            </trans-unit>
+            <trans-unit id="configuration.value.empty" resname="configuration.value.empty">
+                <source>(empty)</source>
+                <target>(leer)</target>
+            </trans-unit>
+            <trans-unit id="configuration.source.default" resname="configuration.source.default">
+                <source>Default</source>
+                <target>Standardwert</target>
+            </trans-unit>
+            <trans-unit id="configuration.source.changed" resname="configuration.source.changed">
+                <source>Changed</source>
+                <target>Geändert</target>
+            </trans-unit>
+            <trans-unit id="actions.title" resname="actions.title">
+                <source>Set up and follow up</source>
+                <target>Einrichten und nachverfolgen</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_aitasks" resname="actions.module.nrllm_aitasks">
+                <source>AI tasks</source>
+                <target>KI-Aufgaben</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_aitasks.description" resname="actions.module.nrllm_aitasks.description">
+                <source>your AI tasks and your budget</source>
+                <target>Ihre KI-Aufgaben und Ihr Budget</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_configurations" resname="actions.module.nrllm_configurations">
+                <source>Configurations</source>
+                <target>Konfigurationen</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_configurations.description" resname="actions.module.nrllm_configurations.description">
+                <source>the default configuration, group access, persona and limits</source>
+                <target>Standardkonfiguration, Gruppenzugriff, Persona und Grenzen</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_tasks" resname="actions.module.nrllm_tasks">
+                <source>Tasks</source>
+                <target>Aufgaben</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_tasks.description" resname="actions.module.nrllm_tasks.description">
+                <source>the tasks editors pick in the cowriter dialog</source>
+                <target>die Aufgaben, die Redakteure im Cowriter-Dialog wählen</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_models" resname="actions.module.nrllm_models">
+                <source>Models</source>
+                <target>Modelle</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_models.description" resname="actions.module.nrllm_models.description">
+                <source>models and their capabilities, such as reading images</source>
+                <target>Modelle und ihre Fähigkeiten, etwa Bilder lesen</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_providers" resname="actions.module.nrllm_providers">
+                <source>Providers</source>
+                <target>Anbieter</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_providers.description" resname="actions.module.nrllm_providers.description">
+                <source>API keys and connection tests</source>
+                <target>API-Schlüssel und Verbindungstests</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_analytics" resname="actions.module.nrllm_analytics">
+                <source>Analytics</source>
+                <target>Analyse</target>
+            </trans-unit>
+            <trans-unit id="actions.module.nrllm_analytics.description" resname="actions.module.nrllm_analytics.description">
+                <source>usage and cost per extension and per person</source>
+                <target>Nutzung und Kosten pro Erweiterung und pro Person</target>
+            </trans-unit>
+            <trans-unit id="actions.module.tools_toolssettings" resname="actions.module.tools_toolssettings">
+                <source>Extension Configuration</source>
+                <target>Erweiterungskonfiguration</target>
+            </trans-unit>
+            <trans-unit id="actions.module.tools_toolssettings.description" resname="actions.module.tools_toolssettings.description">
+                <source>switch cowriter features on and off (Settings module)</source>
+                <target>Funktionen des Cowriters ein- und ausschalten (Modul „Einstellungen“)</target>
+            </trans-unit>
+            <trans-unit id="actions.documentation" resname="actions.documentation">
+                <source>Documentation</source>
+                <target>Dokumentation</target>
+            </trans-unit>
+            <trans-unit id="actions.documentation.description" resname="actions.documentation.description">
+                <source>what this page shows and how the cowriter is set up</source>
+                <target>was diese Seite zeigt und wie der Cowriter eingerichtet wird</target>
             </trans-unit>
         </body>
     </file>

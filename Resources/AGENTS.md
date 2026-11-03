@@ -50,9 +50,9 @@ Resources/
 │           └── FieldSuggestions.js # "Suggest" field control
 ├── Private/
 │   ├── Language/locallang_be.xlf           # Field suggestion labels and endpoint messages
-│   ├── Language/locallang_mod_status.xlf   # Status module labels
+│   ├── Language/locallang_mod_status.xlf   # Overview module labels (module id cowriter_status)
 │   ├── Language/de.*.xlf                   # German translations; same ids (GermanTranslationTest)
-│   └── Templates/Backend/Status/Index.html # Status module Fluid template
+│   └── Templates/Backend/Overview/Index.html # Overview module Fluid template
 ```
 
 ## Setup

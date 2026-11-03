@@ -457,7 +457,7 @@ final class TranslationControllerTest extends TestCase
         $data = json_decode((string) $response->getBody(), true);
         self::assertFalse($data['success']);
         self::assertSame(
-            'No LLM provider configured. Ask an administrator to check the Cowriter Setup Status page for details.',
+            'No LLM provider configured. The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.',
             $data['error'],
         );
         self::assertSame('/typo3/module/cowriter/status', $data['statusUrl']);

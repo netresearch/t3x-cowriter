@@ -119,9 +119,6 @@ final readonly class TranslationController
         try {
             // withCallerSource() names this extension on the telemetry row so
             // Analytics attributes translations to it (nr-llm ADR-177).
-            // nr-llm 0.31.1 does not deliver it yet: TranslationService drops
-            // the field on every path it offers, so these calls stay
-            // unattributed until nr-llm#845 lands.
             $options = (new TranslationOptions(
                 formality: $translationRequest->formality,
                 domain: $translationRequest->domain,

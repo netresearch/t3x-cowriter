@@ -9,6 +9,11 @@
 Usage
 =====
 
+..  toctree::
+    :titlesonly:
+
+    Overview
+
 Using the AI Cowriter
 =====================
 
