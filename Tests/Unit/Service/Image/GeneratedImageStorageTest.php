@@ -166,7 +166,7 @@ final class GeneratedImageStorageTest extends TestCase
     {
         yield 'html' => ['<html><body><script>alert(1)</script></body></html>'];
         yield 'svg' => ['<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'];
-        yield 'gif' => [(string) base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', true)];
+        yield 'gif' => [base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', true)];
         yield 'png header only' => ["\x89PNG\r\n\x1a\n" . str_repeat("\0", 16)];
     }
 
