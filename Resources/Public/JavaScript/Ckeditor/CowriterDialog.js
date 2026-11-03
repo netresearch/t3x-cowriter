@@ -839,7 +839,7 @@ export class CowriterDialog {
                 [t('ckeditor.dialog.noTasks.steps', 'To set up tasks:'), null],
                 [
                     t('ckeditor.dialog.noTasks.step1', '1. Go to %s'),
-                    t('ckeditor.dialog.noTasks.step1.path', 'Admin Tools \u2192 LLM \u2192 Tasks'),
+                    t('ckeditor.dialog.noTasks.step1.path', 'AI \u2192 Authoring \u2192 Tasks'),
                 ],
                 [t('ckeditor.dialog.noTasks.step2', '2. Create tasks with category %s'), '"content"'],
                 [

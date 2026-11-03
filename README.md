@@ -72,7 +72,7 @@ composer require netresearch/t3-cowriter
 
 First, set up at least one LLM provider in the nr-llm extension:
 
-1. Navigate to **Admin Tools → LLM Management**
+1. Navigate to **AI → Setup**
 2. Add a provider (e.g., OpenAI with your API key)
 3. Create a model configuration
 4. Create an LLM configuration and set it as default

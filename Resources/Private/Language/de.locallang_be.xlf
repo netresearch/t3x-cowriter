@@ -398,68 +398,68 @@
                 <target>%d Anbieter konfiguriert.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_exists.failed" resname="diagnostic.provider_exists.failed">
-                <source>No LLM provider configured. Create a provider in Admin Tools &gt; LLM &gt; Providers.</source>
-                <target>Kein LLM-Anbieter konfiguriert. Legen Sie einen Anbieter unter Admin-Werkzeuge &gt; LLM &gt; Anbieter an.</target>
+                <source>No LLM provider configured. Create a provider in AI &gt; Setup &gt; Providers.</source>
+                <target>Kein LLM-Anbieter konfiguriert. Legen Sie einen Anbieter unter AI &gt; Einrichtung &gt; Anbieter an.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_active.passed" resname="diagnostic.provider_active.passed">
                 <source>%d active provider(s).</source>
                 <target>%d aktive(r) Anbieter.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_active.failed" resname="diagnostic.provider_active.failed">
-                <source>No active provider. Activate a provider in Admin Tools &gt; LLM &gt; Providers.</source>
-                <target>Kein aktiver Anbieter. Aktivieren Sie einen Anbieter unter Admin-Werkzeuge &gt; LLM &gt; Anbieter.</target>
+                <source>No active provider. Activate a provider in AI &gt; Setup &gt; Providers.</source>
+                <target>Kein aktiver Anbieter. Aktivieren Sie einen Anbieter unter AI &gt; Einrichtung &gt; Anbieter.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_has_api_key.passed" resname="diagnostic.provider_has_api_key.passed">
                 <source>%d provider(s) with API key.</source>
                 <target>%d Anbieter mit API-Schlüssel.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_has_api_key.failed" resname="diagnostic.provider_has_api_key.failed">
-                <source>Provider "%s" has no API key. Add one in Admin Tools &gt; LLM &gt; Providers.</source>
-                <target>Der Anbieter „%s“ hat keinen API-Schlüssel. Hinterlegen Sie einen unter Admin-Werkzeuge &gt; LLM &gt; Anbieter.</target>
+                <source>Provider "%s" has no API key. Add one in AI &gt; Setup &gt; Providers.</source>
+                <target>Der Anbieter „%s“ hat keinen API-Schlüssel. Hinterlegen Sie einen unter AI &gt; Einrichtung &gt; Anbieter.</target>
             </trans-unit>
             <trans-unit id="diagnostic.provider_has_api_key.none" resname="diagnostic.provider_has_api_key.none">
-                <source>No active provider has an API key. Add one in Admin Tools &gt; LLM &gt; Providers.</source>
-                <target>Kein aktiver Anbieter hat einen API-Schlüssel. Hinterlegen Sie einen unter Admin-Werkzeuge &gt; LLM &gt; Anbieter.</target>
+                <source>No active provider has an API key. Add one in AI &gt; Setup &gt; Providers.</source>
+                <target>Kein aktiver Anbieter hat einen API-Schlüssel. Hinterlegen Sie einen unter AI &gt; Einrichtung &gt; Anbieter.</target>
             </trans-unit>
             <trans-unit id="diagnostic.model_exists.passed" resname="diagnostic.model_exists.passed">
                 <source>%d model(s) configured.</source>
                 <target>%d Modell(e) konfiguriert.</target>
             </trans-unit>
             <trans-unit id="diagnostic.model_exists.failed" resname="diagnostic.model_exists.failed">
-                <source>No LLM model configured. Create a model in Admin Tools &gt; LLM &gt; Models.</source>
-                <target>Kein LLM-Modell konfiguriert. Legen Sie ein Modell unter Admin-Werkzeuge &gt; LLM &gt; Modelle an.</target>
+                <source>No LLM model configured. Create a model in AI &gt; Setup &gt; Models.</source>
+                <target>Kein LLM-Modell konfiguriert. Legen Sie ein Modell unter AI &gt; Einrichtung &gt; Modelle an.</target>
             </trans-unit>
             <trans-unit id="diagnostic.model_active.passed" resname="diagnostic.model_active.passed">
                 <source>%d active model(s).</source>
                 <target>%d aktive(s) Modell(e).</target>
             </trans-unit>
             <trans-unit id="diagnostic.model_active.failed" resname="diagnostic.model_active.failed">
-                <source>No active model. Activate a model in Admin Tools &gt; LLM &gt; Models.</source>
-                <target>Kein aktives Modell. Aktivieren Sie ein Modell unter Admin-Werkzeuge &gt; LLM &gt; Modelle.</target>
+                <source>No active model. Activate a model in AI &gt; Setup &gt; Models.</source>
+                <target>Kein aktives Modell. Aktivieren Sie ein Modell unter AI &gt; Einrichtung &gt; Modelle.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_exists.passed" resname="diagnostic.configuration_exists.passed">
                 <source>%d LLM configuration(s) created.</source>
                 <target>%d LLM-Konfiguration(en) angelegt.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_exists.failed" resname="diagnostic.configuration_exists.failed">
-                <source>No LLM configuration created. Create one in Admin Tools &gt; LLM &gt; Configurations.</source>
-                <target>Keine LLM-Konfiguration angelegt. Legen Sie eine unter Admin-Werkzeuge &gt; LLM &gt; Konfigurationen an.</target>
+                <source>No LLM configuration created. Create one in AI &gt; Setup &gt; Configurations.</source>
+                <target>Keine LLM-Konfiguration angelegt. Legen Sie eine unter AI &gt; Einrichtung &gt; Konfigurationen an.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_active.passed" resname="diagnostic.configuration_active.passed">
                 <source>%d active configuration(s).</source>
                 <target>%d aktive Konfiguration(en).</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_active.failed" resname="diagnostic.configuration_active.failed">
-                <source>No active LLM configuration. Activate one in Admin Tools &gt; LLM &gt; Configurations.</source>
-                <target>Keine aktive LLM-Konfiguration. Aktivieren Sie eine unter Admin-Werkzeuge &gt; LLM &gt; Konfigurationen.</target>
+                <source>No active LLM configuration. Activate one in AI &gt; Setup &gt; Configurations.</source>
+                <target>Keine aktive LLM-Konfiguration. Aktivieren Sie eine unter AI &gt; Einrichtung &gt; Konfigurationen.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_default.passed" resname="diagnostic.configuration_default.passed">
                 <source>Default configuration: "%s".</source>
                 <target>Standardkonfiguration: „%s“.</target>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_default.failed" resname="diagnostic.configuration_default.failed">
-                <source>No default LLM configuration. Mark one as default in Admin Tools &gt; LLM &gt; Configurations.</source>
-                <target>Keine Standard-LLM-Konfiguration. Markieren Sie eine unter Admin-Werkzeuge &gt; LLM &gt; Konfigurationen als Standard.</target>
+                <source>No default LLM configuration. Mark one as default in AI &gt; Setup &gt; Configurations.</source>
+                <target>Keine Standard-LLM-Konfiguration. Markieren Sie eine unter AI &gt; Einrichtung &gt; Konfigurationen als Standard.</target>
             </trans-unit>
             <trans-unit id="ckeditor.button.complete" resname="ckeditor.button.complete">
                 <source>Cowriter - AI text completion</source>
@@ -698,8 +698,8 @@
                 <target>1. Öffnen Sie %s</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.step1.path" resname="ckeditor.dialog.noTasks.step1.path">
-                <source>Admin Tools → LLM → Tasks</source>
-                <target>Admin-Werkzeuge → LLM → Aufgaben</target>
+                <source>AI → Authoring → Tasks</source>
+                <target>AI → Inhalte → Aufgaben</target>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.step2" resname="ckeditor.dialog.noTasks.step2">
                 <source>2. Create tasks with category %s</source>
