@@ -58,6 +58,7 @@ final class ReadinessReasonTest extends TestCase
         yield 'tasks ready' => [ReadinessReason::TasksReady, null];
         yield 'tasks failing' => [ReadinessReason::TasksFailing, 'nrllm_tasks'];
         yield 'many tasks failing' => [ReadinessReason::TasksFailingMany, 'nrllm_tasks'];
+        yield 'tasks failing, a pickable one runs' => [ReadinessReason::TasksFailingPickable, 'nrllm_tasks'];
         yield 'tasks not checked' => [ReadinessReason::TasksNotChecked, null];
         yield 'translator without fallback' => [ReadinessReason::TranslatorWithoutFallback, 'nrllm_configurations'];
         yield 'translator fallback unknown' => [ReadinessReason::TranslatorFallbackUnknown, null];

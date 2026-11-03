@@ -94,7 +94,10 @@ Tasks
     own configuration, or on the default when it has none. The row counts
     the tasks that cannot run and names them when there are at most three.
     It is partly ready when some tasks run and others do not, and off when
-    there is no active task.
+    there is no active task. A configuration picked in the dialog replaces the
+    task's own one, so when the picker offers the person a configuration that
+    runs, failing tasks still run once it is picked: the row is then partly
+    ready and names that configuration.
 
 Describe an image and translate
     nr-llm's generic call, which runs on the default configuration only when
@@ -120,7 +123,8 @@ Tabs or accordion
     of bootstrap_package and the default configuration.
 
 A second table lists every site that names its own configuration in its site
-settings, checked with the access of the person viewing the page. A task
+settings, checked with the access of the person viewing the page. An editor
+sees only the sites whose root page lies in their web mounts. A task
 without its own configuration, run on a record of such a site, uses that
 configuration instead of the default.
 

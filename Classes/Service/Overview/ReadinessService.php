@@ -29,6 +29,7 @@ use Netresearch\T3Cowriter\Service\InlineSuggestion\InlineSuggestionConfiguratio
 use Netresearch\T3Cowriter\Service\Presentation\PresentationAccess;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
 use Throwable;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Resource\Folder;
 use TYPO3\CMS\Core\Site\SiteFinder;
 
@@ -103,14 +104,20 @@ final readonly class ReadinessService
      * the record's site to {@see ConfigurationSelector}, and the site's
      * configuration replaces the default there, not a task's own one; writing
      * in the dialog and the field suggestions take the installation default.
+     * An editor gets the rows of the sites in their web mounts only, so the
+     * page names no site or configuration of a tree they cannot reach.
      *
      * @return list<ReadinessRow>
      */
-    public function siteRows(): array
+    public function siteRows(BackendUserAuthentication $viewer): array
     {
         $rows = [];
         foreach ($this->siteFinder->getAllSites() as $site) {
             $identifier = $site->getIdentifier();
+            if (!$viewer->isAdmin() && $viewer->isInWebMount($site->getRootPageId()) === null) {
+                continue;
+            }
+
             if (!$this->namesConfiguration($identifier)) {
                 continue;
             }
@@ -148,16 +155,7 @@ final readonly class ReadinessService
             return $default;
         }
 
-        $ready      = [];
-        $notChecked = [];
-        foreach ($this->configurationSelector->selectable() as $configuration) {
-            $state = $this->chainRow(ReadinessAction::Dialog, $configuration, null)->state;
-            if ($state === ReadinessState::Ready) {
-                $ready[] = $configuration->getName();
-            } elseif ($state === ReadinessState::NotChecked) {
-                $notChecked[] = $configuration->getName();
-            }
-        }
+        [$ready, $notChecked] = $this->pickable();
 
         return match (true) {
             $ready !== []      => new ReadinessRow(ReadinessAction::Dialog, ReadinessState::Partly, ReadinessReason::PickableReady, [implode(', ', $ready)]),
@@ -168,8 +166,10 @@ final readonly class ReadinessService
 
     /**
      * Every task the dialog offers, through the rule a task run takes: its own
-     * configuration, else the default. A site's configuration is in
-     * {@see self::siteRows()}.
+     * configuration, else the default. A configuration the editor picks in the
+     * dialog wins over both, so a task that fails on its own setting still
+     * runs when the picker offers one that is ready. A site's configuration is
+     * in {@see self::siteRows()}.
      */
     private function tasksRow(): ReadinessRow
     {
@@ -191,6 +191,11 @@ final readonly class ReadinessService
 
         $total = (string) count($tasks);
         if ($failing !== []) {
+            $ready = $this->pickable()[0];
+            if ($ready !== []) {
+                return new ReadinessRow(ReadinessAction::Tasks, ReadinessState::Partly, ReadinessReason::TasksFailingPickable, [(string) count($failing), $total, implode(', ', $ready)]);
+            }
+
             $state = count($failing) === count($tasks) ? ReadinessState::NotReady : ReadinessState::Partly;
 
             return count($failing) <= self::NAMED_FAILING_TASKS
@@ -203,6 +208,28 @@ final readonly class ReadinessService
         }
 
         return new ReadinessRow(ReadinessAction::Tasks, ReadinessState::Ready, ReadinessReason::TasksReady, [$total]);
+    }
+
+    /**
+     * The names of the configurations the dialog's picker offers the viewer,
+     * split into those that are ready and those this check cannot decide.
+     *
+     * @return array{list<string>, list<string>}
+     */
+    private function pickable(): array
+    {
+        $ready      = [];
+        $notChecked = [];
+        foreach ($this->configurationSelector->selectable() as $configuration) {
+            $state = $this->chainRow(ReadinessAction::Dialog, $configuration, null)->state;
+            if ($state === ReadinessState::Ready) {
+                $ready[] = $configuration->getName();
+            } elseif ($state === ReadinessState::NotChecked) {
+                $notChecked[] = $configuration->getName();
+            }
+        }
+
+        return [$ready, $notChecked];
     }
 
     /**

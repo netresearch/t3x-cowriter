@@ -236,6 +236,9 @@
             <trans-unit id="readiness.reason.tasksFailing" resname="readiness.reason.tasksFailing">
                 <source>%1$s of %2$s active tasks cannot run: %3$s. A task without its own configuration takes the default.</source>
             </trans-unit>
+            <trans-unit id="readiness.reason.tasksFailingPickable" resname="readiness.reason.tasksFailingPickable">
+                <source>%1$s of %2$s active tasks cannot run on their own configuration or the default. They run when you choose %3$s in the dialog.</source>
+            </trans-unit>
             <trans-unit id="readiness.reason.tasksFailingMany" resname="readiness.reason.tasksFailingMany">
                 <source>%1$s of %2$s active tasks cannot run. A task without its own configuration takes the default.</source>
             </trans-unit>

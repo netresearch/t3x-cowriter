@@ -313,6 +313,10 @@
                 <source>%1$s of %2$s active tasks cannot run: %3$s. A task without its own configuration takes the default.</source>
                 <target>%1$s von %2$s aktiven Aufgaben können nicht laufen: %3$s. Eine Aufgabe ohne eigene Konfiguration nimmt die Standardkonfiguration.</target>
             </trans-unit>
+            <trans-unit id="readiness.reason.tasksFailingPickable" resname="readiness.reason.tasksFailingPickable">
+                <source>%1$s of %2$s active tasks cannot run on their own configuration or the default. They run when you choose %3$s in the dialog.</source>
+                <target>%1$s von %2$s aktiven Aufgaben können mit ihrer eigenen Konfiguration oder der Standardkonfiguration nicht laufen. Sie laufen, wenn Sie im Dialog %3$s wählen.</target>
+            </trans-unit>
             <trans-unit id="readiness.reason.tasksFailingMany" resname="readiness.reason.tasksFailingMany">
                 <source>%1$s of %2$s active tasks cannot run. A task without its own configuration takes the default.</source>
                 <target>%1$s von %2$s aktiven Aufgaben können nicht laufen. Eine Aufgabe ohne eigene Konfiguration nimmt die Standardkonfiguration.</target>

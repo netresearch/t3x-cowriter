@@ -95,7 +95,7 @@ final readonly class OverviewController
             'isAdmin'       => $isAdmin,
             'surfaces'      => $this->surfaces->all(),
             'readiness'     => $this->readinessRows($this->readiness->rows(), $user),
-            'siteReadiness' => $this->readinessRows($this->readiness->siteRows(), $user),
+            'siteReadiness' => $this->readinessRows($this->readiness->siteRows($user), $user),
             'providersUrl'  => $this->moduleUrl('nrllm_providers', $user),
             'usage'         => $usage,
             'usageFigures'  => $usage instanceof UsageOverview ? [

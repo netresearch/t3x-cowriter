@@ -43,6 +43,7 @@ enum ReadinessReason: string
     case TasksReady                = 'tasksReady';
     case TasksFailing              = 'tasksFailing';
     case TasksFailingMany          = 'tasksFailingMany';
+    case TasksFailingPickable      = 'tasksFailingPickable';
     case TasksNotChecked           = 'tasksNotChecked';
     case TranslatorWithoutFallback = 'translatorWithoutFallback';
     case TranslatorFallbackUnknown = 'translatorFallbackUnknown';
@@ -56,8 +57,9 @@ enum ReadinessReason: string
         return match ($this) {
             self::ConfigurationDenied, self::NoConfiguration, self::ConfigurationNotFound,
             self::SiteConfigurationUnusable, self::NoGenericDefault,
-            self::PickableReady, self::TranslatorWithoutFallback                   => 'nrllm_configurations',
-            self::NoTasks, self::TasksFailing, self::TasksFailingMany              => 'nrllm_tasks',
+            self::PickableReady, self::TranslatorWithoutFallback => 'nrllm_configurations',
+            self::NoTasks, self::TasksFailing, self::TasksFailingMany,
+            self::TasksFailingPickable                                             => 'nrllm_tasks',
             self::ModelInactive, self::ModelLacksVision, self::ProviderMissing     => 'nrllm_models',
             self::ProviderInactive, self::ProviderKeyMissing, self::AdapterUnknown => 'nrllm_providers',
             self::SwitchedOff, self::NoSuggestionFields, self::ImageKeyMissing     => 'tools_toolssettings',

@@ -145,19 +145,53 @@ final class OverviewTest extends FunctionalTestCase
 
     /**
      * "Summarize" runs on its own configuration; "Shorten" has none and takes
-     * the default, which fails. The inactive task does not count.
+     * the default, which fails for both editors. The pilot may pick "Local" in
+     * the dialog, which then replaces the default; the outsider is offered
+     * nothing that runs. The inactive task does not count.
      */
     #[Test]
     public function tasksAreCountedWithTheViewersAccess(): void
     {
         $pilot = $this->row($this->variables(3), ReadinessAction::Tasks);
         self::assertSame(ReadinessState::Partly, $pilot['row']->state);
-        self::assertSame(['1', '2', 'Shorten'], $pilot['row']->arguments);
+        self::assertSame(ReadinessReason::TasksFailingPickable, $pilot['row']->reason);
+        self::assertSame(['1', '2', 'Local'], $pilot['row']->arguments);
         self::assertTrue($pilot['askAdministrator']);
 
         $outsider = $this->row($this->variables(4), ReadinessAction::Tasks);
         self::assertSame(ReadinessState::NotReady, $outsider['row']->state);
+        self::assertSame(ReadinessReason::TasksFailing, $outsider['row']->reason);
         self::assertSame(['2', '2', 'Summarize, Shorten'], $outsider['row']->arguments);
+    }
+
+    /**
+     * Both tasks take the default, whose provider has no key. A configuration
+     * the editor picks in the dialog wins over the task's own one, so the
+     * tasks still run once the pilot picks "Local": partly ready, not "none".
+     */
+    #[Test]
+    public function tasksThatAllFailOnTheirOwnSettingRunWithAPickableConfiguration(): void
+    {
+        $this->get(ConnectionPool::class)->getConnectionForTable('tx_nrllm_task')
+            ->update('tx_nrllm_task', ['configuration_uid' => 200], ['uid' => 300]);
+
+        $pilot = $this->row($this->variables(3), ReadinessAction::Tasks);
+
+        self::assertSame(ReadinessState::Partly, $pilot['row']->state);
+        self::assertSame(ReadinessReason::TasksFailingPickable, $pilot['row']->reason);
+        self::assertSame(['2', '2', 'Local'], $pilot['row']->arguments);
+    }
+
+    /**
+     * An editor mounted only in another site's tree does not see the rows of
+     * a site they cannot reach, nor the configuration names behind it. An
+     * administrator sees every site.
+     */
+    #[Test]
+    public function anEditorSeesOnlyTheSitesOfTheirWebMounts(): void
+    {
+        self::assertSame([], $this->variables(5)['siteReadiness']);
+        self::assertCount(1, $this->variables(1)['siteReadiness']);
     }
 
     /**

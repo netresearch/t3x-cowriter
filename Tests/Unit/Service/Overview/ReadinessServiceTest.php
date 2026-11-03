@@ -49,6 +49,7 @@ use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\NullLogger;
 use stdClass;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Resource\Folder;
 use TYPO3\CMS\Core\Site\Entity\Site;
@@ -468,17 +469,19 @@ final class ReadinessServiceTest extends TestCase
     #[Test]
     public function manyTasksThatCannotRunAreCountedNotNamed(): void
     {
-        $this->default = $this->usable('default');
-        $this->tasks   = [$this->task('Ok', null)];
-        for ($i = 1; $i <= ReadinessService::NAMED_FAILING_TASKS + 1; ++$i) {
+        // A usable default would be in the picker and rescue every task, so
+        // the default cannot run here either.
+        $this->default = $this->unusable('default');
+        $this->tasks   = [$this->task('Plain', null)];
+        for ($i = 1; $i <= ReadinessService::NAMED_FAILING_TASKS; ++$i) {
             $this->tasks[] = $this->task('Broken ' . $i, $this->unusable('broken' . $i));
         }
 
         $row = $this->service()->row(ReadinessAction::Tasks);
 
-        self::assertSame(ReadinessState::Partly, $row->state);
+        self::assertSame(ReadinessState::NotReady, $row->state);
         self::assertSame(ReadinessReason::TasksFailingMany, $row->reason);
-        self::assertSame(['4', '5'], $row->arguments);
+        self::assertSame(['4', '4'], $row->arguments);
         GeneralUtility::purgeInstances();
     }
 
@@ -643,7 +646,7 @@ final class ReadinessServiceTest extends TestCase
         $this->siteConfigurations = ['main' => 'gone', 'other' => ''];
         $GLOBALS['BE_USER']       = null;
 
-        $rows = $this->service()->siteRows();
+        $rows = $this->service()->siteRows($this->viewer(true));
 
         self::assertCount(1, $rows);
         self::assertSame('main', $rows[0]->site);
@@ -659,7 +662,7 @@ final class ReadinessServiceTest extends TestCase
         $this->byIdentifier['site'] = $this->configuration('site', $this->model('GPT', $this->provider('OpenAI', 'openai', true)));
         $GLOBALS['BE_USER']         = null;
 
-        $rows = $this->service()->siteRows();
+        $rows = $this->service()->siteRows($this->viewer(true));
 
         self::assertSame(ReadinessState::Ready, $rows[0]->state);
         self::assertSame(['site', 'GPT', 'OpenAI'], $rows[0]->arguments);
@@ -678,12 +681,63 @@ final class ReadinessServiceTest extends TestCase
         $this->denied               = ['site'];
         $GLOBALS['BE_USER']         = null;
 
-        $rows = $this->service()->siteRows();
+        $rows = $this->service()->siteRows($this->viewer(true));
 
         self::assertSame(ReadinessAction::Tasks, $rows[0]->action);
         self::assertSame(ReadinessState::NotReady, $rows[0]->state);
         self::assertSame(ReadinessReason::ConfigurationDenied, $rows[0]->reason);
         unset($GLOBALS['BE_USER']);
+    }
+
+    /**
+     * An editor whose web mounts do not reach a site's root gets no row for
+     * it; the configuration it names is not shown either.
+     */
+    #[Test]
+    public function anEditorGetsNoRowForASiteOutsideTheirWebMounts(): void
+    {
+        $this->siteConfigurations = ['main' => 'gone', 'other' => 'gone'];
+        $GLOBALS['BE_USER']       = null;
+
+        $rows = $this->service()->siteRows($this->viewer(false, [2]));
+
+        self::assertCount(1, $rows);
+        self::assertSame('other', $rows[0]->site);
+        unset($GLOBALS['BE_USER']);
+    }
+
+    /**
+     * A configuration picked in the dialog wins over a task's own one, so the
+     * failing tasks still run once the editor picks a ready one.
+     */
+    #[Test]
+    public function failingTasksArePartlyReadyWhenThePickerOffersAReadyConfiguration(): void
+    {
+        $this->default             = $this->unusable('default');
+        $this->byIdentifier['own'] = $this->usable('own');
+        $this->tasks               = [$this->task('Summarize', $this->default), $this->task('Shorten', null)];
+
+        $row = $this->service()->row(ReadinessAction::Tasks);
+
+        self::assertSame(ReadinessState::Partly, $row->state);
+        self::assertSame(ReadinessReason::TasksFailingPickable, $row->reason);
+        self::assertSame(['2', '2', 'own'], $row->arguments);
+        self::assertSame('nrllm_tasks', $row->fixRoute());
+        GeneralUtility::purgeInstances();
+    }
+
+    /**
+     * @param list<int> $mountedRoots
+     */
+    private function viewer(bool $admin, array $mountedRoots = []): BackendUserAuthentication
+    {
+        $viewer = $this->createStub(BackendUserAuthentication::class);
+        $viewer->method('isAdmin')->willReturn($admin);
+        $viewer->method('isInWebMount')->willReturnCallback(
+            static fn (mixed $id): ?int => in_array($id, $mountedRoots, true) ? $id : null,
+        );
+
+        return $viewer;
     }
 
     private function service(): ReadinessService
@@ -709,6 +763,7 @@ final class ReadinessServiceTest extends TestCase
         foreach (array_keys($this->siteConfigurations) as $identifier) {
             $site = $this->createStub(Site::class);
             $site->method('getIdentifier')->willReturn($identifier);
+            $site->method('getRootPageId')->willReturn($identifier === 'main' ? 1 : 2);
             $site->method('getSettings')->willReturn(SiteSettings::createFromSettingsTree(['nrllm' => ['configuration' => $this->siteConfigurations[$identifier]]]));
             $sites[$identifier] = $site;
         }
