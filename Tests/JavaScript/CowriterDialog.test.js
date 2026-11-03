@@ -257,6 +257,27 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
         });
 
+        it('ties the task description to the task select for screen readers', async () => {
+            const dialog = new CowriterDialog(mockService);
+            const showPromise = dialog.show('selected', 'full');
+
+            await vi.waitFor(() => {
+                expect(document.querySelector('[data-role="task-select"]')).not.toBeNull();
+            });
+            const select = document.querySelector('[data-role="task-select"]');
+            const desc = document.querySelector('[data-role="task-description"]');
+
+            // Read when the select gets focus, and read again, after the
+            // option name, when the choice changes.
+            expect(desc.id).not.toBe('');
+            expect((select.getAttribute('aria-describedby') ?? '').split(' ')).toContain(desc.id);
+            expect(desc.getAttribute('aria-live')).toBe('polite');
+            expect(desc.getAttribute('aria-atomic')).toBe('true');
+
+            document.querySelector('[name="cancel"]').click();
+            await showPromise.catch(() => {});
+        });
+
         it('should pre-select task when preSelectedTaskUid matches', async () => {
             const dialog = new CowriterDialog(mockService);
             // Task uid 2 is "Summarize" in the mock data
