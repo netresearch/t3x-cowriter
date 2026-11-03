@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.24.1 (2026-11-03)
+
+### BUGFIX
+
+- A screen reader reads the chosen task's description in the dialog: when the task select gets focus, and again after the task name when the choice changes (#254).
+
+### TASK
+
+- A cast the current Rector reports as redundant is removed from a test (#254).
+
 ## 3.24.0 (2026-11-02)
 
 ### FEATURE
