@@ -1285,6 +1285,14 @@ export class CowriterDialog {
         const taskDesc = document.createElement('div');
         taskDesc.className = 'form-text text-body-secondary';
         taskDesc.dataset.role = 'task-description';
+        // A screen reader hears what the task does: when the select gets
+        // focus (aria-describedby) and, after the option name, when the
+        // choice changes (a polite live region; assertive would cut the
+        // option name off).
+        taskDesc.id = `${idPrefix}-task-description`;
+        taskDesc.setAttribute('aria-live', 'polite');
+        taskDesc.setAttribute('aria-atomic', 'true');
+        taskSelect.setAttribute('aria-describedby', taskDesc.id);
         const selectedOption = taskSelect.options[taskSelect.selectedIndex];
         taskDesc.textContent = selectedOption?.dataset.description || '';
         taskDescRow.appendChild(taskDesc);
