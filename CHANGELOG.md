@@ -2,6 +2,22 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.25.0 (2026-11-04)
+
+### FEATURE
+
+- The "Cowriter-Status" module becomes an overview of the cowriter for editors and administrators, in the AI section: what it does and every place it appears with its on/off setting; readiness per action, checked as the viewer and the way each action runs (writing in the dialog, tasks including a configuration picked in the dialog, image description, translation, image generation, inline and field suggestions, presentation, and the site configurations of the sites in the viewer's web mounts); for administrators every extension setting and the shared prompts awaiting approval; usage per action and requests, tokens and cost from nr-llm for a chosen period, and the viewer's budget; links to the nr-llm modules the viewer may open (#256). Nothing is sent to a provider.
+
+### BUGFIX
+
+- The old status page said "everything is configured correctly" from installation-wide record counts; the overview replaces it (#256).
+- Setup messages, the dialog's "no tasks" hint, two extension-configuration labels, the README and the documentation named "Admin Tools > LLM", which nr-llm left in 0.34; they now name AI > Setup and AI > Authoring (#256).
+- Error messages link the overview only for a user who may open it (#256).
+
+### TASK
+
+- Requires nr-llm 0.43.9 for its usage reader (#256).
+
 ## 3.24.1 (2026-11-03)
 
 ### BUGFIX
