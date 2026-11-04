@@ -265,7 +265,7 @@ export class Cowriter extends Plugin {
             const uid = host.getAttribute('uid') ?? '';
             const field = host.getAttribute('field') ?? '';
             if (/^\w+$/.test(table) && /^[1-9]\d*$/.test(uid) && /^\w+$/.test(field)) {
-                return { table, uid: parseInt(uid, 10), field };
+                return { table, uid: Number.parseInt(uid, 10), field };
             }
 
             return null;

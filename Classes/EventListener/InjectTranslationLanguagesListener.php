@@ -76,20 +76,18 @@ final readonly class InjectTranslationLanguagesListener
      */
     private function siteOf(array $data): mixed
     {
-        if (array_key_exists('site', $data) || !$this->siteFinder instanceof SiteFinder) {
-            return $data['site'] ?? null;
-        }
-
+        $site = $data['site'] ?? null;
         // RawRecord::toArray() carries the pid as an integer.
         $pid = $data['pid'] ?? null;
-        if (!is_int($pid) || $pid <= 0) {
-            return null;
+
+        if (!array_key_exists('site', $data) && $this->siteFinder instanceof SiteFinder && is_int($pid) && $pid > 0) {
+            try {
+                $site = $this->siteFinder->getSiteByPageId($pid);
+            } catch (SiteNotFoundException) {
+                $site = null;
+            }
         }
 
-        try {
-            return $this->siteFinder->getSiteByPageId($pid);
-        } catch (SiteNotFoundException) {
-            return null;
-        }
+        return $site;
     }
 }
