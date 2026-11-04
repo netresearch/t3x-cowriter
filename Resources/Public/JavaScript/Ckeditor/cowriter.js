@@ -193,9 +193,10 @@ export class Cowriter extends Plugin {
         // Strategy 1b: the Visual Editor (friendsoftypo3/visual-editor) edits in the
         // frontend preview without FormEngine and without textareas. Each rich-text
         // field is wrapped in its own <ve-editable-rich-text table uid field> host,
-        // so the editor's own host names its record.
+        // so the editor's own host names its record. A host without a valid
+        // record names none: no other strategy may stand in for it.
         const veContext = this._getVisualEditorContext(el, editableRoot);
-        if (veContext) return veContext;
+        if (veContext !== undefined) return veContext;
 
         // Strategy 2: Walk up from CKEditor's editable DOM root to find FormEngine textarea
         // In TYPO3 v13/v14, the textarea may be a sibling/ancestor of the editable area,
@@ -251,7 +252,8 @@ export class Cowriter extends Plugin {
      *
      * @param {Element|null|undefined} sourceElement
      * @param {Element|null|undefined} editableRoot
-     * @returns {{table: string, uid: number, field: string}|null}
+     * @returns {{table: string, uid: number, field: string}|null|undefined} the record; null for a host
+     *     without a valid record; undefined when the editor has no host (not in the Visual Editor)
      * @private
      */
     _getVisualEditorContext(sourceElement, editableRoot) {
@@ -269,7 +271,7 @@ export class Cowriter extends Plugin {
             return null;
         }
 
-        return null;
+        return undefined;
     }
 
     /**

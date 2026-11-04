@@ -535,7 +535,10 @@ describe('Cowriter Plugin', () => {
                 page.remove();
             });
 
-            it('names no record when the host carries no valid uid', () => {
+            it('names no record when the host carries no valid uid, not even another one on the page', () => {
+                const unrelated = document.createElement('textarea');
+                unrelated.name = 'data[tt_content][99][bodytext]';
+                document.body.appendChild(unrelated);
                 const host = document.createElement('ve-editable-rich-text');
                 host.setAttribute('table', 'tt_content');
                 host.setAttribute('uid', '0');
@@ -546,9 +549,12 @@ describe('Cowriter Plugin', () => {
                 const plugin = new Cowriter();
                 plugin.editor = { sourceElement: wrapper, editing: { view: { getDomRoot: () => null } } };
 
-                expect(plugin._getRecordContext()).toBeNull();
-
-                host.remove();
+                try {
+                    expect(plugin._getRecordContext()).toBeNull();
+                } finally {
+                    host.remove();
+                    unrelated.remove();
+                }
             });
         });
 

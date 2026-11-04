@@ -155,7 +155,8 @@ What the site has to provide:
 
 The buttons take the record from the element the Visual Editor puts around
 each editable field (``<ve-editable-rich-text table uid field>``). With it,
-the requests carry the same record as in the backend form: the LLM
+the requests that name a record name the same one as in the backend form
+(the translate request names none, in the form either): the LLM
 configuration of the record's site, the content scopes of the dialog and the
 translate menu's site languages behave as in the form, with the exceptions
 listed below. Every request goes to
