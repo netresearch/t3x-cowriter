@@ -16,7 +16,9 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Site\Entity\NullSite;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\RteCKEditor\Form\Element\Event\AfterPrepareConfigurationForEditorEvent;
 
 #[CoversClass(InjectTranslationLanguagesListener::class)]
@@ -106,5 +108,71 @@ final class InjectTranslationLanguagesListenerTest extends TestCase
     {
         self::assertSame(self::BASE_CONFIGURATION, $this->dispatch(['tableName' => 'tt_content'])->getConfiguration());
         self::assertSame(self::BASE_CONFIGURATION, $this->dispatch(['site' => 'main'])->getConfiguration());
+    }
+
+    /**
+     * The Visual Editor passes the raw record row (Record::getRawRecord()->toArray())
+     * as data: no `site`, but the record's `pid`.
+     */
+    #[Test]
+    public function theVisualEditorsRawRecordGetsTheSiteOfItsPage(): void
+    {
+        $sites = $this->createMock(SiteFinder::class);
+        $sites->expects(self::once())->method('getSiteByPageId')->with(42)->willReturn($this->siteData()['site']);
+
+        $event = new AfterPrepareConfigurationForEditorEvent(
+            self::BASE_CONFIGURATION,
+            ['uid' => 7, 'pid' => 42, 'CType' => 'text', 'bodytext' => '<p>Hello</p>'],
+        );
+        (new InjectTranslationLanguagesListener(new SiteTranslationLanguages(), $sites))($event);
+
+        self::assertSame(
+            [
+                ['code' => 'en-US', 'label' => 'English', 'formality' => 'default'],
+                ['code' => 'de', 'label' => 'Deutsch', 'formality' => 'formal'],
+            ],
+            $event->getConfiguration()['cowriter']['translationLanguages'] ?? null,
+        );
+    }
+
+    #[Test]
+    public function aRawRecordOutsideEverySiteLeavesTheConfigurationUnchanged(): void
+    {
+        $sites = $this->createStub(SiteFinder::class);
+        $sites->method('getSiteByPageId')->willThrowException(new SiteNotFoundException('none', 1));
+
+        $event = new AfterPrepareConfigurationForEditorEvent(self::BASE_CONFIGURATION, ['uid' => 7, 'pid' => 42]);
+        (new InjectTranslationLanguagesListener(new SiteTranslationLanguages(), $sites))($event);
+
+        self::assertSame(self::BASE_CONFIGURATION, $event->getConfiguration());
+    }
+
+    #[Test]
+    public function aRawRecordWithoutAPageIsNotLookedUp(): void
+    {
+        $sites = $this->createMock(SiteFinder::class);
+        $sites->expects(self::never())->method('getSiteByPageId');
+        $listener = new InjectTranslationLanguagesListener(new SiteTranslationLanguages(), $sites);
+
+        foreach ([['uid' => 7, 'pid' => 0], ['uid' => 7, 'pid' => -1], ['uid' => 7], ['uid' => 7, 'pid' => 'x']] as $data) {
+            $event = new AfterPrepareConfigurationForEditorEvent(self::BASE_CONFIGURATION, $data);
+            $listener($event);
+            self::assertSame(self::BASE_CONFIGURATION, $event->getConfiguration());
+        }
+    }
+
+    #[Test]
+    public function formDataKeepsTheSiteFormEngineResolved(): void
+    {
+        $sites = $this->createMock(SiteFinder::class);
+        $sites->expects(self::never())->method('getSiteByPageId');
+
+        $event = new AfterPrepareConfigurationForEditorEvent(
+            self::BASE_CONFIGURATION,
+            ['pid' => 42, 'site' => 'main'],
+        );
+        (new InjectTranslationLanguagesListener(new SiteTranslationLanguages(), $sites))($event);
+
+        self::assertSame(self::BASE_CONFIGURATION, $event->getConfiguration());
     }
 }

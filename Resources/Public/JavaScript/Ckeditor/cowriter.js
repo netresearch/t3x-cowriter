@@ -45,6 +45,12 @@ const TRANSLATION_LANGUAGES = [
 const FORMALITIES = new Set(['default', 'formal', 'informal']);
 
 /**
+ * Host element the Visual Editor (friendsoftypo3/visual-editor) puts around
+ * each editable rich-text field; it carries table, uid and field attributes.
+ */
+const VISUAL_EDITOR_HOST = 've-editable-rich-text';
+
+/**
  * Build a TYPO3 Notification action that opens the LLM module.
  *
  * @param {string} label - Action link text
@@ -182,10 +188,18 @@ export class Cowriter extends Plugin {
             }
         }
 
+        const editableRoot = this.editor.editing?.view?.getDomRoot();
+
+        // Strategy 1b: the Visual Editor (friendsoftypo3/visual-editor) edits in the
+        // frontend preview without FormEngine and without textareas. Each rich-text
+        // field is wrapped in its own <ve-editable-rich-text table uid field> host,
+        // so the editor's own host names its record.
+        const veContext = this._getVisualEditorContext(el, editableRoot);
+        if (veContext) return veContext;
+
         // Strategy 2: Walk up from CKEditor's editable DOM root to find FormEngine textarea
         // In TYPO3 v13/v14, the textarea may be a sibling/ancestor of the editable area,
         // not a child of sourceElement (especially with web component wrappers)
-        const editableRoot = this.editor.editing?.view?.getDomRoot();
         if (editableRoot) {
             let parent = editableRoot.parentElement;
             while (parent && parent !== document.body) {
@@ -222,6 +236,37 @@ export class Cowriter extends Plugin {
             }
         } catch {
             // URL parsing or cross-origin access failed
+        }
+
+        return null;
+    }
+
+    /**
+     * Record context from the Visual Editor host element of this editor.
+     *
+     * The Visual Editor renders every editable rich-text field as
+     * `<ve-editable-rich-text table="tt_content" uid="12" field="bodytext">` and
+     * starts CKEditor on a wrapper inside it. The uid it writes is the record it
+     * saves to (the translation or workspace version, when there is one).
+     *
+     * @param {Element|null|undefined} sourceElement
+     * @param {Element|null|undefined} editableRoot
+     * @returns {{table: string, uid: number, field: string}|null}
+     * @private
+     */
+    _getVisualEditorContext(sourceElement, editableRoot) {
+        for (const start of [sourceElement, editableRoot]) {
+            const host = start?.closest?.(VISUAL_EDITOR_HOST);
+            if (!host) continue;
+
+            const table = host.getAttribute('table') ?? '';
+            const uid = host.getAttribute('uid') ?? '';
+            const field = host.getAttribute('field') ?? '';
+            if (/^\w+$/.test(table) && /^[1-9]\d*$/.test(uid) && /^\w+$/.test(field)) {
+                return { table, uid: parseInt(uid, 10), field };
+            }
+
+            return null;
         }
 
         return null;

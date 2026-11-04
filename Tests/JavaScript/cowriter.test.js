@@ -10,6 +10,18 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+/**
+ * Two rich-text fields as the Visual Editor 1.10.4 (friendsoftypo3/visual-editor)
+ * rendered them on a TYPO3 14.3 page in edit mode, copied from the page source.
+ * Only the `options` attribute (the CKEditor configuration, 14 kB) is shortened.
+ */
+const VISUAL_EDITOR_MARKUP = `<ve-editable-rich-text table="tt_content" uid="286" field="bodytext" fieldPositionId="tt_content:286:bodytext" name="Page Content: Text" title="edit Page Content: Text" options="{}"><h3><span class="text-secondary"><strong>Different Page Templates</strong></span></h3>
+<p class="lead">With different page templates you can flexibly design your website and build your pages according to your needs.</p>
+<p class="lead"><span class="text-secondary"><a class="btn btn-secondary" href="t3://page?uid=66">Explore the Page Templates</a></span></p></ve-editable-rich-text>
+<ve-editable-rich-text table="tt_content" uid="288" field="bodytext" fieldPositionId="tt_content:288:bodytext" name="Page Content: Text" title="edit Page Content: Text" options="{}"><h2><strong><span class="text-secondary">Numerous content and design elements</span></strong></h2>
+<p class="lead">A variety of flexible elements allow you to perfectly showcase your text, images, videos, downloads, etc.</p>
+<p class="lead"><a class="btn btn-secondary" href="t3://page?uid=6">Explore the content examples</a></p></ve-editable-rich-text>`;
+
 describe('Cowriter Plugin', () => {
     let Cowriter;
     /** Options the plugin passed to the last CowriterDialog it created */
@@ -475,6 +487,68 @@ describe('Cowriter Plugin', () => {
                 value: { ...window.location, search: origSearch },
                 writable: true,
                 configurable: true,
+            });
+        });
+
+        describe('in the Visual Editor (friendsoftypo3/visual-editor)', () => {
+            /**
+             * Two editable fields as the Visual Editor renders them in the
+             * frontend preview; CKEditor starts on a wrapper div inside each host.
+             */
+            function visualEditorPage() {
+                const parsed = new DOMParser().parseFromString(VISUAL_EDITOR_MARKUP, 'text/html');
+                const page = document.createElement('div');
+                page.append(...[...parsed.body.childNodes].map((node) => document.importNode(node, true)));
+                document.body.appendChild(page);
+                const hosts = page.querySelectorAll('ve-editable-rich-text');
+                const editors = [...hosts].map((host) => {
+                    const wrapper = document.createElement('div');
+                    while (host.firstChild) wrapper.appendChild(host.firstChild);
+                    host.appendChild(wrapper);
+                    const editable = document.createElement('div');
+                    wrapper.appendChild(editable);
+                    return { sourceElement: wrapper, editing: { view: { getDomRoot: () => editable } } };
+                });
+                return { page, editors };
+            }
+
+            it('takes the record of the editor\'s own host', () => {
+                const { page, editors } = visualEditorPage();
+                const plugin = new Cowriter();
+
+                plugin.editor = editors[1];
+                expect(plugin._getRecordContext()).toEqual({ table: 'tt_content', uid: 288, field: 'bodytext' });
+
+                plugin.editor = editors[0];
+                expect(plugin._getRecordContext()).toEqual({ table: 'tt_content', uid: 286, field: 'bodytext' });
+
+                page.remove();
+            });
+
+            it('finds the host from the editable root when the source element is gone', () => {
+                const { page, editors } = visualEditorPage();
+                const plugin = new Cowriter();
+                plugin.editor = { sourceElement: null, editing: editors[0].editing };
+
+                expect(plugin._getRecordContext()).toEqual({ table: 'tt_content', uid: 286, field: 'bodytext' });
+
+                page.remove();
+            });
+
+            it('names no record when the host carries no valid uid', () => {
+                const host = document.createElement('ve-editable-rich-text');
+                host.setAttribute('table', 'tt_content');
+                host.setAttribute('uid', '0');
+                host.setAttribute('field', 'bodytext');
+                const wrapper = document.createElement('div');
+                host.appendChild(wrapper);
+                document.body.appendChild(host);
+                const plugin = new Cowriter();
+                plugin.editor = { sourceElement: wrapper, editing: { view: { getDomRoot: () => null } } };
+
+                expect(plugin._getRecordContext()).toBeNull();
+
+                host.remove();
             });
         });
 

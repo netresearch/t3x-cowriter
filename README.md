@@ -44,6 +44,7 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 - **Prompt Templates**: Load reusable prompt presets from the backend for consistent content generation
 - **Tool Calling**: Structured function calling that lets the LLM query TYPO3 content during conversations
 - **CKEditor Integration**: Six toolbar components — main dialog, vision, translation, templates, image generation, and the inline suggestions toggle
+- **Visual Editor**: The toolbar components also appear when content is edited in the frontend preview with [friendsoftypo3/visual-editor](https://github.com/FriendsOfTYPO3/visual_editor), with the same preset and the record's site configuration
 - **Multi-Provider Support**: Works with all LLM providers supported by nr-llm (OpenAI, Claude, Gemini, etc.)
 - **Secure Backend Proxy**: API keys never exposed to frontend — all requests proxied through TYPO3 backend
 - **Context control**: Choose between selected text or full content element as context
