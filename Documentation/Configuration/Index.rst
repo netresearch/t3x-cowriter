@@ -157,7 +157,8 @@ The buttons take the record from the element the Visual Editor puts around
 each editable field (``<ve-editable-rich-text table uid field>``). With it,
 the requests carry the same record as in the backend form: the LLM
 configuration of the record's site, the content scopes of the dialog and the
-translate menu's site languages behave as in the form. Every request goes to
+translate menu's site languages behave as in the form, with the exceptions
+listed below. Every request goes to
 the same backend routes and is checked against the logged-in backend user's
 permissions, as in the form.
 
@@ -171,8 +172,13 @@ Known limits:
     Composer patch to its ``TextViewHelper`` is needed.
 *   In a workspace, the Visual Editor names the workspace version of a
     record that has one. The Cowriter does not find that version when it
-    looks for the record's site, and uses the default LLM configuration for
-    that request.
+    reads the record. For such a record it uses the default LLM
+    configuration, the content scopes beyond the editor text add nothing,
+    and inline suggestions and alt texts get no record language. Records
+    created in the workspace are not affected.
+*   For a rich-text field of a page record, the translate menu takes the
+    languages of the parent page's site; on a site's root page it shows the
+    fixed list.
 
 ..  _configuration-translation-languages:
 
