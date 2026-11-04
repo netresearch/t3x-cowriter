@@ -104,7 +104,7 @@ final class DiagnosticServiceTest extends TestCase
         self::assertFalse($result->checks[0]->passed);
         self::assertSame(Severity::Error, $result->checks[0]->severity);
         self::assertSame(
-            'No LLM provider configured. Create a provider in Admin Tools > LLM > Providers.',
+            'No LLM provider configured. Create a provider in AI > Setup > Providers.',
             $result->checks[0]->message,
         );
         self::assertSame('nrllm_providers', $result->checks[0]->fixRoute);
@@ -126,7 +126,7 @@ final class DiagnosticServiceTest extends TestCase
         $failure = $result->getFirstFailure();
         self::assertNotNull($failure);
         self::assertSame('provider_active', $failure->key);
-        self::assertSame('No active provider. Activate a provider in Admin Tools > LLM > Providers.', $failure->message);
+        self::assertSame('No active provider. Activate a provider in AI > Setup > Providers.', $failure->message);
     }
 
     #[Test]
@@ -149,7 +149,7 @@ final class DiagnosticServiceTest extends TestCase
         $failure = $result->getFirstFailure();
         self::assertNotNull($failure);
         self::assertSame('provider_has_api_key', $failure->key);
-        self::assertSame('Provider "OpenAI" has no API key. Add one in Admin Tools > LLM > Providers.', $failure->message);
+        self::assertSame('Provider "OpenAI" has no API key. Add one in AI > Setup > Providers.', $failure->message);
     }
 
     #[Test]
@@ -168,7 +168,7 @@ final class DiagnosticServiceTest extends TestCase
         $failure = $result->getFirstFailure();
         self::assertNotNull($failure);
         self::assertSame('provider_has_api_key', $failure->key);
-        self::assertSame('No active provider has an API key. Add one in Admin Tools > LLM > Providers.', $failure->message);
+        self::assertSame('No active provider has an API key. Add one in AI > Setup > Providers.', $failure->message);
     }
 
     #[Test]
@@ -201,7 +201,7 @@ final class DiagnosticServiceTest extends TestCase
         $failure = $result->getFirstFailure();
         self::assertNotNull($failure);
         self::assertSame('configuration_default', $failure->key);
-        self::assertSame('No default LLM configuration. Mark one as default in Admin Tools > LLM > Configurations.', $failure->message);
+        self::assertSame('No default LLM configuration. Mark one as default in AI > Setup > Configurations.', $failure->message);
         self::assertSame('nrllm_configurations', $failure->fixRoute);
     }
 

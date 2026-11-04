@@ -105,6 +105,30 @@ final readonly class SavedPromptRepository
     }
 
     /**
+     * Shared prompts no administrator approved yet; 0 while sharing needs no
+     * approval. For the administrator's overview.
+     */
+    public function countAwaitingApproval(): int
+    {
+        if (!$this->sharing->sharedNeedApproval()) {
+            return 0;
+        }
+
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::TABLE);
+        $expr         = $queryBuilder->expr();
+
+        return $this->int($queryBuilder
+            ->count('uid')
+            ->from(self::TABLE)
+            ->where(
+                $expr->eq('shared', $queryBuilder->createNamedParameter(1, Connection::PARAM_INT)),
+                $expr->eq('approved', $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)),
+            )
+            ->executeQuery()
+            ->fetchOne());
+    }
+
+    /**
      * Stores the prompt for the user and returns it as the user sees it.
      * An administrator's shared prompt is approved on saving.
      */

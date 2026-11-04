@@ -1,0 +1,41 @@
+"be_groups"
+,"uid","pid","title","groupMods"
+,20,0,"AI pilots","cowriter_status,nrllm_aitasks"
+,21,0,"Editors","cowriter_status"
+,22,0,"Other site","cowriter_status"
+"be_users"
+,"uid","pid","username","admin","usergroup","db_mountpoints","realName","tstamp","crdate","disable","deleted"
+,1,0,"admin",1,"","","Ada Admin",1703347200,1703347200,0,0
+,3,0,"pilot",0,"20","1","Pia Pilot",1703347200,1703347200,0,0
+,4,0,"outsider",0,"21","1","Otto Outsider",1703347200,1703347200,0,0
+,5,0,"elsewhere",0,"22","2","Elsa Elsewhere",1703347200,1703347200,0,0
+,6,0,"subeditor",0,"20","3","Sam Subeditor",1703347200,1703347200,0,0
+"tx_nrllm_provider"
+,"uid","pid","identifier","name","adapter_type","api_key","is_active","tstamp","crdate","deleted","hidden","sorting"
+,1,0,"keyless","Keyless","openai","",1,1703347200,1703347200,0,0,1
+,2,0,"keyed","Keyed","claude","vault-identifier-of-the-keyed-provider",1,1703347200,1703347200,0,0,2
+,3,0,"local","Local","ollama","",1,1703347200,1703347200,0,0,3
+"tx_nrllm_model"
+,"uid","pid","identifier","name","provider_uid","model_id","capabilities","is_active","tstamp","crdate","deleted","hidden","sorting"
+,10,0,"gpt","GPT","1","gpt-4o","chat,vision",1,1703347200,1703347200,0,0,1
+,11,0,"sonnet","Sonnet","2","claude-sonnet","chat,vision",1,1703347200,1703347200,0,0,2
+,12,0,"llama","Llama","3","llama3","chat",1,1703347200,1703347200,0,0,3
+"tx_nrllm_configuration"
+,"uid","pid","identifier","name","model_uid","is_active","is_default","allowed_groups","tstamp","crdate","deleted","hidden","sorting"
+,200,0,"default","Default","10",1,1,1,1703347200,1703347200,0,0,1
+,201,0,"claude","Claude","11",1,0,0,1703347200,1703347200,0,0,2
+,202,0,"local","Local","12",1,0,1,1703347200,1703347200,0,0,3
+"tx_nrllm_configuration_begroups_mm"
+,"uid_local","uid_foreign","sorting","sorting_foreign"
+,200,20,1,0
+,202,20,1,0
+"tx_nrllm_task"
+,"uid","pid","identifier","name","category","configuration_uid","prompt_template","is_active","tstamp","crdate","deleted","hidden","sorting"
+,300,0,"summarize","Summarize","content",202,"Summarize {{input}}",1,1703347200,1703347200,0,0,1
+,301,0,"shorten","Shorten","content",0,"Shorten {{input}}",1,1703347200,1703347200,0,0,2
+,302,0,"retired","Retired","content",0,"Retired {{input}}",0,1703347200,1703347200,0,0,3
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","perms_everybody","deleted","hidden"
+,1,0,"Home","/",1,1,1,0,0
+,2,0,"Other home","/",1,1,1,0,0
+,3,1,"Section","/section",0,1,1,0,0

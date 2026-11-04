@@ -9,6 +9,11 @@
 Usage
 =====
 
+..  toctree::
+    :titlesonly:
+
+    Overview
+
 Using the AI Cowriter
 =====================
 
@@ -176,7 +181,7 @@ nr-llm extension (``tx_nrllm_task`` table) with
 ..  tip::
 
     You can add custom tasks by creating new records in
-    :guilabel:`Admin Tools` > :guilabel:`LLM Management` with
+    :guilabel:`AI` > :guilabel:`Setup` with
     ``category = 'content'``. Use ``{{input}}`` in the prompt template
     as placeholder for the user's content.
 

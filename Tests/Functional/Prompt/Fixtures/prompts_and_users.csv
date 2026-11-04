@@ -12,3 +12,5 @@
 ,23,0,3,"Colleague shared approved","Approved for everyone",1,1,0,0
 ,24,0,3,"Colleague deleted","Deleted",1,1,0,1
 ,25,0,3,"Colleague hidden","Hidden by an administrator",1,1,1,0
+,26,0,3,"Colleague hidden unapproved","Hidden before approval",1,0,1,0
+,27,0,3,"Colleague deleted unapproved","Deleted before approval",1,0,0,1

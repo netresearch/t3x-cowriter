@@ -92,5 +92,9 @@ services:
     arguments:
       $about: '@Netresearch\T3Cowriter\Service\Transparency\AboutBuilder'
 
-  Netresearch\T3Cowriter\Controller\Backend\StatusController:
+  Netresearch\T3Cowriter\Controller\Backend\OverviewController:
     public: true
+
+  Netresearch\T3Cowriter\Service\Overview\UsageService:
+    arguments:
+      $taskRepository: '@Netresearch\NrLlm\Domain\Repository\TaskRepository'

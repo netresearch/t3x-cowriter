@@ -24,7 +24,8 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | File | Purpose |
 |------|---------|
 | Controller/AjaxController.php | AJAX handler for CKEditor integration |
-| Controller/Backend/StatusController.php | Setup status diagnostic page (admin only) |
+| Controller/Backend/OverviewController.php | Overview module `cowriter_status` (every backend user with module access; admins see more) |
+| Service/Overview/ | Readiness per action, usage via nr-llm's `ExtensionUsageReaderInterface`, editor surfaces, extension settings |
 | Controller/RateLimitedControllerTrait.php | Shared rate-limit check for controllers |
 | Controller/TranslationController.php | Content translation endpoint |
 | Controller/VisionController.php | Image analysis (alt text) |
@@ -130,7 +131,8 @@ try {
     return CompleteResponse::success($response);
 } catch (ProviderException $e) {
     // enrichErrorMessage classifies the failure via LlmErrorClassifier and adds
-    // a Setup-Status link for configuration errors.
+    // a link to the overview module (cowriter_status) for configuration errors,
+    // when the user may open the module (OverviewLink).
     return $this->buildErrorResponse('LLM provider error occurred.', $e);
 } catch (\Throwable $e) {
     return $this->buildErrorResponse('An unexpected error occurred.', $e);
@@ -276,7 +278,7 @@ public function completeAction($request)
 1. **AJAX routing:** Routes live in `../Configuration/Backend/AjaxRoutes.php`; a 403 usually means no backend login
 2. **DI failures:** Check `../Configuration/Services.yaml` (interface aliases are explicit)
 3. **LLM behavior:** Read the nr-llm extension (https://github.com/netresearch/t3x-nr-llm) — configuration chain is provider → model → configuration
-4. **Setup errors:** `DiagnosticService::runFirst()` mirrors the backend status module (`cowriter_status`) and names the first broken step
+4. **Setup errors:** `DiagnosticService::runFirst()` names the first broken instance-wide setup step; the message links the overview module (`cowriter_status`)
 
 ## Related
 

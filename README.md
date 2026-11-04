@@ -56,7 +56,7 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 
 - PHP 8.2+
 - TYPO3 v13.4 LTS or v14.3 LTS
-- [netresearch/nr-llm](https://github.com/netresearch/t3x-nr-llm) 0.43.4 or later, up to 0.43 (LLM provider abstraction)
+- [netresearch/nr-llm](https://github.com/netresearch/t3x-nr-llm) 0.43.9 or later, up to 0.43 (LLM provider abstraction)
 
 ## Installation
 
@@ -72,7 +72,7 @@ composer require netresearch/t3-cowriter
 
 First, set up at least one LLM provider in the nr-llm extension:
 
-1. Navigate to **Admin Tools → LLM Management**
+1. Navigate to **AI → Setup**
 2. Add a provider (e.g., OpenAI with your API key)
 3. Create a model configuration
 4. Create an LLM configuration and set it as default

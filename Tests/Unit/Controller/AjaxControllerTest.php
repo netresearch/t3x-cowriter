@@ -50,6 +50,7 @@ use Psr\Log\LoggerInterface;
 use ReflectionMethod;
 use RuntimeException;
 use stdClass;
+use TYPO3\CMS\Backend\Module\ModuleProvider;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Context\Context;
@@ -511,16 +512,69 @@ final class AjaxControllerTest extends TestCase
         $this->loggerMock->expects($this->once())->method('error');
 
         $request  = $this->createRequestWithJsonBody(['messages' => $messages]);
-        $response = $this->subject->chatAction($request);
+        $response = $this->subjectWithOverviewAccess(true)->chatAction($request);
+        unset($GLOBALS['BE_USER']);
 
         self::assertSame(500, $response->getStatusCode());
         $data = $this->decodeJsonResponse($response);
         self::assertFalse($data['success']);
         self::assertSame(
-            'LLM is not configured yet. Ask an administrator to check the Cowriter Setup Status page for details.',
+            'LLM is not configured yet. The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.',
             $data['error'],
         );
         self::assertSame('/typo3/module/cowriter/status', $data['statusUrl']);
+    }
+
+    /**
+     * The overview's access is "user": an editor whose groups do not grant it
+     * gets the same message without a link they could not follow.
+     */
+    #[Test]
+    public function chatActionOmitsTheOverviewLinkForAUserWhoMayNotOpenIt(): void
+    {
+        $this->configRepositoryMock->method('findDefault')->willReturn($this->createConfigurationMock());
+        $this->llmServiceManagerMock
+            ->method('chatWithConfiguration')
+            ->willThrowException(new ProviderException('No provider specified and no default provider configured', 4867297358));
+
+        $request  = $this->createRequestWithJsonBody(['messages' => [['role' => 'user', 'content' => 'Hello']]]);
+        $response = $this->subjectWithOverviewAccess(false)->chatAction($request);
+        unset($GLOBALS['BE_USER']);
+
+        $data = $this->decodeJsonResponse($response);
+        self::assertSame(
+            'LLM is not configured yet. The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.',
+            $data['error'],
+        );
+        self::assertArrayNotHasKey('statusUrl', $data);
+    }
+
+    /**
+     * The subject with a module provider that grants or refuses the overview
+     * module to the current backend user.
+     */
+    private function subjectWithOverviewAccess(bool $granted): AjaxController
+    {
+        $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
+
+        $modules = $this->createStub(ModuleProvider::class);
+        $modules->method('accessGranted')->willReturnCallback(
+            static fn (string $identifier): bool => $granted && $identifier === 'cowriter_status',
+        );
+
+        return new AjaxController(
+            $this->llmServiceManagerMock,
+            ConfigurationAccessDouble::selector($this->configRepositoryMock),
+            $this->taskRepositoryMock,
+            $this->rateLimiterMock,
+            $this->contextMock,
+            $this->loggerMock,
+            $this->contextAssemblyMock,
+            $this->connectionPoolMock,
+            $this->backendUriBuilderMock,
+            $this->diagnosticServiceMock,
+            moduleProvider: $modules,
+        );
     }
 
     #[Test]

@@ -29,7 +29,7 @@ Supported providers
 Configuration steps
 -------------------
 
-1.  Navigate to :guilabel:`Admin Tools` > :guilabel:`LLM Management`
+1.  Navigate to :guilabel:`AI` > :guilabel:`Setup`
 2.  Add a provider (e.g., OpenAI with your API key)
 3.  Create a model configuration
 4.  Create an LLM configuration and set it as default
@@ -297,8 +297,8 @@ the model.
 
     The OpenAI image model, for example ``gpt-image-2`` or
     ``gpt-image-2.5-flare``. Empty uses the active image model that nr-llm
-    marks as default in its model list (:guilabel:`Admin Tools` >
-    :guilabel:`LLM` > :guilabel:`Models`), or ``gpt-image-2`` when there is
+    marks as default in its model list (:guilabel:`AI` >
+    :guilabel:`Setup` > :guilabel:`Models`), or ``gpt-image-2`` when there is
     none. The Cowriter does not read nr-llm's setting
     ``image.dalle.defaultModel``.
 
@@ -450,7 +450,7 @@ editor cannot switch it on or choose the configuration.
     :default: empty
 
     The identifier of the nr-llm configuration that answers
-    (:guilabel:`Admin Tools` > :guilabel:`LLM` >
+    (:guilabel:`AI` > :guilabel:`Setup` >
     :guilabel:`Configurations`). Empty uses the default configuration. A
     suggestion is only useful when it arrives within a second or two, so a
     fast and inexpensive model suits it best. The editor must be allowed to
@@ -667,7 +667,7 @@ during installation.
 Adding custom tasks
 -------------------
 
-1.  Navigate to :guilabel:`Admin Tools` > :guilabel:`LLM Management`
+1.  Navigate to :guilabel:`AI` > :guilabel:`Setup`
 2.  Create a new task record with ``category = 'content'``
 3.  Set a descriptive name and identifier
 4.  Write a prompt template using ``{{input}}`` as the placeholder for
@@ -967,7 +967,7 @@ Translation not working
 If the translate button shows "Translation failed", check:
 
 1.  An LLM provider is configured and marked as default in
-    :guilabel:`Admin Tools` > :guilabel:`LLM Management`
+    :guilabel:`AI` > :guilabel:`Setup`
 2.  The provider's API key is valid and not expired
 3.  The provider supports the ``translation`` feature
 4.  Check the TYPO3 system log for detailed error messages
@@ -986,8 +986,7 @@ No tasks in dropdown
 
 If the Tasks dropdown shows "No tasks configured":
 
-1.  Navigate to :guilabel:`Admin Tools` > :guilabel:`LLM Management`
-    > :guilabel:`Tasks`
+1.  Navigate to :guilabel:`AI` > :guilabel:`Authoring` > :guilabel:`Tasks`
 2.  Create at least one task with ``category = 'content'``
 3.  Make sure the task record is not hidden or deleted
 4.  Reload the page in the browser to refresh the task list

@@ -734,7 +734,7 @@ final class PresentationControllerTest extends TestCase
     {
         yield 'configuration' => [
             new ConfigurationNotFoundException('Configuration "x" not found'),
-            'LLM is not configured yet. Ask an administrator to check the Cowriter Setup Status page for details.',
+            'LLM is not configured yet. The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.',
         ];
         yield 'authentication' => [new ProviderResponseException('Unauthorized', 401), 'The LLM provider rejected the API key. Please ask an administrator to check the provider settings.'];
         yield 'rate limit' => [new ProviderResponseException('Too many requests', 429), 'The LLM provider rate limit was exceeded. Please wait a moment and try again.'];

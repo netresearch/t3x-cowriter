@@ -171,7 +171,7 @@
                 <source>LLM is not configured yet.</source>
             </trans-unit>
             <trans-unit id="error.checkSetupStatus" resname="error.checkSetupStatus">
-                <source>%s Ask an administrator to check the Cowriter Setup Status page for details.</source>
+                <source>%s The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.</source>
             </trans-unit>
             <trans-unit id="error.providerAuthentication" resname="error.providerAuthentication">
                 <source>The LLM provider rejected the API key. Please ask an administrator to check the provider settings.</source>
@@ -300,52 +300,52 @@
                 <source>%d provider(s) configured.</source>
             </trans-unit>
             <trans-unit id="diagnostic.provider_exists.failed" resname="diagnostic.provider_exists.failed">
-                <source>No LLM provider configured. Create a provider in Admin Tools &gt; LLM &gt; Providers.</source>
+                <source>No LLM provider configured. Create a provider in AI &gt; Setup &gt; Providers.</source>
             </trans-unit>
             <trans-unit id="diagnostic.provider_active.passed" resname="diagnostic.provider_active.passed">
                 <source>%d active provider(s).</source>
             </trans-unit>
             <trans-unit id="diagnostic.provider_active.failed" resname="diagnostic.provider_active.failed">
-                <source>No active provider. Activate a provider in Admin Tools &gt; LLM &gt; Providers.</source>
+                <source>No active provider. Activate a provider in AI &gt; Setup &gt; Providers.</source>
             </trans-unit>
             <trans-unit id="diagnostic.provider_has_api_key.passed" resname="diagnostic.provider_has_api_key.passed">
                 <source>%d provider(s) with API key.</source>
             </trans-unit>
             <trans-unit id="diagnostic.provider_has_api_key.failed" resname="diagnostic.provider_has_api_key.failed">
-                <source>Provider "%s" has no API key. Add one in Admin Tools &gt; LLM &gt; Providers.</source>
+                <source>Provider "%s" has no API key. Add one in AI &gt; Setup &gt; Providers.</source>
             </trans-unit>
             <trans-unit id="diagnostic.provider_has_api_key.none" resname="diagnostic.provider_has_api_key.none">
-                <source>No active provider has an API key. Add one in Admin Tools &gt; LLM &gt; Providers.</source>
+                <source>No active provider has an API key. Add one in AI &gt; Setup &gt; Providers.</source>
             </trans-unit>
             <trans-unit id="diagnostic.model_exists.passed" resname="diagnostic.model_exists.passed">
                 <source>%d model(s) configured.</source>
             </trans-unit>
             <trans-unit id="diagnostic.model_exists.failed" resname="diagnostic.model_exists.failed">
-                <source>No LLM model configured. Create a model in Admin Tools &gt; LLM &gt; Models.</source>
+                <source>No LLM model configured. Create a model in AI &gt; Setup &gt; Models.</source>
             </trans-unit>
             <trans-unit id="diagnostic.model_active.passed" resname="diagnostic.model_active.passed">
                 <source>%d active model(s).</source>
             </trans-unit>
             <trans-unit id="diagnostic.model_active.failed" resname="diagnostic.model_active.failed">
-                <source>No active model. Activate a model in Admin Tools &gt; LLM &gt; Models.</source>
+                <source>No active model. Activate a model in AI &gt; Setup &gt; Models.</source>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_exists.passed" resname="diagnostic.configuration_exists.passed">
                 <source>%d LLM configuration(s) created.</source>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_exists.failed" resname="diagnostic.configuration_exists.failed">
-                <source>No LLM configuration created. Create one in Admin Tools &gt; LLM &gt; Configurations.</source>
+                <source>No LLM configuration created. Create one in AI &gt; Setup &gt; Configurations.</source>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_active.passed" resname="diagnostic.configuration_active.passed">
                 <source>%d active configuration(s).</source>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_active.failed" resname="diagnostic.configuration_active.failed">
-                <source>No active LLM configuration. Activate one in Admin Tools &gt; LLM &gt; Configurations.</source>
+                <source>No active LLM configuration. Activate one in AI &gt; Setup &gt; Configurations.</source>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_default.passed" resname="diagnostic.configuration_default.passed">
                 <source>Default configuration: "%s".</source>
             </trans-unit>
             <trans-unit id="diagnostic.configuration_default.failed" resname="diagnostic.configuration_default.failed">
-                <source>No default LLM configuration. Mark one as default in Admin Tools &gt; LLM &gt; Configurations.</source>
+                <source>No default LLM configuration. Mark one as default in AI &gt; Setup &gt; Configurations.</source>
             </trans-unit>
             <trans-unit id="ckeditor.button.complete" resname="ckeditor.button.complete">
                 <source>Cowriter - AI text completion</source>
@@ -525,7 +525,7 @@
                 <source>1. Go to %s</source>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.step1.path" resname="ckeditor.dialog.noTasks.step1.path">
-                <source>Admin Tools → LLM → Tasks</source>
+                <source>AI → Authoring → Tasks</source>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.noTasks.step2" resname="ckeditor.dialog.noTasks.step2">
                 <source>2. Create tasks with category %s</source>
@@ -747,7 +747,7 @@
                 <source>Matching pages</source>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.openSetupStatus" resname="ckeditor.dialog.openSetupStatus">
-                <source>Open Setup Status</source>
+                <source>Open the Cowriter overview</source>
             </trans-unit>
             <trans-unit id="ckeditor.dialog.debug.summary" resname="ckeditor.dialog.debug.summary">
                 <source>Debug info</source>

@@ -40,10 +40,12 @@ final class GermanLabelsTest extends FunctionalTestCase
             'AI suggestions',
             'KI-Vorschläge',
         ];
-        yield 'status module title' => [
-            'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:mlang_tabs_tab',
-            'Cowriter Status',
-            'Cowriter-Status',
+        // The module's menu title is "Cowriter" in both languages; its
+        // description tells the two apart.
+        yield 'overview module description' => [
+            'LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:mlang_labels_tabdescr',
+            'What the cowriter does, whether it is ready for you, how much it was used, and where it is set up.',
+            'Was der Cowriter tut, ob er für Sie bereitsteht, wie viel er genutzt wurde und wo er eingerichtet wird.',
         ];
     }
 

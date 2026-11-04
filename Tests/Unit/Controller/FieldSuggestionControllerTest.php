@@ -389,7 +389,7 @@ final class FieldSuggestionControllerTest extends TestCase
         ];
         yield 'missing configuration' => [
             new ConfigurationNotFoundException('Configuration "x" not found'),
-            'LLM is not configured yet. Ask an administrator to check the Cowriter Setup Status page for details.',
+            'LLM is not configured yet. The Cowriter page in the AI section shows what is missing; ask an administrator if you cannot open it.',
         ];
         yield 'anything else' => [
             new RuntimeException('cURL error 7: Failed to connect to internal-llm.example:11434'),
