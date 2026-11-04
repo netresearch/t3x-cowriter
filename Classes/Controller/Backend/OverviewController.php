@@ -90,6 +90,9 @@ final readonly class OverviewController
         $days      = UsageService::period($request->getQueryParams()['period'] ?? null);
         $formatter = LocalizedNumberFormatter::forBackendUser();
         $usage     = $this->usage($userId, $isAdmin, $days, $now);
+        // null for an editor, and for an administrator when the count failed:
+        // that count is unknown, not zero (promptsUnavailable).
+        $promptsAwaiting = $isAdmin ? $this->promptsAwaiting() : null;
 
         return [
             'isAdmin'       => $isAdmin,
@@ -105,15 +108,16 @@ final readonly class OverviewController
                 'calls'    => $formatter->number($usage->callCount()),
                 'failed'   => $formatter->number($usage->failedCount()),
             ] : [],
-            'period'           => $days,
-            'periods'          => UsageService::PERIODS,
-            'periodForm'       => $this->periodForm(),
-            'budget'           => $this->budget($userId, $formatter),
-            'settings'         => $isAdmin ? $this->settings->all() : [],
-            'promptsAwaiting'  => $isAdmin ? $this->promptsAwaiting() : null,
-            'promptsUrl'       => $isAdmin ? $this->moduleUrl('web_list', $user, ['id' => 0, 'table' => SavedPromptRepository::TABLE]) : null,
-            'actions'          => $this->actions($user),
-            'documentationUrl' => self::DOCUMENTATION_URL,
+            'period'             => $days,
+            'periods'            => UsageService::PERIODS,
+            'periodForm'         => $this->periodForm(),
+            'budget'             => $this->budget($userId, $formatter),
+            'settings'           => $isAdmin ? $this->settings->all() : [],
+            'promptsAwaiting'    => $promptsAwaiting,
+            'promptsUnavailable' => $isAdmin && $promptsAwaiting === null,
+            'promptsUrl'         => $isAdmin ? $this->moduleUrl('web_list', $user, ['id' => 0, 'table' => SavedPromptRepository::TABLE]) : null,
+            'actions'            => $this->actions($user),
+            'documentationUrl'   => self::DOCUMENTATION_URL,
         ];
     }
 

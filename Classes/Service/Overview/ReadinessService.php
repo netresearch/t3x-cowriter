@@ -30,6 +30,7 @@ use Netresearch\T3Cowriter\Service\Presentation\PresentationAccess;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
 use Throwable;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Resource\Folder;
 use TYPO3\CMS\Core\Site\SiteFinder;
 
@@ -104,17 +105,19 @@ final readonly class ReadinessService
      * the record's site to {@see ConfigurationSelector}, and the site's
      * configuration replaces the default there, not a task's own one; writing
      * in the dialog and the field suggestions take the installation default.
-     * An editor gets the rows of the sites in their web mounts only, so the
-     * page names no site or configuration of a tree they cannot reach.
+     * An editor gets the rows of the sites their web mounts reach (a mount at,
+     * above or below the site root) only, so the page names no site or
+     * configuration of a tree they cannot reach.
      *
      * @return list<ReadinessRow>
      */
     public function siteRows(BackendUserAuthentication $viewer): array
     {
-        $rows = [];
+        $rows    = [];
+        $mounted = $viewer->isAdmin() ? [] : $this->sitesOfMounts($viewer);
         foreach ($this->siteFinder->getAllSites() as $site) {
             $identifier = $site->getIdentifier();
-            if (!$viewer->isAdmin() && $viewer->isInWebMount($site->getRootPageId()) === null) {
+            if (!$viewer->isAdmin() && $viewer->isInWebMount($site->getRootPageId()) === null && !in_array($identifier, $mounted, true)) {
                 continue;
             }
 
@@ -127,6 +130,32 @@ final readonly class ReadinessService
         }
 
         return $rows;
+    }
+
+    /**
+     * The sites a web mount of the viewer lies in: a mount below a site root
+     * is inside that site, and a task on its pages runs on the site's
+     * configuration.
+     *
+     * @return list<string> site identifiers
+     */
+    private function sitesOfMounts(BackendUserAuthentication $viewer): array
+    {
+        $identifiers = [];
+        foreach ($viewer->getWebmounts() as $mount) {
+            $pageUid = (int) $mount;
+            if ($pageUid <= 0) {
+                continue;
+            }
+
+            try {
+                $identifiers[] = $this->siteFinder->getSiteByPageId($pageUid)->getIdentifier();
+            } catch (SiteNotFoundException) {
+                continue;
+            }
+        }
+
+        return $identifiers;
     }
 
     /**

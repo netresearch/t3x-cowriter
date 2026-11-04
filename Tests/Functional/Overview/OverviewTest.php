@@ -10,12 +10,19 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Tests\Functional\Overview;
 
 use Netresearch\T3Cowriter\Controller\Backend\OverviewController;
+use Netresearch\T3Cowriter\Service\Overview\EditorSurface;
+use Netresearch\T3Cowriter\Service\Overview\EditorSurfaces;
+use Netresearch\T3Cowriter\Service\Overview\ExtensionSetting;
+use Netresearch\T3Cowriter\Service\Overview\ExtensionSettings;
 use Netresearch\T3Cowriter\Service\Overview\ReadinessAction;
 use Netresearch\T3Cowriter\Service\Overview\ReadinessReason;
 use Netresearch\T3Cowriter\Service\Overview\ReadinessRow;
+use Netresearch\T3Cowriter\Service\Overview\ReadinessService;
 use Netresearch\T3Cowriter\Service\Overview\ReadinessState;
 use Netresearch\T3Cowriter\Service\Overview\UsageOperation;
 use Netresearch\T3Cowriter\Service\Overview\UsageOverview;
+use Netresearch\T3Cowriter\Service\Overview\UsageService;
+use Netresearch\T3Cowriter\Service\Prompt\SavedPromptRepository;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use TYPO3\CMS\Backend\Module\ModuleProvider;
@@ -34,6 +41,17 @@ use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
  * another extension's, another user's, and the day before the period.
  */
 #[CoversClass(OverviewController::class)]
+#[CoversClass(ReadinessService::class)]
+#[CoversClass(ReadinessRow::class)]
+#[CoversClass(ReadinessReason::class)]
+#[CoversClass(ReadinessState::class)]
+#[CoversClass(UsageService::class)]
+#[CoversClass(UsageOverview::class)]
+#[CoversClass(UsageOperation::class)]
+#[CoversClass(ExtensionSettings::class)]
+#[CoversClass(ExtensionSetting::class)]
+#[CoversClass(EditorSurfaces::class)]
+#[CoversClass(EditorSurface::class)]
 final class OverviewTest extends FunctionalTestCase
 {
     protected array $coreExtensionsToLoad = ['rte_ckeditor', 'install'];
@@ -192,6 +210,34 @@ final class OverviewTest extends FunctionalTestCase
     {
         self::assertSame([], $this->variables(5)['siteReadiness']);
         self::assertCount(1, $this->variables(1)['siteReadiness']);
+    }
+
+    /**
+     * A mount below the site root is inside the site: tasks on its pages run
+     * on the site's configuration, so the editor gets the site's row.
+     */
+    #[Test]
+    public function anEditorMountedBelowTheSiteRootSeesTheSite(): void
+    {
+        $rows = $this->variables(6)['siteReadiness'];
+
+        self::assertCount(1, $rows);
+        self::assertSame('main', $rows[0]['row']->site);
+    }
+
+    /**
+     * A count that fails is not "none": the page says it could not count.
+     */
+    #[Test]
+    public function anUncountablePromptTableIsNotReportedAsEmpty(): void
+    {
+        $connection = $this->get(ConnectionPool::class)->getConnectionForTable(SavedPromptRepository::TABLE);
+        $connection->executeStatement('DROP TABLE ' . $connection->quoteIdentifier(SavedPromptRepository::TABLE));
+
+        $body = $this->render(1);
+
+        self::assertStringContainsString('Shared prompts could not be counted.', $body);
+        self::assertStringNotContainsString('No shared prompt awaits approval.', $body);
     }
 
     /**

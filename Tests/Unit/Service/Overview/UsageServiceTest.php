@@ -109,6 +109,8 @@ final class UsageServiceTest extends TestCase
         yield 'nothing' => [null, 30];
         yield 'another number' => ['365', 30];
         yield 'text' => ['all', 30];
+        yield 'fraction' => ['7.9', 30];
+        yield 'exponent' => ['7e0', 30];
     }
 
     #[Test]

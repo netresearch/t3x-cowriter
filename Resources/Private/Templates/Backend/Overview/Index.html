@@ -285,8 +285,9 @@
 <f:section name="Prompts">
     <h3><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:prompts.title" /></h3>
     <p>
-        <f:if condition="{promptsAwaiting} > 0">
-            <f:then><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:prompts.awaiting" arguments="{0: promptsAwaiting}" /></f:then>
+        <f:if condition="{promptsUnavailable}">
+            <f:then><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:prompts.unavailable" /></f:then>
+            <f:else if="{promptsAwaiting} > 0"><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:prompts.awaiting" arguments="{0: promptsAwaiting}" /></f:else>
             <f:else><f:translate key="LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_mod_status.xlf:prompts.none" /></f:else>
         </f:if>
         <f:if condition="{promptsUrl}">

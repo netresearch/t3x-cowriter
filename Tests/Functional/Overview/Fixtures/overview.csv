@@ -9,6 +9,7 @@
 ,3,0,"pilot",0,"20","1","Pia Pilot",1703347200,1703347200,0,0
 ,4,0,"outsider",0,"21","1","Otto Outsider",1703347200,1703347200,0,0
 ,5,0,"elsewhere",0,"22","2","Elsa Elsewhere",1703347200,1703347200,0,0
+,6,0,"subeditor",0,"20","3","Sam Subeditor",1703347200,1703347200,0,0
 "tx_nrllm_provider"
 ,"uid","pid","identifier","name","adapter_type","api_key","is_active","tstamp","crdate","deleted","hidden","sorting"
 ,1,0,"keyless","Keyless","openai","",1,1703347200,1703347200,0,0,1
@@ -37,3 +38,4 @@
 ,"uid","pid","title","slug","is_siteroot","doktype","perms_everybody","deleted","hidden"
 ,1,0,"Home","/",1,1,1,0,0
 ,2,0,"Other home","/",1,1,1,0,0
+,3,1,"Section","/section",0,1,1,0,0

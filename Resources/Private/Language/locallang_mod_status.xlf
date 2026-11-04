@@ -416,6 +416,9 @@
             <trans-unit id="prompts.awaiting" resname="prompts.awaiting">
                 <source>%d shared prompts await approval.</source>
             </trans-unit>
+            <trans-unit id="prompts.unavailable" resname="prompts.unavailable">
+                <source>Shared prompts could not be counted.</source>
+            </trans-unit>
             <trans-unit id="prompts.none" resname="prompts.none">
                 <source>No shared prompt awaits approval.</source>
             </trans-unit>

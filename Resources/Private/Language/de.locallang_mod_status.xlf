@@ -553,6 +553,10 @@
                 <source>%d shared prompts await approval.</source>
                 <target>%d geteilte Prompts warten auf Freigabe.</target>
             </trans-unit>
+            <trans-unit id="prompts.unavailable" resname="prompts.unavailable">
+                <source>Shared prompts could not be counted.</source>
+                <target>Geteilte Prompts konnten nicht gezählt werden.</target>
+            </trans-unit>
             <trans-unit id="prompts.none" resname="prompts.none">
                 <source>No shared prompt awaits approval.</source>
                 <target>Kein geteilter Prompt wartet auf Freigabe.</target>

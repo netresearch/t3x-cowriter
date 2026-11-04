@@ -51,6 +51,7 @@ use Psr\Log\NullLogger;
 use stdClass;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Resource\Folder;
 use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\Entity\SiteSettings;
@@ -707,6 +708,22 @@ final class ReadinessServiceTest extends TestCase
     }
 
     /**
+     * A mount below a site root is inside that site; a mount on a page of no
+     * site reaches none.
+     */
+    #[Test]
+    public function anEditorMountedBelowASiteRootGetsThatSitesRow(): void
+    {
+        $this->siteConfigurations = ['main' => 'gone', 'other' => 'gone'];
+        $GLOBALS['BE_USER']       = null;
+
+        $rows = $this->service()->siteRows($this->viewer(false, [], [11, 9]));
+
+        self::assertSame(['main'], array_map(static fn (ReadinessRow $row): string => $row->site, $rows));
+        unset($GLOBALS['BE_USER']);
+    }
+
+    /**
      * A configuration picked in the dialog wins over a task's own one, so the
      * failing tasks still run once the editor picks a ready one.
      */
@@ -727,15 +744,17 @@ final class ReadinessServiceTest extends TestCase
     }
 
     /**
-     * @param list<int> $mountedRoots
+     * @param list<int> $mountedRoots site roots the viewer is mounted on
+     * @param list<int> $mountedBelow pages below a root (10 + root uid) the viewer is mounted on
      */
-    private function viewer(bool $admin, array $mountedRoots = []): BackendUserAuthentication
+    private function viewer(bool $admin, array $mountedRoots = [], array $mountedBelow = []): BackendUserAuthentication
     {
         $viewer = $this->createStub(BackendUserAuthentication::class);
         $viewer->method('isAdmin')->willReturn($admin);
         $viewer->method('isInWebMount')->willReturnCallback(
             static fn (mixed $id): ?int => in_array($id, $mountedRoots, true) ? $id : null,
         );
+        $viewer->method('getWebmounts')->willReturn(array_merge($mountedRoots, $mountedBelow));
 
         return $viewer;
     }
@@ -771,6 +790,21 @@ final class ReadinessServiceTest extends TestCase
         $siteFinder = $this->createStub(SiteFinder::class);
         $siteFinder->method('getAllSites')->willReturn($sites);
         $siteFinder->method('getSiteByIdentifier')->willReturnCallback(static fn (string $identifier): Site => $sites[$identifier]);
+        // Page 1 and 11 lie in "main", 2 and 12 in "other".
+        $siteFinder->method('getSiteByPageId')->willReturnCallback(
+            static function (int $pageUid) use ($sites): Site {
+                $identifier = match ($pageUid % 10) {
+                    1       => 'main',
+                    2       => 'other',
+                    default => '',
+                };
+                if (!isset($sites[$identifier])) {
+                    throw new SiteNotFoundException('No site for page ' . $pageUid, 1730700000);
+                }
+
+                return $sites[$identifier];
+            },
+        );
 
         $siteSettings = new SiteLlmSettings($siteFinder);
         $resolver     = new ConfigurationResolver($repository, $siteSettings);

@@ -40,10 +40,12 @@ suggests values for all fields, the image file control and the "Present as
 tabs or accordion" button. Each place says whether it is on and which
 setting of the extension configuration switches it.
 
-The toolbar buttons appear only in rich text fields that use the cowriter
-preset, for example with ``RTE.default.preset = cowriter`` in the page
-TSconfig. Which preset a field uses depends on the page and is not checked
-on this page.
+The toolbar buttons appear in rich text fields whose RTE configuration lists
+them in its toolbar: the cowriter preset (for example
+``RTE.default.preset = cowriter`` in the page TSconfig), or a configuration
+of your own that imports the Cowriter module and names its toolbar items.
+Which configuration a field uses depends on the page and is not checked on
+this page.
 
 Readiness
 =========
@@ -124,7 +126,8 @@ Tabs or accordion
 
 A second table lists every site that names its own configuration in its site
 settings, checked with the access of the person viewing the page. An editor
-sees only the sites whose root page lies in their web mounts. A task
+sees only the sites their web mounts reach: a mount on the root page, above
+it or anywhere below it. A task
 without its own configuration, run on a record of such a site, uses that
 configuration instead of the default.
 

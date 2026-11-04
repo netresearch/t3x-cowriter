@@ -57,7 +57,7 @@ final readonly class UsageService
      */
     public static function period(mixed $requested): int
     {
-        $days = is_numeric($requested) ? (int) $requested : 0;
+        $days = filter_var($requested, FILTER_VALIDATE_INT);
 
         return in_array($days, self::PERIODS, true) ? $days : self::DEFAULT_PERIOD;
     }
