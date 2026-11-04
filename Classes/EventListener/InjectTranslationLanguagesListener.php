@@ -11,7 +11,9 @@ namespace Netresearch\T3Cowriter\EventListener;
 
 use Netresearch\T3Cowriter\Service\SiteTranslationLanguages;
 use TYPO3\CMS\Core\Attribute\AsEventListener;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Site\Entity\SiteInterface;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\RteCKEditor\Form\Element\Event\AfterPrepareConfigurationForEditorEvent;
 
 /**
@@ -21,7 +23,13 @@ use TYPO3\CMS\RteCKEditor\Form\Element\Event\AfterPrepareConfigurationForEditorE
  * FormEngine resolves the site from the record's page before the RTE renders
  * (SiteResolving data provider, `site` in the form data), so every editor
  * instance gets the languages of its own record. Without a site the key stays
- * unset and the plugin keeps its fixed list. The "After" event is used
+ * unset and the plugin keeps its fixed list.
+ *
+ * The Visual Editor (friendsoftypo3/visual-editor) dispatches the same event
+ * from the frontend, with the raw record row as data and no `site`. There the
+ * site is resolved from the record's page (`pid`).
+ *
+ * The "After" event is used
  * because the "Before" one runs every string through the LLL and EXT: path
  * replacement, which a site language title must not go through.
  */
@@ -34,11 +42,12 @@ final readonly class InjectTranslationLanguagesListener
 
     public function __construct(
         private SiteTranslationLanguages $siteTranslationLanguages = new SiteTranslationLanguages(),
+        private ?SiteFinder $siteFinder = null,
     ) {}
 
     public function __invoke(AfterPrepareConfigurationForEditorEvent $event): void
     {
-        $site = $event->getData()['site'] ?? null;
+        $site = $this->siteOf($event->getData());
         if (!$site instanceof SiteInterface) {
             return;
         }
@@ -57,5 +66,28 @@ final readonly class InjectTranslationLanguagesListener
         $cowriter[self::LANGUAGES_KEY]          = $languages;
         $configuration[self::CONFIGURATION_KEY] = $cowriter;
         $event->setConfiguration($configuration);
+    }
+
+    /**
+     * The site FormEngine resolved, or, for data without that key (the raw
+     * record row the Visual Editor passes), the site of the record's page.
+     *
+     * @param array<mixed> $data
+     */
+    private function siteOf(array $data): mixed
+    {
+        $site = $data['site'] ?? null;
+        // RawRecord::toArray() carries the pid as an integer.
+        $pid = $data['pid'] ?? null;
+
+        if (!array_key_exists('site', $data) && $this->siteFinder instanceof SiteFinder && is_int($pid) && $pid > 0) {
+            try {
+                $site = $this->siteFinder->getSiteByPageId($pid);
+            } catch (SiteNotFoundException) {
+                $site = null;
+            }
+        }
+
+        return $site;
     }
 }

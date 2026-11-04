@@ -42,6 +42,9 @@ Features
 *   **Prompt templates**: Apply prompt template presets from the toolbar
 *   **CKEditor Integration**: Four toolbar buttons for writing, translation,
     vision, and templates
+*   **Visual Editor**: The same buttons in the frontend preview of the
+    Visual Editor (``friendsoftypo3/visual-editor``), see
+    :ref:`configuration-visual-editor`
 *   **Multi-Provider Support**: Works with all LLM providers supported by
     :ref:`nr-llm <nrllm:start>` (OpenAI, Claude, Gemini,
     OpenRouter, Mistral, Groq)

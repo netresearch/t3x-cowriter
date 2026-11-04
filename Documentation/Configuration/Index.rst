@@ -130,6 +130,57 @@ The six toolbar items are:
     appear. If buttons are missing, check this list before suspecting the
     extension.
 
+..  _configuration-visual-editor:
+
+Visual Editor
+-------------
+
+The Cowriter buttons also work in the
+`Visual Editor <https://github.com/FriendsOfTYPO3/visual_editor>`__
+(``friendsoftypo3/visual-editor``), which edits content in the frontend
+preview of a page. The Visual Editor starts CKEditor 5 with the RTE preset of
+the edited field, the same preset the backend form uses, so the configuration
+above applies unchanged and the Cowriter needs no setting of its own.
+
+What the site has to provide:
+
+*   The template renders the field with ``f:render.text``, for example
+    ``{record -> f:render.text(field: 'bodytext')}``. A field rendered with
+    ``f:format.html`` is not editable in the Visual Editor. ``f:render.text``
+    needs a record object; for content elements, add the
+    ``record-transformation`` data processor. The Visual Editor's README
+    describes both.
+*   The preset lists the Cowriter module and toolbar items, as in option 1
+    or 2.
+
+The buttons take the record from the element the Visual Editor puts around
+each editable field (``<ve-editable-rich-text table uid field>``). With it,
+the requests that name a record name the same one as in the backend form
+(the translate request names none, in the form either): the LLM
+configuration of the record's site, the content scopes of the dialog and the
+translate menu's site languages behave as in the form, with the exceptions
+listed below. Every request goes to
+the same backend routes and is checked against the logged-in backend user's
+permissions, as in the form.
+
+Known limits:
+
+*   Visual Editor 1.10.4 cannot render a field whose preset lists a module in
+    ``importModules`` as a plain string instead of
+    ``{ module: ..., exports: [...] }``. The preset of
+    ``netresearch/rte-ckeditor-image`` does that. The field then shows an
+    error in the preview. Until the Visual Editor accepts both forms, a
+    Composer patch to its ``TextViewHelper`` is needed.
+*   In a workspace, the Visual Editor names the workspace version of a
+    record that has one. The Cowriter does not find that version when it
+    reads the record. For such a record it uses the default LLM
+    configuration, the content scopes beyond the editor text add nothing,
+    and inline suggestions and alt texts get no record language. Records
+    created in the workspace are not affected.
+*   For a rich-text field of a page record, the translate menu takes the
+    languages of the parent page's site; on a site's root page it shows the
+    fixed list.
+
 ..  _configuration-translation-languages:
 
 Translation languages and formality
