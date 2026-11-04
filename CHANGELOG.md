@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.26.0 (2026-11-04)
+
+### FEATURE
+
+- The Cowriter buttons work in the Visual Editor (friendsoftypo3/visual-editor), which edits content in the frontend preview: requests name the edited record, taken from the editor's own `<ve-editable-rich-text>` element, so the record's site configuration, the context scopes and the image description target apply as in the backend form; the translate menu offers the languages of the record's site (#258).
+
+### DOCS
+
+- Configuration › Visual Editor: what a site template has to provide (`f:render.text`, `record-transformation`) and the known limits (string entries in `importModules` in Visual Editor 1.10.4, workspace versions, page records) (#258).
+
 ## 3.25.0 (2026-11-04)
 
 ### FEATURE
