@@ -11,10 +11,14 @@ namespace Netresearch\T3Cowriter\EventListener;
 
 use JsonException;
 use Netresearch\T3Cowriter\Service\BackendLabels;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Routing\Exception\RouteNotFoundException;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Attribute\AsEventListener;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
+use TYPO3\CMS\Core\Http\ApplicationType;
+use TYPO3\CMS\Core\Page\AssetCollector;
 use TYPO3\CMS\Core\Page\Event\BeforeJavaScriptsRenderingEvent;
 
 /**
@@ -29,6 +33,13 @@ use TYPO3\CMS\Core\Page\Event\BeforeJavaScriptsRenderingEvent;
 #[AsEventListener(identifier: 'cowriter-inject-ajax-urls')]
 final readonly class InjectAjaxUrlsListener
 {
+    /**
+     * The Cowriter's CKEditor 5 module (Configuration/JavaScriptModules.php).
+     * A frontend editing host registers it with the AssetCollector when it
+     * renders an editable field whose preset loads the Cowriter.
+     */
+    public const CKEDITOR_MODULE = '@netresearch/t3_cowriter/cowriter';
+
     /**
      * locallang_be.xlf ids the CKEditor plugin and the Cowriter dialog read
      * (Labels.js); GermanTranslationTest keeps this list and the file in step.
@@ -214,6 +225,10 @@ final readonly class InjectAjaxUrlsListener
             return;
         }
 
+        if (!$this->pageHostsTheCowriter($event->getAssetCollector())) {
+            return;
+        }
+
         try {
             // Add JSON data element (type="application/json" is not executed)
             $event->getAssetCollector()->addInlineJavaScript(
@@ -243,6 +258,29 @@ final readonly class InjectAjaxUrlsListener
                 'exception' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * A backend page gets the data as before: FormEngine loads the RTE
+     * modules itself, so the AssetCollector cannot tell whether an editor is
+     * on the page. A frontend page gets it only for a logged-in backend user
+     * and only when an editing host (the Visual Editor) has registered the
+     * Cowriter's CKEditor module, which it does for an editable rich-text
+     * field whose preset loads the Cowriter. Public pages carry neither the
+     * backend route paths nor the labels.
+     */
+    private function pageHostsTheCowriter(AssetCollector $assetCollector): bool
+    {
+        $request = $GLOBALS['TYPO3_REQUEST'] ?? null;
+        if (!$request instanceof ServerRequestInterface
+            || !is_int($request->getAttribute('applicationType'))
+            || !ApplicationType::fromRequest($request)->isFrontend()
+        ) {
+            return true;
+        }
+
+        return ($GLOBALS['BE_USER'] ?? null) instanceof BackendUserAuthentication
+            && in_array(self::CKEDITOR_MODULE, $assetCollector->getJavaScriptModules(), true);
     }
 
     /**
