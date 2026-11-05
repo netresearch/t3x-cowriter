@@ -63,7 +63,7 @@ All files in `.github/workflows/` are thin callers of `netresearch/typo3-ci-work
 
 | File | Purpose |
 |------|---------|
-| `ci.yml` | Test matrix PHP 8.2–8.5 × TYPO3 ^13.4/^14.3 incl. functional tests, coverage upload |
+| `ci.yml` | Test matrix PHP 8.2–8.5 × TYPO3 ^13.4/^14.3 incl. functional tests (SQLite), one functional cell on MariaDB (PHP 8.4, TYPO3 ^14.3), coverage upload |
 | `checks.yml` | Composer audit + Opengrep, betterleaks, zizmor, fuzz, license check, CodeQL, dependency review, PR quality, Scorecard (push/schedule) |
 | `testing.yml` | Extended testing (shared extended-testing reusable) |
 | `docs.yml` | TYPO3 documentation rendering |
