@@ -50,12 +50,52 @@ class RecordFinder
     /**
      * The row of a live record or of a record new in $workspaceId, with that
      * workspace's version laid over it. Hidden and time-restricted records are
-     * included: an editor edits those too. A uid naming a version row, a record
-     * of another workspace, or a record deleted in $workspaceId gives null.
+     * included: an editor edits those too. A uid naming a version row of
+     * $workspaceId itself — the visual editor sends those — is read as its
+     * live record, overlaid the same way. A uid naming a version row of
+     * another workspace, a record of another workspace, or a record deleted
+     * in $workspaceId gives null.
      *
      * @return array<string, mixed>|null
      */
     public function findRecord(string $table, int $uid, int $workspaceId): ?array
+    {
+        $row = $this->findLiveOrNewRecord($table, $uid, $workspaceId);
+        if ($row !== null || $workspaceId <= 0) {
+            return $row;
+        }
+
+        $liveUid = $this->liveUidOfVersion($table, $uid, $workspaceId);
+
+        return $liveUid > 0 ? $this->findLiveOrNewRecord($table, $liveUid, $workspaceId) : null;
+    }
+
+    /**
+     * The live record a version row of $workspaceId belongs to, or 0.
+     */
+    private function liveUidOfVersion(string $table, int $uid, int $workspaceId): int
+    {
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable($table);
+        $queryBuilder->getRestrictions()->removeAll();
+
+        $original = $queryBuilder
+            ->select('t3ver_oid')
+            ->from($table)
+            ->where(
+                $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT)),
+                $queryBuilder->expr()->eq('t3ver_wsid', $queryBuilder->createNamedParameter($workspaceId, Connection::PARAM_INT)),
+                $queryBuilder->expr()->gt('t3ver_oid', $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)),
+            )
+            ->executeQuery()
+            ->fetchOne();
+
+        return $this->intValue($original);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findLiveOrNewRecord(string $table, int $uid, int $workspaceId): ?array
     {
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()

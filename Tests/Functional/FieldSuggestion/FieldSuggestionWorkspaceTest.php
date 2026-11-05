@@ -142,13 +142,22 @@ final class FieldSuggestionWorkspaceTest extends FunctionalTestCase
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
 
+    /**
+     * The visual editor names a record by its version row in the user's
+     * workspace: it is read as its live record, as that workspace shows it.
+     */
     #[Test]
-    public function versionRowOfTheOwnWorkspaceCannotBeAddressedDirectly(): void
+    public function versionRowOfTheOwnWorkspaceIsReadAsItsRecord(): void
     {
         $response = $this->suggestAs(1, 31);
 
-        self::assertSame(403, $response->getStatusCode());
-        self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $prompt = $this->prompt();
+        self::assertStringContainsString('Page title: Office chairs (draft)', $prompt);
+        self::assertStringContainsString('Stored value of the field: Draft description in my workspace', $prompt);
+        foreach (self::OTHER_WORKSPACE_TEXT as $draft) {
+            self::assertStringNotContainsString($draft, $prompt);
+        }
     }
 
     #[Test]
