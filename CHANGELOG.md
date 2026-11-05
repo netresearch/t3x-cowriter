@@ -2,6 +2,16 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.26.1 (2026-11-05)
+
+### BUGFIX
+
+- In a workspace, a record the Visual Editor or the backend form names by the uid of its workspace version is read as that record: it gets its site's LLM configuration, the wider context scopes and its record language for inline suggestions and alternative texts, instead of the defaults. A version of another workspace stays unreachable (#260).
+
+### DOCS
+
+- Configuration: the Visual Editor's workspace-version limit is removed; the alternative-presentation button is not offered for an element that already has a version in the workspace (#260).
+
 ## 3.26.0 (2026-11-04)
 
 ### FEATURE
