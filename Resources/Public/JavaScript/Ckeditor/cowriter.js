@@ -336,6 +336,82 @@ export class Cowriter extends Plugin {
     }
 
     /**
+     * Replace the selection with an HTML result of the Cowriter.
+     *
+     * The data pipeline wraps a result that is plain text, or a bare <p>, in
+     * a new paragraph without attributes. When the selection covers the whole
+     * text of a block, CKEditor's insertContent() puts that paragraph in place
+     * of the emptied block, and the block's element (a heading) and attributes
+     * (style classes such as "lead", alignment) are lost. So, for a selection
+     * or cursor inside one block, the first block of the result takes that
+     * block's element and attributes, and so does the last one when it
+     * receives the block's text after the selection; only a result block that
+     * is such a plain paragraph. A result block with an element or attributes
+     * of its own is inserted as it is.
+     *
+     * @param {string} html sanitised HTML
+     * @param {object|null} [range] the range to replace; without one, the selection
+     * @private
+     */
+    _insertResult(html, range = null) {
+        const editor = this.editor;
+        const model = editor.model;
+        const fragment = editor.data.toModel(editor.data.processor.toView(html));
+
+        model.change((writer) => {
+            if (range && !range.isCollapsed) {
+                writer.setSelection(range);
+            }
+            if (fragment.childCount > 0) {
+                // Only a selection inside one block: a selection over several
+                // blocks replaces them all, and the result keeps its own shape.
+                const blocks = Array.from(model.document.selection.getSelectedBlocks());
+                if (blocks.length === 1) {
+                    const [block] = blocks;
+                    const first = fragment.getChild(0);
+                    const last = fragment.getChild(fragment.childCount - 1);
+                    // The first result block takes the place of the block.
+                    this._inheritBlock(writer, first, block);
+                    // The last one receives the text that follows the
+                    // selection in the block, so it continues the block.
+                    const end = model.document.selection.getFirstRange().end;
+                    if (last !== first && end.isBefore(model.createPositionAt(block, 'end'))) {
+                        this._inheritBlock(writer, last, block);
+                    }
+                }
+            }
+            model.insertContent(fragment);
+        });
+    }
+
+    /**
+     * Give a plain, attribute-less paragraph of a result the element and the
+     * attributes of the block it replaces.
+     *
+     * @param {object} writer the model writer
+     * @param {object} element a top-level item of the result fragment
+     * @param {object} block a block of the selection
+     * @private
+     */
+    _inheritBlock(writer, element, block) {
+        const schema = this.editor.model.schema;
+        if (!element.is('element', 'paragraph') || Array.from(element.getAttributeKeys()).length > 0) {
+            return;
+        }
+        if (block.name !== 'paragraph' && schema.checkChild(block, '$text')) {
+            writer.rename(element, block.name);
+        }
+        for (const [key, value] of block.getAttributes()) {
+            // List membership (listItemId, listIndent, listType, ...) is left to
+            // CKEditor's list handling of insertContent(), which keeps a list
+            // item a list item; copied, it would move or merge nested items.
+            if (!key.startsWith('list') && schema.checkAttribute(element, key)) {
+                writer.setAttribute(key, value, element);
+            }
+        }
+    }
+
+    /**
      * Insert a generated and stored image at the selection as the
      * `typo3image` element, built as the TYPO3 image plugin builds a newly
      * inserted image.
@@ -455,17 +531,8 @@ export class Cowriter extends Plugin {
                     const result = await dialog.show(selectedText || '', fullContent, caps, recordContext);
 
                     if (result?.content) {
-                        // Use CKEditor's HTML processing pipeline (handles schema/sanitization)
-                        const viewFragment = editor.data.processor.toView(result.content);
-                        const modelFragment = editor.data.toModel(viewFragment);
-
-                        model.change((writer) => {
-                            if (selectedRange && !selectedRange.isCollapsed) {
-                                // Replace the selected range with the LLM output
-                                writer.setSelection(selectedRange);
-                            }
-                            editor.model.insertContent(modelFragment);
-                        });
+                        // Replace the selected range with the LLM output
+                        this._insertResult(result.content, selectedRange);
                     }
                 } catch (error) {
                     // User cancelled the dialog — no action needed.
@@ -699,13 +766,7 @@ export class Cowriter extends Plugin {
                         // The same allow-list as the dialog's result; images from
                         // another origin stay only when the selection held them.
                         const safeTranslation = sanitizeHtml(result.translation, imageSourcesOf(selectedText)).innerHTML;
-                        const viewFragment = editor.data.processor.toView(safeTranslation);
-                        const modelFragment = editor.data.toModel(viewFragment);
-
-                        model.change((writer) => {
-                            writer.setSelection(selectedRange);
-                            editor.model.insertContent(modelFragment);
-                        });
+                        this._insertResult(safeTranslation, selectedRange);
 
                         // A language model revised the translator's text (the
                         // admin setting translation.polish); say so. Nothing is
@@ -822,14 +883,7 @@ export class Cowriter extends Plugin {
                     );
 
                     if (dialogResult?.content) {
-                        const viewFragment = editor.data.processor.toView(dialogResult.content);
-                        const modelFragment = editor.data.toModel(viewFragment);
-                        model.change((writer) => {
-                            if (selectedRange && !selectedRange.isCollapsed) {
-                                writer.setSelection(selectedRange);
-                            }
-                            editor.model.insertContent(modelFragment);
-                        });
+                        this._insertResult(dialogResult.content, selectedRange);
                     }
                 } catch (error) {
                     if (error?.message && error.message !== 'User cancelled') {
