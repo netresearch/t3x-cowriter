@@ -35,6 +35,16 @@ jobs:
       typo3-versions: '["^13.4","^14.3"]'
       typo3-packages: '["typo3/cms-core","typo3/cms-backend","typo3/cms-rte-ckeditor"]'
       run-functional-tests: true
+      # One functional cell on MariaDB beside the SQLite matrix. SQLite reads
+      # an unknown quoted column as a string literal, so a query naming a
+      # column the table does not have (t3ver_oid on a table without
+      # workspace versions, fixed in #260) passes there and fails on MariaDB,
+      # MySQL and PostgreSQL. The row joins `ci / All CI checks`, the required
+      # check. mariadb:11.8 is a current LTS series, pulled from the org's
+      # mirror of the Docker official image (typo3-ci-workflows ci-mirror.yml)
+      # like the MariaDB leg of t3x-nr-llm.
+      functional-db-matrix: >-
+        [{"php":"8.4","typo3":"^14.3","db":"mariadb","image":"ghcr.io/netresearch/ci-mirror/mariadb:11.8"}]
       # Every other cell resolves the newest nr-llm the constraint admits;
       # this extra cell keeps the lowest supported release under test.
       pin-packages: 'netresearch/nr-llm:0.43.9'
