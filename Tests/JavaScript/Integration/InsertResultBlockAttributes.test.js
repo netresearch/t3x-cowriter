@@ -228,6 +228,81 @@ describe.skipIf(!available)('a Cowriter result in place of a selection in TYPO3\
             expect(viaCowriter).toBe(plain);
         });
 
+        /**
+         * The data after replacing a selection with a result, once through
+         * the Cowriter and once through plain insertContent() (main).
+         */
+        async function bothWays(data, selectFn, result) {
+            const run = async (insert) => {
+                const editor = await createEditor(data);
+                selectFn(editor);
+                insert(editor, editor.model.document.selection.getFirstRange());
+                return editor.getData();
+            };
+            return {
+                cowriter: await run((editor, range) => editor.plugins.get('cowriter')._insertResult(result, range)),
+                plain: await run((editor) => editor.model.change(() => editor.model.insertContent(
+                    editor.data.toModel(editor.data.processor.toView(result)),
+                ))),
+            };
+        }
+
+        const selectAll = (editor) => editor.execute('selectAll');
+        const selectFirstBlock = (editor) => selectTextOf(editor, 0);
+
+        it.each([
+            ['several whole blocks, plain text', '<h2>Title</h2><p>Body one</p><p>Body two</p>', selectAll, 'Fixed text.'],
+            ['several whole blocks ending in a list', '<p class="lead">Lead</p><p>Body</p><ul><li>a</li><li>b</li></ul>', selectAll, '<p>one</p><p>two</p>'],
+            ['a whole heading, result with a heading of its own', '<h2>Teh heading</h2><p>Body</p>', selectFirstBlock, '<h3>New</h3><p>body</p>'],
+        ])('replaces %s as plain insertContent() does', async (_, data, selectFn, result) => {
+            const {cowriter, plain} = await bothWays(data, selectFn, result);
+
+            expect(cowriter).toBe(plain);
+        });
+
+        it.each([
+            ['a whole heading', '<h2>Teh heading</h2><p>Body</p>', '<p>one</p><p>two</p>', '<h2>one</h2><p>two</p><p>Body</p>'],
+            ['a whole Lead paragraph', '<p class="lead">Teh lead</p><p>Body</p>', '<p>one</p><p>two</p><p>three</p>', '<p class="lead">one</p><p>two</p><p>three</p><p>Body</p>'],
+        ])('keeps only the first result block in the place of %s', async (_, data, result, expected) => {
+            const {cowriter} = await bothWays(data, selectFirstBlock, result);
+
+            expect(cowriter).toBe(expected);
+        });
+
+        it('makes a multi-paragraph result for a whole list item into items, not one item with two paragraphs', async () => {
+            const {cowriter} = await bothWays('<ul><li>Frist item</li><li>Second</li></ul>', selectFirstBlock, '<p>one</p><p>two</p>');
+
+            const body = new DOMParser().parseFromString(cowriter, 'text/html').body;
+            expect(body.querySelectorAll('li p')).toHaveLength(0);
+            expect(Array.from(body.querySelectorAll('li')).map((li) => li.textContent)).toContain('one');
+        });
+
+        it('keeps two list items when a multi-paragraph result replaces the start of an item', async () => {
+            const selectStart = (editor) => {
+                const model = editor.model;
+                const item = model.document.getRoot().getChild(0);
+                model.change((writer) => writer.setSelection(model.createRange(
+                    model.createPositionAt(item, 0),
+                    model.createPositionAt(item, 5),
+                )));
+            };
+            const {cowriter} = await bothWays('<ul><li>Frist item</li><li>Second</li></ul>', selectStart, '<p>one</p><p>two</p>');
+
+            const body = new DOMParser().parseFromString(cowriter, 'text/html').body;
+            expect(body.querySelectorAll('li p')).toHaveLength(0);
+            expect(Array.from(body.querySelectorAll('li')).map((li) => li.textContent)).toEqual(['one', 'two item', 'Second']);
+        });
+
+        it('keeps the Lead class on the text after a cursor in the middle of the paragraph', async () => {
+            const atMiddle = (editor) => {
+                const model = editor.model;
+                model.change((writer) => writer.setSelection(model.document.getRoot().getChild(0), 6));
+            };
+            const {cowriter} = await bothWays('<p class="lead">Start end</p>', atMiddle, '<p>one</p><p>two</p>');
+
+            expect(cowriter).toBe('<p class="lead">Start one</p><p class="lead">twoend</p>');
+        });
+
         it('keeps the classes of a result paragraph that has its own', async () => {
             const editor = await createEditor(LEAD);
             selectTextOf(editor, 0);

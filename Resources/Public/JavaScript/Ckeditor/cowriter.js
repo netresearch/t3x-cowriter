@@ -342,11 +342,12 @@ export class Cowriter extends Plugin {
      * a new paragraph without attributes. When the selection covers the whole
      * text of a block, CKEditor's insertContent() puts that paragraph in place
      * of the emptied block, and the block's element (a heading, a list item)
-     * and attributes (style classes such as "lead", alignment) are lost. So the
-     * first and the last block of the result, when they are such a paragraph,
-     * take the element and attributes of the first and the last block the
-     * selection lies in. A result block with an element or attributes of its
-     * own is inserted as it is, and so is every result at a cursor.
+     * and attributes (style classes such as "lead", alignment) are lost. So,
+     * when they are such a paragraph, the first block of the result takes the
+     * element and attributes of the block a selection inside one block lies
+     * in, and the last block of the result those of the block whose remaining
+     * text it receives. A result block with an element or attributes of its
+     * own is inserted as it is.
      *
      * @param {string} html sanitised HTML
      * @param {object|null} [range] the range to replace; without one, the selection
@@ -361,14 +362,25 @@ export class Cowriter extends Plugin {
             if (range && !range.isCollapsed) {
                 writer.setSelection(range);
             }
-            // At a cursor nothing is replaced: the result goes in as it is.
-            if (fragment.childCount > 0 && !model.document.selection.isCollapsed) {
+            if (fragment.childCount > 0) {
                 const blocks = Array.from(model.document.selection.getSelectedBlocks());
-                if (blocks.length > 0) {
-                    const last = fragment.getChild(fragment.childCount - 1);
-                    this._inheritBlock(writer, fragment.getChild(0), blocks[0]);
-                    if (last !== fragment.getChild(0)) {
-                        this._inheritBlock(writer, last, blocks[blocks.length - 1]);
+                const first = fragment.getChild(0);
+                const last = fragment.getChild(fragment.childCount - 1);
+                // The first result block takes the place of the block the
+                // selection lies in; a selection over several blocks replaces
+                // them all, and the result keeps its own shape.
+                if (blocks.length === 1) {
+                    this._inheritBlock(writer, first, blocks[0]);
+                }
+                // The last result block receives the text that follows the
+                // selection in its block, so it continues that block.
+                const lastBlock = blocks[blocks.length - 1];
+                const end = model.document.selection.getFirstRange().end;
+                if (lastBlock && last !== first && end.isBefore(model.createPositionAt(lastBlock, 'end'))) {
+                    this._inheritBlock(writer, last, lastBlock);
+                    // Two ends of one list item would merge into one item.
+                    if (blocks.length === 1 && last.hasAttribute('listItemId')) {
+                        writer.removeAttribute('listItemId', last);
                     }
                 }
             }
