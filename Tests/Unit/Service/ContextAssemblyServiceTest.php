@@ -638,6 +638,8 @@ final class ContextAssemblyServiceTest extends TestCase
             },
         );
         $this->recordFinder->method('findVisibleContent')->willReturn($rows);
+        // No version uids here: a uid is read under itself.
+        $this->recordFinder->method('recordUid')->willReturnArgument(1);
         $resultStub->method('fetchAllAssociative')->willReturn($rows);
         $queryBuilder->method('executeQuery')->willReturn($resultStub);
 

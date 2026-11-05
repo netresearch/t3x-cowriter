@@ -60,18 +60,32 @@ class RecordFinder
      */
     public function findRecord(string $table, int $uid, int $workspaceId): ?array
     {
-        $row = $this->findLiveOrNewRecord($table, $uid, $workspaceId);
-        if ($row !== null || $workspaceId <= 0) {
-            return $row;
+        if ($workspaceId > 0) {
+            $liveUid = $this->liveUidOfVersion($table, $uid, $workspaceId);
+            if ($liveUid > 0) {
+                $uid = $liveUid;
+            }
         }
 
-        $liveUid = $this->liveUidOfVersion($table, $uid, $workspaceId);
-
-        return $liveUid > 0 ? $this->findLiveOrNewRecord($table, $liveUid, $workspaceId) : null;
+        return $this->findLiveOrNewRecord($table, $uid, $workspaceId);
     }
 
     /**
-     * The live record a version row of $workspaceId belongs to, or 0.
+     * The uid a record is read under: the live uid where `$uid` names a
+     * version row of `$workspaceId`, `$uid` otherwise — so a caller that
+     * marks or compares "the requested record" compares the uid of the row
+     * {@see self::findRecord()} returns.
+     */
+    public function recordUid(string $table, int $uid, int $workspaceId): int
+    {
+        $liveUid = $workspaceId > 0 ? $this->liveUidOfVersion($table, $uid, $workspaceId) : 0;
+
+        return $liveUid > 0 ? $liveUid : $uid;
+    }
+
+    /**
+     * The live record a version row of $workspaceId belongs to — a changed
+     * or a moved one — or 0.
      */
     private function liveUidOfVersion(string $table, int $uid, int $workspaceId): int
     {

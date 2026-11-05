@@ -142,7 +142,7 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
     public function getContextSummary(string $table, int $uid, string $field, string $scope): array
     {
         $records      = $this->fetchRecords($table, $uid, $scope);
-        $text         = $this->formatRecords($records, $scope, $uid);
+        $text         = $this->formatRecords($records, $scope, $this->currentUid($table, $uid));
         $wordCount    = $this->countWords($text);
         $elementCount = count($records);
 
@@ -175,7 +175,7 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
         array $referencePages = [],
     ): string {
         $records = $this->fetchRecords($table, $uid, $scope);
-        $text    = $this->formatRecords($records, $scope, $uid);
+        $text    = $this->formatRecords($records, $scope, $this->currentUid($table, $uid));
 
         // Append reference page content
         foreach ($referencePages as $refPage) {
@@ -327,6 +327,20 @@ final readonly class ContextAssemblyService implements ContextAssemblyServiceInt
         $rawPid = $row['pid'] ?? 0;
 
         return is_numeric($rawPid) ? (int) $rawPid : 0;
+    }
+
+    /**
+     * The uid the requested record is listed under: its live uid where the
+     * request names its version in the user's workspace, as the visual
+     * editor does.
+     */
+    private function currentUid(string $table, int $uid): int
+    {
+        $backendUser = $this->contentReader();
+
+        return $backendUser instanceof BackendUserAuthentication
+            ? $this->recordFinder->recordUid($table, $uid, $this->workspaceId($backendUser))
+            : $uid;
     }
 
     /**

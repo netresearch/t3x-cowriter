@@ -40,7 +40,11 @@ class PresentationElementReader
         $pageUid     = $this->intValue($element['pid'] ?? 0);
         $page        = $pageUid > 0 ? $this->recordFinder->findRecord('pages', $pageUid, $workspaceId) : null;
 
-        if ($element === null || $page === null) {
+        // The form names an element by its live uid. A version uid is read as
+        // its record by the finder, but the translations, the file references
+        // and the switch of a presentation hang on the live uid, so it is not
+        // taken here.
+        if ($element === null || $page === null || $this->intValue($element['uid'] ?? 0) !== $uid) {
             throw PresentationException::notAvailable();
         }
 
