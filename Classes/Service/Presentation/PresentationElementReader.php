@@ -40,10 +40,11 @@ class PresentationElementReader
         $pageUid     = $this->intValue($element['pid'] ?? 0);
         $page        = $pageUid > 0 ? $this->recordFinder->findRecord('pages', $pageUid, $workspaceId) : null;
 
-        // The form names an element by its live uid. A version uid is read as
-        // its record by the finder, but the translations, the file references
-        // and the switch of a presentation hang on the live uid, so it is not
-        // taken here.
+        // In a workspace the form names an element that has a version there by
+        // its version uid (EditDocumentController). The finder reads that uid
+        // as its record, but the translations, the file references and the
+        // switch of a presentation hang on the live uid, so such an element
+        // gets no presentation (a documented limit).
         if ($element === null || $page === null || $this->intValue($element['uid'] ?? 0) !== $uid) {
             throw PresentationException::notAvailable();
         }

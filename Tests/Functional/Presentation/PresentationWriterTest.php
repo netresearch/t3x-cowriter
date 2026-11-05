@@ -309,7 +309,8 @@ final class PresentationWriterTest extends FunctionalTestCase
 
     /**
      * A version uid is read as its record elsewhere, but a presentation hangs
-     * its translations, files and switch on the live uid the form sends.
+     * its translations, files and switch on the live uid; an element with a
+     * version in the workspace gets none (documented limit).
      */
     #[Test]
     public function aVersionUidIsRefused(): void

@@ -96,7 +96,7 @@ class RecordFinder
         }
 
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable($table);
-        $queryBuilder->getRestrictions()->removeAll();
+        $queryBuilder->getRestrictions()->removeAll()->add(new DeletedRestriction());
 
         $original = $queryBuilder
             ->select('t3ver_oid')

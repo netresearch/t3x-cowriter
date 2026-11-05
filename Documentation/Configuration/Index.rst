@@ -665,7 +665,9 @@ Requirements:
     default-language element instead. A switch refused with 409 removes the
     button and shows the reason.
 *   In a workspace both elements change in the workspace; publish them
-    together.
+    together. An element that already has a version in that workspace gets
+    no button: the form names it by its version uid, while the
+    translations, file references and switch hang on the live uid.
 
 How the text is cut:
 
