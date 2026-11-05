@@ -232,9 +232,9 @@ final class OverviewTest extends FunctionalTestCase
     public function anUncountablePromptTableIsNotReportedAsEmpty(): void
     {
         // Renamed aside rather than dropped, and renamed back afterwards: on
-        // MariaDB and MySQL the testing framework keeps one database per test
-        // class and only truncates tables between tests, so a dropped table
-        // stays missing for every later test of the class.
+        // every database but SQLite the testing framework keeps one database
+        // per test class and only truncates tables between tests, so a
+        // dropped table stays missing for every later test of the class.
         $connection    = $this->get(ConnectionPool::class)->getConnectionForTable(SavedPromptRepository::TABLE);
         $schemaManager = $connection->createSchemaManager();
         $aside         = SavedPromptRepository::TABLE . '_aside';

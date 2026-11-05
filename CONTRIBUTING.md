@@ -113,7 +113,7 @@ Checks that run on every pull request in this repository:
   `Build/phpstan.neon`), Rector, unit and functional tests on PHP 8.2 to 8.5
   with TYPO3 13.4 and 14.3 on SQLite, and the functional tests once more on
   MariaDB (PHP 8.4, TYPO3 14.3). Locally:
-  `Build/Scripts/runTests.sh -s functional -d mariadb -p 8.4 -t ^14.3`.
+  `Build/Scripts/runTests.sh -s functional -d mariadb -p 8.4`.
 - `.github/workflows/testing.yml`: unit, functional, integration and E2E
   tests with coverage, the Vitest suite, and Infection mutation testing
   (thresholds in `infection.json5`).
