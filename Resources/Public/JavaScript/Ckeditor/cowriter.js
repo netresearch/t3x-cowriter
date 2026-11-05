@@ -341,13 +341,13 @@ export class Cowriter extends Plugin {
      * The data pipeline wraps a result that is plain text, or a bare <p>, in
      * a new paragraph without attributes. When the selection covers the whole
      * text of a block, CKEditor's insertContent() puts that paragraph in place
-     * of the emptied block, and the block's element (a heading, a list item)
-     * and attributes (style classes such as "lead", alignment) are lost. So,
-     * when they are such a paragraph, the first block of the result takes the
-     * element and attributes of the block a selection inside one block lies
-     * in, and the last block of the result those of the block whose remaining
-     * text it receives. A result block with an element or attributes of its
-     * own is inserted as it is.
+     * of the emptied block, and the block's element (a heading) and attributes
+     * (style classes such as "lead", alignment) are lost. So, for a selection
+     * or cursor inside one block, the first block of the result takes that
+     * block's element and attributes, and so does the last one when it
+     * receives the block's text after the selection; only a result block that
+     * is such a plain paragraph. A result block with an element or attributes
+     * of its own is inserted as it is.
      *
      * @param {string} html sanitised HTML
      * @param {object|null} [range] the range to replace; without one, the selection
@@ -363,24 +363,20 @@ export class Cowriter extends Plugin {
                 writer.setSelection(range);
             }
             if (fragment.childCount > 0) {
+                // Only a selection inside one block: a selection over several
+                // blocks replaces them all, and the result keeps its own shape.
                 const blocks = Array.from(model.document.selection.getSelectedBlocks());
-                const first = fragment.getChild(0);
-                const last = fragment.getChild(fragment.childCount - 1);
-                // The first result block takes the place of the block the
-                // selection lies in; a selection over several blocks replaces
-                // them all, and the result keeps its own shape.
                 if (blocks.length === 1) {
-                    this._inheritBlock(writer, first, blocks[0]);
-                }
-                // The last result block receives the text that follows the
-                // selection in its block, so it continues that block.
-                const lastBlock = blocks[blocks.length - 1];
-                const end = model.document.selection.getFirstRange().end;
-                if (lastBlock && last !== first && end.isBefore(model.createPositionAt(lastBlock, 'end'))) {
-                    this._inheritBlock(writer, last, lastBlock);
-                    // Two ends of one list item would merge into one item.
-                    if (blocks.length === 1 && last.hasAttribute('listItemId')) {
-                        writer.removeAttribute('listItemId', last);
+                    const [block] = blocks;
+                    const first = fragment.getChild(0);
+                    const last = fragment.getChild(fragment.childCount - 1);
+                    // The first result block takes the place of the block.
+                    this._inheritBlock(writer, first, block);
+                    // The last one receives the text that follows the
+                    // selection in the block, so it continues the block.
+                    const end = model.document.selection.getFirstRange().end;
+                    if (last !== first && end.isBefore(model.createPositionAt(block, 'end'))) {
+                        this._inheritBlock(writer, last, block);
                     }
                 }
             }
@@ -406,7 +402,10 @@ export class Cowriter extends Plugin {
             writer.rename(element, block.name);
         }
         for (const [key, value] of block.getAttributes()) {
-            if (schema.checkAttribute(element, key)) {
+            // List membership (listItemId, listIndent, listType, ...) is left to
+            // CKEditor's list handling of insertContent(), which keeps a list
+            // item a list item; copied, it would move or merge nested items.
+            if (!key.startsWith('list') && schema.checkAttribute(element, key)) {
                 writer.setAttribute(key, value, element);
             }
         }

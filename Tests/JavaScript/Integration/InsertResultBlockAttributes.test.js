@@ -187,14 +187,13 @@ describe.skipIf(!available)('a Cowriter result in place of a selection in TYPO3\
 
         it('keeps a list item a list item', async () => {
             const editor = await createEditor('<ul><li>Frist item</li><li>Second</li></ul>');
-            // The list plugin writes its item ids into the data; they stay as they are.
-            const before = editor.getData();
             selectTextOf(editor, 0);
 
             editor.plugins.get('cowriter')._insertResult('<p>First item</p>');
 
-            expect(before).toMatch(/^<ul><li[^>]*>Frist item<\/li><li[^>]*>Second<\/li><\/ul>$/);
-            expect(editor.getData()).toBe(before.replace('Frist item', 'First item'));
+            const body = new DOMParser().parseFromString(editor.getData(), 'text/html').body;
+            expect(Array.from(body.querySelectorAll('ul > li')).map((li) => li.textContent)).toEqual(['First item', 'Second']);
+            expect(body.querySelectorAll('li p')).toHaveLength(0);
         });
 
         it('inserts a result block with attributes of its own as it is', async () => {
@@ -237,7 +236,8 @@ describe.skipIf(!available)('a Cowriter result in place of a selection in TYPO3\
                 const editor = await createEditor(data);
                 selectFn(editor);
                 insert(editor, editor.model.document.selection.getFirstRange());
-                return editor.getData();
+                // List item ids are random per editor.
+                return editor.getData().replace(/ data-list-item-id="[^"]*"/g, '');
             };
             return {
                 cowriter: await run((editor, range) => editor.plugins.get('cowriter')._insertResult(result, range)),
@@ -254,6 +254,23 @@ describe.skipIf(!available)('a Cowriter result in place of a selection in TYPO3\
             ['several whole blocks, plain text', '<h2>Title</h2><p>Body one</p><p>Body two</p>', selectAll, 'Fixed text.'],
             ['several whole blocks ending in a list', '<p class="lead">Lead</p><p>Body</p><ul><li>a</li><li>b</li></ul>', selectAll, '<p>one</p><p>two</p>'],
             ['a whole heading, result with a heading of its own', '<h2>Teh heading</h2><p>Body</p>', selectFirstBlock, '<h3>New</h3><p>body</p>'],
+            ['a whole nested list item, several paragraphs', '<ul><li>Outer one<ul><li>Inner alpha</li><li>Inner beta</li></ul></li><li>Outer two</li></ul>', (editor) => selectTextOf(editor, 1), '<p>P one.</p><p>P two.</p>'],
+            ['the start of a Lead paragraph, a list', '<p class="lead">Alpha beta gamma.</p>', (editor) => {
+                const model = editor.model;
+                const block = model.document.getRoot().getChild(0);
+                model.change((writer) => writer.setSelection(model.createRange(model.createPositionAt(block, 0), model.createPositionAt(block, 3))));
+            }, '<ul><li>x one</li><li>x two</li></ul>'],
+            ['the end of a list item and the start of a Lead paragraph', '<ul><li>Alpha beta</li><li>Gamma</li></ul><p class="lead">Delta eps.</p>', (editor) => {
+                const model = editor.model;
+                const root = model.document.getRoot();
+                model.change((writer) => writer.setSelection(model.createRange(model.createPositionAt(root.getChild(1), 2), model.createPositionAt(root.getChild(2), 3))));
+            }, '<p>P one.</p><p>P two.</p>'],
+            ['the start of a list item, several paragraphs', '<ul><li>Frist item</li><li>Second</li></ul>', (editor) => {
+                const model = editor.model;
+                const item = model.document.getRoot().getChild(0);
+                model.change((writer) => writer.setSelection(model.createRange(model.createPositionAt(item, 0), model.createPositionAt(item, 5))));
+            }, '<p>one</p><p>two</p>'],
+            ['a whole list item, several paragraphs', '<ul><li>Frist item</li><li>Second</li></ul>', selectFirstBlock, '<p>one</p><p>two</p>'],
         ])('replaces %s as plain insertContent() does', async (_, data, selectFn, result) => {
             const {cowriter, plain} = await bothWays(data, selectFn, result);
 
@@ -267,30 +284,6 @@ describe.skipIf(!available)('a Cowriter result in place of a selection in TYPO3\
             const {cowriter} = await bothWays(data, selectFirstBlock, result);
 
             expect(cowriter).toBe(expected);
-        });
-
-        it('makes a multi-paragraph result for a whole list item into items, not one item with two paragraphs', async () => {
-            const {cowriter} = await bothWays('<ul><li>Frist item</li><li>Second</li></ul>', selectFirstBlock, '<p>one</p><p>two</p>');
-
-            const body = new DOMParser().parseFromString(cowriter, 'text/html').body;
-            expect(body.querySelectorAll('li p')).toHaveLength(0);
-            expect(Array.from(body.querySelectorAll('li')).map((li) => li.textContent)).toContain('one');
-        });
-
-        it('keeps two list items when a multi-paragraph result replaces the start of an item', async () => {
-            const selectStart = (editor) => {
-                const model = editor.model;
-                const item = model.document.getRoot().getChild(0);
-                model.change((writer) => writer.setSelection(model.createRange(
-                    model.createPositionAt(item, 0),
-                    model.createPositionAt(item, 5),
-                )));
-            };
-            const {cowriter} = await bothWays('<ul><li>Frist item</li><li>Second</li></ul>', selectStart, '<p>one</p><p>two</p>');
-
-            const body = new DOMParser().parseFromString(cowriter, 'text/html').body;
-            expect(body.querySelectorAll('li p')).toHaveLength(0);
-            expect(Array.from(body.querySelectorAll('li')).map((li) => li.textContent)).toEqual(['one', 'two item', 'Second']);
         });
 
         it('keeps the Lead class on the text after a cursor in the middle of the paragraph', async () => {
