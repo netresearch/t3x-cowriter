@@ -336,6 +336,70 @@ export class Cowriter extends Plugin {
     }
 
     /**
+     * Replace the selection with an HTML result of the Cowriter.
+     *
+     * The data pipeline wraps a result that is plain text, or a bare <p>, in
+     * a new paragraph without attributes. When the selection covers the whole
+     * text of a block, CKEditor's insertContent() puts that paragraph in place
+     * of the emptied block, and the block's element (a heading, a list item)
+     * and attributes (style classes such as "lead", alignment) are lost. So the
+     * first and the last block of the result, when they are such a paragraph,
+     * take the element and attributes of the first and the last block the
+     * selection lies in. A result block with an element or attributes of its
+     * own is inserted as it is.
+     *
+     * @param {string} html sanitised HTML
+     * @param {object|null} [range] the range to replace; without one, the selection
+     * @private
+     */
+    _insertResult(html, range = null) {
+        const editor = this.editor;
+        const model = editor.model;
+        const fragment = editor.data.toModel(editor.data.processor.toView(html));
+
+        model.change((writer) => {
+            if (range && !range.isCollapsed) {
+                writer.setSelection(range);
+            }
+            if (fragment.childCount > 0) {
+                const blocks = Array.from(model.document.selection.getSelectedBlocks());
+                if (blocks.length > 0) {
+                    const last = fragment.getChild(fragment.childCount - 1);
+                    this._inheritBlock(writer, fragment.getChild(0), blocks[0]);
+                    if (last !== fragment.getChild(0)) {
+                        this._inheritBlock(writer, last, blocks[blocks.length - 1]);
+                    }
+                }
+            }
+            model.insertContent(fragment);
+        });
+    }
+
+    /**
+     * Give a plain, attribute-less paragraph of a result the element and the
+     * attributes of the block it replaces.
+     *
+     * @param {object} writer the model writer
+     * @param {object} element a top-level item of the result fragment
+     * @param {object} block a block of the selection
+     * @private
+     */
+    _inheritBlock(writer, element, block) {
+        const schema = this.editor.model.schema;
+        if (!element.is('element', 'paragraph') || Array.from(element.getAttributeKeys()).length > 0) {
+            return;
+        }
+        if (block.name !== 'paragraph' && schema.checkChild(block, '$text')) {
+            writer.rename(element, block.name);
+        }
+        for (const [key, value] of block.getAttributes()) {
+            if (schema.checkAttribute(element, key)) {
+                writer.setAttribute(key, value, element);
+            }
+        }
+    }
+
+    /**
      * Insert a generated and stored image at the selection as the
      * `typo3image` element, built as the TYPO3 image plugin builds a newly
      * inserted image.
@@ -455,17 +519,8 @@ export class Cowriter extends Plugin {
                     const result = await dialog.show(selectedText || '', fullContent, caps, recordContext);
 
                     if (result?.content) {
-                        // Use CKEditor's HTML processing pipeline (handles schema/sanitization)
-                        const viewFragment = editor.data.processor.toView(result.content);
-                        const modelFragment = editor.data.toModel(viewFragment);
-
-                        model.change((writer) => {
-                            if (selectedRange && !selectedRange.isCollapsed) {
-                                // Replace the selected range with the LLM output
-                                writer.setSelection(selectedRange);
-                            }
-                            editor.model.insertContent(modelFragment);
-                        });
+                        // Replace the selected range with the LLM output
+                        this._insertResult(result.content, selectedRange);
                     }
                 } catch (error) {
                     // User cancelled the dialog — no action needed.
@@ -699,13 +754,7 @@ export class Cowriter extends Plugin {
                         // The same allow-list as the dialog's result; images from
                         // another origin stay only when the selection held them.
                         const safeTranslation = sanitizeHtml(result.translation, imageSourcesOf(selectedText)).innerHTML;
-                        const viewFragment = editor.data.processor.toView(safeTranslation);
-                        const modelFragment = editor.data.toModel(viewFragment);
-
-                        model.change((writer) => {
-                            writer.setSelection(selectedRange);
-                            editor.model.insertContent(modelFragment);
-                        });
+                        this._insertResult(safeTranslation, selectedRange);
 
                         // A language model revised the translator's text (the
                         // admin setting translation.polish); say so. Nothing is
@@ -822,14 +871,7 @@ export class Cowriter extends Plugin {
                     );
 
                     if (dialogResult?.content) {
-                        const viewFragment = editor.data.processor.toView(dialogResult.content);
-                        const modelFragment = editor.data.toModel(viewFragment);
-                        model.change((writer) => {
-                            if (selectedRange && !selectedRange.isCollapsed) {
-                                writer.setSelection(selectedRange);
-                            }
-                            editor.model.insertContent(modelFragment);
-                        });
+                        this._insertResult(dialogResult.content, selectedRange);
                     }
                 } catch (error) {
                     if (error?.message && error.message !== 'User cancelled') {
