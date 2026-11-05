@@ -173,10 +173,11 @@ Known limits:
 
 *   Visual Editor 1.10.4 cannot render a field whose preset lists a module in
     ``importModules`` as a plain string instead of
-    ``{ module: ..., exports: [...] }``. The preset of
-    ``netresearch/rte-ckeditor-image`` does that. The field then shows an
-    error in the preview. Until the Visual Editor accepts both forms, a
-    Composer patch to its ``TextViewHelper`` is needed.
+    ``{ module: ..., exports: [...] }``; the field then shows an error in the
+    preview. The preset of ``netresearch/rte-ckeditor-image`` uses the
+    ``{ module, exports }`` form since version 13.10.5; with an older version,
+    or another preset with a plain string, the Visual Editor needs a Composer
+    patch to its ``TextViewHelper``.
 *   For a rich-text field of a page record, the translate menu takes the
     languages of the parent page's site; on a site's root page it shows the
     fixed list.
