@@ -2,6 +2,12 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.26.2 (2026-11-05)
+
+### DOCS
+
+- Configuration › Visual Editor: netresearch/rte-ckeditor-image 13.10.5 declares its module in `importModules` as `{ module, exports }`, so its preset works in the Visual Editor without a patch; the known limit names the versions and presets that still need one (#264).
+
 ## 3.26.1 (2026-11-05)
 
 ### BUGFIX
