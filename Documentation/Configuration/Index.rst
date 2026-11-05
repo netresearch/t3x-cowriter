@@ -163,6 +163,10 @@ listed below. Every request goes to
 the same backend routes and is checked against the logged-in backend user's
 permissions, as in the form.
 
+The route URLs and labels the buttons need are added to a frontend page only
+while a backend user edits it and the Visual Editor has loaded the Cowriter
+module for an editable field. Pages seen by visitors do not contain them.
+
 Known limits:
 
 *   Visual Editor 1.10.4 cannot render a field whose preset lists a module in

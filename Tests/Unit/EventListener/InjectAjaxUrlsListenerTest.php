@@ -20,6 +20,9 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\UriInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
+use TYPO3\CMS\Core\Core\SystemEnvironmentBuilder;
+use TYPO3\CMS\Core\Http\ServerRequest;
 use TYPO3\CMS\Core\Http\Uri;
 use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Page\AssetCollector;
@@ -45,6 +48,99 @@ final class InjectAjaxUrlsListenerTest extends TestCase
         $this->backendUriBuilderMock = $this->createMock(BackendUriBuilder::class);
         $this->loggerMock            = $this->createMock(LoggerInterface::class);
         $this->subject               = new InjectAjaxUrlsListener($this->backendUriBuilderMock, $this->loggerMock);
+    }
+
+    protected function tearDown(): void
+    {
+        unset($GLOBALS['TYPO3_REQUEST'], $GLOBALS['BE_USER']);
+        parent::tearDown();
+    }
+
+    private function useRequest(int $applicationType): void
+    {
+        $GLOBALS['TYPO3_REQUEST'] = (new ServerRequest('https://example.com/'))
+            ->withAttribute('applicationType', $applicationType);
+    }
+
+    private function loginBackendUser(): void
+    {
+        $GLOBALS['BE_USER'] = $this->createStub(BackendUserAuthentication::class);
+    }
+
+    /**
+     * Runs the listener for the inline pass on a real AssetCollector.
+     */
+    private function injectInto(AssetCollector $assetCollector): AssetCollector
+    {
+        $this->backendUriBuilderMock
+            ->method('buildUriFromRoute')
+            ->willReturnCallback(fn (string $route): Uri => new Uri('/typo3/ajax/' . $route . '?token=dummyToken'));
+
+        ($this->subject)(new BeforeJavaScriptsRenderingEvent(assetCollector: $assetCollector, isInline: true, priority: true));
+
+        return $assetCollector;
+    }
+
+    private function assertNothingInjected(AssetCollector $assetCollector): void
+    {
+        $this->assertFalse($assetCollector->hasInlineJavaScript('cowriter-ajax-urls-data'));
+        $this->assertFalse($assetCollector->hasInlineJavaScript('cowriter-labels-data'));
+        $this->assertFalse($assetCollector->hasJavaScript('cowriter-url-loader'));
+    }
+
+    private function assertInjected(AssetCollector $assetCollector): void
+    {
+        $this->assertTrue($assetCollector->hasInlineJavaScript('cowriter-ajax-urls-data'));
+        $this->assertTrue($assetCollector->hasInlineJavaScript('cowriter-labels-data'));
+        $this->assertTrue($assetCollector->hasJavaScript('cowriter-url-loader'));
+    }
+
+    #[Test]
+    public function frontendPageForAnonymousVisitorGetsNoCowriterData(): void
+    {
+        $this->useRequest(SystemEnvironmentBuilder::REQUESTTYPE_FE);
+
+        $this->assertNothingInjected($this->injectInto(new AssetCollector()));
+    }
+
+    #[Test]
+    public function frontendPageWithoutCowriterEditorGetsNoDataEvenForBackendUser(): void
+    {
+        $this->useRequest(SystemEnvironmentBuilder::REQUESTTYPE_FE);
+        $this->loginBackendUser();
+
+        $this->assertNothingInjected($this->injectInto(new AssetCollector()));
+    }
+
+    #[Test]
+    public function frontendPageWithCowriterEditorGetsNoDataWithoutBackendUser(): void
+    {
+        $this->useRequest(SystemEnvironmentBuilder::REQUESTTYPE_FE);
+        $assetCollector = (new AssetCollector())->addJavaScriptModule(InjectAjaxUrlsListener::CKEDITOR_MODULE);
+
+        $this->assertNothingInjected($this->injectInto($assetCollector));
+    }
+
+    #[Test]
+    public function frontendEditorWithCowriterGetsTheData(): void
+    {
+        // The Visual Editor registers every importModules entry of the preset
+        // of an editable rich-text field with the AssetCollector.
+        $this->useRequest(SystemEnvironmentBuilder::REQUESTTYPE_FE);
+        $this->loginBackendUser();
+        $assetCollector = (new AssetCollector())->addJavaScriptModule(InjectAjaxUrlsListener::CKEDITOR_MODULE);
+
+        $this->assertInjected($this->injectInto($assetCollector));
+    }
+
+    #[Test]
+    public function backendPageGetsTheDataWithoutAFrontendModule(): void
+    {
+        // FormEngine loads the RTE modules itself, not through the AssetCollector.
+        $this->useRequest(SystemEnvironmentBuilder::REQUESTTYPE_BE);
+        $this->loginBackendUser();
+
+        $this->assertInjected($this->injectInto(new AssetCollector()));
     }
 
     #[Test]

@@ -46,7 +46,7 @@ Dependency injection is configured in `../Configuration/Services.yaml`; new serv
 | Domain/DTO/TranslationRequest.php | Translation request DTO |
 | Domain/DTO/UsageData.php | Token usage statistics |
 | Domain/DTO/VisionRequest.php | Vision/alt-text request DTO |
-| EventListener/InjectAjaxUrlsListener.php | AJAX URL injection for frontend |
+| EventListener/InjectAjaxUrlsListener.php | AJAX route URLs and plugin labels as JSON data elements; backend pages, and frontend pages only for a backend user whose editing host (Visual Editor) loads the Cowriter module |
 | EventListener/RegisterFieldSuggestionControlsListener.php | Adds the suggestion field control to configured TCA fields |
 | EventListener/InlineSuggestionEditorListener.php | Inline suggestion settings for the plugin (`cowriter.inlineSuggestions`); removes the toggle while `inlineSuggestions.enable` is off |
 | EventListener/InjectTranslationLanguagesListener.php | Site languages and their formality for the RTE translate menu (`SiteTranslationLanguages`) |
