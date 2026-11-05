@@ -24,10 +24,12 @@ use TYPO3\CMS\Core\Versioning\VersionState;
  *
  * Holds no permission logic: the caller ({@see RecordContextReader},
  * {@see \Netresearch\T3Cowriter\Service\ContextAssemblyService}) decides
- * what the current user may see. Every query carries a WorkspaceRestriction,
- * so draft rows of other workspaces and version rows (t3ver_oid > 0) are never
- * selected, except the move pointers of the user's own workspace, which
- * findVisibleContent() lists under the live uid. The rows found are overlaid
+ * what the current user may see. Every query that reads a record carries a
+ * WorkspaceRestriction, so draft rows of other workspaces and version rows
+ * (t3ver_oid > 0) are never read, except the move pointers of the user's own
+ * workspace, which findVisibleContent() lists under the live uid. The one
+ * query without it only maps a version uid of the user's own workspace to
+ * its live uid (liveUidOfVersion()). The rows found are overlaid
  * with the version of the user's own workspace, the way FormEngine shows them
  * to the editor.
  */

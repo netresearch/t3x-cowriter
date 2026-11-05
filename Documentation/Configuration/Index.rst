@@ -171,12 +171,6 @@ Known limits:
     ``netresearch/rte-ckeditor-image`` does that. The field then shows an
     error in the preview. Until the Visual Editor accepts both forms, a
     Composer patch to its ``TextViewHelper`` is needed.
-*   In a workspace, the Visual Editor names the workspace version of a
-    record that has one. The Cowriter does not find that version when it
-    reads the record. For such a record it uses the default LLM
-    configuration, the content scopes beyond the editor text add nothing,
-    and inline suggestions and alt texts get no record language. Records
-    created in the workspace are not affected.
 *   For a rich-text field of a page record, the translate menu takes the
     languages of the parent page's site; on a site's root page it shows the
     fixed list.
