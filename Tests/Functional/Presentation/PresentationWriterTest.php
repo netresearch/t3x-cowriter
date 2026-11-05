@@ -307,6 +307,26 @@ final class PresentationWriterTest extends FunctionalTestCase
         $this->reader()->read(12, $this->editor(1));
     }
 
+    /**
+     * A version uid is read as its record elsewhere, but a presentation hangs
+     * its translations, files and switch on the live uid; an element with a
+     * version in the workspace gets none (documented limit).
+     */
+    #[Test]
+    public function aVersionUidIsRefused(): void
+    {
+        $this->getConnectionPool()->getConnectionForTable('tt_content')->insert('tt_content', [
+            'uid'       => 90, 'pid' => 2, 'header' => 'Office chairs', 'CType' => 'text', 'colPos' => 1,
+            't3ver_oid' => 10, 't3ver_wsid' => 1, 't3ver_state' => 0,
+        ]);
+        $editor = $this->editor(1, 1);
+        self::assertSame(10, $this->reader()->read(10, $editor)->uid, 'positive control: the live uid is served');
+
+        $this->expectExceptionObject(PresentationException::notAvailable());
+
+        $this->reader()->read(90, $editor);
+    }
+
     #[Test]
     public function anUnknownElementIsRefused(): void
     {

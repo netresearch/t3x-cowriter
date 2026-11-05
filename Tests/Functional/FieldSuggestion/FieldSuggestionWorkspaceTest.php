@@ -142,13 +142,36 @@ final class FieldSuggestionWorkspaceTest extends FunctionalTestCase
         self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
     }
 
+    /**
+     * The visual editor names a record by its version row in the user's
+     * workspace: it is read as its live record, as that workspace shows it.
+     */
     #[Test]
-    public function versionRowOfTheOwnWorkspaceCannotBeAddressedDirectly(): void
+    public function versionRowOfTheOwnWorkspaceIsReadAsItsRecord(): void
     {
         $response = $this->suggestAs(1, 31);
 
-        self::assertSame(403, $response->getStatusCode());
-        self::assertSame([], $this->completion->completeStructuredForConfigurationCalls);
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $prompt = $this->prompt();
+        self::assertStringContainsString('Page title: Office chairs (draft)', $prompt);
+        self::assertStringContainsString('Stored value of the field: Draft description in my workspace', $prompt);
+        foreach (self::OTHER_WORKSPACE_TEXT as $draft) {
+            self::assertStringNotContainsString($draft, $prompt);
+        }
+    }
+
+    /**
+     * be_users has no workspace versions and no t3ver_* columns. SQLite reads
+     * an unknown quoted column as a string, so only MariaDB, MySQL and
+     * PostgreSQL fail a query that names them.
+     */
+    #[Test]
+    public function aTableWithoutWorkspaceVersionsIsReadInAWorkspace(): void
+    {
+        $row = (new RecordFinder(GeneralUtility::makeInstance(ConnectionPool::class)))->findRecord('be_users', 1, 1);
+
+        self::assertIsArray($row);
+        self::assertSame('admin', $row['username']);
     }
 
     #[Test]

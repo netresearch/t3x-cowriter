@@ -80,6 +80,15 @@ final class Tca
         return is_string($field) && $field !== '' ? $field : null;
     }
 
+    /**
+     * Whether the table keeps workspace versions (ctrl.versioningWS): only
+     * then it has the t3ver_* columns.
+     */
+    public static function isWorkspaceAware(string $table): bool
+    {
+        return (bool) (self::section($table, 'ctrl')['versioningWS'] ?? false);
+    }
+
     public static function transOrigPointerField(string $table): ?string
     {
         $field = self::section($table, 'ctrl')['transOrigPointerField'] ?? null;

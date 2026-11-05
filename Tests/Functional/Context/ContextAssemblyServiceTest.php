@@ -121,6 +121,39 @@ final class ContextAssemblyServiceTest extends FunctionalTestCase
         }
     }
 
+    /**
+     * The visual editor names an element by its version in the user's
+     * workspace: it is the current element under its live uid, with the
+     * workspace's text.
+     */
+    #[Test]
+    public function aVersionUidOfTheOwnWorkspaceIsTheCurrentElement(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/../FieldSuggestion/Fixtures/workspaces.csv');
+
+        $context = $this->contextAs(1, 21, 'page', 1);
+
+        self::assertStringContainsString('=== Current content element (tt_content #11) ===', $context);
+        self::assertStringContainsString('Draft warranty in my workspace', $context);
+        self::assertStringNotContainsString('SECRET-OTHER-WS-HEADER', $this->contextAs(1, 20, 'element', 1));
+    }
+
+    /**
+     * A record moved in the user's workspace, named by its move version, is
+     * read under its live uid at its new place.
+     */
+    #[Test]
+    public function aMoveVersionUidIsReadAsItsRecord(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/workspace_move.csv');
+
+        $row = (new RecordFinder(GeneralUtility::makeInstance(ConnectionPool::class)))->findRecord('pages', 33, 1);
+
+        self::assertIsArray($row);
+        self::assertSame(3, (int) $row['uid']);
+        self::assertSame(1, (int) $row['pid']);
+    }
+
     #[Test]
     public function liveUserFollowsTheLivePageTreeToTheParent(): void
     {

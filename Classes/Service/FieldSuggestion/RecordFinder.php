@@ -24,10 +24,12 @@ use TYPO3\CMS\Core\Versioning\VersionState;
  *
  * Holds no permission logic: the caller ({@see RecordContextReader},
  * {@see \Netresearch\T3Cowriter\Service\ContextAssemblyService}) decides
- * what the current user may see. Every query carries a WorkspaceRestriction,
- * so draft rows of other workspaces and version rows (t3ver_oid > 0) are never
- * selected, except the move pointers of the user's own workspace, which
- * findVisibleContent() lists under the live uid. The rows found are overlaid
+ * what the current user may see. Every query that reads a record carries a
+ * WorkspaceRestriction, so draft rows of other workspaces and version rows
+ * (t3ver_oid > 0) are never read, except the move pointers of the user's own
+ * workspace, which findVisibleContent() lists under the live uid. The one
+ * query without it only maps a version uid of the user's own workspace to
+ * its live uid (liveUidOfVersion()). The rows found are overlaid
  * with the version of the user's own workspace, the way FormEngine shows them
  * to the editor.
  */
@@ -50,12 +52,70 @@ class RecordFinder
     /**
      * The row of a live record or of a record new in $workspaceId, with that
      * workspace's version laid over it. Hidden and time-restricted records are
-     * included: an editor edits those too. A uid naming a version row, a record
-     * of another workspace, or a record deleted in $workspaceId gives null.
+     * included: an editor edits those too. A uid naming a version row of
+     * $workspaceId itself — the visual editor sends those — is read as its
+     * live record, overlaid the same way. A uid naming a version row of
+     * another workspace, a record of another workspace, or a record deleted
+     * in $workspaceId gives null.
      *
      * @return array<string, mixed>|null
      */
     public function findRecord(string $table, int $uid, int $workspaceId): ?array
+    {
+        if ($workspaceId > 0) {
+            $liveUid = $this->liveUidOfVersion($table, $uid, $workspaceId);
+            if ($liveUid > 0) {
+                $uid = $liveUid;
+            }
+        }
+
+        return $this->findLiveOrNewRecord($table, $uid, $workspaceId);
+    }
+
+    /**
+     * The uid a record is read under: the live uid where `$uid` names a
+     * version row of `$workspaceId`, `$uid` otherwise — so a caller that
+     * marks or compares "the requested record" compares the uid of the row
+     * {@see self::findRecord()} returns.
+     */
+    public function recordUid(string $table, int $uid, int $workspaceId): int
+    {
+        $liveUid = $workspaceId > 0 ? $this->liveUidOfVersion($table, $uid, $workspaceId) : 0;
+
+        return $liveUid > 0 ? $liveUid : $uid;
+    }
+
+    /**
+     * The live record a version row of $workspaceId belongs to — a changed
+     * or a moved one — or 0. A table without workspace versions has none.
+     */
+    private function liveUidOfVersion(string $table, int $uid, int $workspaceId): int
+    {
+        if (!Tca::isWorkspaceAware($table)) {
+            return 0;
+        }
+
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable($table);
+        $queryBuilder->getRestrictions()->removeAll()->add(new DeletedRestriction());
+
+        $original = $queryBuilder
+            ->select('t3ver_oid')
+            ->from($table)
+            ->where(
+                $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT)),
+                $queryBuilder->expr()->eq('t3ver_wsid', $queryBuilder->createNamedParameter($workspaceId, Connection::PARAM_INT)),
+                $queryBuilder->expr()->gt('t3ver_oid', $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)),
+            )
+            ->executeQuery()
+            ->fetchOne();
+
+        return $this->intValue($original);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findLiveOrNewRecord(string $table, int $uid, int $workspaceId): ?array
     {
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()

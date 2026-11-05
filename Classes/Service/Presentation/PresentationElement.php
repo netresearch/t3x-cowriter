@@ -18,7 +18,7 @@ namespace Netresearch\T3Cowriter\Service\Presentation;
 final readonly class PresentationElement
 {
     /**
-     * @param int                        $uid                  the live uid (FormEngine's uid in a workspace too)
+     * @param int                        $uid                  always the live uid; the reader refuses a version uid
      * @param list<Layout>               $layouts              never empty
      * @param string                     $bodytext             the stored rich text
      * @param array<string, scalar|null> $copiedFields         fields the new element takes over: access

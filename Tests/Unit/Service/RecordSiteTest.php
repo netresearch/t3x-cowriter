@@ -27,6 +27,16 @@ final class RecordSiteTest extends TestCase
         self::assertSame('shop', $this->subject()->identifierFor(['table' => 'pages', 'uid' => 10, 'field' => 'title']));
     }
 
+    /**
+     * The visual editor names the site root by its version in the user's
+     * workspace: the site is looked up for the record the finder read.
+     */
+    #[Test]
+    public function aVersionUidOfTheSiteRootBelongsToItsSite(): void
+    {
+        self::assertSame('shop', $this->subject()->identifierFor(['table' => 'pages', 'uid' => 33], 1));
+    }
+
     #[Test]
     public function aContentElementBelongsToTheSiteOfItsPage(): void
     {
@@ -59,6 +69,8 @@ final class RecordSiteTest extends TestCase
             'tt_content:5' => ['uid' => 5, 'pid' => 10],
             'tt_content:6' => ['uid' => 6, 'pid' => 99],
             'tt_content:7' => ['uid' => 7, 'pid' => 0],
+            // A workspace version uid of the site root, read as its record.
+            'pages:33' => ['uid' => 10, 'pid' => 0, '_ORIG_uid' => 33],
         ];
         $finder = $this->createStub(RecordFinder::class);
         $finder->method('findRecord')->willReturnCallback(

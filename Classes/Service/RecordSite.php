@@ -44,7 +44,7 @@ final readonly class RecordSite
             return null;
         }
 
-        $page = $record['table'] === 'pages' ? $this->defaultLanguagePage($record['uid'], $row) : $this->intValue($row['pid'] ?? 0);
+        $page = $record['table'] === 'pages' ? $this->defaultLanguagePage($this->intValue($row['uid'] ?? 0), $row) : $this->intValue($row['pid'] ?? 0);
         if ($page <= 0) {
             return null;
         }
