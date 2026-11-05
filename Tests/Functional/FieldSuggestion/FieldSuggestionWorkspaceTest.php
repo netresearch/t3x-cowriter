@@ -160,6 +160,20 @@ final class FieldSuggestionWorkspaceTest extends FunctionalTestCase
         }
     }
 
+    /**
+     * be_users has no workspace versions and no t3ver_* columns. SQLite reads
+     * an unknown quoted column as a string, so only MariaDB, MySQL and
+     * PostgreSQL fail a query that names them.
+     */
+    #[Test]
+    public function aTableWithoutWorkspaceVersionsIsReadInAWorkspace(): void
+    {
+        $row = (new RecordFinder(GeneralUtility::makeInstance(ConnectionPool::class)))->findRecord('be_users', 1, 1);
+
+        self::assertIsArray($row);
+        self::assertSame('admin', $row['username']);
+    }
+
     #[Test]
     public function recordNewInAnotherWorkspaceCannotBeAddressed(): void
     {

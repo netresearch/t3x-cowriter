@@ -85,10 +85,14 @@ class RecordFinder
 
     /**
      * The live record a version row of $workspaceId belongs to — a changed
-     * or a moved one — or 0.
+     * or a moved one — or 0. A table without workspace versions has none.
      */
     private function liveUidOfVersion(string $table, int $uid, int $workspaceId): int
     {
+        if (!Tca::isWorkspaceAware($table)) {
+            return 0;
+        }
+
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()->removeAll();
 
