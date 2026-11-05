@@ -346,7 +346,7 @@ export class Cowriter extends Plugin {
      * first and the last block of the result, when they are such a paragraph,
      * take the element and attributes of the first and the last block the
      * selection lies in. A result block with an element or attributes of its
-     * own is inserted as it is.
+     * own is inserted as it is, and so is every result at a cursor.
      *
      * @param {string} html sanitised HTML
      * @param {object|null} [range] the range to replace; without one, the selection
@@ -361,7 +361,8 @@ export class Cowriter extends Plugin {
             if (range && !range.isCollapsed) {
                 writer.setSelection(range);
             }
-            if (fragment.childCount > 0) {
+            // At a cursor nothing is replaced: the result goes in as it is.
+            if (fragment.childCount > 0 && !model.document.selection.isCollapsed) {
                 const blocks = Array.from(model.document.selection.getSelectedBlocks());
                 if (blocks.length > 0) {
                     const last = fragment.getChild(fragment.childCount - 1);

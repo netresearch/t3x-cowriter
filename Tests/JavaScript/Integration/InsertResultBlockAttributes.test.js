@@ -206,6 +206,28 @@ describe.skipIf(!available)('a Cowriter result in place of a selection in TYPO3\
             expect(editor.getData()).toBe('<h3>A new heading</h3><p>Next paragraph.</p>');
         });
 
+        it.each([
+            ['a heading', '<h2>Title </h2>'],
+            ['a Lead paragraph', '<p class="lead">Title </p>'],
+        ])('inserts a multi-paragraph result at a cursor at the end of %s as plain insertContent() does', async (_, data) => {
+            const result = '<p>one</p><p>two</p>';
+            const atCursor = async (insert) => {
+                const editor = await createEditor(data);
+                const model = editor.model;
+                model.change((writer) => writer.setSelection(model.document.getRoot().getChild(0), 'end'));
+                insert(editor, model.document.selection.getFirstRange());
+                return editor.getData();
+            };
+
+            // A cursor has no selected text to replace; nothing to keep.
+            const plain = await atCursor((editor) => editor.model.change(() => editor.model.insertContent(
+                editor.data.toModel(editor.data.processor.toView(result)),
+            )));
+            const viaCowriter = await atCursor((editor, cursor) => editor.plugins.get('cowriter')._insertResult(result, cursor));
+
+            expect(viaCowriter).toBe(plain);
+        });
+
         it('keeps the classes of a result paragraph that has its own', async () => {
             const editor = await createEditor(LEAD);
             selectTextOf(editor, 0);
