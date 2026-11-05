@@ -7,6 +7,8 @@
 ### BUGFIX
 
 - In a workspace, a record the Visual Editor or the backend form names by the uid of its workspace version is read as that record: it gets its site's LLM configuration, the wider context scopes and its record language for inline suggestions and alternative texts, instead of the defaults. A version of another workspace stays unreachable (#260).
+- Public frontend pages no longer get the Cowriter's backend route paths, labels and `UrlLoader.js`; a page edited by a backend user in the Visual Editor still gets them (#261).
+- A result that replaces a fully selected block keeps the block's element and attributes: a "Lead" paragraph stays `<p class="lead">`, a heading stays a heading (#262).
 
 ### DOCS
 
