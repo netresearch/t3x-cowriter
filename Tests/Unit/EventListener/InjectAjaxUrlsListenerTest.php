@@ -134,6 +134,15 @@ final class InjectAjaxUrlsListenerTest extends TestCase
     }
 
     #[Test]
+    public function requestWithoutApplicationTypeIsTreatedAsBackend(): void
+    {
+        // ApplicationType::fromRequest() throws for a request without the attribute.
+        $GLOBALS['TYPO3_REQUEST'] = new ServerRequest('https://example.com/');
+
+        $this->assertInjected($this->injectInto(new AssetCollector()));
+    }
+
+    #[Test]
     public function backendPageGetsTheDataWithoutAFrontendModule(): void
     {
         // FormEngine loads the RTE modules itself, not through the AssetCollector.
