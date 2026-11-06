@@ -83,6 +83,9 @@
             <trans-unit id="surface.presentation" resname="surface.presentation">
                 <source>Text elements: present as tabs or accordion</source>
             </trans-unit>
+            <trans-unit id="surface.variant" resname="surface.variant">
+                <source>Text elements: create an audience variant</source>
+            </trans-unit>
             <trans-unit id="readiness.title" resname="readiness.title">
                 <source>Readiness</source>
             </trans-unit>
@@ -145,6 +148,9 @@
             </trans-unit>
             <trans-unit id="readiness.action.presentation" resname="readiness.action.presentation">
                 <source>Tabs or accordion</source>
+            </trans-unit>
+            <trans-unit id="readiness.action.variant" resname="readiness.action.variant">
+                <source>Audience variant</source>
             </trans-unit>
             <trans-unit id="readiness.state.ready" resname="readiness.state.ready">
                 <source>Ready</source>
@@ -220,6 +226,9 @@
             </trans-unit>
             <trans-unit id="readiness.reason.bootstrapPackageMissing" resname="readiness.reason.bootstrapPackageMissing">
                 <source>The tab and accordion elements of bootstrap_package are not available.</source>
+            </trans-unit>
+            <trans-unit id="readiness.reason.noAudienceSnippets" resname="readiness.reason.noAudienceSnippets">
+                <source>No active nr-llm prompt snippet is tagged &quot;audience&quot;.</source>
             </trans-unit>
             <trans-unit id="readiness.reason.pickableReady" resname="readiness.reason.pickableReady">
                 <source>You cannot use the default configuration. Choose %s in the dialog.</source>
@@ -370,6 +379,9 @@
             </trans-unit>
             <trans-unit id="usage.operation.alternativePresentation" resname="usage.operation.alternativePresentation">
                 <source>Tabs or accordion</source>
+            </trans-unit>
+            <trans-unit id="usage.operation.audienceVariant" resname="usage.operation.audienceVariant">
+                <source>Audience variant</source>
             </trans-unit>
             <trans-unit id="usage.operation.task" resname="usage.operation.task">
                 <source>Task “%s”</source>

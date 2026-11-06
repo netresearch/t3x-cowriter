@@ -14,6 +14,7 @@ use Netresearch\T3Cowriter\Service\Image\ImageGenerationConfiguration;
 use Netresearch\T3Cowriter\Service\InlineSuggestion\InlineSuggestionConfiguration;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationAccess;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
+use Netresearch\T3Cowriter\Service\Variant\VariantConfiguration;
 
 /**
  * Where an editor finds the cowriter, each with the setting that decides
@@ -37,6 +38,7 @@ final readonly class EditorSurfaces
         private InlineSuggestionConfiguration $inlineSuggestionConfiguration,
         private FieldSuggestionConfiguration $fieldSuggestionConfiguration,
         private PresentationConfiguration $presentationConfiguration,
+        private VariantConfiguration $variantConfiguration,
     ) {}
 
     /**
@@ -64,6 +66,7 @@ final readonly class EditorSurfaces
                 $this->presentationConfiguration->isEnabled() && PresentationAccess::layoutsInTca() !== [],
                 'presentation.enable',
             ),
+            new EditorSurface('variant', $this->variantConfiguration->isEnabled(), 'variant.enable'),
         ];
     }
 }

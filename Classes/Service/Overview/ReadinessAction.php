@@ -40,4 +40,7 @@ enum ReadinessAction: string
 
     /** Tabs or accordion: presentation.enable, bootstrap_package, ConfigurationSelector's default path. */
     case Presentation = 'presentation';
+
+    /** Audience variant: variant.enable, an active audience snippet, ConfigurationSelector's default path. */
+    case Variant = 'variant';
 }

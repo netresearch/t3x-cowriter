@@ -47,6 +47,16 @@ final class Tca
         return self::section($table, 'columns', $tca);
     }
 
+    /**
+     * @param array<array-key, mixed>|null $tca defaults to $GLOBALS['TCA']
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function ctrl(string $table, ?array $tca = null): array
+    {
+        return self::section($table, 'ctrl', $tca);
+    }
+
     public static function labelField(string $table): ?string
     {
         $field = self::section($table, 'ctrl')['label'] ?? null;

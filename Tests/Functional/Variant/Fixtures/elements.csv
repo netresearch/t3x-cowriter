@@ -1,0 +1,42 @@
+"pages"
+,"uid","pid","title","slug","is_siteroot","doktype","perms_userid","perms_groupid","perms_user","perms_group","perms_everybody"
+,1,0,"Home","/",1,1,1,1,31,31,1
+,2,1,"Products","/products",0,1,1,1,31,31,31
+,3,1,"Read only","/read-only",0,1,1,1,31,1,1
+"tt_content"
+,"uid","pid","header","bodytext","CType","colPos","sys_language_uid","sorting","hidden","l18n_parent","tx_contexts_enable","tx_contexts_disable"
+,10,2,"Office chairs","<p>Our chairs fit every office.</p><p>Five years warranty.</p>","text",0,0,256,0,0,"",""
+,11,2,"Next element","<p>Comes after.</p>","text",0,0,512,0,0,"",""
+,12,2,"Desks","<p>For every office.</p>","text",0,0,768,0,0,"6","7"
+,13,2,"Lamps","<p>Bright.</p>","text",0,0,1024,0,0,"",""
+,14,2,"Lampen","<p>Hell.</p>","text",0,1,1024,0,13,"",""
+,16,2,"Free translation","<p>Frei.</p>","text",0,1,1536,0,0,"",""
+,17,2,"A header","","header",0,0,1792,0,0,"",""
+,18,3,"Elsewhere","<p>Read only.</p>","text",0,0,256,0,0,"",""
+,19,2,"Empty","","text",0,0,2048,0,0,"",""
+"tx_contexts_contexts"
+,"uid","pid","title","alias","type","type_conf","invert","use_session","disabled","hide_in_backend"
+,5,0,"Mobile channel","mobile","getparam","",0,0,0,0
+,6,0,"Campaign","campaign","getparam","",0,0,0,0
+,7,0,"Internal","internal","getparam","",0,0,0,1
+,8,0,"Retired","retired","getparam","",0,0,1,0
+"be_groups"
+,"uid","pid","title","tables_select","tables_modify","non_exclude_fields","explicit_allowdeny","allowed_languages","db_mountpoints","workspace_perms"
+,1,0,"Editors","pages,tt_content","pages,tt_content","tt_content:sys_language_uid,tt_content:colPos,tt_content:hidden,tt_content:tx_contexts_settings","tt_content:CType:text","","1",1
+,2,0,"Editors without contexts","pages,tt_content","pages,tt_content","tt_content:sys_language_uid,tt_content:colPos,tt_content:hidden","tt_content:CType:text","","1",1
+,3,0,"Editors without the hidden field","pages,tt_content","pages,tt_content","tt_content:sys_language_uid,tt_content:colPos,tt_content:tx_contexts_settings","tt_content:CType:text","","1",1
+"be_users"
+,"uid","pid","username","admin","usergroup","workspace_id"
+,1,0,"admin",1,"",0
+,2,0,"editor",0,"1",0
+,3,0,"nocontexts",0,"2",0
+,4,0,"nohidden",0,"3",0
+"sys_workspace"
+,"uid","pid","title","adminusers","members"
+,1,0,"Draft","be_users_2",""
+"tx_nrllm_promptsnippet"
+,"uid","pid","identifier","name","tags","snippet","is_active","hidden","deleted"
+,31,0,"students","Students","audience","Students on a small budget, informal.",1,0,0
+,32,0,"buyers","Procurement","audience","Professional buyers who compare offers.",1,0,0
+,33,0,"retired","Retired audience","audience","Not offered.",0,0,0
+,34,0,"friendly","Friendly","tone_of_voice","Warm and friendly.",1,0,0

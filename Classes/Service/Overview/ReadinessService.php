@@ -14,6 +14,7 @@ use Netresearch\NrLlm\Domain\Model\AdapterType;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Model;
 use Netresearch\NrLlm\Domain\Model\Provider;
+use Netresearch\NrLlm\Domain\Repository\PromptSnippetRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Service\ConfigurationResolver;
 use Netresearch\NrLlm\Service\Feature\TranslationServiceInterface;
@@ -28,6 +29,8 @@ use Netresearch\T3Cowriter\Service\Image\ImageGenerationConfiguration;
 use Netresearch\T3Cowriter\Service\InlineSuggestion\InlineSuggestionConfiguration;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationAccess;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
+use Netresearch\T3Cowriter\Service\Style\StyleInstructionBuilder;
+use Netresearch\T3Cowriter\Service\Variant\VariantConfiguration;
 use Throwable;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
@@ -73,6 +76,8 @@ final readonly class ReadinessService
         private PresentationConfiguration $presentationConfiguration,
         private SiteFinder $siteFinder,
         private TaskRepository $taskRepository,
+        private VariantConfiguration $variantConfiguration,
+        private PromptSnippetRepository $snippetRepository,
     ) {}
 
     /**
@@ -96,6 +101,7 @@ final readonly class ReadinessService
             ReadinessAction::InlineSuggestions => $this->inlineSuggestionsRow(),
             ReadinessAction::FieldSuggestions  => $this->fieldSuggestionsRow(),
             ReadinessAction::Presentation      => $this->presentationRow(),
+            ReadinessAction::Variant           => $this->variantRow(),
         };
     }
 
@@ -347,6 +353,20 @@ final readonly class ReadinessService
         }
 
         return $this->selectedRow(ReadinessAction::Presentation, $this->configurationSelector->trySelect(null));
+    }
+
+    private function variantRow(): ReadinessRow
+    {
+        if (!$this->variantConfiguration->isEnabled()) {
+            return new ReadinessRow(ReadinessAction::Variant, ReadinessState::Off, ReadinessReason::SwitchedOff);
+        }
+
+        // The same test that decides whether the control is rendered at all.
+        if ($this->snippetRepository->findActiveByTag(StyleInstructionBuilder::AUDIENCE_TAG) === []) {
+            return new ReadinessRow(ReadinessAction::Variant, ReadinessState::NotReady, ReadinessReason::NoAudienceSnippets);
+        }
+
+        return $this->selectedRow(ReadinessAction::Variant, $this->configurationSelector->trySelect(null));
     }
 
     /**

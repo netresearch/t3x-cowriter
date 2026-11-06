@@ -22,6 +22,8 @@ $EM_CONF[$_EXTKEY] = [
             'nr_llm'       => '0.43.9-0.43.99',
         ],
         'conflicts' => [],
-        'suggests'  => [],
+        'suggests'  => [
+            'contexts' => '5.0.4-5.99.99',
+        ],
     ],
 ];

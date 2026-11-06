@@ -47,6 +47,7 @@ enum ReadinessReason: string
     case TasksNotChecked           = 'tasksNotChecked';
     case TranslatorWithoutFallback = 'translatorWithoutFallback';
     case TranslatorFallbackUnknown = 'translatorFallbackUnknown';
+    case NoAudienceSnippets        = 'noAudienceSnippets';
 
     /**
      * The backend module whose records or settings fix this reason; null when
@@ -63,6 +64,7 @@ enum ReadinessReason: string
             self::ModelInactive, self::ModelLacksVision, self::ProviderMissing     => 'nrllm_models',
             self::ProviderInactive, self::ProviderKeyMissing, self::AdapterUnknown => 'nrllm_providers',
             self::SwitchedOff, self::NoSuggestionFields, self::ImageKeyMissing     => 'tools_toolssettings',
+            self::NoAudienceSnippets                                               => 'nrllm_snippets',
             default                                                                => null,
         };
     }

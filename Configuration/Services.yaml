@@ -92,6 +92,11 @@ services:
     arguments:
       $about: '@Netresearch\T3Cowriter\Service\Transparency\AboutBuilder'
 
+  Netresearch\T3Cowriter\Controller\VariantController:
+    public: true
+    arguments:
+      $about: '@Netresearch\T3Cowriter\Service\Transparency\AboutBuilder'
+
   Netresearch\T3Cowriter\Controller\Backend\OverviewController:
     public: true
 

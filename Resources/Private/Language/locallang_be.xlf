@@ -1118,6 +1118,153 @@
             <trans-unit id="ckeditor.image.done.model" resname="ckeditor.image.done.model">
                 <source>Generated with %s.</source>
             </trans-unit>
+            <trans-unit id="variant.button" resname="variant.button">
+                <source>Create an audience variant</source>
+            </trans-unit>
+            <trans-unit id="variant.heading" resname="variant.heading">
+                <source>Create an audience variant</source>
+            </trans-unit>
+            <trans-unit id="variant.audience" resname="variant.audience">
+                <source>Audience</source>
+            </trans-unit>
+            <trans-unit id="variant.tone" resname="variant.tone">
+                <source>Tone of voice</source>
+            </trans-unit>
+            <trans-unit id="variant.toneNone" resname="variant.toneNone">
+                <source>As in the text</source>
+            </trans-unit>
+            <trans-unit id="variant.propose" resname="variant.propose">
+                <source>Propose a variant</source>
+            </trans-unit>
+            <trans-unit id="variant.loading" resname="variant.loading">
+                <source>The language model rewrites the saved header and text for the audience…</source>
+            </trans-unit>
+            <trans-unit id="variant.proposed" resname="variant.proposed">
+                <source>The language model proposed this variant. Check the header and the text, then create the variant. You can still edit the text in the variant afterwards.</source>
+            </trans-unit>
+            <trans-unit id="variant.header" resname="variant.header">
+                <source>Header of the variant</source>
+            </trans-unit>
+            <trans-unit id="variant.bodytext" resname="variant.bodytext">
+                <source>Text of the variant (preview)</source>
+            </trans-unit>
+            <trans-unit id="variant.context" resname="variant.context">
+                <source>Show the variant in context</source>
+            </trans-unit>
+            <trans-unit id="variant.contextNone" resname="variant.contextNone">
+                <source>No context: keep the variant hidden</source>
+            </trans-unit>
+            <trans-unit id="variant.original" resname="variant.original">
+                <source>A copy of this element with the text above is created directly after it, hidden. This element stays unchanged.</source>
+            </trans-unit>
+            <trans-unit id="variant.create" resname="variant.create">
+                <source>Create variant</source>
+            </trans-unit>
+            <trans-unit id="variant.creating" resname="variant.creating">
+                <source>Creating the variant…</source>
+            </trans-unit>
+            <trans-unit id="variant.created" resname="variant.created">
+                <source>The variant was created directly after this element, hidden, and is assigned to the context "%s". Check it, then show it.</source>
+            </trans-unit>
+            <trans-unit id="variant.open" resname="variant.open">
+                <source>Open the variant</source>
+            </trans-unit>
+            <trans-unit id="variant.openPage" resname="variant.openPage">
+                <source>Open the page in the Layout module</source>
+            </trans-unit>
+            <trans-unit id="variant.cancel" resname="variant.cancel">
+                <source>Cancel</source>
+            </trans-unit>
+            <trans-unit id="variant.error" resname="variant.error">
+                <source>The variant could not be proposed.</source>
+            </trans-unit>
+            <trans-unit id="variant.retry" resname="variant.retry">
+                <source>Propose again</source>
+            </trans-unit>
+            <trans-unit id="variant.hideOriginal" resname="variant.hideOriginal">
+                <source>Hide this element in that context</source>
+            </trans-unit>
+            <trans-unit id="variant.show" resname="variant.show">
+                <source>Show the variant</source>
+            </trans-unit>
+            <trans-unit id="variant.showing" resname="variant.showing">
+                <source>Showing the variant…</source>
+            </trans-unit>
+            <trans-unit id="variant.shown" resname="variant.shown">
+                <source>The variant is visible in its context now, and this element is hidden there.</source>
+            </trans-unit>
+            <trans-unit id="variant.shownOriginalVisible" resname="variant.shownOriginalVisible">
+                <source>The variant is visible in its context now. This element stays visible there too.</source>
+            </trans-unit>
+            <trans-unit id="variant.createdWithoutContext" resname="variant.createdWithoutContext">
+                <source>The variant was created directly after this element and is hidden. It has no context of its own: it carries the context settings of this element. Give it a context on its "Contexts" tab before you show it, or both elements are shown together.</source>
+            </trans-unit>
+            <trans-unit id="variant.createdWithoutContexts" resname="variant.createdWithoutContexts">
+                <source>The variant was created directly after this element and is hidden. It is not assigned to any audience: this installation has no extension that shows an element only to some visitors (for example EXT:contexts). Showing it would show both elements to every visitor, so decide how to use it: replace this element with it, or keep it as a draft.</source>
+            </trans-unit>
+            <trans-unit id="variant.noContexts" resname="variant.noContexts">
+                <source>EXT:contexts is not installed: the variant is created hidden and without an audience assignment.</source>
+            </trans-unit>
+            <trans-unit id="variant.contextsNotInWorkspace" resname="variant.contextsNotInWorkspace">
+                <source>Contexts cannot be assigned in a workspace: EXT:contexts writes them to the live record. The variant is created hidden and without a context.</source>
+            </trans-unit>
+            <trans-unit id="variant.contextsNotAllowed" resname="variant.contextsNotAllowed">
+                <source>You may not assign contexts to content elements. The variant is created hidden and without a context.</source>
+            </trans-unit>
+            <trans-unit id="variant.contextsNone" resname="variant.contextsNone">
+                <source>There is no context to choose. The variant is created hidden and without a context.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.disabled" resname="variant.error.disabled">
+                <source>Audience variants are switched off.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.notAvailable" resname="variant.error.notAvailable">
+                <source>This element cannot get an audience variant, or you may not create one.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.translations" resname="variant.error.translations">
+                <source>This element has translations. A copy would take them over with the old text. Create the variant in each language instead.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.connectedTranslation" resname="variant.error.connectedTranslation">
+                <source>This element is a translation connected to the default language. Create the variant of the default-language element instead.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.noText" resname="variant.error.noText">
+                <source>This element has no saved text to rewrite. Save the element first.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.tooLong" resname="variant.error.tooLong">
+                <source>The saved text is too long for a variant.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.noAudience" resname="variant.error.noAudience">
+                <source>Choose an audience.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.noRewrite" resname="variant.error.noRewrite">
+                <source>The language model gave no usable variant. Try again.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.changed" resname="variant.error.changed">
+                <source>The saved text of this element changed since the proposal. Propose the variant again.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.contextNotAvailable" resname="variant.error.contextNotAvailable">
+                <source>This context cannot be assigned.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.createFailed" resname="variant.error.createFailed">
+                <source>The variant could not be created.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.createIncomplete" resname="variant.error.createIncomplete">
+                <source>The variant could not be created completely, and the copy could not be removed. Check the page in the Layout module.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.showFailed" resname="variant.error.showFailed">
+                <source>The variant could not be shown as intended. Check both elements and their contexts.</source>
+            </trans-unit>
+            <trans-unit id="about.feature.variant" resname="about.feature.variant">
+                <source>Audience variant</source>
+            </trans-unit>
+            <trans-unit id="about.source.elementText" resname="about.source.elementText">
+                <source>Text of this element</source>
+            </trans-unit>
+            <trans-unit id="about.source.audience" resname="about.source.audience">
+                <source>Description of the chosen audience and tone of voice</source>
+            </trans-unit>
+            <trans-unit id="about.limits.variant" resname="about.limits.variant">
+                <source>texts of up to %1$d characters</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

@@ -127,6 +127,7 @@ Tests/
 │                       # Image/: a generated image written through FAL as a backend user (mounts, read-only mount)
 │                       # Transparency/: page neighbourhood and page fields of the suggestion context (permissions, workspace, translations), the sources counted after the cap, "About this suggestion" links per user, the image context route
 │                       # Overview/: the overview module from the container on real nr-llm records and nr-llm's usage reader (other extension, other user, day before the period), readiness as the viewer, links per module access, rendering
+│                       # Variant/: audience variant copy through DataHandler with EXT:contexts (context columns, partial-map and integer traps, missing field right, workspace, translations), the routes end to end with real snippets, the control in FormEngine, a TYPO3 without contexts
 │                       # Presentation/: tab/accordion element written through DataHandler with bootstrap_package's TCA (live, workspace, language, access fields, images, translations, refusals), the switch to the new element, the proposal's warnings and introduction title, the control in FormEngine, a TYPO3 without bootstrap_package
 ├── Integration/
 │   ├── AbstractIntegrationTestCase.php
@@ -135,7 +136,7 @@ Tests/
 │   ├── AbstractE2ETestCase.php, CowriterWorkflowTest.php, NewFeatureWorkflowTest.php  # PHP E2E
 │   ├── *.spec.ts       # Playwright specs (toolbar, dialog, tasks, translate, vision, context zoom)
 │   └── fixtures/       # Playwright auth fixture
-├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, ImageDialog, HtmlSanitizer, UrlLoader, FieldSuggestions, FieldOverview, InlineSuggestions, AlternativePresentation, AboutSection (+ __mocks__/)
+├── JavaScript/         # Vitest: AIService, cowriter, CowriterDialog, ImageDialog, HtmlSanitizer, UrlLoader, FieldSuggestions, FieldOverview, InlineSuggestions, AlternativePresentation, AudienceVariant, AboutSection (+ __mocks__/)
 │   └── Integration/    # Vitest project "ckeditor": TYPO3's real CKEditor build + rte-ckeditor-image from .Build/vendor (skipped without composer install); generated image round trip, inline suggestions (ghost text never in getData(), Tab, undo)
 └── Support/            # TestQueryResult.php, TaskStubTrait.php, XliffFile.php (reads the language files)
 ```
