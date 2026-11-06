@@ -19,7 +19,6 @@ use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
-use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
 use Netresearch\T3Cowriter\Service\RateLimitResult;
 use Netresearch\T3Cowriter\Service\Style\StyleInstructionBuilder;
@@ -68,6 +67,7 @@ use TYPO3\CMS\Core\Http\JsonResponse;
  */
 final readonly class VariantController
 {
+    use ContentElementActionTrait;
     use RateLimitedControllerTrait;
 
     public function __construct(
@@ -91,25 +91,20 @@ final readonly class VariantController
 
     public function proposeAction(ServerRequestInterface $request): ResponseInterface
     {
-        $rateLimitResult = $this->rateLimiter->checkLimit((string) $this->userId());
-        if (!$rateLimitResult->allowed) {
-            return $this->rateLimitedResponse($rateLimitResult);
+        $admission = $this->admitModelRequest($request, $this->variantConfiguration->isEnabled(), 'variant.error.disabled');
+        if ($admission instanceof ResponseInterface) {
+            return $admission;
         }
 
-        $refusal = $this->refuseUnlessEnabled($rateLimitResult);
-        if ($refusal instanceof ResponseInterface) {
-            return $refusal;
-        }
-
-        $body = $this->parseJsonBody($request);
-        $dto  = VariantProposeRequest::fromArray($body ?? []);
-        if ($body === null || !$dto->isValid()) {
-            return $this->failure('Invalid request.', $rateLimitResult, 400);
+        [$rateLimitResult, $body] = $admission;
+        $dto                      = VariantProposeRequest::fromArray($body);
+        if (!$dto->isValid()) {
+            return $this->failure(self::INVALID_REQUEST, $rateLimitResult, 400);
         }
 
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if (!$backendUser instanceof BackendUserAuthentication) {
-            return $this->failure('No backend user session.', $rateLimitResult, 403);
+            return $this->failure(self::NO_BACKEND_USER, $rateLimitResult, 403);
         }
 
         try {
@@ -151,25 +146,20 @@ final readonly class VariantController
 
     public function createAction(ServerRequestInterface $request): ResponseInterface
     {
-        $rateLimitResult = $this->rateLimiter->checkLimit((string) $this->userId());
-        if (!$rateLimitResult->allowed) {
-            return $this->rateLimitedResponse($rateLimitResult);
+        $admission = $this->admitModelRequest($request, $this->variantConfiguration->isEnabled(), 'variant.error.disabled');
+        if ($admission instanceof ResponseInterface) {
+            return $admission;
         }
 
-        $refusal = $this->refuseUnlessEnabled($rateLimitResult);
-        if ($refusal instanceof ResponseInterface) {
-            return $refusal;
-        }
-
-        $body = $this->parseJsonBody($request);
-        $dto  = VariantCreateRequest::fromArray($body ?? []);
-        if ($body === null || !$dto->isValid()) {
-            return $this->failure('Invalid request.', $rateLimitResult, 400);
+        [$rateLimitResult, $body] = $admission;
+        $dto                      = VariantCreateRequest::fromArray($body);
+        if (!$dto->isValid()) {
+            return $this->failure(self::INVALID_REQUEST, $rateLimitResult, 400);
         }
 
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if (!$backendUser instanceof BackendUserAuthentication) {
-            return $this->failure('No backend user session.', $rateLimitResult, 403);
+            return $this->failure(self::NO_BACKEND_USER, $rateLimitResult, 403);
         }
 
         try {
@@ -189,7 +179,9 @@ final readonly class VariantController
             return $this->failure($this->labels->get($e->getLabelKey()), $rateLimitResult, $e->getHttpStatus());
         }
 
-        $pageUrl = $this->pageUrl($element->pageUid, $element->languageId, $uid);
+        $pageUrl  = $this->pageUrl($element->pageUid, $element->languageId, $uid);
+        $noteKey  = $this->contexts->isInstalled() ? 'variant.createdWithoutContext' : 'variant.createdWithoutContexts';
+        $withNote = $dto->context === 0;
 
         return $this->jsonResponseWithRateLimitHeaders(
             [
@@ -199,7 +191,7 @@ final readonly class VariantController
                 'context'      => $dto->context,
                 'contextTitle' => $dto->context > 0 ? (string) $this->contexts->title($dto->context) : '',
                 'showToken'    => $dto->context > 0 ? $this->showToken->issue($uid, $element->uid, $dto->context, $this->userId(), $backendUser->workspace) : '',
-                'note'         => $dto->context > 0 ? '' : $this->labels->get($this->contexts->isInstalled() ? 'variant.createdWithoutContext' : 'variant.createdWithoutContexts'),
+                'note'         => $withNote ? $this->labels->get($noteKey) : '',
                 'pageUrl'      => $pageUrl,
                 'editUrl'      => $this->editUrl($uid, $pageUrl),
             ],
@@ -222,12 +214,12 @@ final readonly class VariantController
         $body = $this->parseJsonBody($request);
         $dto  = VariantShowRequest::fromArray($body ?? []);
         if ($body === null || !$dto->isValid()) {
-            return new JsonResponse(['success' => false, 'error' => 'Invalid request.'], 400);
+            return new JsonResponse(['success' => false, 'error' => self::INVALID_REQUEST], 400);
         }
 
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if (!$backendUser instanceof BackendUserAuthentication) {
-            return new JsonResponse(['success' => false, 'error' => 'No backend user session.'], 403);
+            return new JsonResponse(['success' => false, 'error' => self::NO_BACKEND_USER], 403);
         }
 
         try {
@@ -298,7 +290,7 @@ final readonly class VariantController
             // Provider messages can carry request details: log them, never return them.
             $this->logger->error('Audience variant: the rewrite failed', ['exception' => $e->getMessage()]);
 
-            return $this->failure($this->errorMessage($e), $rateLimitResult, 502);
+            return $this->failure($this->modelErrorMessage($e, 'variant.error.noRewrite'), $rateLimitResult, 502);
         }
 
         if ($proposal->isEmpty()) {
@@ -329,73 +321,5 @@ final readonly class VariantController
         }
 
         return $this->contexts->available() === [] ? $this->labels->get('variant.contextsNone') : '';
-    }
-
-    private function refuseUnlessEnabled(RateLimitResult $rateLimitResult): ?ResponseInterface
-    {
-        return $this->variantConfiguration->isEnabled()
-            ? null
-            : $this->failure($this->labels->get('variant.error.disabled'), $rateLimitResult, 403);
-    }
-
-    private function failure(string $message, RateLimitResult $rateLimitResult, int $status): ResponseInterface
-    {
-        return $this->jsonResponseWithRateLimitHeaders(['success' => false, 'error' => $message], $rateLimitResult, $status);
-    }
-
-    /**
-     * The edit form of the variant; closing it leads to $returnUrl.
-     */
-    private function editUrl(int $uid, string $returnUrl): string
-    {
-        $parameters = ['edit' => ['tt_content' => [$uid => 'edit']]];
-        if ($returnUrl !== '') {
-            $parameters['returnUrl'] = $returnUrl;
-        }
-
-        try {
-            return (string) $this->uriBuilder->buildUriFromRoute('record_edit', $parameters);
-        } catch (Throwable) {
-            return '';
-        }
-    }
-
-    /**
-     * The Page module for the element's page and language, at the variant
-     * (see PresentationController::pageUrl()).
-     */
-    private function pageUrl(int $pageUid, int $languageId, int $uid): string
-    {
-        try {
-            $url = (string) $this->uriBuilder->buildUriFromRoute(
-                'web_layout',
-                ['id' => $pageUid, 'language' => $languageId, 'languages' => [$languageId]],
-            );
-        } catch (Throwable) {
-            return '';
-        }
-
-        return $url . '#element-tt_content-' . $uid;
-    }
-
-    /**
-     * The editor-facing message for a failed model call.
-     */
-    private function errorMessage(Throwable $exception): string
-    {
-        return match ($this->errorClassifier->classify($exception)) {
-            LlmErrorKind::Configuration    => $this->labels->get('error.checkSetupStatus', $this->labels->get('error.notConfigured')),
-            LlmErrorKind::Authentication   => $this->labels->get('error.providerAuthentication'),
-            LlmErrorKind::RateLimit        => $this->labels->get('error.providerRateLimit'),
-            LlmErrorKind::GuardrailRefusal => LlmErrorClassifier::guardrailReason($exception) ?? $this->labels->get('variant.error.noRewrite'),
-            LlmErrorKind::Unknown          => $this->labels->get('variant.error.noRewrite'),
-        };
-    }
-
-    private function userId(): int
-    {
-        $userId = $this->context->getPropertyFromAspect('backend.user', 'id', 0);
-
-        return is_numeric($userId) ? (int) $userId : 0;
     }
 }

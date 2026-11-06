@@ -27,5 +27,6 @@ return [
         '@netresearch/t3_cowriter/ImageFileControl'        => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/ImageFileControl.js',
         '@netresearch/t3_cowriter/AlternativePresentation' => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/AlternativePresentation.js',
         '@netresearch/t3_cowriter/AudienceVariant'         => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/AudienceVariant.js',
+        '@netresearch/t3_cowriter/FieldControlPanel'       => 'EXT:t3_cowriter/Resources/Public/JavaScript/FormEngine/FieldControlPanel.js',
     ],
 ];

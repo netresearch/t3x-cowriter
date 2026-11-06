@@ -19,7 +19,7 @@ t3_cowriter integrates AI assistance into the TYPO3 CKEditor 5 RTE. The frontend
 | URL loader | `Resources/Public/JavaScript/Ckeditor/UrlLoader.js` | CSP-compliant AJAX URL injection |
 | Field suggestions (JS) | `Resources/Public/JavaScript/FormEngine/FieldSuggestions.js` | FormEngine field control: suggestion list, pick fills the field |
 | Alternative presentation (JS) | `Resources/Public/JavaScript/FormEngine/AlternativePresentation.js` | FormEngine field control on the rich text of a text element: proposal with editable section titles, layout choice, creation |
-| Audience variant (JS) | `Resources/Public/JavaScript/FormEngine/AudienceVariant.js` | FormEngine field control on the rich text of a text element: audience and tone choice, proposal with editable header and sanitised text preview, context choice, creation, show step |
+| Audience variant (JS) | `Resources/Public/JavaScript/FormEngine/AudienceVariant.js` | FormEngine field control on the rich text of a text element (shares `FieldControlPanel.js` with the presentation control): audience and tone choice, proposal with editable header and sanitised text preview, context choice, creation, show step |
 | AJAX routes | `Configuration/Backend/AjaxRoutes.php` | 29 route definitions (see table below) |
 | Main controller | `Classes/Controller/AjaxController.php` | Chat, complete, stream (SSE), configurations, style options, tasks, task execution (plain and SSE), context, page search |
 | Vision controller | `Classes/Controller/VisionController.php`, `Classes/Service/Vision/` | Image analysis / alt-text generation; the instruction from `altText.prompt` plus the edited record's language, resolved server-side with read checks (`RecordLanguageResolver`) |

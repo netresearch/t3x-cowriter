@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\EventListener;
 
+use Netresearch\T3Cowriter\EventListener\BodytextFieldControl;
 use Netresearch\T3Cowriter\EventListener\RegisterPresentationControlListener;
 use Netresearch\T3Cowriter\Service\Presentation\Layout;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationAccess;
@@ -18,6 +19,7 @@ use PHPUnit\Framework\TestCase;
 use TYPO3\CMS\Core\Configuration\Event\AfterTcaCompilationEvent;
 
 #[CoversClass(RegisterPresentationControlListener::class)]
+#[CoversClass(BodytextFieldControl::class)]
 #[CoversClass(PresentationAccess::class)]
 #[CoversClass(Layout::class)]
 final class RegisterPresentationControlListenerTest extends TestCase

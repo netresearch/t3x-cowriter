@@ -46,6 +46,8 @@ use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
 #[CoversClass(Tca::class)]
 final class VariantWriterTest extends FunctionalTestCase
 {
+    private const HEADER = 'Chairs for students';
+
     protected array $coreExtensionsToLoad = ['rte_ckeditor', 'workspaces'];
 
     protected array $testExtensionsToLoad = [
@@ -100,7 +102,7 @@ final class VariantWriterTest extends FunctionalTestCase
         $element = $this->reader()->read($uid, $backendUser);
 
         try {
-            return $this->writer($logger)->create($element, 'Chairs for students', '<p>Cheap and sturdy.</p>', $context, $backendUser);
+            return $this->writer($logger)->create($element, self::HEADER, '<p>Cheap and sturdy.</p>', $context, $backendUser);
         } catch (VariantException $e) {
             // DataHandler's own words, when it refused.
             self::fail($e->getMessage() . ' ' . json_encode($logger->records, JSON_THROW_ON_ERROR));
@@ -144,7 +146,7 @@ final class VariantWriterTest extends FunctionalTestCase
         self::assertSame(2, (int) $row['pid']);
         self::assertSame('text', $row['CType']);
         self::assertSame(1, (int) $row['hidden']);
-        self::assertSame('Chairs for students', $row['header']);
+        self::assertSame(self::HEADER, $row['header']);
         self::assertStringContainsString('Cheap and sturdy.', (string) $row['bodytext']);
         self::assertGreaterThan((int) $before['sorting'], (int) $row['sorting'], 'placed after the original');
         self::assertLessThan((int) $this->row(11)['sorting'], (int) $row['sorting'], 'placed before the next element');
@@ -284,7 +286,7 @@ final class VariantWriterTest extends FunctionalTestCase
         $row = $this->row($uid);
 
         self::assertSame(1, (int) $row['t3ver_wsid']);
-        self::assertSame('Chairs for students', $row['header']);
+        self::assertSame(self::HEADER, $row['header']);
     }
 
     #[Test]

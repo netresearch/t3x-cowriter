@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Tests\Unit\EventListener;
 
+use Netresearch\T3Cowriter\EventListener\BodytextFieldControl;
 use Netresearch\T3Cowriter\EventListener\RegisterVariantControlListener;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -16,6 +17,7 @@ use PHPUnit\Framework\TestCase;
 use TYPO3\CMS\Core\Configuration\Event\AfterTcaCompilationEvent;
 
 #[CoversClass(RegisterVariantControlListener::class)]
+#[CoversClass(BodytextFieldControl::class)]
 final class RegisterVariantControlListenerTest extends TestCase
 {
     /**
