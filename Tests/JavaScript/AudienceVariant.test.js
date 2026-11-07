@@ -233,6 +233,25 @@ describe('AudienceVariant', () => {
         expect(panel.querySelector('#' + CONTROL_ID + '-hide-original').checked).toBe(true);
     });
 
+    it('keeps an image of another origin only when the saved text already held it', async () => {
+        const known = 'https://cdn.example.org/chair.png';
+        const posts = answer({
+            ...PROPOSAL,
+            bodytext: `<p>Cheap.</p><img src="${known}" alt="Chair"><img src="https://tracker.example.net/x.png" alt="">`,
+            originalBodytext: `<p>Our chairs.</p><img src="${known}" alt="Chair">`,
+        });
+        const { control, panel } = await setup();
+        control.click();
+        await propose(panel);
+
+        const sources = Array.from(panel.querySelectorAll('.cowriter-variant-preview img')).map((img) => img.getAttribute('src'));
+        expect(sources).toEqual([known]);
+
+        await create(panel, '5');
+        expect(posts[1].data.bodytext).toContain(known);
+        expect(posts[1].data.bodytext).not.toContain('tracker.example.net');
+    });
+
     it('without a context the result is the server note and there is no show step', async () => {
         answer(PROPOSAL, { ...CREATED, context: 0, contextTitle: '', showToken: '', note: 'Created hidden, no context.' });
         const { control, panel } = await setup();

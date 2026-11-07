@@ -266,6 +266,8 @@ final class VariantControllerTest extends TestCase
         self::assertSame('Chairs for students', $data['header']);
         // Raw: the dialog sanitises it.
         self::assertSame('<p>Cheap <script>x</script></p>', $data['bodytext']);
+        // The saved text the model rewrote: the dialog keeps its images.
+        self::assertSame('<p>Our chairs fit every office.</p>', $data['originalBodytext']);
         self::assertSame($this->element()->fingerprint(), $data['fingerprint']);
         self::assertSame([['uid' => 5, 'title' => 'Mobile']], $data['contexts']);
         self::assertSame('', $data['contextNote']);

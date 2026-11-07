@@ -132,10 +132,13 @@ final readonly class VariantController
             'success'     => true,
             'fingerprint' => $element->fingerprint(),
             // Raw model output: the dialog sanitises it before showing it.
-            'header'      => $proposal->header,
-            'bodytext'    => $proposal->bodytext,
-            'contexts'    => $this->contexts->mayAssign($backendUser) ? $this->contexts->available() : [],
-            'contextNote' => $this->contextNote($backendUser),
+            'header'   => $proposal->header,
+            'bodytext' => $proposal->bodytext,
+            // The saved text the model rewrote: its images may stay in the
+            // sanitised preview and the copy.
+            'originalBodytext' => $element->bodytext,
+            'contexts'         => $this->contexts->mayAssign($backendUser) ? $this->contexts->available() : [],
+            'contextNote'      => $this->contextNote($backendUser),
         ];
         if ($this->about instanceof AboutBuilder) {
             $payload['about'] = $this->about->variant($proposal->modelUse, $backendUser);

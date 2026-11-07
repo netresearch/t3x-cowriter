@@ -24,7 +24,7 @@
  */
 import { showAbout } from '@netresearch/t3_cowriter/AboutSection';
 import { FieldControlPanel } from '@netresearch/t3_cowriter/FieldControlPanel';
-import { sanitizeHtml } from '@netresearch/t3_cowriter/HtmlSanitizer';
+import { imageSourcesOf, sanitizeHtml } from '@netresearch/t3_cowriter/HtmlSanitizer';
 
 const DEFAULT_LABELS = {
     heading: 'Create an audience variant',
@@ -250,7 +250,7 @@ export class AudienceVariant extends FieldControlPanel {
         body.className = 'cowriter-variant-preview border rounded p-2';
         body.setAttribute('role', 'region');
         body.setAttribute('aria-labelledby', bodyLabel.id);
-        body.replaceChildren(...Array.from(sanitizeHtml(proposal.bodytext).childNodes));
+        body.replaceChildren(...Array.from(this.sanitizedBodytext(proposal).childNodes));
         bodyWrap.append(bodyLabel, body);
 
         const parts = [headerWrap, bodyWrap];
@@ -288,6 +288,17 @@ export class AudienceVariant extends FieldControlPanel {
         showAbout(this.panel, proposal.about);
     }
 
+    /**
+     * The proposed text, sanitised. An image of another origin stays only when
+     * the saved text the model rewrote already held it, as in the translation.
+     *
+     * @param {{bodytext: string, originalBodytext?: string}} proposal
+     * @returns {HTMLElement}
+     */
+    sanitizedBodytext(proposal) {
+        return sanitizeHtml(proposal.bodytext, imageSourcesOf(proposal.originalBodytext));
+    }
+
     notice(kind, text) {
         const notice = document.createElement('p');
         notice.className = 'alert alert-' + kind + ' cowriter-variant-notice';
@@ -314,7 +325,7 @@ export class AudienceVariant extends FieldControlPanel {
                 fingerprint: this.proposal.fingerprint,
                 header: form.querySelector('input[type="text"]').value.trim(),
                 // What the editor saw in the preview, nothing more.
-                bodytext: sanitizeHtml(this.proposal.bodytext).innerHTML,
+                bodytext: this.sanitizedBodytext(this.proposal).innerHTML,
                 context,
             });
             if (token !== this.requestToken) {
