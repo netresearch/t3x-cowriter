@@ -24,6 +24,8 @@ use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 
 #[CoversClass(EditorSurfaces::class)]
 #[CoversClass(EditorSurface::class)]
+#[CoversClass(PresentationConfiguration::class)]
+#[CoversClass(VariantConfiguration::class)]
 final class EditorSurfacesTest extends TestCase
 {
     protected function tearDown(): void

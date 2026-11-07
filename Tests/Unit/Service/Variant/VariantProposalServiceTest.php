@@ -12,6 +12,8 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Service\Variant;
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\UntrustedDataFence;
+use Netresearch\T3Cowriter\Service\StructuredAnswer;
+use Netresearch\T3Cowriter\Service\Transparency\ModelUse;
 use Netresearch\T3Cowriter\Service\Variant\VariantElement;
 use Netresearch\T3Cowriter\Service\Variant\VariantProposal;
 use Netresearch\T3Cowriter\Service\Variant\VariantProposalService;
@@ -23,6 +25,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(VariantProposalService::class)]
 #[CoversClass(VariantProposal::class)]
 #[CoversClass(VariantElement::class)]
+#[CoversClass(UntrustedDataFence::class)]
+#[CoversClass(StructuredAnswer::class)]
+#[CoversClass(ModelUse::class)]
 final class VariantProposalServiceTest extends TestCase
 {
     private function propose(FakeCompletionService $completion, string $header = 'Office chairs'): VariantProposal

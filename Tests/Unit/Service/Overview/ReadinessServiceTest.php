@@ -71,6 +71,8 @@ use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 #[CoversClass(ReadinessRow::class)]
 #[CoversClass(ReadinessReason::class)]
 #[CoversClass(ReadinessState::class)]
+#[CoversClass(PresentationConfiguration::class)]
+#[CoversClass(VariantConfiguration::class)]
 final class ReadinessServiceTest extends TestCase
 {
     use XliffLanguageServiceTrait;
