@@ -329,6 +329,8 @@ final class VariantControllerTest extends TestCase
         yield 'negative tone' => [['uid' => 10, 'audience' => self::AUDIENCE, 'tone' => -1], 400];
         yield 'audience not offered' => [['uid' => 10, 'audience' => 99], 400];
         yield 'tone as audience' => [['uid' => 10, 'audience' => self::TONE], 400];
+        yield 'tone not offered' => [['uid' => 10, 'audience' => self::AUDIENCE, 'tone' => 99], 400];
+        yield 'audience as tone' => [['uid' => 10, 'audience' => self::AUDIENCE, 'tone' => self::AUDIENCE], 400];
     }
 
     /**

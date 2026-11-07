@@ -1235,6 +1235,9 @@
             <trans-unit id="variant.error.noAudience" resname="variant.error.noAudience">
                 <source>Choose an audience.</source>
             </trans-unit>
+            <trans-unit id="variant.error.noTone" resname="variant.error.noTone">
+                <source>This tone of voice is not available. Choose another one or none.</source>
+            </trans-unit>
             <trans-unit id="variant.error.noRewrite" resname="variant.error.noRewrite">
                 <source>The language model gave no usable variant. Try again.</source>
             </trans-unit>

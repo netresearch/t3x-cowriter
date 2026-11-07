@@ -69,6 +69,11 @@ final class VariantException extends RuntimeException
         return new self('variant.error.noAudience', 400);
     }
 
+    public static function noTone(): self
+    {
+        return new self('variant.error.noTone', 400);
+    }
+
     public static function noRewrite(): self
     {
         return new self('variant.error.noRewrite', 502);

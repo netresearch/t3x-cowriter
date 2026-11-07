@@ -216,6 +216,26 @@ final class VariantWriterTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function anEditorWhoLostTheHiddenFieldDoesNotHideTheOriginal(): void
+    {
+        $uid = $this->create(10, 5, $this->editor(2));
+        // Editor 4 may still set contexts, so without the pre-check the
+        // original would be hidden in the context while DataHandler drops
+        // the variant's hidden field: nothing visible there.
+        $editor = $this->editor(4);
+
+        try {
+            $this->writer()->show($uid, 10, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.notAvailable', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant stays hidden');
+        self::assertSame('', (string) $this->row(10)['tx_contexts_disable'], 'the original is not hidden in the context');
+    }
+
+    #[Test]
     public function showingWithoutHidingLeavesTheOriginalAsItIs(): void
     {
         $editor = $this->editor(2);

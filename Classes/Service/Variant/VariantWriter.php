@@ -44,6 +44,7 @@ class VariantWriter
         private readonly AudienceContexts $contexts,
         private readonly LoggerInterface $logger,
         private readonly RecordEditAccess $recordEditAccess = new RecordEditAccess(),
+        private readonly PresentationAccess $access = new PresentationAccess(),
     ) {}
 
     /**
@@ -115,10 +116,13 @@ class VariantWriter
         // The pair as create() left it: on one page, the variant visible only
         // in its context. Both records are checked before the one write, so
         // the variant is not shown while DataHandler refuses the original
-        // (an edit lock, a language the editor lost).
+        // (an edit lock, a language the editor lost), and the original is not
+        // hidden while DataHandler silently drops the variant's hidden field
+        // (the editor lost the right on it since the creation).
         if ($variant === null || $original === null || $hiddenField === null || $contextUid < 1
             || $this->intValue($variant['pid'] ?? 0) !== $this->intValue($original['pid'] ?? 0)
             || !$this->contexts->isEnabledIn($variant, $contextUid)
+            || !$this->access->mayWrite($backendUser, 'tt_content', $hiddenField)
             || !$this->recordEditAccess->mayEdit($backendUser, 'tt_content', $variant)
             || ($hideOriginal && !$this->recordEditAccess->mayEdit($backendUser, 'tt_content', $original))
         ) {

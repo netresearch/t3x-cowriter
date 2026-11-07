@@ -244,15 +244,21 @@ final readonly class VariantController
 
     /**
      * The audience instruction from the chosen snippets. The audience must be
-     * one the dialog offers: a variant without one is just a rewrite.
+     * one the dialog offers: a variant without one is just a rewrite. A tone
+     * is optional, but it too must be one the dialog offers: the builder
+     * checks only the tag, not whether the snippet is still active.
      *
      * @throws VariantException
      */
     private function styleMessage(VariantProposeRequest $dto): string
     {
-        $audiences = array_column($this->styleInstructions->options()['audiences'], 'uid');
-        if (!in_array($dto->audience, $audiences, true)) {
+        $options = $this->styleInstructions->options();
+        if (!in_array($dto->audience, array_column($options['audiences'], 'uid'), true)) {
             throw VariantException::noAudience();
+        }
+
+        if ($dto->tone > 0 && !in_array($dto->tone, array_column($options['tones'], 'uid'), true)) {
+            throw VariantException::noTone();
         }
 
         $instruction = $this->styleInstructions->build(new ExecuteTaskRequest(
