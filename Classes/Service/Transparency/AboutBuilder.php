@@ -14,6 +14,7 @@ use Netresearch\T3Cowriter\Service\FieldSuggestion\ContextComposer;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\RecordContextReader;
 use Netresearch\T3Cowriter\Service\Presentation\SectionPlanner;
 use Netresearch\T3Cowriter\Service\Presentation\SectionProposalService;
+use Netresearch\T3Cowriter\Service\Variant\VariantProposalService;
 use Throwable;
 use TYPO3\CMS\Backend\Module\ModuleProvider;
 use TYPO3\CMS\Backend\Routing\UriBuilder;
@@ -137,6 +138,20 @@ final readonly class AboutBuilder
         }
 
         return $payload;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function variant(ModelUse $modelUse, BackendUserAuthentication $backendUser): array
+    {
+        return $this->payload('about.feature.variant', $modelUse, [
+            $this->labels->get('about.source.elementHeader'),
+            $this->labels->get('about.source.elementText'),
+            $this->labels->get('about.source.audience'),
+        ], [
+            $this->row('about.setting.limits', $this->labels->get('about.limits.variant', VariantProposalService::MAX_TEXT_LENGTH)),
+        ], $backendUser);
     }
 
     /**

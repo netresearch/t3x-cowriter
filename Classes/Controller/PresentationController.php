@@ -18,7 +18,6 @@ use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\BudgetRefusal;
 use Netresearch\T3Cowriter\Service\ConfigurationSelector;
 use Netresearch\T3Cowriter\Service\LlmErrorClassifier;
-use Netresearch\T3Cowriter\Service\LlmErrorKind;
 use Netresearch\T3Cowriter\Service\Presentation\Block;
 use Netresearch\T3Cowriter\Service\Presentation\BlockParser;
 use Netresearch\T3Cowriter\Service\Presentation\ContentLanguageLabel;
@@ -68,6 +67,7 @@ use TYPO3\CMS\Core\Http\JsonResponse;
  */
 final readonly class PresentationController
 {
+    use ContentElementActionTrait;
     use RateLimitedControllerTrait;
 
     /**
@@ -98,25 +98,20 @@ final readonly class PresentationController
 
     public function proposeAction(ServerRequestInterface $request): ResponseInterface
     {
-        $rateLimitResult = $this->rateLimiter->checkLimit((string) $this->userId());
-        if (!$rateLimitResult->allowed) {
-            return $this->rateLimitedResponse($rateLimitResult);
+        $admission = $this->admitModelRequest($request, $this->presentationConfiguration->isEnabled(), 'presentation.error.disabled');
+        if ($admission instanceof ResponseInterface) {
+            return $admission;
         }
 
-        $refusal = $this->refuseUnlessEnabled($rateLimitResult);
-        if ($refusal instanceof ResponseInterface) {
-            return $refusal;
-        }
-
-        $body = $this->parseJsonBody($request);
-        $dto  = PresentationProposeRequest::fromArray($body ?? []);
-        if ($body === null || !$dto->isValid()) {
-            return $this->failure('Invalid request.', $rateLimitResult, 400);
+        [$rateLimitResult, $body] = $admission;
+        $dto                      = PresentationProposeRequest::fromArray($body);
+        if (!$dto->isValid()) {
+            return $this->failure(self::INVALID_REQUEST, $rateLimitResult, 400);
         }
 
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if (!$backendUser instanceof BackendUserAuthentication) {
-            return $this->failure('No backend user session.', $rateLimitResult, 403);
+            return $this->failure(self::NO_BACKEND_USER, $rateLimitResult, 403);
         }
 
         try {
@@ -169,25 +164,20 @@ final readonly class PresentationController
 
     public function createAction(ServerRequestInterface $request): ResponseInterface
     {
-        $rateLimitResult = $this->rateLimiter->checkLimit((string) $this->userId());
-        if (!$rateLimitResult->allowed) {
-            return $this->rateLimitedResponse($rateLimitResult);
+        $admission = $this->admitModelRequest($request, $this->presentationConfiguration->isEnabled(), 'presentation.error.disabled');
+        if ($admission instanceof ResponseInterface) {
+            return $admission;
         }
 
-        $refusal = $this->refuseUnlessEnabled($rateLimitResult);
-        if ($refusal instanceof ResponseInterface) {
-            return $refusal;
-        }
-
-        $body = $this->parseJsonBody($request);
-        $dto  = PresentationCreateRequest::fromArray($body ?? []);
-        if ($body === null || !$dto->isValid() || !$dto->layout instanceof Layout) {
-            return $this->failure('Invalid request.', $rateLimitResult, 400);
+        [$rateLimitResult, $body] = $admission;
+        $dto                      = PresentationCreateRequest::fromArray($body);
+        if (!$dto->isValid() || !$dto->layout instanceof Layout) {
+            return $this->failure(self::INVALID_REQUEST, $rateLimitResult, 400);
         }
 
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if (!$backendUser instanceof BackendUserAuthentication) {
-            return $this->failure('No backend user session.', $rateLimitResult, 403);
+            return $this->failure(self::NO_BACKEND_USER, $rateLimitResult, 403);
         }
 
         try {
@@ -249,12 +239,12 @@ final readonly class PresentationController
         $body = $this->parseJsonBody($request);
         $dto  = PresentationSwitchRequest::fromArray($body ?? []);
         if ($body === null || !$dto->isValid()) {
-            return new JsonResponse(['success' => false, 'error' => 'Invalid request.'], 400);
+            return new JsonResponse(['success' => false, 'error' => self::INVALID_REQUEST], 400);
         }
 
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if (!$backendUser instanceof BackendUserAuthentication) {
-            return new JsonResponse(['success' => false, 'error' => 'No backend user session.'], 403);
+            return new JsonResponse(['success' => false, 'error' => self::NO_BACKEND_USER], 403);
         }
 
         try {
@@ -295,7 +285,7 @@ final readonly class PresentationController
             // Provider messages can carry request details: log them, never return them.
             $this->logger->error('Alternative presentation: the section proposal failed', ['exception' => $e->getMessage()]);
 
-            return $this->failure($this->errorMessage($e), $rateLimitResult, 502);
+            return $this->failure($this->modelErrorMessage($e, 'presentation.error.noSplit'), $rateLimitResult, 502);
         }
 
         if ($proposal->sections === []) {
@@ -369,75 +359,5 @@ final readonly class PresentationController
         }
 
         return $warnings;
-    }
-
-    private function refuseUnlessEnabled(RateLimitResult $rateLimitResult): ?ResponseInterface
-    {
-        return $this->presentationConfiguration->isEnabled()
-            ? null
-            : $this->failure($this->labels->get('presentation.error.disabled'), $rateLimitResult, 403);
-    }
-
-    private function failure(string $message, RateLimitResult $rateLimitResult, int $status): ResponseInterface
-    {
-        return $this->jsonResponseWithRateLimitHeaders(['success' => false, 'error' => $message], $rateLimitResult, $status);
-    }
-
-    /**
-     * The edit form of the new element; closing it leads to $returnUrl.
-     */
-    private function editUrl(int $uid, string $returnUrl): string
-    {
-        $parameters = ['edit' => ['tt_content' => [$uid => 'edit']]];
-        if ($returnUrl !== '') {
-            $parameters['returnUrl'] = $returnUrl;
-        }
-
-        try {
-            return (string) $this->uriBuilder->buildUriFromRoute('record_edit', $parameters);
-        } catch (Throwable) {
-            return '';
-        }
-    }
-
-    /**
-     * The Page module for the element's page and language, at the new
-     * element: the page module renders each element with the id
-     * "element-tt_content-<uid>" (TYPO3 13.4 and 14.3). 13.4 reads the
-     * language from "language", 14.3 from "languages".
-     */
-    private function pageUrl(int $pageUid, int $languageId, int $uid): string
-    {
-        try {
-            $url = (string) $this->uriBuilder->buildUriFromRoute(
-                'web_layout',
-                ['id' => $pageUid, 'language' => $languageId, 'languages' => [$languageId]],
-            );
-        } catch (Throwable) {
-            return '';
-        }
-
-        return $url . '#element-tt_content-' . $uid;
-    }
-
-    /**
-     * The editor-facing message for a failed model call.
-     */
-    private function errorMessage(Throwable $exception): string
-    {
-        return match ($this->errorClassifier->classify($exception)) {
-            LlmErrorKind::Configuration    => $this->labels->get('error.checkSetupStatus', $this->labels->get('error.notConfigured')),
-            LlmErrorKind::Authentication   => $this->labels->get('error.providerAuthentication'),
-            LlmErrorKind::RateLimit        => $this->labels->get('error.providerRateLimit'),
-            LlmErrorKind::GuardrailRefusal => LlmErrorClassifier::guardrailReason($exception) ?? $this->labels->get('presentation.error.noSplit'),
-            LlmErrorKind::Unknown          => $this->labels->get('presentation.error.noSplit'),
-        };
-    }
-
-    private function userId(): int
-    {
-        $userId = $this->context->getPropertyFromAspect('backend.user', 'id', 0);
-
-        return is_numeric($userId) ? (int) $userId : 0;
     }
 }

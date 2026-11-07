@@ -15,6 +15,7 @@ use Netresearch\T3Cowriter\Service\InlineSuggestion\InlineSuggestionConfiguratio
 use Netresearch\T3Cowriter\Service\Overview\EditorSurface;
 use Netresearch\T3Cowriter\Service\Overview\EditorSurfaces;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
+use Netresearch\T3Cowriter\Service\Variant\VariantConfiguration;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -23,6 +24,8 @@ use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 
 #[CoversClass(EditorSurfaces::class)]
 #[CoversClass(EditorSurface::class)]
+#[CoversClass(PresentationConfiguration::class)]
+#[CoversClass(VariantConfiguration::class)]
 final class EditorSurfacesTest extends TestCase
 {
     protected function tearDown(): void
@@ -60,6 +63,7 @@ final class EditorSurfacesTest extends TestCase
                 'cowriter'      => true, 'cowriterVision' => true, 'cowriterTranslate' => true, 'cowriterTemplates' => true,
                 'cowriterImage' => false, 'cowriterInlineSuggestions' => false, 'fieldSuggestions' => false,
                 'fieldOverview' => false, 'imageFieldControl' => false, 'presentation' => false,
+                'variant'       => false,
             ],
             $this->states($this->surfaces(['fieldSuggestions/fields' => ''])),
         );
@@ -75,6 +79,7 @@ final class EditorSurfacesTest extends TestCase
             'inlineSuggestions/enable' => '1',
             'fieldSuggestions/fields'  => 'default',
             'presentation/enable'      => '1',
+            'variant/enable'           => '1',
         ]));
 
         self::assertTrue($states['cowriterImage']);
@@ -84,6 +89,7 @@ final class EditorSurfacesTest extends TestCase
         self::assertTrue($states['fieldOverview']);
         // Switched on, but bootstrap_package's elements are not in the TCA.
         self::assertFalse($states['presentation']);
+        self::assertTrue($states['variant']);
     }
 
     /**
@@ -99,6 +105,7 @@ final class EditorSurfacesTest extends TestCase
             new InlineSuggestionConfiguration($configuration),
             new FieldSuggestionConfiguration($configuration),
             new PresentationConfiguration($configuration),
+            new VariantConfiguration($configuration),
         );
     }
 

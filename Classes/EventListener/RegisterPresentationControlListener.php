@@ -51,47 +51,6 @@ final readonly class RegisterPresentationControlListener
             return $tca;
         }
 
-        /** @var array<array-key, mixed> $content layoutsInTca() found tt_content */
-        $content = $tca['tt_content'];
-        $types   = is_array($content['types'] ?? null) ? $content['types'] : [];
-
-        foreach (PresentationAccess::SOURCE_CTYPES as $ctype) {
-            if (!is_array($types[$ctype] ?? null)) {
-                continue;
-            }
-
-            $type         = $types[$ctype];
-            $overrides    = $this->arrayAt($type, 'columnsOverrides');
-            $bodytext     = $this->arrayAt($overrides, 'bodytext');
-            $config       = $this->arrayAt($bodytext, 'config');
-            $fieldControl = $this->arrayAt($config, 'fieldControl');
-
-            // A control an integrator configured himself stays untouched.
-            if (isset($fieldControl[self::CONTROL_NAME])) {
-                continue;
-            }
-
-            $fieldControl[self::CONTROL_NAME] = ['renderType' => self::NODE_NAME];
-            $config['fieldControl']           = $fieldControl;
-            $bodytext['config']               = $config;
-            $overrides['bodytext']            = $bodytext;
-            $type['columnsOverrides']         = $overrides;
-            $types[$ctype]                    = $type;
-        }
-
-        $content['types']  = $types;
-        $tca['tt_content'] = $content;
-
-        return $tca;
-    }
-
-    /**
-     * @param array<array-key, mixed> $array
-     *
-     * @return array<array-key, mixed>
-     */
-    private function arrayAt(array $array, string $key): array
-    {
-        return is_array($array[$key] ?? null) ? $array[$key] : [];
+        return BodytextFieldControl::register($tca, PresentationAccess::SOURCE_CTYPES, self::CONTROL_NAME, self::NODE_NAME);
     }
 }

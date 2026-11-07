@@ -42,7 +42,7 @@ final readonly class UsageService
     public const OPERATIONS = [
         'chat', 'complete', 'streamComplete', 'customInstruction', 'executeTask', 'taskTools', 'toolCall',
         'altText', 'translate', 'generateImage', 'inlineSuggestion', 'fieldSuggestions',
-        'fieldSuggestionsOverview', 'alternativePresentation',
+        'fieldSuggestionsOverview', 'alternativePresentation', 'audienceVariant',
     ];
 
     private const DAY = 86400;

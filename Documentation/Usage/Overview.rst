@@ -36,8 +36,9 @@ What the cowriter is
 A short description and a table of the places editors find the cowriter:
 the buttons of the cowriter preset in the rich text toolbar, the
 "Suggest" button next to text fields, the button in the record editor that
-suggests values for all fields, the image file control and the "Present as
-tabs or accordion" button. Each place says whether it is on and which
+suggests values for all fields, the image file control, the "Present as
+tabs or accordion" button and the "Create an audience variant" button.
+Each place says whether it is on and which
 setting of the extension configuration switches it.
 
 The toolbar buttons appear in rich text fields whose RTE configuration lists
@@ -123,6 +124,11 @@ Tabs or accordion
     The setting :ref:`presentation.enable
     <configuration-alternative-presentation>`, the tab and accordion elements
     of bootstrap_package and the default configuration.
+
+Audience variant
+    The setting :ref:`variant.enable <configuration-audience-variant>`, an
+    active nr-llm prompt snippet tagged ``audience`` and the default
+    configuration.
 
 A second table lists every site that names its own configuration in its site
 settings, checked with the access of the person viewing the page. An editor

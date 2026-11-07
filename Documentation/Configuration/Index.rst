@@ -710,6 +710,92 @@ How the text is cut:
 The proposal and the creation count against the Cowriter rate limit of the
 backend user; the switch does not.
 
+..  _configuration-audience-variant:
+
+Audience variant
+================
+
+A text element (:guilabel:`Text`, :guilabel:`Text & Images`,
+:guilabel:`Text & Media`) can get a variant for an audience. The button
+:guilabel:`Create an audience variant` next to its rich text lets the editor
+choose an audience, and optionally a tone of voice, from the nr-llm prompt
+snippets the :ref:`writing dialog <configuration-style>` offers. The language
+model rewrites the saved header and text for that audience, the editor
+reviews the proposal, and only after confirming is a copy of the element
+created directly after it, hidden, with the reviewed header and text. The
+original is not changed. The feature is off until an administrator switches
+it on in the extension configuration.
+
+Which visitors see the variant is not decided by the Cowriter. With the
+extension ``contexts`` (``netresearch/contexts``) installed, the editor gives
+the variant one of its contexts (for example a query parameter of a
+campaign link): the variant is then shown only while that context is
+active, and a second step shows it and, if the editor wants, hides the
+original in that context. Without ``contexts``, or without a chosen context,
+the variant stays hidden and the editor is told what to decide.
+
+..  confval:: variant.enable
+    :name: t3-cowriter-variant-enable
+    :type: boolean
+    :default: ``0``
+
+    Switches the button on. While it is off, no text element shows it and
+    all three routes answer with HTTP 403.
+
+Requirements:
+
+*   At least one active nr-llm prompt snippet tagged ``audience``. Without
+    one the button does not appear, and the overview module says why.
+*   The button appears only for a saved element, and only when the editor
+    may copy it: edit the element, ``Edit content`` on the page, access to
+    its language, the element's type allowed in :guilabel:`Explicitly allow
+    field values`, and the right on ``hidden``, ``header`` and ``bodytext``
+    of ``tt_content`` where they are excluded fields (with TYPO3 14.3,
+    ``hidden``). Without the right on ``hidden`` the copy would be visible
+    at once, so there is no button. An element restricted to frontend user
+    groups or to a start or end time also needs the right on those fields
+    (``fe_group``, ``starttime``, ``endtime``): DataHandler leaves out an
+    excluded field the editor may not set, and the copy would be shown to
+    everyone at any time.
+*   The copy is made as the clipboard copies, as the editor: every field
+    and image of the element comes along, then header, text and ``hidden``
+    are set in the same DataHandler run, the result is read back, and a
+    copy that is not stored as intended is deleted again.
+*   An element with translations, and a connected translation, get no
+    variant: the copy would take the translations over with the old text.
+    The dialog says so. In connected translation mode no element of the
+    set gets a variant; a free translation (no ``l18n_parent``) gets one in
+    its language. An original that got translations after the variant was
+    created is not hidden by the show step, since its translations would
+    be hidden in the context with it; the variant can still be shown.
+*   The proposal counts against the editor's
+    :ref:`nr-llm budget <nrllm:administration-user-budgets>` and the
+    Cowriter rate limit; texts of more than 20,000 characters are refused
+    without a request.
+
+With EXT:contexts:
+
+*   The dialog lists the contexts the record settings of ``contexts`` list:
+    not disabled and not hidden in the backend. Assigning one needs the
+    right on the excluded field ``tt_content:tx_contexts_settings``;
+    ``contexts`` drops the setting without an error otherwise, so the
+    Cowriter checks it first.
+*   The variant gets that context as its only context setting: it is shown
+    only while the context is active. Settings the copy took over from the
+    original are replaced.
+*   :guilabel:`Show the variant` makes the variant visible; with
+    :guilabel:`Hide this element in that context` ticked, the original gets
+    the context set to "No" and keeps every other context setting it has.
+    The step is accepted only for the variant the creation just made (a
+    token over both uids, the context, the backend user and the workspace,
+    an HMAC with the installation's encryption key) and needs no model.
+*   In a workspace no context can be assigned: ``contexts`` writes its
+    settings straight into the live record, past the workspace. The variant
+    is created in the workspace, hidden and without a context.
+*   A variant created without a context carries the context settings of the
+    original, as any copy does. Give it its own on its :guilabel:`Contexts`
+    tab before you show it.
+
 Task configuration
 ==================
 

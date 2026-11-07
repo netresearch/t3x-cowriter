@@ -19,6 +19,7 @@ use Netresearch\T3Cowriter\Controller\SavedPromptController;
 use Netresearch\T3Cowriter\Controller\TemplateController;
 use Netresearch\T3Cowriter\Controller\ToolController;
 use Netresearch\T3Cowriter\Controller\TranslationController;
+use Netresearch\T3Cowriter\Controller\VariantController;
 use Netresearch\T3Cowriter\Controller\VisionController;
 
 /**
@@ -142,6 +143,21 @@ return [
     'tx_cowriter_presentation_switch' => [
         'path'    => '/cowriter/presentation-switch',
         'target'  => PresentationController::class . '::switchAction',
+        'methods' => ['POST'],
+    ],
+    'tx_cowriter_variant_propose' => [
+        'path'    => '/cowriter/variant-propose',
+        'target'  => VariantController::class . '::proposeAction',
+        'methods' => ['POST'],
+    ],
+    'tx_cowriter_variant_create' => [
+        'path'    => '/cowriter/variant-create',
+        'target'  => VariantController::class . '::createAction',
+        'methods' => ['POST'],
+    ],
+    'tx_cowriter_variant_show' => [
+        'path'    => '/cowriter/variant-show',
+        'target'  => VariantController::class . '::showAction',
         'methods' => ['POST'],
     ],
 ];

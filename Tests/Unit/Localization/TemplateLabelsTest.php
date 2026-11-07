@@ -20,6 +20,7 @@ use Netresearch\T3Cowriter\Service\Overview\ReadinessReason;
 use Netresearch\T3Cowriter\Service\Overview\ReadinessState;
 use Netresearch\T3Cowriter\Service\Overview\UsageService;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
+use Netresearch\T3Cowriter\Service\Variant\VariantConfiguration;
 use Netresearch\T3Cowriter\Tests\Support\XliffFile;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -160,6 +161,7 @@ final class TemplateLabelsTest extends TestCase
             new InlineSuggestionConfiguration($configuration),
             new FieldSuggestionConfiguration($configuration),
             new PresentationConfiguration($configuration),
+            new VariantConfiguration($configuration),
         );
 
         return array_map(static fn (EditorSurface $surface): string => $surface->key, $surfaces->all());

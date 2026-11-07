@@ -11,10 +11,12 @@ namespace Netresearch\T3Cowriter\Tests\Unit\Service\Overview;
 
 use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Domain\Model\Model;
+use Netresearch\NrLlm\Domain\Model\PromptSnippet;
 use Netresearch\NrLlm\Domain\Model\Provider;
 use Netresearch\NrLlm\Domain\Model\Task;
 use Netresearch\NrLlm\Domain\Repository\LlmConfigurationRepository;
 use Netresearch\NrLlm\Domain\Repository\ModelRepository;
+use Netresearch\NrLlm\Domain\Repository\PromptSnippetRepository;
 use Netresearch\NrLlm\Domain\Repository\ProviderRepository;
 use Netresearch\NrLlm\Domain\Repository\TaskRepository;
 use Netresearch\NrLlm\Provider\Middleware\MiddlewarePipeline;
@@ -40,6 +42,7 @@ use Netresearch\T3Cowriter\Service\Overview\ReadinessRow;
 use Netresearch\T3Cowriter\Service\Overview\ReadinessService;
 use Netresearch\T3Cowriter\Service\Overview\ReadinessState;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationConfiguration;
+use Netresearch\T3Cowriter\Service\Variant\VariantConfiguration;
 use Netresearch\T3Cowriter\Tests\Support\TestQueryResult;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -68,6 +71,8 @@ use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 #[CoversClass(ReadinessRow::class)]
 #[CoversClass(ReadinessReason::class)]
 #[CoversClass(ReadinessState::class)]
+#[CoversClass(PresentationConfiguration::class)]
+#[CoversClass(VariantConfiguration::class)]
 final class ReadinessServiceTest extends TestCase
 {
     use XliffLanguageServiceTrait;
@@ -91,6 +96,8 @@ final class ReadinessServiceTest extends TestCase
     private bool $openAiKeyStored = false;
 
     private bool $hasUploadFolder = true;
+
+    private bool $hasAudience = true;
 
     /** @var array<string, array{identifier: string, name: string, available: bool}> */
     private array $translators = [];
@@ -631,6 +638,36 @@ final class ReadinessServiceTest extends TestCase
     }
 
     #[Test]
+    public function theVariantIsOffWithoutItsSwitch(): void
+    {
+        $row = $this->service()->row(ReadinessAction::Variant);
+
+        self::assertSame(ReadinessState::Off, $row->state);
+        self::assertSame(ReadinessReason::SwitchedOff, $row->reason);
+    }
+
+    #[Test]
+    public function theVariantNeedsAnAudienceSnippet(): void
+    {
+        $this->settings['variant/enable'] = '1';
+        $this->hasAudience                = false;
+
+        $row = $this->service()->row(ReadinessAction::Variant);
+
+        self::assertSame(ReadinessState::NotReady, $row->state);
+        self::assertSame(ReadinessReason::NoAudienceSnippets, $row->reason);
+        self::assertSame('nrllm_snippets', $row->reason->fixRoute());
+    }
+
+    #[Test]
+    public function theVariantFollowsTheDefaultPath(): void
+    {
+        $this->settings['variant/enable'] = '1';
+
+        self::assertSame(ReadinessReason::NoConfiguration, $this->service()->row(ReadinessAction::Variant)->reason);
+    }
+
+    #[Test]
     public function rowsListEveryActionOnce(): void
     {
         $GLOBALS['TCA'] = [];
@@ -816,6 +853,10 @@ final class ReadinessServiceTest extends TestCase
         $storage->method('targetFolder')->willReturnCallback(fn (): ?Folder => $this->hasUploadFolder ? $this->createStub(Folder::class) : null);
 
         $extensionConfiguration = $this->extensionConfiguration();
+        $snippetRepository      = $this->createStub(PromptSnippetRepository::class);
+        $snippetRepository->method('findActiveByTag')->willReturnCallback(
+            fn (string $tag): array => $tag === 'audience' && $this->hasAudience ? [$this->createStub(PromptSnippet::class)] : [],
+        );
 
         return new ReadinessService(
             new ConfigurationSelector($repository, $access, $resolver),
@@ -829,6 +870,8 @@ final class ReadinessServiceTest extends TestCase
             new PresentationConfiguration($extensionConfiguration),
             $siteFinder,
             $taskRepository,
+            new VariantConfiguration($extensionConfiguration),
+            $snippetRepository,
         );
     }
 

@@ -109,6 +109,10 @@
                 <source>Text elements: present as tabs or accordion</source>
                 <target>Textelemente: als Tabs oder Akkordeon darstellen</target>
             </trans-unit>
+            <trans-unit id="surface.variant" resname="surface.variant">
+                <source>Text elements: create an audience variant</source>
+                <target>Textelemente: Zielgruppen-Variante anlegen</target>
+            </trans-unit>
             <trans-unit id="readiness.title" resname="readiness.title">
                 <source>Readiness</source>
                 <target>Bereitschaft</target>
@@ -192,6 +196,10 @@
             <trans-unit id="readiness.action.presentation" resname="readiness.action.presentation">
                 <source>Tabs or accordion</source>
                 <target>Tabs oder Akkordeon</target>
+            </trans-unit>
+            <trans-unit id="readiness.action.variant" resname="readiness.action.variant">
+                <source>Audience variant</source>
+                <target>Zielgruppen-Variante</target>
             </trans-unit>
             <trans-unit id="readiness.state.ready" resname="readiness.state.ready">
                 <source>Ready</source>
@@ -292,6 +300,10 @@
             <trans-unit id="readiness.reason.bootstrapPackageMissing" resname="readiness.reason.bootstrapPackageMissing">
                 <source>The tab and accordion elements of bootstrap_package are not available.</source>
                 <target>Die Tab- und Akkordeon-Elemente von bootstrap_package sind nicht verfügbar.</target>
+            </trans-unit>
+            <trans-unit id="readiness.reason.noAudienceSnippets" resname="readiness.reason.noAudienceSnippets">
+                <source>No active nr-llm prompt snippet is tagged &quot;audience&quot;.</source>
+                <target>Kein aktiver Prompt-Baustein von nr-llm trägt das Schlagwort „audience“.</target>
             </trans-unit>
             <trans-unit id="readiness.reason.pickableReady" resname="readiness.reason.pickableReady">
                 <source>You cannot use the default configuration. Choose %s in the dialog.</source>
@@ -492,6 +504,10 @@
             <trans-unit id="usage.operation.alternativePresentation" resname="usage.operation.alternativePresentation">
                 <source>Tabs or accordion</source>
                 <target>Tabs oder Akkordeon</target>
+            </trans-unit>
+            <trans-unit id="usage.operation.audienceVariant" resname="usage.operation.audienceVariant">
+                <source>Audience variant</source>
+                <target>Zielgruppen-Variante</target>
             </trans-unit>
             <trans-unit id="usage.operation.task" resname="usage.operation.task">
                 <source>Task “%s”</source>

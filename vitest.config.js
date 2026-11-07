@@ -37,6 +37,7 @@ const sharedAliases = {
     ),
     '@netresearch/t3_cowriter/FieldValue': resolve(__dirname, 'Resources/Public/JavaScript/FormEngine/FieldValue.js'),
     '@netresearch/t3_cowriter/FieldOverview': resolve(__dirname, 'Resources/Public/JavaScript/FormEngine/FieldOverview.js'),
+    '@netresearch/t3_cowriter/FieldControlPanel': resolve(__dirname, 'Resources/Public/JavaScript/FormEngine/FieldControlPanel.js'),
 };
 
 export default defineConfig({

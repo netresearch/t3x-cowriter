@@ -23,6 +23,8 @@ Frontend components for t3_cowriter CKEditor integration. JavaScript communicate
 - **UrlLoader.js** - CSP-compliant AJAX URL injection from data attributes
 - **FormEngine/FieldSuggestions.js** - "Suggest" field control for plain form fields (suggestion list, keyboard, live region)
 - **FormEngine/FieldOverview.js** - "Suggest values for all fields" document-header button and modal (one request, table with checkbox, editable value and reason per field)
+- **FormEngine/FieldControlPanel.js** - Base class of the panels below a rich text field (AlternativePresentation, AudienceVariant): control wiring, panel and live region, Escape, JSON posts with the server's message, navigation in the content frame
+- **FormEngine/AudienceVariant.js** - "Create an audience variant" field control (audience/tone choice, proposal with editable header and sanitised preview, context choice, creation, show step; syncs the original's contexts field in the open form)
 - **FormEngine/FieldValue.js** - writes a value into a FormEngine field (slug element, change event, validation, changed marker); shared by both
 
 ### File Structure

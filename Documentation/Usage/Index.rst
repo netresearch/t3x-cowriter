@@ -580,6 +580,47 @@ The button only appears when you may create such an element on the page.
 Below the proposal, :ref:`usage-about` says whether the AI was asked: for a
 text divided at its headings it says that no language model was used.
 
+..  _usage-audience-variant:
+
+Creating an audience variant
+============================
+
+When the administrator switched it on
+(:ref:`configuration <configuration-audience-variant>`), a text element has
+the button **Create an audience variant** next to its rich text. It makes a
+copy of the element with the header and text rewritten for an audience you
+choose.
+
+1.  Save the element: the button works with the saved text
+2.  Click :guilabel:`Create an audience variant` (or focus it and press
+    :kbd:`Enter` or :kbd:`Space`)
+3.  Choose the :guilabel:`Audience` and, if offered, a :guilabel:`Tone of
+    voice`, then click :guilabel:`Propose a variant`
+4.  Check the proposal: the header (you can change it) and a preview of the
+    text. :guilabel:`Propose again` goes back to the choice
+5.  With EXT:contexts, choose the context the variant is for
+6.  Click :guilabel:`Create variant`
+
+The variant appears directly after this element, on the same page, **hidden**.
+This element is not changed. You can edit the variant's text in the variant
+itself (:guilabel:`Open the variant`) before anyone sees it.
+
+With a context, the result offers :guilabel:`Show the variant`: it makes the
+variant visible for visitors in that context. With :guilabel:`Hide this
+element in that context` ticked (the default), this element is hidden for
+them at the same time, so they see the variant instead of it; everyone else
+keeps seeing this element.
+
+Without a context, the variant stays hidden and the result says what to
+decide: give it a context on its :guilabel:`Contexts` tab, use it to
+replace this element, or keep it as a draft. Showing it without a context
+would show both elements to every visitor.
+
+An element with translations or a connected translation gets no variant;
+the dialog says so. The audiences are the ones your administrator defined;
+the Cowriter does not decide who belongs to them. Each proposal counts
+against your AI budget.
+
 ..  _usage-about:
 
 About this suggestion
@@ -587,8 +628,8 @@ About this suggestion
 
 Every Cowriter dialog that asks the AI has a collapsed section
 :guilabel:`About this suggestion` at its end: the list of field
-suggestions, the overview of all fields, the image dialog and the proposal
-for tabs or an accordion. Open it with a click, or move to it with
+suggestions, the overview of all fields, the image dialog, the proposal
+for tabs or an accordion and the proposal of an audience variant. Open it with a click, or move to it with
 :kbd:`Tab` and press :kbd:`Enter` or :kbd:`Space`. It shows:
 
 *   :guilabel:`Created by`: the Cowriter extension and the feature

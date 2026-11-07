@@ -1,0 +1,440 @@
+<?php
+
+/*
+ * Copyright (c) 2025-2026 Netresearch DTT GmbH
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Netresearch\T3Cowriter\Tests\Functional\Variant;
+
+use Netresearch\T3Cowriter\Service\FieldSuggestion\RecordFinder;
+use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
+use Netresearch\T3Cowriter\Service\Variant\AudienceContexts;
+use Netresearch\T3Cowriter\Service\Variant\VariantElement;
+use Netresearch\T3Cowriter\Service\Variant\VariantElementReader;
+use Netresearch\T3Cowriter\Service\Variant\VariantException;
+use Netresearch\T3Cowriter\Service\Variant\VariantWriter;
+use Netresearch\T3Cowriter\Tests\Support\RecordingLogger;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
+use TYPO3\CMS\Core\Database\Connection;
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
+
+/**
+ * The audience variant written through DataHandler as the editor, with
+ * EXT:contexts installed: the copy, its context, showing it and hiding the
+ * original in that context, and the three ways the contexts hook would drop
+ * or lose a setting without an error (an integer value, a partial map, a
+ * missing field right).
+ *
+ * Fixture: elements 10 and 12 on page 2, 12 has the contexts 6 (enabled)
+ * and 7 (disabled); 13 has the translation 14; 15 and 16 are free
+ * translations. Contexts 5 and 6 are assignable, 7 is hidden in the backend,
+ * 8 is disabled.
+ */
+#[CoversClass(VariantElementReader::class)]
+#[CoversClass(VariantWriter::class)]
+#[CoversClass(VariantElement::class)]
+#[CoversClass(AudienceContexts::class)]
+#[CoversClass(VariantException::class)]
+#[CoversClass(Tca::class)]
+final class VariantWriterTest extends FunctionalTestCase
+{
+    private const HEADER = 'Chairs for students';
+
+    protected array $coreExtensionsToLoad = ['rte_ckeditor', 'workspaces'];
+
+    protected array $testExtensionsToLoad = [
+        'netresearch/nr-vault',
+        'netresearch/nr-llm',
+        'netresearch/contexts',
+        'netresearch/t3-cowriter',
+    ];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/elements.csv');
+    }
+
+    private function finder(): RecordFinder
+    {
+        return new RecordFinder(GeneralUtility::makeInstance(ConnectionPool::class));
+    }
+
+    private function contexts(): AudienceContexts
+    {
+        return new AudienceContexts(GeneralUtility::makeInstance(ConnectionPool::class));
+    }
+
+    private function reader(): VariantElementReader
+    {
+        return new VariantElementReader($this->finder());
+    }
+
+    private function writer(?RecordingLogger $logger = null): VariantWriter
+    {
+        return new VariantWriter($this->finder(), $this->contexts(), $logger ?? new RecordingLogger());
+    }
+
+    private function editor(int $uid, int $workspace = 0): BackendUserAuthentication
+    {
+        $backendUser = $this->setUpBackendUser($uid);
+        // A copy prefixes the header in the editor's language, as the clipboard does.
+        $GLOBALS['LANG'] = $this->get(LanguageServiceFactory::class)->createFromUserPreferences($backendUser);
+        if ($workspace > 0) {
+            $backendUser->setWorkspace($workspace);
+            self::assertSame($workspace, $backendUser->workspace, 'the editor works in the workspace');
+        }
+
+        return $backendUser;
+    }
+
+    private function create(int $uid, int $context, BackendUserAuthentication $backendUser): int
+    {
+        $logger  = new RecordingLogger();
+        $element = $this->reader()->read($uid, $backendUser);
+
+        try {
+            return $this->writer($logger)->create($element, self::HEADER, '<p>Cheap and sturdy.</p>', $context, $backendUser);
+        } catch (VariantException $e) {
+            // DataHandler's own words, when it refused.
+            self::fail($e->getMessage() . ' ' . json_encode($logger->records, JSON_THROW_ON_ERROR));
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function row(int $uid): array
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
+        $queryBuilder->getRestrictions()->removeAll();
+        $row = $queryBuilder->select('*')->from('tt_content')
+            ->where($queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT)))
+            ->executeQuery()
+            ->fetchAssociative();
+        self::assertIsArray($row, 'tt_content ' . $uid . ' exists');
+
+        return $row;
+    }
+
+    private function countContent(): int
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
+        $queryBuilder->getRestrictions()->removeAll();
+
+        return (int) $queryBuilder->count('uid')->from('tt_content')
+            ->where($queryBuilder->expr()->eq('deleted', 0))
+            ->executeQuery()
+            ->fetchOne();
+    }
+
+    #[Test]
+    public function theVariantIsAHiddenCopyAfterTheOriginalVisibleOnlyInItsContext(): void
+    {
+        $before = $this->row(10);
+        $uid    = $this->create(10, 5, $this->editor(2));
+        $row    = $this->row($uid);
+
+        self::assertSame(2, (int) $row['pid']);
+        self::assertSame('text', $row['CType']);
+        self::assertSame(1, (int) $row['hidden']);
+        self::assertSame(self::HEADER, $row['header']);
+        self::assertStringContainsString('Cheap and sturdy.', (string) $row['bodytext']);
+        self::assertGreaterThan((int) $before['sorting'], (int) $row['sorting'], 'placed after the original');
+        self::assertLessThan((int) $this->row(11)['sorting'], (int) $row['sorting'], 'placed before the next element');
+
+        // The frontend restriction of contexts reads these two columns only.
+        self::assertSame('5', (string) $row['tx_contexts_enable']);
+        self::assertSame('', (string) $row['tx_contexts_disable']);
+
+        self::assertSame($before, $this->row(10), 'the original is not touched');
+    }
+
+    #[Test]
+    public function theVariantDropsTheContextSettingsItsCopyTookOver(): void
+    {
+        $uid = $this->create(12, 5, $this->editor(2));
+        $row = $this->row($uid);
+
+        self::assertSame('5', (string) $row['tx_contexts_enable']);
+        self::assertSame('', (string) $row['tx_contexts_disable']);
+    }
+
+    #[Test]
+    public function withoutAContextTheVariantKeepsTheSettingsOfItsOriginal(): void
+    {
+        $uid = $this->create(12, 0, $this->editor(2));
+        $row = $this->row($uid);
+
+        self::assertSame(1, (int) $row['hidden']);
+        self::assertSame('6', (string) $row['tx_contexts_enable']);
+        self::assertSame('7', (string) $row['tx_contexts_disable']);
+    }
+
+    #[Test]
+    public function showingMakesTheVariantVisibleAndHidesTheOriginalInItsContextOnly(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(12, 5, $editor);
+
+        $this->writer()->show($uid, 12, 5, true, $editor);
+
+        self::assertSame(0, (int) $this->row($uid)['hidden']);
+        $original = $this->row(12);
+        self::assertSame(0, (int) $original['hidden'], 'the original stays visible outside the context');
+        // Its other contexts survive: the hook rebuilds both columns from
+        // the submitted map.
+        self::assertSame('6', (string) $original['tx_contexts_enable']);
+        self::assertSame(['5', '7'], $this->sortedList($original['tx_contexts_disable']));
+    }
+
+    #[Test]
+    public function anOriginalTheEditorMayNoLongerEditIsNotHalfSwitched(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(10, 5, $editor);
+        GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('tt_content')
+            ->update('tt_content', ['editlock' => 1], ['uid' => 10]);
+
+        try {
+            $this->writer()->show($uid, 10, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.notAvailable', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant is not shown next to the original');
+        self::assertSame('', (string) $this->row(10)['tx_contexts_disable']);
+    }
+
+    #[Test]
+    public function anEditorWhoLostTheHiddenFieldDoesNotHideTheOriginal(): void
+    {
+        $uid = $this->create(10, 5, $this->editor(2));
+        // Editor 4 may still set contexts, so without the pre-check the
+        // original would be hidden in the context while DataHandler drops
+        // the variant's hidden field: nothing visible there.
+        $editor = $this->editor(4);
+
+        try {
+            $this->writer()->show($uid, 10, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.notAvailable', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant stays hidden');
+        self::assertSame('', (string) $this->row(10)['tx_contexts_disable'], 'the original is not hidden in the context');
+    }
+
+    #[Test]
+    public function anOriginalThatGotATranslationSinceIsNotHidden(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(10, 5, $editor);
+        GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('tt_content')->insert('tt_content', [
+            'uid'              => 30,
+            'pid'              => 2,
+            'header'           => 'Bürostühle',
+            'bodytext'         => '<p>Passen.</p>',
+            'CType'            => 'text',
+            'sys_language_uid' => 1,
+            'l18n_parent'      => 10,
+            'sorting'          => 256,
+        ]);
+
+        try {
+            $this->writer()->show($uid, 10, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.originalTranslated', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant stays hidden');
+        self::assertSame('', (string) $this->row(10)['tx_contexts_disable']);
+    }
+
+    #[Test]
+    public function showingWithoutHidingLeavesTheOriginalAsItIs(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(10, 6, $editor);
+        $before = $this->row(10);
+
+        $this->writer()->show($uid, 10, 6, false, $editor);
+
+        self::assertSame(0, (int) $this->row($uid)['hidden']);
+        self::assertSame($before, $this->row(10));
+    }
+
+    #[Test]
+    public function aVariantWithoutItsContextCannotBeShown(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(10, 0, $editor);
+
+        $this->expectExceptionObject(VariantException::notAvailable());
+        $this->writer()->show($uid, 10, 5, true, $editor);
+    }
+
+    #[Test]
+    public function aContextTheEditorMayNotSetIsNotLeftHalfWritten(): void
+    {
+        $editor = $this->editor(3);
+        self::assertFalse($this->contexts()->mayAssign($editor));
+        $count = $this->countContent();
+
+        // The controller refuses this before the writer; the writer's
+        // read-back is the second line of defence: the hook dropped the
+        // setting, so the copy is deleted again.
+        $element = $this->reader()->read(10, $editor);
+
+        try {
+            $this->writer()->create($element, 'Chairs', '<p>Text</p>', 5, $editor);
+            self::fail('the creation must fail');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.createFailed', $e->getLabelKey());
+        }
+
+        self::assertSame($count, $this->countContent(), 'no copy is left behind');
+    }
+
+    #[Test]
+    public function onlyAssignableContextsAreOffered(): void
+    {
+        self::assertTrue($this->contexts()->isInstalled());
+        self::assertSame(
+            [['uid' => 6, 'title' => 'Campaign'], ['uid' => 5, 'title' => 'Mobile channel']],
+            $this->contexts()->available(),
+        );
+        self::assertNull($this->contexts()->title(7));
+        self::assertNull($this->contexts()->title(8));
+        self::assertTrue($this->contexts()->mayAssign($this->editor(2)));
+    }
+
+    #[Test]
+    public function noContextIsAssignedInAWorkspace(): void
+    {
+        self::assertFalse($this->contexts()->mayAssign($this->editor(2, 1)));
+    }
+
+    #[Test]
+    public function inAWorkspaceTheVariantIsAVersionAndNotLive(): void
+    {
+        $uid = $this->create(10, 0, $this->editor(2, 1));
+        $row = $this->row($uid);
+
+        self::assertSame(1, (int) $row['t3ver_wsid']);
+        self::assertSame(self::HEADER, $row['header']);
+    }
+
+    #[Test]
+    public function anEditorWithoutTheHiddenFieldGetsNoVariant(): void
+    {
+        $this->expectExceptionObject(VariantException::notAvailable());
+        $this->reader()->read(10, $this->editor(4));
+    }
+
+    #[Test]
+    public function anEditorWhoMayNotSetItsAccessRestrictionGetsNoVariant(): void
+    {
+        // Element 20 is for logged-in users from a start time on; editor 2
+        // may not write fe_group or starttime, so a copy would lose both.
+        $this->expectExceptionObject(VariantException::notAvailable());
+        $this->reader()->read(20, $this->editor(2));
+    }
+
+    #[Test]
+    public function aCopyThatLostTheAccessRestrictionIsDeletedAgain(): void
+    {
+        $element = $this->reader()->read(20, $this->editor(1));
+        $editor  = $this->editor(2);
+        $count   = $this->countContent();
+
+        // The reader refuses editor 2; the writer's read-back is the second
+        // line of defence when the copy comes out without the restriction.
+        try {
+            $this->writer()->create($element, self::HEADER, '<p>Text</p>', 0, $editor);
+            self::fail('the creation must fail');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.createFailed', $e->getLabelKey());
+        }
+
+        self::assertSame($count, $this->countContent(), 'no copy is left behind');
+    }
+
+    #[Test]
+    public function theVariantKeepsTheAccessRestrictionOfItsOriginal(): void
+    {
+        $uid = $this->create(20, 0, $this->editor(1));
+        $row = $this->row($uid);
+
+        self::assertSame('-2', (string) $row['fe_group']);
+        self::assertSame(1735689600, (int) $row['starttime']);
+    }
+
+    #[Test]
+    public function aPageTheEditorMayNotEditGetsNoVariant(): void
+    {
+        $this->expectExceptionObject(VariantException::notAvailable());
+        $this->reader()->read(18, $this->editor(2));
+    }
+
+    #[Test]
+    public function anElementThatIsNoTextElementGetsNoVariant(): void
+    {
+        $this->expectExceptionObject(VariantException::notAvailable());
+        $this->reader()->read(17, $this->editor(2));
+    }
+
+    #[Test]
+    public function anElementWithTranslationsIsRefused(): void
+    {
+        $editor  = $this->editor(2);
+        $element = $this->reader()->read(13, $editor);
+
+        $this->expectExceptionObject(VariantException::hasTranslations());
+        $this->reader()->refuseForTranslations($element, $editor);
+    }
+
+    #[Test]
+    public function aConnectedTranslationIsRefused(): void
+    {
+        $editor  = $this->editor(2);
+        $element = $this->reader()->read(14, $editor);
+
+        $this->expectExceptionObject(VariantException::connectedTranslation());
+        $this->reader()->refuseForTranslations($element, $editor);
+    }
+
+    #[Test]
+    public function aFreeTranslationGetsAVariantInItsLanguage(): void
+    {
+        $editor  = $this->editor(2);
+        $element = $this->reader()->read(16, $editor);
+        $this->reader()->refuseForTranslations($element, $editor);
+
+        $row = $this->row($this->create(16, 5, $editor));
+        self::assertSame(1, (int) $row['sys_language_uid']);
+        self::assertSame(0, (int) $row['l18n_parent']);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function sortedList(mixed $list): array
+    {
+        $values = GeneralUtility::trimExplode(',', is_scalar($list) ? (string) $list : '', true);
+        sort($values);
+
+        return $values;
+    }
+}

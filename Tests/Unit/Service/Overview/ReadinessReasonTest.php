@@ -52,6 +52,7 @@ final class ReadinessReasonTest extends TestCase
         yield 'no upload folder' => [ReadinessReason::NoUploadFolder, null];
         yield 'image ready' => [ReadinessReason::ImageReady, null];
         yield 'no bootstrap_package' => [ReadinessReason::BootstrapPackageMissing, null];
+        yield 'no audience snippet' => [ReadinessReason::NoAudienceSnippets, 'nrllm_snippets'];
         yield 'pickable configuration runs' => [ReadinessReason::PickableReady, 'nrllm_configurations'];
         yield 'pickable configuration not checked' => [ReadinessReason::PickableNotChecked, null];
         yield 'no task' => [ReadinessReason::NoTasks, 'nrllm_tasks'];
