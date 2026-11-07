@@ -13,6 +13,7 @@ use Netresearch\NrLlm\Domain\Model\LlmConfiguration;
 use Netresearch\NrLlm\Service\Feature\CompletionServiceInterface;
 use Netresearch\NrLlm\Service\Option\ChatOptions;
 use Netresearch\T3Cowriter\Service\CallerSource;
+use Netresearch\T3Cowriter\Service\FieldSuggestion\FieldOverviewService;
 use Netresearch\T3Cowriter\Service\FieldSuggestion\UntrustedDataFence;
 use Netresearch\T3Cowriter\Service\StructuredAnswer;
 use Netresearch\T3Cowriter\Service\Transparency\ModelUse;
@@ -43,6 +44,19 @@ final readonly class VariantProposalService
 
     public const MAX_HEADER_LENGTH = 255;
 
+    /**
+     * The rewrite may come out up to half again as long as the original
+     * ("about the same length", or longer where the audience needs more
+     * explanation).
+     */
+    public const LENGTH_FACTOR = 1.5;
+
+    /**
+     * JSON syntax of the answer: the two keys, quotes, escaped quotes of the
+     * markup.
+     */
+    public const ANSWER_OVERHEAD_CHARS = 200;
+
     public function __construct(
         private CompletionServiceInterface $completionService,
         private UntrustedDataFence $fence = new UntrustedDataFence(),
@@ -59,6 +73,11 @@ final readonly class VariantProposalService
             ->withSystemPrompt($this->buildSystemPrompt($styleMessage))
             ->withBeUserUid($backendUserId)
             ->withCallerSource(CallerSource::EXTENSION, self::OPERATION);
+
+        $maxTokens = self::maxTokens($element, $configuration->getMaxTokens());
+        if ($maxTokens !== null) {
+            $options = $options->withMaxTokens($maxTokens);
+        }
 
         $response = $this->completionService->completeStructuredForConfiguration(
             $this->buildUserMessage($element),
@@ -77,6 +96,32 @@ final readonly class VariantProposalService
         }
 
         return new VariantProposal($header, $bodytext, ModelUse::fromResponse($configuration, $response->response));
+    }
+
+    /**
+     * The output token limit for the rewrite of $element: room for its header
+     * and text at up to LENGTH_FACTOR times their length, plus thinking
+     * headroom, as for the field overview. The configuration's own limit
+     * (1000 tokens by default) covers a short text only; a JSON answer cut
+     * off there cannot be parsed and fails the proposal. The configured value
+     * still wins when it is higher, and nr-llm caps the result at the model's
+     * maximum output.
+     *
+     * @param int $configured the configuration's max_tokens; 0 or less means "model maximum"
+     *
+     * @return int|null null when the configuration already asks for the model maximum
+     */
+    public static function maxTokens(VariantElement $element, int $configured): ?int
+    {
+        if ($configured <= 0) {
+            return null;
+        }
+
+        $characters = (mb_strlen($element->header, 'UTF-8') + mb_strlen($element->bodytext, 'UTF-8')) * self::LENGTH_FACTOR
+            + self::ANSWER_OVERHEAD_CHARS;
+        $needed = (int) ceil($characters / FieldOverviewService::CHARS_PER_TOKEN) + FieldOverviewService::REASONING_HEADROOM_TOKENS;
+
+        return max($configured, $needed);
     }
 
     /**
