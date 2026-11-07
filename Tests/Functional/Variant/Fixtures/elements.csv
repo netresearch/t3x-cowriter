@@ -4,16 +4,17 @@
 ,2,1,"Products","/products",0,1,1,1,31,31,31
 ,3,1,"Read only","/read-only",0,1,1,1,31,1,1
 "tt_content"
-,"uid","pid","header","bodytext","CType","colPos","sys_language_uid","sorting","hidden","l18n_parent","tx_contexts_enable","tx_contexts_disable"
-,10,2,"Office chairs","<p>Our chairs fit every office.</p><p>Five years warranty.</p>","text",0,0,256,0,0,"",""
-,11,2,"Next element","<p>Comes after.</p>","text",0,0,512,0,0,"",""
-,12,2,"Desks","<p>For every office.</p>","text",0,0,768,0,0,"6","7"
-,13,2,"Lamps","<p>Bright.</p>","text",0,0,1024,0,0,"",""
-,14,2,"Lampen","<p>Hell.</p>","text",0,1,1024,0,13,"",""
-,16,2,"Free translation","<p>Frei.</p>","text",0,1,1536,0,0,"",""
-,17,2,"A header","","header",0,0,1792,0,0,"",""
-,18,3,"Elsewhere","<p>Read only.</p>","text",0,0,256,0,0,"",""
-,19,2,"Empty","","text",0,0,2048,0,0,"",""
+,"uid","pid","header","bodytext","CType","colPos","sys_language_uid","sorting","hidden","l18n_parent","tx_contexts_enable","tx_contexts_disable","fe_group","starttime"
+,10,2,"Office chairs","<p>Our chairs fit every office.</p><p>Five years warranty.</p>","text",0,0,256,0,0,"","","",0
+,11,2,"Next element","<p>Comes after.</p>","text",0,0,512,0,0,"","","",0
+,12,2,"Desks","<p>For every office.</p>","text",0,0,768,0,0,"6","7","",0
+,13,2,"Lamps","<p>Bright.</p>","text",0,0,1024,0,0,"","","",0
+,14,2,"Lampen","<p>Hell.</p>","text",0,1,1024,0,13,"","","",0
+,16,2,"Free translation","<p>Frei.</p>","text",0,1,1536,0,0,"","","",0
+,17,2,"A header","","header",0,0,1792,0,0,"","","",0
+,18,3,"Elsewhere","<p>Read only.</p>","text",0,0,256,0,0,"","","",0
+,19,2,"Empty","","text",0,0,2048,0,0,"","","",0
+,20,2,"Members only","<p>For logged-in customers.</p>","text",0,0,2304,0,0,"","","-2",1735689600
 "tx_contexts_contexts"
 ,"uid","pid","title","alias","type","type_conf","invert","use_session","disabled","hide_in_backend"
 ,5,0,"Mobile channel","mobile","getparam","",0,0,0,0

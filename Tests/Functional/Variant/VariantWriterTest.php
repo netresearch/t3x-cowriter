@@ -236,6 +236,33 @@ final class VariantWriterTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function anOriginalThatGotATranslationSinceIsNotHidden(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(10, 5, $editor);
+        GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('tt_content')->insert('tt_content', [
+            'uid'              => 30,
+            'pid'              => 2,
+            'header'           => 'Bürostühle',
+            'bodytext'         => '<p>Passen.</p>',
+            'CType'            => 'text',
+            'sys_language_uid' => 1,
+            'l18n_parent'      => 10,
+            'sorting'          => 256,
+        ]);
+
+        try {
+            $this->writer()->show($uid, 10, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.originalTranslated', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant stays hidden');
+        self::assertSame('', (string) $this->row(10)['tx_contexts_disable']);
+    }
+
+    #[Test]
     public function showingWithoutHidingLeavesTheOriginalAsItIs(): void
     {
         $editor = $this->editor(2);
@@ -314,6 +341,44 @@ final class VariantWriterTest extends FunctionalTestCase
     {
         $this->expectExceptionObject(VariantException::notAvailable());
         $this->reader()->read(10, $this->editor(4));
+    }
+
+    #[Test]
+    public function anEditorWhoMayNotSetItsAccessRestrictionGetsNoVariant(): void
+    {
+        // Element 20 is for logged-in users from a start time on; editor 2
+        // may not write fe_group or starttime, so a copy would lose both.
+        $this->expectExceptionObject(VariantException::notAvailable());
+        $this->reader()->read(20, $this->editor(2));
+    }
+
+    #[Test]
+    public function aCopyThatLostTheAccessRestrictionIsDeletedAgain(): void
+    {
+        $element = $this->reader()->read(20, $this->editor(1));
+        $editor  = $this->editor(2);
+        $count   = $this->countContent();
+
+        // The reader refuses editor 2; the writer's read-back is the second
+        // line of defence when the copy comes out without the restriction.
+        try {
+            $this->writer()->create($element, self::HEADER, '<p>Text</p>', 0, $editor);
+            self::fail('the creation must fail');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.createFailed', $e->getLabelKey());
+        }
+
+        self::assertSame($count, $this->countContent(), 'no copy is left behind');
+    }
+
+    #[Test]
+    public function theVariantKeepsTheAccessRestrictionOfItsOriginal(): void
+    {
+        $uid = $this->create(20, 0, $this->editor(1));
+        $row = $this->row($uid);
+
+        self::assertSame('-2', (string) $row['fe_group']);
+        self::assertSame(1735689600, (int) $row['starttime']);
     }
 
     #[Test]

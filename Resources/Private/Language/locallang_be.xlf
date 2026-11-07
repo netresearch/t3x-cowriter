@@ -1221,10 +1221,13 @@
                 <source>This element cannot get an audience variant, or you may not create one.</source>
             </trans-unit>
             <trans-unit id="variant.error.translations" resname="variant.error.translations">
-                <source>This element has translations. A copy would take them over with the old text. Create the variant in each language instead.</source>
+                <source>This element has translations. A copy would take them over with the old text, so an element with translations gets no audience variant. A free translation (not connected to the default language) can get one in its language.</source>
             </trans-unit>
             <trans-unit id="variant.error.connectedTranslation" resname="variant.error.connectedTranslation">
-                <source>This element is a translation connected to the default language. Create the variant of the default-language element instead.</source>
+                <source>This element is a translation connected to the default language. Neither it nor its default-language element can get an audience variant; a free translation (not connected to the default language) can.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.originalTranslated" resname="variant.error.originalTranslated">
+                <source>This element got translations since the variant was created. Hiding it in the context would hide them there too. Show the variant without hiding this element.</source>
             </trans-unit>
             <trans-unit id="variant.error.noText" resname="variant.error.noText">
                 <source>This element has no saved text to rewrite. Save the element first.</source>

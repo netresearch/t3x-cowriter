@@ -752,15 +752,22 @@ Requirements:
     field values`, and the right on ``hidden``, ``header`` and ``bodytext``
     of ``tt_content`` where they are excluded fields (with TYPO3 14.3,
     ``hidden``). Without the right on ``hidden`` the copy would be visible
-    at once, so there is no button.
+    at once, so there is no button. An element restricted to frontend user
+    groups or to a start or end time also needs the right on those fields
+    (``fe_group``, ``starttime``, ``endtime``): DataHandler leaves out an
+    excluded field the editor may not set, and the copy would be shown to
+    everyone at any time.
 *   The copy is made as the clipboard copies, as the editor: every field
     and image of the element comes along, then header, text and ``hidden``
     are set in the same DataHandler run, the result is read back, and a
     copy that is not stored as intended is deleted again.
 *   An element with translations, and a connected translation, get no
     variant: the copy would take the translations over with the old text.
-    The dialog says so; create the variant per language instead. A free
-    translation (no ``l18n_parent``) gets one in its language.
+    The dialog says so. In connected translation mode no element of the
+    set gets a variant; a free translation (no ``l18n_parent``) gets one in
+    its language. An original that got translations after the variant was
+    created is not hidden by the show step, since its translations would
+    be hidden in the context with it; the variant can still be shown.
 *   The proposal counts against the editor's
     :ref:`nr-llm budget <nrllm:administration-user-budgets>` and the
     Cowriter rate limit; texts of more than 20,000 characters are refused

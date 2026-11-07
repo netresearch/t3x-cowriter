@@ -54,6 +54,11 @@ final class VariantException extends RuntimeException
         return new self('variant.error.connectedTranslation', 409);
     }
 
+    public static function originalTranslated(): self
+    {
+        return new self('variant.error.originalTranslated', 409);
+    }
+
     public static function noText(): self
     {
         return new self('variant.error.noText', 422);

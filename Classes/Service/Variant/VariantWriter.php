@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Service\Variant;
 
 use Netresearch\T3Cowriter\Service\FieldSuggestion\RecordFinder;
+use Netresearch\T3Cowriter\Service\FieldSuggestion\Tca;
 use Netresearch\T3Cowriter\Service\Presentation\PresentationAccess;
 use Netresearch\T3Cowriter\Service\RecordEditAccess;
 use Psr\Log\LoggerInterface;
@@ -129,6 +130,15 @@ class VariantWriter
             throw VariantException::notAvailable();
         }
 
+        // A translation added to the original since the creation would be
+        // hidden in the context with it, while the variant has none.
+        $pointerField = Tca::transOrigPointerField('tt_content');
+        if ($hideOriginal && $pointerField !== null
+            && $this->recordFinder->countTranslations('tt_content', $pointerField, $originalUid, $workspaceId) > 0
+        ) {
+            throw VariantException::originalTranslated();
+        }
+
         $data = [$variantUid => [$hiddenField => 0]];
         if ($hideOriginal) {
             $data[$originalUid] = [AudienceContexts::SETTINGS_FIELD => $this->contexts->hiddenIn($original, $contextUid)];
@@ -158,8 +168,9 @@ class VariantWriter
 
     /**
      * The copy as the user's workspace shows it is hidden, carries the
-     * header, has a text, is placed on the original's page, and is visible in
-     * the chosen context only.
+     * header, has a text, is placed on the original's page, keeps the
+     * original's access restrictions, and is visible in the chosen context
+     * only.
      */
     private function isStoredAsIntended(int $uid, VariantElement $element, string $header, string $hiddenField, int $contextUid, BackendUserAuthentication $backendUser): bool
     {
@@ -171,6 +182,16 @@ class VariantWriter
             || trim($this->stringValue($row['bodytext'] ?? null)) === ''
         ) {
             return false;
+        }
+
+        // The original's access restrictions came along; the reader's check
+        // is the first line of defence.
+        foreach (PresentationAccess::accessFields() as $field) {
+            if (array_key_exists($field, $element->row)
+                && $this->restriction($row[$field] ?? null) !== $this->restriction($element->row[$field])
+            ) {
+                return false;
+            }
         }
 
         return $contextUid === 0
@@ -211,6 +232,15 @@ class VariantWriter
         $dataHandler->process_cmdmap();
 
         return $dataHandler->errorLog;
+    }
+
+    /**
+     * An access field's value, with every "no restriction" ('', '0', 0,
+     * null: the column default differs per field and database) as ''.
+     */
+    private function restriction(mixed $value): string
+    {
+        return in_array($value, [null, '', 0, '0'], true) ? '' : $this->stringValue($value);
     }
 
     private function intValue(mixed $value): int

@@ -126,6 +126,17 @@ class VariantElementReader
             }
         }
 
+        // An original restricted to frontend groups or a time span must not
+        // turn into a copy without that restriction: the copy is a new record,
+        // and DataHandler leaves out an excluded field the editor may not set.
+        foreach (PresentationAccess::accessFields() as $field) {
+            if (!in_array($element[$field] ?? null, [null, '', 0, '0'], true)
+                && !$this->access->mayWrite($backendUser, 'tt_content', $field)
+            ) {
+                return false;
+            }
+        }
+
         return true;
     }
 
