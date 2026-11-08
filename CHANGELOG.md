@@ -2,6 +2,20 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.27.0 (2026-11-08)
+
+### FEATURE
+
+- Text elements (Text, Text & Images, Text & Media) get a "Create an audience variant" button, off by default (extension setting `variant.enable`): the editor picks an audience, and optionally a tone of voice, from the nr-llm prompt snippets the writing dialog offers, reviews the language model's rewrite of the saved header and text, and only then a hidden copy with the reviewed text is created directly after the original. With the optional extension `netresearch/contexts` (now in `suggest`) the editor can give the copy a context and, in a separate step, show it and hide the original in that context; without it the copy stays hidden. Elements with translations and connected translations get no variant. The overview module lists the surface, its readiness and the usage operation `audienceVariant` (#268).
+
+### DOCS
+
+- Configuration › Audience variant: the switch, the requirements (an active prompt snippet tagged `audience`, the editor's rights on the copied fields) and what the contexts extension adds (#268).
+
+### BUILD
+
+- CI runs the functional tests on MariaDB (PHP 8.4, TYPO3 ^14.3) in addition to the SQLite matrix, as part of the required check (#267).
+
 ## 3.26.2 (2026-11-05)
 
 ### DOCS
