@@ -91,6 +91,11 @@ All files in `.github/workflows/` are thin callers of `netresearch/typo3-ci-work
 3. Signed commits with DCO sign-off required: `git commit -S --signoff` (see [CONTRIBUTING.md](CONTRIBUTING.md))
 4. Update Documentation/ and CHANGELOG.md for user-facing changes; keep AGENTS.md in sync when commands or CI change
 
+## Changelog
+
+- Changes are recorded in [`CHANGELOG.md`](CHANGELOG.md), newest first: `## X.Y.Z (YYYY-MM-DD)` with `### FEATURE`, `### BUGFIX`, `### TASK`, `### DOCS`, `### BUILD` as needed; each entry ends with its PR number, for example `(#268)`. There is no `Unreleased` section.
+- The release PR `chore(release): X.Y.Z` writes the version's section from the PRs merged since the last tag.
+
 ## Index of scoped AGENTS.md
 
 - `./Classes/AGENTS.md` — PHP backend: controllers, DTOs, services, nr-llm integration
