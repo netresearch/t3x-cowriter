@@ -31,10 +31,10 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  *
  * The copy leaves the element's translations behind: copied, they would
  * carry the old wording. The header and text reach the copy as the update
- * DataHandler runs after the copy command and its hooks, so the copy is
- * saved like an edited element: an extension that translates a saved
- * element (EXT:autotranslate pauses during a copy and is active again for
- * that update) translates the variant from its new text.
+ * DataHandler runs after the copy command and its processCmdmap_postProcess
+ * hooks, so the copy is saved like an edited element: an extension that
+ * translates a saved element and pauses during a copy (EXT:autotranslate
+ * 3.6 does both) gets that save with the new text.
  *
  * show: makes the copy and its translations visible and, when the editor
  * asks for it, hides the original in the copy's context.

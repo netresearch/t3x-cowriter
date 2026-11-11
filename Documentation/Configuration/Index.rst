@@ -762,11 +762,11 @@ Requirements:
     are set in the same DataHandler run, the result is read back, and a
     copy that is not stored as intended is deleted again.
 *   The element's translations are not copied: they would carry the old
-    text. Header and text reach the copy as an ordinary save, so an
-    extension that translates a saved element (such as
-    ``thieleundklose/autotranslate`` with
-    ``autotranslateTtContentEnabled``) translates the variant from its new
-    text; otherwise translate the variant in the :guilabel:`Layout` module.
+    text. Header and text reach the copy as an ordinary save after the
+    copy command, so an extension that translates an element when it is
+    saved, and pauses while it is copied, gets that save with the new
+    text and can translate the variant from it. Without such an
+    extension, translate the variant in the :guilabel:`Layout` module.
     A connected translation gets no variant (the dialog says so): create
     it for the default-language element. A free translation (no
     ``l18n_parent``) gets one in its language.
