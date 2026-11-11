@@ -773,9 +773,17 @@ Requirements:
 *   The show step makes the variant's translations visible with it: they
     were made from the hidden variant and are hidden too. It hides the
     original in the context only when the variant has a translation in
-    every language the original has one in; otherwise the original's
-    translation would be hidden there as well. The variant can still be
-    shown without hiding the original.
+    every language the original has one in, published at least whenever
+    the original's translation is (start and stop dates); otherwise the
+    original's translation would be hidden there as well. The variant can
+    still be shown without hiding the original.
+*   A language the site shows in free mode (``fallbackType: free``)
+    selects its own records instead of overlaying the default language,
+    so the context does not reach the translations there. In such a
+    language the show step shows a translation of the variant only when
+    the translation itself is restricted to the context, and it does not
+    hide the original: set the visibility of those translations in the
+    :guilabel:`Layout` module.
 *   The proposal counts against the editor's
     :ref:`nr-llm budget <nrllm:administration-user-budgets>` and the
     Cowriter rate limit; texts of more than 20,000 characters are refused

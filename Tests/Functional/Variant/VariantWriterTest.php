@@ -60,6 +60,8 @@ final class VariantWriterTest extends FunctionalTestCase
         'netresearch/t3-cowriter',
     ];
 
+    private const VARIANT_STAYS_HIDDEN = 'the variant stays hidden';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -82,14 +84,7 @@ final class VariantWriterTest extends FunctionalTestCase
             'perms_group'      => 31,
             'perms_everybody'  => 31,
         ]);
-        $this->get(SiteWriter::class)->write('main', [
-            'rootPageId' => 1,
-            'base'       => 'https://example.com/',
-            'languages'  => [
-                ['languageId' => 0, 'title' => 'English', 'locale' => 'en_US.UTF-8', 'base' => '/'],
-                ['languageId' => 1, 'title' => 'Deutsch', 'locale' => 'de_DE.UTF-8', 'base' => '/de/'],
-            ],
-        ]);
+        $this->writeSite('strict');
     }
 
     private function finder(): RecordFinder
@@ -260,7 +255,7 @@ final class VariantWriterTest extends FunctionalTestCase
             self::assertSame('variant.error.notAvailable', $e->getLabelKey());
         }
 
-        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant stays hidden');
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
         self::assertSame('', (string) $this->row(10)['tx_contexts_disable'], 'the original is not hidden in the context');
     }
 
@@ -287,7 +282,7 @@ final class VariantWriterTest extends FunctionalTestCase
             self::assertSame('variant.error.originalTranslated', $e->getLabelKey());
         }
 
-        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant stays hidden');
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
         self::assertSame('', (string) $this->row(10)['tx_contexts_disable']);
     }
 
@@ -492,7 +487,7 @@ final class VariantWriterTest extends FunctionalTestCase
             self::assertSame('variant.error.notAvailable', $e->getLabelKey());
         }
 
-        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant stays hidden');
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
         self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], 'the original is not hidden in the context');
     }
 
@@ -516,6 +511,91 @@ final class VariantWriterTest extends FunctionalTestCase
         $row = $this->row($this->create(16, 5, $editor));
         self::assertSame(1, (int) $row['sys_language_uid']);
         self::assertSame(0, (int) $row['l18n_parent']);
+    }
+
+    #[Test]
+    public function aTranslationPublishedLaterThanTheOriginalsDoesNotLetTheOriginalBeHidden(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, 'Lampen für Studierende', ['starttime' => 4102444800]);
+
+        try {
+            $this->writer()->show($uid, 13, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.originalTranslated', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
+        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], 'the original is not hidden in the context');
+    }
+
+    #[Test]
+    public function inAFreeLanguageATranslationOutsideTheContextIsNotShown(): void
+    {
+        $this->writeSite('free');
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, 'Lampen für Studierende');
+
+        try {
+            $this->writer()->show($uid, 13, 5, false, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.freeLanguage', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
+        self::assertSame(1, (int) $this->row(31)['hidden'], 'the translation stays hidden');
+    }
+
+    #[Test]
+    public function inAFreeLanguageATranslationInTheContextIsShownWithTheVariant(): void
+    {
+        $this->writeSite('free');
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, 'Lampen für Studierende', ['tx_contexts_enable' => '5']);
+
+        $this->writer()->show($uid, 13, 5, false, $editor);
+
+        self::assertSame(0, (int) $this->row($uid)['hidden']);
+        self::assertSame(0, (int) $this->row(31)['hidden']);
+    }
+
+    #[Test]
+    public function inAFreeLanguageTheTranslatedOriginalIsNotHidden(): void
+    {
+        $this->writeSite('free');
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, 'Lampen für Studierende', ['tx_contexts_enable' => '5']);
+
+        try {
+            $this->writer()->show($uid, 13, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.freeLanguage', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
+        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], 'the original is not hidden in the context');
+    }
+
+    /**
+     * The site with English and German, German in $germanFallbackType.
+     */
+    private function writeSite(string $germanFallbackType): void
+    {
+        $this->get(SiteWriter::class)->write('main', [
+            'rootPageId' => 1,
+            'base'       => 'https://example.com/',
+            'languages'  => [
+                ['languageId' => 0, 'title' => 'English', 'locale' => 'en_US.UTF-8', 'base' => '/'],
+                ['languageId' => 1, 'title' => 'Deutsch', 'locale' => 'de_DE.UTF-8', 'base' => '/de/', 'fallbackType' => $germanFallbackType],
+            ],
+        ]);
     }
 
     /**

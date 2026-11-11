@@ -16,6 +16,8 @@ use Netresearch\T3Cowriter\Service\RecordEditAccess;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
@@ -53,6 +55,7 @@ class VariantWriter
         private readonly LoggerInterface $logger,
         private readonly RecordEditAccess $recordEditAccess = new RecordEditAccess(),
         private readonly PresentationAccess $access = new PresentationAccess(),
+        private readonly ?SiteFinder $siteFinder = null,
     ) {}
 
     /**
@@ -153,15 +156,35 @@ class VariantWriter
             throw VariantException::notAvailable();
         }
 
+        // A language in free mode selects its records on their own columns,
+        // not as overlays of the default language: the context of the variant
+        // and the original does not reach their translations there. A
+        // translation of the variant that is not restricted to the context
+        // itself would be shown to every visitor, and the original's
+        // translation would stay next to it.
+        $freeLanguages        = $this->freeLanguages($this->intValue($variant['pid'] ?? 0));
+        $originalTranslations = $hideOriginal && $pointerField !== null
+            ? $this->recordFinder->findTranslations('tt_content', $pointerField, $originalUid, $workspaceId)
+            : [];
+        foreach ($translations as $translation) {
+            if (in_array($this->language($translation), $freeLanguages, true) && !$this->contexts->isEnabledIn($translation, $contextUid)) {
+                throw VariantException::freeLanguage();
+            }
+        }
+
+        foreach ($originalTranslations as $originalTranslation) {
+            if (in_array($this->language($originalTranslation), $freeLanguages, true)) {
+                throw VariantException::freeLanguage();
+            }
+        }
+
         // Hiding the original in the context hides its translations there
-        // too; each needs a translation of the variant in its language.
-        if ($hideOriginal && $pointerField !== null
-            && array_diff(
-                $this->languages($this->recordFinder->findTranslations('tt_content', $pointerField, $originalUid, $workspaceId)),
-                $this->languages($translations),
-            ) !== []
-        ) {
-            throw VariantException::originalTranslated();
+        // too; each needs a translation of the variant in its language that
+        // is published at least whenever the original's translation is.
+        foreach ($originalTranslations as $originalTranslation) {
+            if (!$this->isCovered($originalTranslation, $translations)) {
+                throw VariantException::originalTranslated();
+            }
         }
 
         $data = [$variantUid => [$hiddenField => 0]];
@@ -266,17 +289,65 @@ class VariantWriter
     }
 
     /**
-     * The language ids of the given rows.
-     *
-     * @param list<array<string, mixed>> $rows
+     * @param array<string, mixed> $row
+     */
+    private function language(array $row): int
+    {
+        return $this->intValue($row[Tca::languageField('tt_content') ?? 'sys_language_uid'] ?? 0);
+    }
+
+    /**
+     * The ids of the languages the site of $pageUid shows in free mode
+     * (fallbackType free); none for a page outside every site.
      *
      * @return list<int>
      */
-    private function languages(array $rows): array
+    private function freeLanguages(int $pageUid): array
     {
-        $languageField = Tca::languageField('tt_content') ?? 'sys_language_uid';
+        try {
+            $site = ($this->siteFinder ?? GeneralUtility::makeInstance(SiteFinder::class))->getSiteByPageId($pageUid);
+        } catch (SiteNotFoundException) {
+            return [];
+        }
 
-        return array_values(array_unique(array_map(fn (array $row): int => $this->intValue($row[$languageField] ?? 0), $rows)));
+        $free = [];
+        foreach ($site->getAllLanguages() as $siteLanguage) {
+            if ($siteLanguage->getFallbackType() === 'free') {
+                $free[] = $siteLanguage->getLanguageId();
+            }
+        }
+
+        return $free;
+    }
+
+    /**
+     * Whether a translation of the variant in the language of
+     * $originalTranslation is published at least whenever that translation
+     * is: it starts no later and ends no earlier (0 means no limit).
+     *
+     * @param array<string, mixed>       $originalTranslation
+     * @param list<array<string, mixed>> $variantTranslations
+     */
+    private function isCovered(array $originalTranslation, array $variantTranslations): bool
+    {
+        $startField = Tca::enableColumn('tt_content', 'starttime');
+        $endField   = Tca::enableColumn('tt_content', 'endtime');
+        $start      = $startField === null ? 0 : $this->intValue($originalTranslation[$startField] ?? 0);
+        $end        = $endField === null ? 0 : $this->intValue($originalTranslation[$endField] ?? 0);
+
+        foreach ($variantTranslations as $variantTranslation) {
+            if ($this->language($variantTranslation) !== $this->language($originalTranslation)) {
+                continue;
+            }
+
+            $variantStart = $startField === null ? 0 : $this->intValue($variantTranslation[$startField] ?? 0);
+            $variantEnd   = $endField === null ? 0 : $this->intValue($variantTranslation[$endField] ?? 0);
+            if ($variantStart <= $start && ($variantEnd === 0 || ($end !== 0 && $variantEnd >= $end))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
