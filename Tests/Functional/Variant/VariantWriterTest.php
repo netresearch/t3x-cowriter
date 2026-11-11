@@ -17,6 +17,7 @@ use Netresearch\T3Cowriter\Service\Variant\VariantElementReader;
 use Netresearch\T3Cowriter\Service\Variant\VariantException;
 use Netresearch\T3Cowriter\Service\Variant\VariantWriter;
 use Netresearch\T3Cowriter\Tests\Support\RecordingLogger;
+use Netresearch\T3Cowriter\Tests\Support\TranslateOnSaveHook;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
@@ -426,8 +427,8 @@ final class VariantWriterTest extends FunctionalTestCase
     #[Test]
     public function anElementWithTranslationsGetsAVariantWithoutTheirOldWording(): void
     {
-        // NEXT-189: a site that translates every saved element gives each new
-        // element a translation at once, so refusing those left no element.
+        // A site that translates every saved element gives each new element
+        // a translation at once, so refusing those left no element.
         $editor  = $this->editor(2);
         $element = $this->reader()->read(13, $editor);
         $this->reader()->refuseForTranslations($element);
@@ -438,6 +439,26 @@ final class VariantWriterTest extends FunctionalTestCase
         self::assertSame(self::HEADER, $this->row($uid)['header']);
         self::assertSame([], $this->translationsOf($uid), 'no translation in the old wording came along');
         self::assertSame($translation, $this->row(14), 'the translation of the original is not touched');
+    }
+
+    #[Test]
+    public function anExtensionThatTranslatesSavedElementsGetsTheVariantWithItsNewText(): void
+    {
+        $hooks                                           = &$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php'];
+        $hooks['processDatamapClass']['translateOnSave'] = TranslateOnSaveHook::class;
+        $hooks['processCmdmapClass']['translateOnSave']  = TranslateOnSaveHook::class;
+        TranslateOnSaveHook::$translated                 = [];
+
+        $uid = $this->create(13, 5, $this->editor(2));
+
+        $saves = array_values(array_filter(
+            TranslateOnSaveHook::$translated,
+            static fn (array $save): bool => $save['table'] === 'tt_content' && (int) $save['uid'] === $uid,
+        ));
+        self::assertCount(1, $saves, 'the variant is saved once after the copy command, outside its pause');
+        self::assertSame('update', $saves[0]['status']);
+        self::assertContains('header', $saves[0]['fields']);
+        self::assertContains('bodytext', $saves[0]['fields']);
     }
 
     #[Test]

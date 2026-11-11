@@ -34,7 +34,7 @@ use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
  * Every Cowriter button FormEngine renders has an accessible name. Core
  * renders a field control as a link around its icon and puts the control's
  * title on the icon, which is aria-hidden, so the link needs its own name
- * (NEXT-189: a role query for "Create an audience variant" found nothing).
+ * (a role query for "Create an audience variant" found nothing).
  *
  * The form of a text element carries every field control of the extension:
  * the suggestions at the header, the presentation and the variant at the
