@@ -4143,4 +4143,49 @@ describe('CowriterDialog', () => {
             await showPromise.catch(() => {});
         });
     });
+
+    describe('_showHints()', () => {
+        it('lists each hint above the result and keeps the text', () => {
+            const container = document.createElement('div');
+            const preview = document.createElement('div');
+            preview.textContent = 'Hallo du';
+            container.appendChild(preview);
+
+            new CowriterDialog(mockService)._showHints(preview, [
+                { kind: 'violation', message: 'Rule "Siezen": "Hallo du"' },
+                { kind: 'unavailable', message: '' },
+                { kind: 'violation' },
+            ]);
+
+            const notice = container.querySelector('[data-role="run-notice"]');
+            expect(notice).not.toBeNull();
+            expect(notice.getAttribute('role')).toBe('status');
+            expect(Array.from(notice.querySelectorAll('li')).map((item) => item.textContent))
+                .toEqual(['Rule "Siezen": "Hallo du"']);
+            expect(notice.nextElementSibling).toBe(preview);
+            expect(preview.textContent).toBe('Hallo du');
+        });
+
+        it('adds nothing without hints', () => {
+            const container = document.createElement('div');
+            const preview = document.createElement('div');
+            container.appendChild(preview);
+
+            new CowriterDialog(mockService)._showHints(preview, undefined);
+            new CowriterDialog(mockService)._showHints(preview, []);
+
+            expect(container.querySelector('[data-role="run-notice"]')).toBeNull();
+        });
+
+        it('shows markup in a hint as text', () => {
+            const container = document.createElement('div');
+            const preview = document.createElement('div');
+            container.appendChild(preview);
+
+            new CowriterDialog(mockService)._showHints(preview, [{ kind: 'violation', message: '<img src=x onerror=alert(1)>' }]);
+
+            expect(container.querySelector('img')).toBeNull();
+            expect(container.querySelector('li').textContent).toBe('<img src=x onerror=alert(1)>');
+        });
+    });
 });

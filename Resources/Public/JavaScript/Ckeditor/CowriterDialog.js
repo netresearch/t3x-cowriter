@@ -510,10 +510,44 @@ export class CowriterDialog {
                 preview.replaceChildren(...Array.from(this._sanitizeHtml(streamed).childNodes));
             }, signal);
 
-            return { success: true, content: final.content ?? streamed, model: final.model, targetWords: final.targetWords };
+            return {
+                success: true, content: final.content ?? streamed, model: final.model, targetWords: final.targetWords, hints: final.hints,
+            };
         } finally {
             preview.removeAttribute('aria-busy');
         }
+    }
+
+    /**
+     * Show what a guardrail of nr-llm found without stopping the text, such as
+     * a rule the rule-set judge says the text breaks. The text stays, and the
+     * notice goes where a kept answer's notice goes, so the next run removes it.
+     *
+     * @param {HTMLElement} preview
+     * @param {Array<{kind?: string, message?: string}>|undefined} hints
+     * @private
+     */
+    _showHints(preview, hints) {
+        const messages = (Array.isArray(hints) ? hints : [])
+            .map((hint) => (typeof hint?.message === 'string' ? hint.message : ''))
+            .filter((message) => message !== '');
+        if (messages.length === 0) {
+            return;
+        }
+
+        const notice = document.createElement('div');
+        notice.className = 'alert alert-warning';
+        notice.setAttribute('role', 'status');
+        notice.dataset.role = 'run-notice';
+        const list = document.createElement('ul');
+        list.className = 'mb-0';
+        for (const message of messages) {
+            const item = document.createElement('li');
+            item.textContent = message;
+            list.appendChild(item);
+        }
+        notice.appendChild(list);
+        preview.before(notice);
     }
 
     /**
@@ -1074,6 +1108,8 @@ export class CowriterDialog {
                             modelInfo.textContent = modelInfo.textContent ? `${modelInfo.textContent} | ${wordsText}` : wordsText;
                             modelInfo.style.display = 'block';
                         }
+
+                        this._showHints(preview, result.hints);
 
                         container.querySelector('[data-role="variant-picker"]')?.remove();
                         if (Array.isArray(result.variants) && result.variants.length > 1) {

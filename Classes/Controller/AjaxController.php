@@ -28,6 +28,7 @@ use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
+use Netresearch\T3Cowriter\Domain\DTO\GuardrailHints;
 use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\BudgetRefusal;
@@ -969,6 +970,13 @@ final readonly class AjaxController
             ];
             if ($targetWords !== null) {
                 $done['targetWords'] = $targetWords;
+            }
+
+            // A guardrail of nr-llm that let the text pass reports what it found
+            // once the stream is drained.
+            $hints = GuardrailHints::fromDrainedStream($chunks);
+            if ($hints !== []) {
+                $done['hints'] = $hints;
             }
 
             $this->eventStream->send($done);
