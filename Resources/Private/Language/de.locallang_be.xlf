@@ -1625,17 +1625,13 @@
                 <source>This element cannot get an audience variant, or you may not create one.</source>
                 <target>Dieses Element kann keine Zielgruppen-Variante bekommen, oder Sie dürfen keine anlegen.</target>
             </trans-unit>
-            <trans-unit id="variant.error.translations" resname="variant.error.translations">
-                <source>This element has translations. A copy would take them over with the old text, so an element with translations gets no audience variant. A free translation (not connected to the default language) can get one in its language.</source>
-                <target>Dieses Element hat Übersetzungen. Eine Kopie würde sie mit dem alten Text übernehmen, deshalb erhält ein Element mit Übersetzungen keine Zielgruppen-Variante. Eine freie Übersetzung (nicht mit der Standardsprache verbunden) kann in ihrer Sprache eine erhalten.</target>
-            </trans-unit>
             <trans-unit id="variant.error.connectedTranslation" resname="variant.error.connectedTranslation">
-                <source>This element is a translation connected to the default language. Neither it nor its default-language element can get an audience variant; a free translation (not connected to the default language) can.</source>
-                <target>Dieses Element ist eine mit der Standardsprache verbundene Übersetzung. Weder dieses Element noch sein Element in der Standardsprache kann eine Zielgruppen-Variante erhalten; eine freie Übersetzung (nicht mit der Standardsprache verbunden) kann es.</target>
+                <source>This element is a translation connected to the default language. It cannot get an audience variant: create the variant of its default-language element. A free translation (not connected to the default language) can get one in its language.</source>
+                <target>Dieses Element ist eine mit der Standardsprache verbundene Übersetzung. Es kann keine Zielgruppen-Variante erhalten: Legen Sie die Variante für sein Element in der Standardsprache an. Eine freie Übersetzung (nicht mit der Standardsprache verbunden) kann in ihrer Sprache eine erhalten.</target>
             </trans-unit>
             <trans-unit id="variant.error.originalTranslated" resname="variant.error.originalTranslated">
-                <source>This element got translations since the variant was created. Hiding it in the context would hide them there too. Show the variant without hiding this element.</source>
-                <target>Dieses Element hat seit dem Anlegen der Variante Übersetzungen erhalten. Würde es im Kontext ausgeblendet, wären sie dort ebenfalls ausgeblendet. Zeigen Sie die Variante an, ohne dieses Element auszublenden.</target>
+                <source>This element has a translation in a language the variant has none in. Hiding this element in the context would hide that translation there too. Translate the variant into that language first, or show the variant without hiding this element.</source>
+                <target>Dieses Element hat eine Übersetzung in einer Sprache, in der die Variante keine hat. Würde dieses Element im Kontext ausgeblendet, wäre diese Übersetzung dort ebenfalls ausgeblendet. Übersetzen Sie zuerst die Variante in diese Sprache, oder zeigen Sie die Variante an, ohne dieses Element auszublenden.</target>
             </trans-unit>
             <trans-unit id="variant.error.noText" resname="variant.error.noText">
                 <source>This element has no saved text to rewrite. Save the element first.</source>

@@ -37,15 +37,6 @@ final class VariantException extends RuntimeException
     }
 
     /**
-     * The original has translations: the copy would take them over with the
-     * old text, and a hidden original would hide them too.
-     */
-    public static function hasTranslations(): self
-    {
-        return new self('variant.error.translations', 409);
-    }
-
-    /**
      * The original is a connected translation: its variant would be a
      * translation of the same default-language element.
      */
@@ -54,6 +45,11 @@ final class VariantException extends RuntimeException
         return new self('variant.error.connectedTranslation', 409);
     }
 
+    /**
+     * Hiding the original in the context would hide its translation in a
+     * language the variant has no translation in: visitors in that language
+     * would lose the translated text there.
+     */
     public static function originalTranslated(): self
     {
         return new self('variant.error.originalTranslated', 409);

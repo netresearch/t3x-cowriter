@@ -74,30 +74,20 @@ class VariantElementReader
     }
 
     /**
-     * A copy of a default-language element with translations takes the
-     * translations with it, still in the old wording, and a connected
-     * translation would get a second translation of the same element. Both
-     * are refused with their reason.
+     * A connected translation would get a second translation of the same
+     * element, so it is refused with its reason.
+     *
+     * A default-language element with translations gets a variant: the
+     * writer copies it without them, so no translation in the old wording
+     * comes along (see VariantWriter::create()).
      *
      * @throws VariantException
      */
-    public function refuseForTranslations(VariantElement $element, BackendUserAuthentication $backendUser): void
+    public function refuseForTranslations(VariantElement $element): void
     {
         $pointerField = Tca::transOrigPointerField('tt_content');
-        if ($pointerField === null) {
-            return;
-        }
-
-        if ($element->languageId > 0) {
-            if ($this->intValue($element->row[$pointerField] ?? 0) > 0) {
-                throw VariantException::connectedTranslation();
-            }
-
-            return;
-        }
-
-        if ($this->recordFinder->countTranslations('tt_content', $pointerField, $element->uid, max(0, $backendUser->workspace)) > 0) {
-            throw VariantException::hasTranslations();
+        if ($pointerField !== null && $element->languageId > 0 && $this->intValue($element->row[$pointerField] ?? 0) > 0) {
+            throw VariantException::connectedTranslation();
         }
     }
 

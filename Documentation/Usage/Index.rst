@@ -616,8 +616,12 @@ decide: give it a context on its :guilabel:`Contexts` tab, use it to
 replace this element, or keep it as a draft. Showing it without a context
 would show both elements to every visitor.
 
-An element with translations or a connected translation gets no variant;
-the dialog says so. The audiences are the ones your administrator defined;
+The variant does not take over this element's translations: they would
+keep the old text. If your site translates new elements automatically,
+the variant gets its translations from its new text; otherwise translate
+it in the :guilabel:`Layout` module before you hide this element in the
+context. :guilabel:`Show the variant` shows its translations with it. A
+connected translation gets no variant; the dialog says so. The audiences are the ones your administrator defined;
 the Cowriter does not decide who belongs to them. Each proposal counts
 against your AI budget.
 

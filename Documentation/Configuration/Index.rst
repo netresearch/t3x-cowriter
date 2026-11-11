@@ -761,13 +761,21 @@ Requirements:
     and image of the element comes along, then header, text and ``hidden``
     are set in the same DataHandler run, the result is read back, and a
     copy that is not stored as intended is deleted again.
-*   An element with translations, and a connected translation, get no
-    variant: the copy would take the translations over with the old text.
-    The dialog says so. In connected translation mode no element of the
-    set gets a variant; a free translation (no ``l18n_parent``) gets one in
-    its language. An original that got translations after the variant was
-    created is not hidden by the show step, since its translations would
-    be hidden in the context with it; the variant can still be shown.
+*   The element's translations are not copied: they would carry the old
+    text. Header and text reach the copy as an ordinary save, so an
+    extension that translates a saved element (such as
+    ``thieleundklose/autotranslate`` with
+    ``autotranslateTtContentEnabled``) translates the variant from its new
+    text; otherwise translate the variant in the :guilabel:`Layout` module.
+    A connected translation gets no variant (the dialog says so): create
+    it for the default-language element. A free translation (no
+    ``l18n_parent``) gets one in its language.
+*   The show step makes the variant's translations visible with it: they
+    were made from the hidden variant and are hidden too. It hides the
+    original in the context only when the variant has a translation in
+    every language the original has one in; otherwise the original's
+    translation would be hidden there as well. The variant can still be
+    shown without hiding the original.
 *   The proposal counts against the editor's
     :ref:`nr-llm budget <nrllm:administration-user-budgets>` and the
     Cowriter rate limit; texts of more than 20,000 characters are refused
