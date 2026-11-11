@@ -62,6 +62,10 @@ final class VariantWriterTest extends FunctionalTestCase
 
     private const VARIANT_STAYS_HIDDEN = 'the variant stays hidden';
 
+    private const ORIGINAL_NOT_HIDDEN = 'the original is not hidden in the context';
+
+    private const VARIANT_TRANSLATION_HEADER = 'Lampen für Studierende';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -256,7 +260,7 @@ final class VariantWriterTest extends FunctionalTestCase
         }
 
         self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
-        self::assertSame('', (string) $this->row(10)['tx_contexts_disable'], 'the original is not hidden in the context');
+        self::assertSame('', (string) $this->row(10)['tx_contexts_disable'], self::ORIGINAL_NOT_HIDDEN);
     }
 
     #[Test]
@@ -463,7 +467,7 @@ final class VariantWriterTest extends FunctionalTestCase
         $uid    = $this->create(13, 5, $editor);
         // What translating the saved variant leaves (EXT:autotranslate
         // localizes the hidden copy): a hidden connected translation.
-        $this->insertTranslation(31, $uid, 'Lampen für Studierende');
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER);
 
         $this->writer()->show($uid, 13, 5, true, $editor);
 
@@ -478,7 +482,7 @@ final class VariantWriterTest extends FunctionalTestCase
     {
         $editor = $this->editor(2);
         $uid    = $this->create(13, 5, $editor);
-        $this->insertTranslation(31, $uid, 'Lampen für Studierende', ['editlock' => 1]);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['editlock' => 1]);
 
         try {
             $this->writer()->show($uid, 13, 5, true, $editor);
@@ -488,7 +492,7 @@ final class VariantWriterTest extends FunctionalTestCase
         }
 
         self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
-        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], 'the original is not hidden in the context');
+        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], self::ORIGINAL_NOT_HIDDEN);
     }
 
     #[Test]
@@ -518,7 +522,7 @@ final class VariantWriterTest extends FunctionalTestCase
     {
         $editor = $this->editor(2);
         $uid    = $this->create(13, 5, $editor);
-        $this->insertTranslation(31, $uid, 'Lampen für Studierende', ['starttime' => 4102444800]);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['starttime' => 4102444800]);
 
         try {
             $this->writer()->show($uid, 13, 5, true, $editor);
@@ -528,7 +532,7 @@ final class VariantWriterTest extends FunctionalTestCase
         }
 
         self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
-        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], 'the original is not hidden in the context');
+        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], self::ORIGINAL_NOT_HIDDEN);
     }
 
     #[Test]
@@ -537,7 +541,7 @@ final class VariantWriterTest extends FunctionalTestCase
         $this->writeSite('free');
         $editor = $this->editor(2);
         $uid    = $this->create(13, 5, $editor);
-        $this->insertTranslation(31, $uid, 'Lampen für Studierende');
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER);
 
         try {
             $this->writer()->show($uid, 13, 5, false, $editor);
@@ -556,7 +560,7 @@ final class VariantWriterTest extends FunctionalTestCase
         $this->writeSite('free');
         $editor = $this->editor(2);
         $uid    = $this->create(13, 5, $editor);
-        $this->insertTranslation(31, $uid, 'Lampen für Studierende', ['tx_contexts_enable' => '5']);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['tx_contexts_enable' => '5']);
 
         $this->writer()->show($uid, 13, 5, false, $editor);
 
@@ -570,7 +574,7 @@ final class VariantWriterTest extends FunctionalTestCase
         $this->writeSite('free');
         $editor = $this->editor(2);
         $uid    = $this->create(13, 5, $editor);
-        $this->insertTranslation(31, $uid, 'Lampen für Studierende', ['tx_contexts_enable' => '5']);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['tx_contexts_enable' => '5']);
 
         try {
             $this->writer()->show($uid, 13, 5, true, $editor);
@@ -580,7 +584,7 @@ final class VariantWriterTest extends FunctionalTestCase
         }
 
         self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
-        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], 'the original is not hidden in the context');
+        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], self::ORIGINAL_NOT_HIDDEN);
     }
 
     /**

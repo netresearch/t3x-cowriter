@@ -156,36 +156,10 @@ class VariantWriter
             throw VariantException::notAvailable();
         }
 
-        // A language in free mode selects its records on their own columns,
-        // not as overlays of the default language: the context of the variant
-        // and the original does not reach their translations there. A
-        // translation of the variant that is not restricted to the context
-        // itself would be shown to every visitor, and the original's
-        // translation would stay next to it.
-        $freeLanguages        = $this->freeLanguages($this->intValue($variant['pid'] ?? 0));
         $originalTranslations = $hideOriginal && $pointerField !== null
             ? $this->recordFinder->findTranslations('tt_content', $pointerField, $originalUid, $workspaceId)
             : [];
-        foreach ($translations as $translation) {
-            if (in_array($this->language($translation), $freeLanguages, true) && !$this->contexts->isEnabledIn($translation, $contextUid)) {
-                throw VariantException::freeLanguage();
-            }
-        }
-
-        foreach ($originalTranslations as $originalTranslation) {
-            if (in_array($this->language($originalTranslation), $freeLanguages, true)) {
-                throw VariantException::freeLanguage();
-            }
-        }
-
-        // Hiding the original in the context hides its translations there
-        // too; each needs a translation of the variant in its language that
-        // is published at least whenever the original's translation is.
-        foreach ($originalTranslations as $originalTranslation) {
-            if (!$this->isCovered($originalTranslation, $translations)) {
-                throw VariantException::originalTranslated();
-            }
-        }
+        $this->refuseForLanguages($this->intValue($variant['pid'] ?? 0), $contextUid, $translations, $originalTranslations);
 
         $data = [$variantUid => [$hiddenField => 0]];
         foreach ($translations as $translation) {
@@ -272,6 +246,42 @@ class VariantWriter
 
         return $contextUid === 0
             || ($this->contexts->isEnabledIn($row, $contextUid) && $this->contexts->currentSettings($row) === $this->contexts->onlyIn($contextUid));
+    }
+
+    /**
+     * A language in free mode selects its records on their own columns, not
+     * as overlays of the default language: the context of the variant and
+     * the original does not reach their translations there. A translation of
+     * the variant that is not restricted to the context itself would be shown
+     * to every visitor, and the original's translation would stay next to it.
+     *
+     * Hiding the original in the context hides its translations there too;
+     * each needs a translation of the variant in its language that is
+     * published at least whenever the original's translation is.
+     *
+     * @param list<array<string, mixed>> $translations         of the variant
+     * @param list<array<string, mixed>> $originalTranslations of the original, none when it is not hidden
+     *
+     * @throws VariantException
+     */
+    private function refuseForLanguages(int $pageUid, int $contextUid, array $translations, array $originalTranslations): void
+    {
+        $freeLanguages = $this->freeLanguages($pageUid);
+        foreach ($translations as $translation) {
+            if (in_array($this->language($translation), $freeLanguages, true) && !$this->contexts->isEnabledIn($translation, $contextUid)) {
+                throw VariantException::freeLanguage();
+            }
+        }
+
+        foreach ($originalTranslations as $originalTranslation) {
+            if (in_array($this->language($originalTranslation), $freeLanguages, true)) {
+                throw VariantException::freeLanguage();
+            }
+
+            if (!$this->isCovered($originalTranslation, $translations)) {
+                throw VariantException::originalTranslated();
+            }
+        }
     }
 
     /**
