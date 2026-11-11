@@ -252,8 +252,8 @@ class VariantWriter
      * A language in free mode selects its records on their own columns, not
      * as overlays of the default language: the context of the variant and
      * the original does not reach their translations there. A translation of
-     * the variant that is not restricted to the context itself would be shown
-     * to every visitor, and the original's translation would stay next to it.
+     * the variant that is not restricted to exactly that context itself would
+     * be shown to every visitor (or in another context), and the original's translation would stay next to it.
      *
      * Hiding the original in the context hides its translations there too;
      * each needs a translation of the variant in its language that is
@@ -268,7 +268,11 @@ class VariantWriter
     {
         $freeLanguages = $this->freeLanguages($pageUid);
         foreach ($translations as $translation) {
-            if (in_array($this->language($translation), $freeLanguages, true) && !$this->contexts->isEnabledIn($translation, $contextUid)) {
+            // Restricted to exactly this context: a translation enabled in a
+            // second context would show the audience text there too.
+            if (in_array($this->language($translation), $freeLanguages, true)
+                && (!$this->contexts->isEnabledIn($translation, $contextUid) || $this->contexts->currentSettings($translation) !== $this->contexts->onlyIn($contextUid))
+            ) {
                 throw VariantException::freeLanguage();
             }
         }

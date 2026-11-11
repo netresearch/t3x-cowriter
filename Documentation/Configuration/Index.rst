@@ -781,7 +781,7 @@ Requirements:
     selects its own records instead of overlaying the default language,
     so the context does not reach the translations there. In such a
     language the show step shows a translation of the variant only when
-    the translation itself is restricted to the context, and it does not
+    the translation itself is restricted to that context alone, and it does not
     hide the original: set the visibility of those translations in the
     :guilabel:`Layout` module.
 *   The proposal counts against the editor's

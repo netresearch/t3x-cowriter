@@ -569,6 +569,24 @@ final class VariantWriterTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function inAFreeLanguageATranslationAlsoInAnotherContextIsNotShown(): void
+    {
+        $this->writeSite('free');
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['tx_contexts_enable' => '5,6']);
+
+        try {
+            $this->writer()->show($uid, 13, 5, false, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.freeLanguage', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row(31)['hidden'], 'the translation stays hidden');
+    }
+
+    #[Test]
     public function inAFreeLanguageTheTranslatedOriginalIsNotHidden(): void
     {
         $this->writeSite('free');
