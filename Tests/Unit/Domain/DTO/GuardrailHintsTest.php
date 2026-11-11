@@ -66,4 +66,19 @@ final class GuardrailHintsTest extends TestCase
         self::assertSame([], GuardrailHints::fromMetadata([GuardrailHints::METADATA_KEY => 'x']));
         self::assertSame([], GuardrailHints::fromMetadata([GuardrailHints::METADATA_KEY => [['kind' => 'violation'], ['message' => ''], 'x']]));
     }
+
+    #[Test]
+    public function aCaptureWithoutTheCollectorRunsTheCallAndFindsNoHints(): void
+    {
+        $captured = GuardrailHints::capture(static fn (): string => 'done', 'Netresearch\\NrLlm\\NoSuchCollector');
+
+        self::assertSame(['result' => 'done', 'hints' => []], $captured);
+    }
+
+    #[Test]
+    public function hintsBecomeResponseMetadataOnlyWhenThereAreAny(): void
+    {
+        self::assertSame([], GuardrailHints::asMetadata([]));
+        self::assertSame([GuardrailHints::METADATA_KEY => [['kind' => 'violation', 'message' => 'm']]], GuardrailHints::asMetadata([['kind' => 'violation', 'message' => 'm']]));
+    }
 }

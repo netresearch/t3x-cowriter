@@ -10,11 +10,15 @@ declare(strict_types=1);
 namespace Netresearch\T3Cowriter\Domain\DTO;
 
 use Generator;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
+use function array_key_exists;
+use function class_exists;
 use function get_object_vars;
 use function is_array;
 use function is_object;
 use function is_string;
+use function method_exists;
 
 /**
  * The hints nr-llm attaches to a delivered text, as the editor reads them.
@@ -30,6 +34,45 @@ use function is_string;
 final class GuardrailHints
 {
     public const METADATA_KEY = 'guardrailHints';
+
+    /** The collector of nr-llm (ADR-288 there); absent before that release. */
+    public const COLLECTOR = 'Netresearch\\NrLlm\\Service\\Guardrail\\GuardrailHintCollector';
+
+    /**
+     * Run a call and collect the hints nr-llm's guardrails reported during it,
+     * for a call whose result carries no response metadata, such as a tool
+     * loop. Without the collector the call runs as before and yields none.
+     *
+     * @param callable(): mixed $call
+     * @param string            $collectorClass the collector to ask; a class that does not exist means none
+     *
+     * @return array{result: mixed, hints: list<array{kind: string, message: string}>}
+     */
+    public static function capture(callable $call, string $collectorClass = self::COLLECTOR): array
+    {
+        $collector = class_exists($collectorClass) ? GeneralUtility::makeInstance($collectorClass) : null;
+        if (!is_object($collector) || !method_exists($collector, 'capture')) {
+            return ['result' => $call(), 'hints' => []];
+        }
+
+        $captured = $collector->capture($call);
+        $result   = is_array($captured) && array_key_exists('result', $captured) ? $captured['result'] : null;
+        $hints    = is_array($captured) ? self::fromStreamReturn($captured['hints'] ?? null) : [];
+
+        return ['result' => $result, 'hints' => $hints];
+    }
+
+    /**
+     * The hints as response metadata, for a response the caller builds itself.
+     *
+     * @param list<array{kind: string, message: string}> $hints
+     *
+     * @return array<string, mixed>
+     */
+    public static function asMetadata(array $hints): array
+    {
+        return $hints === [] ? [] : [self::METADATA_KEY => $hints];
+    }
 
     /**
      * @param array<string, mixed>|null $metadata

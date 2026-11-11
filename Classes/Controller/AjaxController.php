@@ -677,7 +677,11 @@ final readonly class AjaxController
     {
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if ($dto->useTools && $this->toolRunner instanceof UnattendedToolRunner && $backendUser instanceof BackendUserAuthentication) {
-            $result = $this->toolRunner->run($messages, $configuration, $backendUser, $site);
+            // The loop result carries no response metadata, so the hints of
+            // nr-llm's guardrails are collected around it.
+            $toolRunner = $this->toolRunner;
+            $captured   = GuardrailHints::capture(static fn (): mixed => $toolRunner->run($messages, $configuration, $backendUser, $site));
+            $result     = $captured['result'];
             if ($result instanceof ToolLoopResult && $result->terminationReason === AgentRunTerminationReason::BUDGET_EXHAUSTED) {
                 // The tool loop ends a budget refusal without the exception
                 // and without the limit; ask the budget for it.
@@ -694,6 +698,7 @@ final readonly class AjaxController
                         usage: $result->usage,
                         finishReason: $result->truncated ? 'length' : 'stop',
                         provider: '',
+                        metadata: GuardrailHints::asMetadata($captured['hints']),
                     ),
                     'toolIterations' => $result->iterations,
                 ];
