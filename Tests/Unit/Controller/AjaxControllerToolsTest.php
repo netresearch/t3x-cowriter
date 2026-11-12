@@ -39,6 +39,7 @@ use TYPO3\CMS\Core\Http\ServerRequest;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 #[CoversClass(AjaxController::class)]
+#[CoversClass(GuardrailHints::class)]
 final class AjaxControllerToolsTest extends TestCase
 {
     use TaskRouteControllerTrait;

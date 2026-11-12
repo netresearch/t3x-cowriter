@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
+use Generator;
 use JsonException;
 use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Enum\AgentRunTerminationReason;
@@ -968,23 +969,7 @@ final readonly class AjaxController
                 $this->eventStream->send(['content' => $pending]);
             }
 
-            $done = [
-                'done'    => true,
-                'model'   => $configuration->getModelId(),
-                'content' => $this->convertMarkdownToHtml($content),
-            ];
-            if ($targetWords !== null) {
-                $done['targetWords'] = $targetWords;
-            }
-
-            // A guardrail of nr-llm that let the text pass reports what it found
-            // once the stream is drained.
-            $hints = GuardrailHints::fromDrainedStream($chunks);
-            if ($hints !== []) {
-                $done['hints'] = $hints;
-            }
-
-            $this->eventStream->send($done);
+            $this->eventStream->send($this->streamDoneEvent($content, $configuration->getModelId(), $targetWords, $chunks));
         } catch (ProviderException $e) {
             $this->logger->error('Task stream provider error', [
                 'taskUid'   => $dto->taskUid,
@@ -1448,6 +1433,33 @@ final readonly class AjaxController
      * - Mixed (e.g. <h2> headings but **bold** inline) → inline conversion + paragraph wrapping
      * - Proper HTML → pass through unchanged
      */
+    /**
+     * The done event of a drained task stream. A guardrail of nr-llm that let
+     * the text pass reports what it found once the stream is drained.
+     *
+     * @param Generator<mixed, mixed, mixed, mixed> $chunks the drained stream
+     *
+     * @return array<string, mixed>
+     */
+    private function streamDoneEvent(string $content, string $model, ?int $targetWords, Generator $chunks): array
+    {
+        $done = [
+            'done'    => true,
+            'model'   => $model,
+            'content' => $this->convertMarkdownToHtml($content),
+        ];
+        if ($targetWords !== null) {
+            $done['targetWords'] = $targetWords;
+        }
+
+        $hints = GuardrailHints::fromDrainedStream($chunks);
+        if ($hints !== []) {
+            $done['hints'] = $hints;
+        }
+
+        return $done;
+    }
+
     private function convertMarkdownToHtml(string $content): string
     {
         // Skip conversion for very large outputs to avoid regex performance issues

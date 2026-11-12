@@ -2325,6 +2325,58 @@ describe('CowriterDialog', () => {
                 await expect(showPromise).resolves.toEqual({ content: expect.stringContaining('First result') });
             });
 
+            it('keeps the hints of the answer it kept, and Reset removes them', async () => {
+                mockService.executeTask
+                    .mockResolvedValueOnce({
+                        success: true, content: '<p>First result</p>', model: 'gpt-4o',
+                        hints: [{ kind: 'rule', message: 'Rule 2: no superlatives.' }],
+                    })
+                    .mockResolvedValueOnce({ success: false, error: 'stopped' });
+
+                const dialog = new CowriterDialog(mockService);
+                dialog.show('original text', 'full').catch(() => {});
+                await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(document.querySelector('[data-role="result-preview"]').textContent).toContain('First result'));
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(mockService.executeTask).toHaveBeenCalledTimes(2));
+                await vi.waitFor(() => expect(document.querySelector('[name="execute"]').disabled).toBeFalsy());
+
+                expectTheAnswerIsStillThere();
+                const notices = Array.from(document.querySelectorAll('[data-role="run-notice"]'));
+                expect(notices.map((notice) => notice.getAttribute('role'))).toEqual(['alert', 'status']);
+                expect(notices[0].textContent).toContain('stopped');
+                expect(notices[1].textContent).toContain('Rule 2: no superlatives.');
+
+                document.querySelector('[name="reset"]').click();
+                expect(document.querySelectorAll('[data-role="run-notice"]')).toHaveLength(0);
+            });
+
+            it('removes the kept hints with the failure notice on the next attempt', async () => {
+                mockService.executeTask
+                    .mockResolvedValueOnce({
+                        success: true, content: '<p>First result</p>', model: 'gpt-4o',
+                        hints: [{ kind: 'rule', message: 'Rule 2: no superlatives.' }],
+                    })
+                    .mockResolvedValueOnce({ success: false, error: 'stopped' })
+                    .mockResolvedValueOnce({ success: true, content: 'Next result', model: 'gpt-4o' });
+
+                const dialog = new CowriterDialog(mockService);
+                dialog.show('original text', 'full').catch(() => {});
+                await vi.waitFor(() => expect(mockService.getTasks).toHaveBeenCalled());
+
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(document.querySelector('[data-role="result-preview"]').textContent).toContain('First result'));
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(document.querySelectorAll('[data-role="run-notice"]')).toHaveLength(2));
+                await vi.waitFor(() => expect(document.querySelector('[name="execute"]').disabled).toBeFalsy());
+
+                document.querySelector('[name="execute"]').click();
+                await vi.waitFor(() => expect(document.querySelector('[data-role="result-preview"]').textContent).toContain('Next result'));
+                expect(document.querySelectorAll('[data-role="run-notice"]')).toHaveLength(0);
+            });
+
             it('removes the notice with the next attempt and with Reset', async () => {
                 await firstAnswerThen((task) => task
                     .mockResolvedValueOnce({ success: false, error: 'stopped' })

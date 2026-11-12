@@ -13,6 +13,7 @@ use Netresearch\NrLlm\Domain\Model\CompletionResponse;
 use Netresearch\NrLlm\Domain\Model\UsageStatistics;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\GuardrailHints;
+use Netresearch\T3Cowriter\Domain\DTO\UsageData;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -24,6 +25,7 @@ use stdClass;
  */
 #[CoversClass(GuardrailHints::class)]
 #[CoversClass(CompleteResponse::class)]
+#[CoversClass(UsageData::class)]
 final class GuardrailHintsTest extends TestCase
 {
     #[Test]

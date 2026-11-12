@@ -22,6 +22,7 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Prompt\PromptSnippetComposer;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Domain\DTO\GuardrailHints;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -49,6 +50,7 @@ use TYPO3\CMS\Core\Http\ServerRequest;
 use UnexpectedValueException;
 
 #[CoversClass(AjaxController::class)]
+#[CoversClass(GuardrailHints::class)]
 final class AjaxControllerStreamTest extends TestCase
 {
     use XliffLanguageServiceTrait;
