@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
 use Rector\DeadCode\Rector\ClassMethod\RemoveUnusedPublicMethodParameterRector;
+use Rector\Php55\Rector\String_\StringClassNameToClassConstantRector;
 
 $configure = require __DIR__ . '/../.Build/vendor/netresearch/typo3-ci-workflows/config/rector/rector.php';
 
@@ -25,5 +26,12 @@ return static function (RectorConfig $rectorConfig) use ($configure): void {
 
     $rectorConfig->skip([
         RemoveUnusedPublicMethodParameterRector::class,
+        // nr-llm's GuardrailHintCollector is optional (absent before its
+        // release): the class is named as a string so PHPStan stays clean
+        // without it. Rector sees the test stand-in that declares the class
+        // and would turn the string into ::class.
+        StringClassNameToClassConstantRector::class => [
+            __DIR__ . '/../Classes/Domain/DTO/GuardrailHints.php',
+        ],
     ]);
 };
