@@ -22,6 +22,7 @@ use Netresearch\NrLlm\Service\Tool\ToolLoopServiceInterface;
 use Netresearch\NrLlm\Service\Tool\UnattendedToolFilterInterface;
 use Netresearch\NrLlm\Testing\FakeCompletionService;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Domain\DTO\GuardrailHints;
 use Netresearch\T3Cowriter\Service\Tool\UnattendedToolRunner;
 use Netresearch\T3Cowriter\Tests\Support\TaskRouteControllerTrait;
 use Netresearch\T3Cowriter\Tests\Support\XliffLanguageServiceTrait;
@@ -35,8 +36,10 @@ use ReflectionClass;
 use Throwable;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Http\ServerRequest;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 #[CoversClass(AjaxController::class)]
+#[CoversClass(GuardrailHints::class)]
 final class AjaxControllerToolsTest extends TestCase
 {
     use TaskRouteControllerTrait;
@@ -51,6 +54,9 @@ final class AjaxControllerToolsTest extends TestCase
     private array $unattended = ['search_content'];
 
     private ?Throwable $loopFailure = null;
+
+    /** @var (callable(): void)|null what the loop does besides answering, such as a guardrail reporting */
+    private $duringLoop;
 
     protected function setUp(): void
     {
@@ -69,6 +75,7 @@ final class AjaxControllerToolsTest extends TestCase
 
     protected function tearDown(): void
     {
+        GeneralUtility::purgeInstances();
         unset($GLOBALS['BE_USER']);
         parent::tearDown();
     }
@@ -83,6 +90,29 @@ final class AjaxControllerToolsTest extends TestCase
         self::assertSame(3, $data['toolIterations']);
         self::assertSame('gpt-test', $data['model']);
         self::assertSame([['search_content']], $this->loopTools);
+    }
+
+    /**
+     * The tool loop's result carries no response metadata: the hints nr-llm's
+     * guardrails reported while it ran are collected around it (ADR-288 there).
+     */
+    #[Test]
+    public function theHintsReportedDuringTheToolLoopArriveWithTheAnswer(): void
+    {
+        require_once __DIR__ . '/../Fixtures/GuardrailHintCollectorDouble.php';
+        $collector = new (GuardrailHints::COLLECTOR)();
+        GeneralUtility::addInstance(GuardrailHints::COLLECTOR, $collector);
+        $hintClass        = 'Netresearch\\NrLlm\\Domain\\ValueObject\\GuardrailHint';
+        $this->duringLoop = static function () use ($collector, $hintClass): void {
+            $hint = class_exists($hintClass)
+                ? new $hintClass('rule-set-judge', 'violation', 'Rule "Siezen": "Hallo du"')
+                : (object) ['kind' => 'violation', 'message' => 'Rule "Siezen": "Hallo du"'];
+            $collector->record($hint);
+        };
+
+        $data = $this->json($this->subject()->executeTaskAction($this->request(useTools: true)));
+
+        self::assertSame([['kind' => 'violation', 'message' => 'Rule "Siezen": "Hallo du"']], $data['hints'] ?? null);
     }
 
     #[Test]
@@ -144,6 +174,10 @@ final class AjaxControllerToolsTest extends TestCase
             $this->loopTools[] = $tools;
             if ($this->loopFailure instanceof Throwable) {
                 throw $this->loopFailure;
+            }
+
+            if ($this->duringLoop !== null) {
+                ($this->duringLoop)();
             }
 
             return new ToolLoopResult('**Two** pages mention it.', [], 3, false, new UsageStatistics(20, 8, 28));

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Netresearch\T3Cowriter\Controller;
 
+use Generator;
 use JsonException;
 use Netresearch\NrLlm\Domain\DTO\BudgetCheckResult;
 use Netresearch\NrLlm\Domain\Enum\AgentRunTerminationReason;
@@ -28,6 +29,7 @@ use Netresearch\T3Cowriter\Domain\DTO\CompleteRequest;
 use Netresearch\T3Cowriter\Domain\DTO\CompleteResponse;
 use Netresearch\T3Cowriter\Domain\DTO\ContextRequest;
 use Netresearch\T3Cowriter\Domain\DTO\ExecuteTaskRequest;
+use Netresearch\T3Cowriter\Domain\DTO\GuardrailHints;
 use Netresearch\T3Cowriter\Domain\DTO\PageSearchResult;
 use Netresearch\T3Cowriter\Service\BackendLabels;
 use Netresearch\T3Cowriter\Service\BudgetRefusal;
@@ -676,7 +678,11 @@ final readonly class AjaxController
     {
         $backendUser = $GLOBALS['BE_USER'] ?? null;
         if ($dto->useTools && $this->toolRunner instanceof UnattendedToolRunner && $backendUser instanceof BackendUserAuthentication) {
-            $result = $this->toolRunner->run($messages, $configuration, $backendUser, $site);
+            // The loop result carries no response metadata, so the hints of
+            // nr-llm's guardrails are collected around it.
+            $toolRunner = $this->toolRunner;
+            $captured   = GuardrailHints::capture(static fn (): mixed => $toolRunner->run($messages, $configuration, $backendUser, $site));
+            $result     = $captured['result'];
             if ($result instanceof ToolLoopResult && $result->terminationReason === AgentRunTerminationReason::BUDGET_EXHAUSTED) {
                 // The tool loop ends a budget refusal without the exception
                 // and without the limit; ask the budget for it.
@@ -693,6 +699,7 @@ final readonly class AjaxController
                         usage: $result->usage,
                         finishReason: $result->truncated ? 'length' : 'stop',
                         provider: '',
+                        metadata: GuardrailHints::asMetadata($captured['hints']),
                     ),
                     'toolIterations' => $result->iterations,
                 ];
@@ -962,16 +969,7 @@ final readonly class AjaxController
                 $this->eventStream->send(['content' => $pending]);
             }
 
-            $done = [
-                'done'    => true,
-                'model'   => $configuration->getModelId(),
-                'content' => $this->convertMarkdownToHtml($content),
-            ];
-            if ($targetWords !== null) {
-                $done['targetWords'] = $targetWords;
-            }
-
-            $this->eventStream->send($done);
+            $this->eventStream->send($this->streamDoneEvent($content, $configuration->getModelId(), $targetWords, $chunks));
         } catch (ProviderException $e) {
             $this->logger->error('Task stream provider error', [
                 'taskUid'   => $dto->taskUid,
@@ -1435,6 +1433,33 @@ final readonly class AjaxController
      * - Mixed (e.g. <h2> headings but **bold** inline) → inline conversion + paragraph wrapping
      * - Proper HTML → pass through unchanged
      */
+    /**
+     * The done event of a drained task stream. A guardrail of nr-llm that let
+     * the text pass reports what it found once the stream is drained.
+     *
+     * @param Generator<mixed, mixed, mixed, mixed> $chunks the drained stream
+     *
+     * @return array<string, mixed>
+     */
+    private function streamDoneEvent(string $content, string $model, ?int $targetWords, Generator $chunks): array
+    {
+        $done = [
+            'done'    => true,
+            'model'   => $model,
+            'content' => $this->convertMarkdownToHtml($content),
+        ];
+        if ($targetWords !== null) {
+            $done['targetWords'] = $targetWords;
+        }
+
+        $hints = GuardrailHints::fromDrainedStream($chunks);
+        if ($hints !== []) {
+            $done['hints'] = $hints;
+        }
+
+        return $done;
+    }
+
     private function convertMarkdownToHtml(string $content): string
     {
         // Skip conversion for very large outputs to avoid regex performance issues

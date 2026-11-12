@@ -33,6 +33,8 @@ final readonly class CompleteResponse implements JsonSerializable
         public ?string $error,
         public ?int $retryAfter,
         public ?string $thinking = null,
+        /** @var list<array{kind: string, message: string}> what a guardrail of nr-llm found without stopping the text */
+        public array $hints = [],
     ) {}
 
     /** Known tiny malformed fragments that indicate the model's answer is in thinking. */
@@ -93,6 +95,7 @@ final readonly class CompleteResponse implements JsonSerializable
             error: null,
             retryAfter: null,
             thinking: $thinking,
+            hints: GuardrailHints::fromMetadata($response->metadata),
         );
     }
 
@@ -155,6 +158,10 @@ final readonly class CompleteResponse implements JsonSerializable
             $data['usage']        = $this->usage?->jsonSerialize();
             if ($this->thinking !== null) {
                 $data['thinking'] = $this->thinking;
+            }
+
+            if ($this->hints !== []) {
+                $data['hints'] = $this->hints;
             }
         } else {
             $data['error'] = $this->error;

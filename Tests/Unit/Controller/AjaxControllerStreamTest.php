@@ -22,6 +22,7 @@ use Netresearch\NrLlm\Provider\Exception\ProviderException;
 use Netresearch\NrLlm\Service\LlmServiceManagerInterface;
 use Netresearch\NrLlm\Service\Prompt\PromptSnippetComposer;
 use Netresearch\T3Cowriter\Controller\AjaxController;
+use Netresearch\T3Cowriter\Domain\DTO\GuardrailHints;
 use Netresearch\T3Cowriter\Service\ContextAssemblyServiceInterface;
 use Netresearch\T3Cowriter\Service\DiagnosticService;
 use Netresearch\T3Cowriter\Service\RateLimiterInterface;
@@ -37,6 +38,7 @@ use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\NullLogger;
+use stdClass;
 use TYPO3\CMS\Backend\Module\ModuleProvider;
 use TYPO3\CMS\Backend\Routing\UriBuilder as BackendUriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
@@ -48,6 +50,7 @@ use TYPO3\CMS\Core\Http\ServerRequest;
 use UnexpectedValueException;
 
 #[CoversClass(AjaxController::class)]
+#[CoversClass(GuardrailHints::class)]
 final class AjaxControllerStreamTest extends TestCase
 {
     use XliffLanguageServiceTrait;
@@ -102,6 +105,36 @@ final class AjaxControllerStreamTest extends TestCase
         self::assertSame('gpt-test', $done['model']);
         self::assertIsString($done['content']);
         self::assertStringContainsString('<strong>world</strong>', $done['content']);
+    }
+
+    #[Test]
+    public function theHintsAStreamReturnsArriveWithTheDoneEvent(): void
+    {
+        $this->llm->method('streamChatWithConfiguration')->willReturnCallback(static function (): Generator {
+            yield 'Hallo du';
+
+            $hint          = new stdClass();
+            $hint->kind    = 'violation';
+            $hint->message = 'Rule "Siezen": "Hallo du"';
+
+            return [$hint];
+        });
+
+        $this->subject()->executeTaskStreamAction($this->request());
+
+        $done = $this->stream->events[array_key_last($this->stream->events)];
+        self::assertTrue($done['done']);
+        self::assertSame([['kind' => 'violation', 'message' => 'Rule "Siezen": "Hallo du"']], $done['hints'] ?? null);
+    }
+
+    #[Test]
+    public function aStreamWithoutHintsSendsNoHintsKey(): void
+    {
+        $this->streamChunks(['Guten Tag']);
+
+        $this->subject()->executeTaskStreamAction($this->request());
+
+        self::assertArrayNotHasKey('hints', $this->stream->events[array_key_last($this->stream->events)]);
     }
 
     #[Test]

@@ -510,10 +510,44 @@ export class CowriterDialog {
                 preview.replaceChildren(...Array.from(this._sanitizeHtml(streamed).childNodes));
             }, signal);
 
-            return { success: true, content: final.content ?? streamed, model: final.model, targetWords: final.targetWords };
+            return {
+                success: true, content: final.content ?? streamed, model: final.model, targetWords: final.targetWords, hints: final.hints,
+            };
         } finally {
             preview.removeAttribute('aria-busy');
         }
+    }
+
+    /**
+     * Show what a guardrail of nr-llm found without stopping the text, such as
+     * a rule the rule-set judge says the text breaks. The text stays, and the
+     * notice goes where a kept answer's notice goes, so the next run removes it.
+     *
+     * @param {HTMLElement} preview
+     * @param {Array<{kind?: string, message?: string}>|undefined} hints
+     * @private
+     */
+    _showHints(preview, hints) {
+        const messages = (Array.isArray(hints) ? hints : [])
+            .map((hint) => (typeof hint?.message === 'string' ? hint.message : ''))
+            .filter((message) => message !== '');
+        if (messages.length === 0) {
+            return;
+        }
+
+        const notice = document.createElement('div');
+        notice.className = 'alert alert-warning';
+        notice.setAttribute('role', 'status');
+        notice.dataset.role = 'run-notice';
+        const list = document.createElement('ul');
+        list.className = 'mb-0';
+        for (const message of messages) {
+            const item = document.createElement('li');
+            item.textContent = message;
+            list.appendChild(item);
+        }
+        notice.appendChild(list);
+        preview.before(notice);
     }
 
     /**
@@ -923,6 +957,8 @@ export class CowriterDialog {
         /** @type {'idle'|'loading'|'result'} */
         let state = 'idle';
         let resultContent = '';
+        /** @type {Array<{kind?: string, message?: string}>} the hints of the answer in resultContent */
+        let resultHints = [];
         const hasSelection = Boolean(selectedText && selectedText.trim().length > 0);
         let currentContext = hasSelection ? selectedText : fullContent;
         const originalContext = currentContext;
@@ -962,6 +998,7 @@ export class CowriterDialog {
                     this._appendStatusLink(notice, statusUrl);
                 }
                 preview.before(notice);
+                this._showHints(preview, resultHints);
 
                 state = 'result';
                 this._updateButtonVisibility(modal, 'result');
@@ -972,8 +1009,9 @@ export class CowriterDialog {
             const resetTrigger = () => {
                 activeRequest?.abort();
                 state = 'idle';
-                container.querySelector('[data-role="run-notice"]')?.remove();
+                container.querySelectorAll('[data-role="run-notice"]').forEach((notice) => notice.remove());
                 resultContent = '';
+                resultHints = [];
                 currentContext = originalContext;
 
                 const preview = container.querySelector('[data-role="result-preview"]');
@@ -994,7 +1032,7 @@ export class CowriterDialog {
                 state = 'loading';
                 this._setButtonsDisabled(modal, true);
                 this._updateButtonVisibility(modal, 'loading');
-                container.querySelector('[data-role="run-notice"]')?.remove();
+                container.querySelectorAll('[data-role="run-notice"]').forEach((notice) => notice.remove());
 
                 const preview = container.querySelector('[data-role="result-preview"]');
                 const modelInfo = container.querySelector('[data-role="model-info"]');
@@ -1074,6 +1112,9 @@ export class CowriterDialog {
                             modelInfo.textContent = modelInfo.textContent ? `${modelInfo.textContent} | ${wordsText}` : wordsText;
                             modelInfo.style.display = 'block';
                         }
+
+                        resultHints = Array.isArray(result.hints) ? result.hints : [];
+                        this._showHints(preview, resultHints);
 
                         container.querySelector('[data-role="variant-picker"]')?.remove();
                         if (Array.isArray(result.variants) && result.variants.length > 1) {
