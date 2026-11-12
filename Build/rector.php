@@ -32,6 +32,8 @@ return static function (RectorConfig $rectorConfig) use ($configure): void {
         // and would turn the string into ::class.
         StringClassNameToClassConstantRector::class => [
             __DIR__ . '/../Classes/Domain/DTO/GuardrailHints.php',
+            // Same for the test that checks the real collector when nr-llm has it.
+            __DIR__ . '/../Tests/Unit/Controller/AjaxControllerToolsTest.php',
         ],
     ]);
 };

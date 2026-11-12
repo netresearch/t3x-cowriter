@@ -58,7 +58,7 @@ AI-powered content assistant for TYPO3 CKEditor - write better content with help
 
 - PHP 8.2+
 - TYPO3 v13.4 LTS or v14.3 LTS
-- [netresearch/nr-llm](https://github.com/netresearch/t3x-nr-llm) 0.43.9 or later, up to 0.43 (LLM provider abstraction)
+- [netresearch/nr-llm](https://github.com/netresearch/t3x-nr-llm) 0.43.9 or later, up to 0.44 (LLM provider abstraction)
 
 ## Installation
 
