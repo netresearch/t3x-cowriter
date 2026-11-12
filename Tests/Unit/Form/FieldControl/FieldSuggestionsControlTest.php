@@ -64,6 +64,7 @@ final class FieldSuggestionsControlTest extends TestCase
         self::assertSame('LLL:EXT:t3_cowriter/Resources/Private/Language/locallang_be.xlf:fieldSuggestions.button', $result['title']);
         self::assertStringStartsWith('t3js-cowriter-suggestions-', $attributes['id']);
         self::assertSame('button', $attributes['role']);
+        self::assertSame('translated:button', $attributes['aria-label'], 'core puts the title on the aria-hidden icon only');
         self::assertSame('false', $attributes['aria-expanded']);
         self::assertSame($attributes['id'] . '-panel', $attributes['aria-controls']);
         self::assertSame('/typo3/ajax/cowriter/suggestions?token=abc', $attributes['data-url']);

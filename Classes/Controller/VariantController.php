@@ -109,7 +109,7 @@ final readonly class VariantController
 
         try {
             $element = $this->elementReader->read($dto->uid, $backendUser);
-            $this->elementReader->refuseForTranslations($element, $backendUser);
+            $this->elementReader->refuseForTranslations($element);
             if (trim(strip_tags($element->bodytext)) === '') {
                 throw VariantException::noText();
             }
@@ -168,7 +168,7 @@ final readonly class VariantController
         try {
             // Everything is checked again: the proposal's verdict is not trusted.
             $element = $this->elementReader->read($dto->uid, $backendUser);
-            $this->elementReader->refuseForTranslations($element, $backendUser);
+            $this->elementReader->refuseForTranslations($element);
             if (!hash_equals($element->fingerprint(), $dto->fingerprint)) {
                 throw VariantException::changed();
             }

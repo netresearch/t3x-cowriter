@@ -94,6 +94,7 @@ final class PresentationControlTest extends TestCase
         self::assertIsString($attributes['id']);
         self::assertStringStartsWith('t3js-cowriter-presentation-', $attributes['id']);
         self::assertSame('button', $attributes['role']);
+        self::assertSame('translated:button', $attributes['aria-label'], 'core puts the title on the aria-hidden icon only');
         self::assertSame('false', $attributes['aria-expanded']);
         self::assertSame($attributes['id'] . '-panel', $attributes['aria-controls']);
         self::assertSame('/typo3/ajax/ajax_tx_cowriter_presentation_propose?token=abc', $attributes['data-propose-url']);

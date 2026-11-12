@@ -16,6 +16,8 @@ use Netresearch\T3Cowriter\Service\RecordEditAccess;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
@@ -29,8 +31,15 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * hides it, and, when a context was chosen, makes it visible in that context
  * only. The original is not touched.
  *
- * show: makes the copy visible and, when the editor asks for it, hides the
- * original in the copy's context.
+ * The copy leaves the element's translations behind: copied, they would
+ * carry the old wording. The header and text reach the copy as the update
+ * DataHandler runs after the copy command and its processCmdmap_postProcess
+ * hooks, so the copy is saved like an edited element: an extension that
+ * translates a saved element and pauses during a copy (EXT:autotranslate
+ * 3.6 does both) gets that save with the new text.
+ *
+ * show: makes the copy and its translations visible and, when the editor
+ * asks for it, hides the original in the copy's context.
  *
  * DataHandler is not transactional and leaves out what the editor may not
  * write without an error. So every result is read back; a copy that is not
@@ -46,6 +55,7 @@ class VariantWriter
         private readonly LoggerInterface $logger,
         private readonly RecordEditAccess $recordEditAccess = new RecordEditAccess(),
         private readonly PresentationAccess $access = new PresentationAccess(),
+        private readonly ?SiteFinder $siteFinder = null,
     ) {}
 
     /**
@@ -68,9 +78,14 @@ class VariantWriter
         }
 
         $dataHandler = GeneralUtility::makeInstance(DataHandler::class);
+        // The paste action unwraps 'target' once, and the copy command reads
+        // 'target' and 'ignoreLocalization' from what is left (TYPO3 13.4 and
+        // 14.3). ignoreLocalization also skips copyRecord()'s edit check, whose
+        // only part the reader does not repeat is the access to every language
+        // of the translations; with none copied, there is nothing it protects.
         $dataHandler->start([], ['tt_content' => [$element->uid => ['copy' => [
             'action' => 'paste',
-            'target' => -$element->uid,
+            'target' => ['target' => -$element->uid, 'ignoreLocalization' => true],
             'update' => $update,
         ]]]], $backendUser);
         $dataHandler->process_cmdmap();
@@ -80,6 +95,7 @@ class VariantWriter
         $variantUid = is_numeric($copied) ? (int) $copied : 0;
 
         if ($variantUid > 0 && $dataHandler->errorLog === []
+            && !$this->tookTranslationsAlong($element, is_array($copies) ? $copies : [], $backendUser)
             && $this->isStoredAsIntended($variantUid, $element, $header, $hiddenField, $contextUid, $backendUser)
         ) {
             return $variantUid;
@@ -99,9 +115,9 @@ class VariantWriter
     }
 
     /**
-     * Makes the variant visible, and hides the original in $contextUid when
-     * $hideOriginal is set. The original keeps every other context setting
-     * it has.
+     * Makes the variant and its translations visible, and hides the original
+     * in $contextUid when $hideOriginal is set. The original keeps every
+     * other context setting it has.
      *
      * @throws VariantException when a record is not there, not a pair this
      *                          writer created, or the change did not come
@@ -109,37 +125,47 @@ class VariantWriter
      */
     public function show(int $variantUid, int $originalUid, int $contextUid, bool $hideOriginal, BackendUserAuthentication $backendUser): void
     {
-        $workspaceId = max(0, $backendUser->workspace);
-        $variant     = $this->recordFinder->findRecord('tt_content', $variantUid, $workspaceId);
-        $original    = $this->recordFinder->findRecord('tt_content', $originalUid, $workspaceId);
-        $hiddenField = PresentationAccess::hiddenField();
+        $workspaceId  = max(0, $backendUser->workspace);
+        $variant      = $this->recordFinder->findRecord('tt_content', $variantUid, $workspaceId);
+        $original     = $this->recordFinder->findRecord('tt_content', $originalUid, $workspaceId);
+        $hiddenField  = PresentationAccess::hiddenField();
+        $pointerField = Tca::transOrigPointerField('tt_content');
+        // A translation made from the hidden variant (by an extension that
+        // translates a saved element, or by the editor) is hidden with it. A
+        // hidden translation is not overlaid, so a translated page would show
+        // the visible variant in the default language: they are shown with it.
+        $translations = $pointerField !== null
+            ? $this->recordFinder->findTranslations('tt_content', $pointerField, $variantUid, $workspaceId)
+            : [];
 
         // The pair as create() left it: on one page, the variant visible only
-        // in its context. Both records are checked before the one write, so
-        // the variant is not shown while DataHandler refuses the original
-        // (an edit lock, a language the editor lost), and the original is not
-        // hidden while DataHandler silently drops the variant's hidden field
-        // (the editor lost the right on it since the creation).
+        // in its context. All records are checked before the one write, so
+        // the variant is not shown while DataHandler refuses the original or a
+        // translation (an edit lock, a language the editor lost), and the
+        // original is not hidden while DataHandler silently drops the
+        // variant's hidden field (the editor lost the right on it since the
+        // creation).
         if ($variant === null || $original === null || $hiddenField === null || $contextUid < 1
             || $this->intValue($variant['pid'] ?? 0) !== $this->intValue($original['pid'] ?? 0)
             || !$this->contexts->isEnabledIn($variant, $contextUid)
             || !$this->access->mayWrite($backendUser, 'tt_content', $hiddenField)
             || !$this->recordEditAccess->mayEdit($backendUser, 'tt_content', $variant)
             || ($hideOriginal && !$this->recordEditAccess->mayEdit($backendUser, 'tt_content', $original))
+            || !$this->mayEditAll($backendUser, $translations)
         ) {
             throw VariantException::notAvailable();
         }
 
-        // A translation added to the original since the creation would be
-        // hidden in the context with it, while the variant has none.
-        $pointerField = Tca::transOrigPointerField('tt_content');
-        if ($hideOriginal && $pointerField !== null
-            && $this->recordFinder->countTranslations('tt_content', $pointerField, $originalUid, $workspaceId) > 0
-        ) {
-            throw VariantException::originalTranslated();
-        }
+        $originalTranslations = $hideOriginal && $pointerField !== null
+            ? $this->recordFinder->findTranslations('tt_content', $pointerField, $originalUid, $workspaceId)
+            : [];
+        $this->refuseForLanguages($this->intValue($variant['pid'] ?? 0), $contextUid, $translations, $originalTranslations);
 
         $data = [$variantUid => [$hiddenField => 0]];
+        foreach ($translations as $translation) {
+            $data[$this->intValue($translation['uid'] ?? 0)] = [$hiddenField => 0];
+        }
+
         if ($hideOriginal) {
             $data[$originalUid] = [AudienceContexts::SETTINGS_FIELD => $this->contexts->hiddenIn($original, $contextUid)];
         }
@@ -152,6 +178,7 @@ class VariantWriter
         $originalAfter = $this->recordFinder->findRecord('tt_content', $originalUid, $workspaceId);
         if ($dataHandler->errorLog === [] && $variantAfter !== null && $originalAfter !== null
             && $this->intValue($variantAfter[$hiddenField] ?? 1) === 0
+            && $this->allShown($translations, $hiddenField, $workspaceId)
             && (!$hideOriginal || $this->keepsOtherSettings($original, $originalAfter, $contextUid))
         ) {
             return;
@@ -164,6 +191,29 @@ class VariantWriter
         ]);
 
         throw VariantException::showFailed();
+    }
+
+    /**
+     * Whether a translation of the element was copied with it, in the old
+     * wording: when a DataHandler version no longer honours the flag, the
+     * copy is deleted (its translations with it) instead of kept.
+     *
+     * @param array<array-key, mixed> $copies copyMappingArray_merged of tt_content
+     */
+    private function tookTranslationsAlong(VariantElement $element, array $copies, BackendUserAuthentication $backendUser): bool
+    {
+        $pointerField = Tca::transOrigPointerField('tt_content');
+        if ($pointerField === null) {
+            return false;
+        }
+
+        foreach ($this->recordFinder->findTranslations('tt_content', $pointerField, $element->uid, max(0, $backendUser->workspace)) as $translation) {
+            if (array_key_exists($this->intValue($translation['uid'] ?? 0), $copies)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -196,6 +246,139 @@ class VariantWriter
 
         return $contextUid === 0
             || ($this->contexts->isEnabledIn($row, $contextUid) && $this->contexts->currentSettings($row) === $this->contexts->onlyIn($contextUid));
+    }
+
+    /**
+     * A language in free mode selects its records on their own columns, not
+     * as overlays of the default language: the context of the variant and
+     * the original does not reach their translations there. A translation of
+     * the variant that is not restricted to exactly that context itself would
+     * be shown to every visitor (or in another context), and the original's translation would stay next to it.
+     *
+     * Hiding the original in the context hides its translations there too;
+     * each needs a translation of the variant in its language that is
+     * published at least whenever the original's translation is.
+     *
+     * @param list<array<string, mixed>> $translations         of the variant
+     * @param list<array<string, mixed>> $originalTranslations of the original, none when it is not hidden
+     *
+     * @throws VariantException
+     */
+    private function refuseForLanguages(int $pageUid, int $contextUid, array $translations, array $originalTranslations): void
+    {
+        $freeLanguages = $this->freeLanguages($pageUid);
+        foreach ($translations as $translation) {
+            // Restricted to exactly this context: a translation enabled in a
+            // second context would show the audience text there too.
+            if (in_array($this->language($translation), $freeLanguages, true)
+                && (!$this->contexts->isEnabledIn($translation, $contextUid) || $this->contexts->currentSettings($translation) !== $this->contexts->onlyIn($contextUid))
+            ) {
+                throw VariantException::freeLanguage();
+            }
+        }
+
+        foreach ($originalTranslations as $originalTranslation) {
+            if (in_array($this->language($originalTranslation), $freeLanguages, true)) {
+                throw VariantException::freeLanguage();
+            }
+
+            if (!$this->isCovered($originalTranslation, $translations)) {
+                throw VariantException::originalTranslated();
+            }
+        }
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     */
+    private function mayEditAll(BackendUserAuthentication $backendUser, array $rows): bool
+    {
+        foreach ($rows as $row) {
+            if (!$this->recordEditAccess->mayEdit($backendUser, 'tt_content', $row)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function language(array $row): int
+    {
+        return $this->intValue($row[Tca::languageField('tt_content') ?? 'sys_language_uid'] ?? 0);
+    }
+
+    /**
+     * The ids of the languages the site of $pageUid shows in free mode
+     * (fallbackType free); none for a page outside every site.
+     *
+     * @return list<int>
+     */
+    private function freeLanguages(int $pageUid): array
+    {
+        try {
+            $site = ($this->siteFinder ?? GeneralUtility::makeInstance(SiteFinder::class))->getSiteByPageId($pageUid);
+        } catch (SiteNotFoundException) {
+            return [];
+        }
+
+        $free = [];
+        foreach ($site->getAllLanguages() as $siteLanguage) {
+            if ($siteLanguage->getFallbackType() === 'free') {
+                $free[] = $siteLanguage->getLanguageId();
+            }
+        }
+
+        return $free;
+    }
+
+    /**
+     * Whether a translation of the variant in the language of
+     * $originalTranslation is published at least whenever that translation
+     * is: it starts no later and ends no earlier (0 means no limit).
+     *
+     * @param array<string, mixed>       $originalTranslation
+     * @param list<array<string, mixed>> $variantTranslations
+     */
+    private function isCovered(array $originalTranslation, array $variantTranslations): bool
+    {
+        $startField = Tca::enableColumn('tt_content', 'starttime');
+        $endField   = Tca::enableColumn('tt_content', 'endtime');
+        $start      = $startField === null ? 0 : $this->intValue($originalTranslation[$startField] ?? 0);
+        $end        = $endField === null ? 0 : $this->intValue($originalTranslation[$endField] ?? 0);
+
+        foreach ($variantTranslations as $variantTranslation) {
+            if ($this->language($variantTranslation) !== $this->language($originalTranslation)) {
+                continue;
+            }
+
+            $variantStart = $startField === null ? 0 : $this->intValue($variantTranslation[$startField] ?? 0);
+            $variantEnd   = $endField === null ? 0 : $this->intValue($variantTranslation[$endField] ?? 0);
+            if ($variantStart <= $start && ($variantEnd === 0 || ($end !== 0 && $variantEnd >= $end))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Every one of the given translations is visible now.
+     *
+     * @param list<array<string, mixed>> $translations
+     */
+    private function allShown(array $translations, string $hiddenField, int $workspaceId): bool
+    {
+        foreach ($translations as $translation) {
+            $after = $this->recordFinder->findRecord('tt_content', $this->intValue($translation['uid'] ?? 0), $workspaceId);
+            if ($after === null || $this->intValue($after[$hiddenField] ?? 1) !== 0) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

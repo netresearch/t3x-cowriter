@@ -761,13 +761,29 @@ Requirements:
     and image of the element comes along, then header, text and ``hidden``
     are set in the same DataHandler run, the result is read back, and a
     copy that is not stored as intended is deleted again.
-*   An element with translations, and a connected translation, get no
-    variant: the copy would take the translations over with the old text.
-    The dialog says so. In connected translation mode no element of the
-    set gets a variant; a free translation (no ``l18n_parent``) gets one in
-    its language. An original that got translations after the variant was
-    created is not hidden by the show step, since its translations would
-    be hidden in the context with it; the variant can still be shown.
+*   The element's translations are not copied: they would carry the old
+    text. Header and text reach the copy as an ordinary save after the
+    copy command, so an extension that translates an element when it is
+    saved, and pauses while it is copied, gets that save with the new
+    text and can translate the variant from it. Without such an
+    extension, translate the variant in the :guilabel:`Layout` module.
+    A connected translation gets no variant (the dialog says so): create
+    it for the default-language element. A free translation (no
+    ``l18n_parent``) gets one in its language.
+*   The show step makes the variant's translations visible with it: they
+    were made from the hidden variant and are hidden too. It hides the
+    original in the context only when the variant has a translation in
+    every language the original has one in, published at least whenever
+    the original's translation is (start and stop dates); otherwise the
+    original's translation would be hidden there as well. The variant can
+    still be shown without hiding the original.
+*   A language the site shows in free mode (``fallbackType: free``)
+    selects its own records instead of overlaying the default language,
+    so the context does not reach the translations there. In such a
+    language the show step shows a translation of the variant only when
+    the translation itself is restricted to that context alone, and it does not
+    hide the original: set the visibility of those translations in the
+    :guilabel:`Layout` module.
 *   The proposal counts against the editor's
     :ref:`nr-llm budget <nrllm:administration-user-budgets>` and the
     Cowriter rate limit; texts of more than 20,000 characters are refused

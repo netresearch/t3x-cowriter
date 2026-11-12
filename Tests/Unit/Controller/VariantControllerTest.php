@@ -401,16 +401,16 @@ final class VariantControllerTest extends TestCase
     }
 
     #[Test]
-    public function anElementWithTranslationsIsRefusedWithItsReason(): void
+    public function aConnectedTranslationIsRefusedWithItsReason(): void
     {
         $this->reader = $this->createStub(VariantElementReader::class);
         $this->reader->method('read')->willReturn($this->element());
-        $this->reader->method('refuseForTranslations')->willThrowException(VariantException::hasTranslations());
+        $this->reader->method('refuseForTranslations')->willThrowException(VariantException::connectedTranslation());
 
         $response = $this->subject()->proposeAction($this->request(['uid' => 10, 'audience' => self::AUDIENCE]));
 
         self::assertSame(409, $response->getStatusCode());
-        self::assertStringStartsWith('This element has translations.', (string) $this->json($response)['error']);
+        self::assertStringStartsWith('This element is a translation connected to the default language.', (string) $this->json($response)['error']);
     }
 
     #[Test]

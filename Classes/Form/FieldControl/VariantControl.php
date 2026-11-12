@@ -99,6 +99,10 @@ final class VariantControl extends AbstractNode
             $linkAttributes[$attribute] = $languageService->sL(self::LABEL_PREFIX . $label);
         }
 
+        // Core renders the title on the icon only, which is aria-hidden: the
+        // button itself needs the name.
+        $linkAttributes['aria-label'] = $languageService->sL(self::LABEL_PREFIX . 'button');
+
         return [
             'iconIdentifier'    => 'actions-duplicate',
             'title'             => self::LABEL_PREFIX . 'button',

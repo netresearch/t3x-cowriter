@@ -17,9 +17,11 @@ use Netresearch\T3Cowriter\Service\Variant\VariantElementReader;
 use Netresearch\T3Cowriter\Service\Variant\VariantException;
 use Netresearch\T3Cowriter\Service\Variant\VariantWriter;
 use Netresearch\T3Cowriter\Tests\Support\RecordingLogger;
+use Netresearch\T3Cowriter\Tests\Support\TranslateOnSaveHook;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
+use TYPO3\CMS\Core\Configuration\SiteWriter;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
@@ -34,8 +36,9 @@ use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
  * missing field right).
  *
  * Fixture: elements 10 and 12 on page 2, 12 has the contexts 6 (enabled)
- * and 7 (disabled); 13 has the translation 14; 15 and 16 are free
- * translations. Contexts 5 and 6 are assignable, 7 is hidden in the backend,
+ * and 7 (disabled); 13 has the German translation 14; 15 and 16 are free
+ * translations. Page 1 is the root of a site with English and German; page
+ * 4 is the German translation of page 2. Contexts 5 and 6 are assignable, 7 is hidden in the backend,
  * 8 is disabled.
  */
 #[CoversClass(VariantElementReader::class)]
@@ -57,10 +60,35 @@ final class VariantWriterTest extends FunctionalTestCase
         'netresearch/t3-cowriter',
     ];
 
+    private const VARIANT_STAYS_HIDDEN = 'the variant stays hidden';
+
+    private const ORIGINAL_NOT_HIDDEN = 'the original is not hidden in the context';
+
+    private const VARIANT_TRANSLATION_HEADER = 'Lampen für Studierende';
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->importCSVDataSet(__DIR__ . '/Fixtures/elements.csv');
+
+        // A site with German and a German page 2: DataHandler copies a
+        // translation along only onto a page of a site that has its language
+        // and a translation of the page in it.
+        GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('pages')->insert('pages', [
+            'uid'              => 4,
+            'pid'              => 1,
+            'title'            => 'Produkte',
+            'slug'             => '/produkte',
+            'doktype'          => 1,
+            'sys_language_uid' => 1,
+            'l10n_parent'      => 2,
+            'perms_userid'     => 1,
+            'perms_groupid'    => 1,
+            'perms_user'       => 31,
+            'perms_group'      => 31,
+            'perms_everybody'  => 31,
+        ]);
+        $this->writeSite('strict');
     }
 
     private function finder(): RecordFinder
@@ -231,8 +259,8 @@ final class VariantWriterTest extends FunctionalTestCase
             self::assertSame('variant.error.notAvailable', $e->getLabelKey());
         }
 
-        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant stays hidden');
-        self::assertSame('', (string) $this->row(10)['tx_contexts_disable'], 'the original is not hidden in the context');
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
+        self::assertSame('', (string) $this->row(10)['tx_contexts_disable'], self::ORIGINAL_NOT_HIDDEN);
     }
 
     #[Test]
@@ -258,7 +286,7 @@ final class VariantWriterTest extends FunctionalTestCase
             self::assertSame('variant.error.originalTranslated', $e->getLabelKey());
         }
 
-        self::assertSame(1, (int) $this->row($uid)['hidden'], 'the variant stays hidden');
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
         self::assertSame('', (string) $this->row(10)['tx_contexts_disable']);
     }
 
@@ -396,13 +424,75 @@ final class VariantWriterTest extends FunctionalTestCase
     }
 
     #[Test]
-    public function anElementWithTranslationsIsRefused(): void
+    public function anElementWithTranslationsGetsAVariantWithoutTheirOldWording(): void
     {
+        // A site that translates every saved element gives each new element
+        // a translation at once, so refusing those left no element.
         $editor  = $this->editor(2);
         $element = $this->reader()->read(13, $editor);
+        $this->reader()->refuseForTranslations($element);
+        $translation = $this->row(14);
 
-        $this->expectExceptionObject(VariantException::hasTranslations());
-        $this->reader()->refuseForTranslations($element, $editor);
+        $uid = $this->create(13, 5, $editor);
+
+        self::assertSame(self::HEADER, $this->row($uid)['header']);
+        self::assertSame([], $this->translationsOf($uid), 'no translation in the old wording came along');
+        self::assertSame($translation, $this->row(14), 'the translation of the original is not touched');
+    }
+
+    #[Test]
+    public function anExtensionThatTranslatesSavedElementsGetsTheVariantWithItsNewText(): void
+    {
+        $hooks                                           = &$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php'];
+        $hooks['processDatamapClass']['translateOnSave'] = TranslateOnSaveHook::class;
+        $hooks['processCmdmapClass']['translateOnSave']  = TranslateOnSaveHook::class;
+        TranslateOnSaveHook::$translated                 = [];
+
+        $uid = $this->create(13, 5, $this->editor(2));
+
+        $saves = array_values(array_filter(
+            TranslateOnSaveHook::$translated,
+            static fn (array $save): bool => $save['table'] === 'tt_content' && (int) $save['uid'] === $uid,
+        ));
+        self::assertCount(1, $saves, 'the variant is saved once after the copy command, outside its pause');
+        self::assertSame('update', $saves[0]['status']);
+        self::assertContains('header', $saves[0]['fields']);
+        self::assertContains('bodytext', $saves[0]['fields']);
+    }
+
+    #[Test]
+    public function aVariantTranslatedLikeItsOriginalIsShownWithItsTranslation(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        // What translating the saved variant leaves (EXT:autotranslate
+        // localizes the hidden copy): a hidden connected translation.
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER);
+
+        $this->writer()->show($uid, 13, 5, true, $editor);
+
+        self::assertSame(0, (int) $this->row($uid)['hidden']);
+        self::assertSame(0, (int) $this->row(31)['hidden'], 'translated pages show the variant in their language');
+        self::assertSame('5', (string) $this->row(13)['tx_contexts_disable'], 'the original is hidden in the context');
+        self::assertSame(0, (int) $this->row(14)['hidden'], 'the translation of the original stays as it is');
+    }
+
+    #[Test]
+    public function aTranslationOfTheVariantTheEditorMayNotEditIsNotHalfSwitched(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['editlock' => 1]);
+
+        try {
+            $this->writer()->show($uid, 13, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.notAvailable', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
+        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], self::ORIGINAL_NOT_HIDDEN);
     }
 
     #[Test]
@@ -412,7 +502,7 @@ final class VariantWriterTest extends FunctionalTestCase
         $element = $this->reader()->read(14, $editor);
 
         $this->expectExceptionObject(VariantException::connectedTranslation());
-        $this->reader()->refuseForTranslations($element, $editor);
+        $this->reader()->refuseForTranslations($element);
     }
 
     #[Test]
@@ -420,11 +510,153 @@ final class VariantWriterTest extends FunctionalTestCase
     {
         $editor  = $this->editor(2);
         $element = $this->reader()->read(16, $editor);
-        $this->reader()->refuseForTranslations($element, $editor);
+        $this->reader()->refuseForTranslations($element);
 
         $row = $this->row($this->create(16, 5, $editor));
         self::assertSame(1, (int) $row['sys_language_uid']);
         self::assertSame(0, (int) $row['l18n_parent']);
+    }
+
+    #[Test]
+    public function aTranslationPublishedLaterThanTheOriginalsDoesNotLetTheOriginalBeHidden(): void
+    {
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['starttime' => 4102444800]);
+
+        try {
+            $this->writer()->show($uid, 13, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.originalTranslated', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
+        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], self::ORIGINAL_NOT_HIDDEN);
+    }
+
+    #[Test]
+    public function inAFreeLanguageATranslationOutsideTheContextIsNotShown(): void
+    {
+        $this->writeSite('free');
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER);
+
+        try {
+            $this->writer()->show($uid, 13, 5, false, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.freeLanguage', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
+        self::assertSame(1, (int) $this->row(31)['hidden'], 'the translation stays hidden');
+    }
+
+    #[Test]
+    public function inAFreeLanguageATranslationInTheContextIsShownWithTheVariant(): void
+    {
+        $this->writeSite('free');
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['tx_contexts_enable' => '5']);
+
+        $this->writer()->show($uid, 13, 5, false, $editor);
+
+        self::assertSame(0, (int) $this->row($uid)['hidden']);
+        self::assertSame(0, (int) $this->row(31)['hidden']);
+    }
+
+    #[Test]
+    public function inAFreeLanguageATranslationAlsoInAnotherContextIsNotShown(): void
+    {
+        $this->writeSite('free');
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['tx_contexts_enable' => '5,6']);
+
+        try {
+            $this->writer()->show($uid, 13, 5, false, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.freeLanguage', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row(31)['hidden'], 'the translation stays hidden');
+    }
+
+    #[Test]
+    public function inAFreeLanguageTheTranslatedOriginalIsNotHidden(): void
+    {
+        $this->writeSite('free');
+        $editor = $this->editor(2);
+        $uid    = $this->create(13, 5, $editor);
+        $this->insertTranslation(31, $uid, self::VARIANT_TRANSLATION_HEADER, ['tx_contexts_enable' => '5']);
+
+        try {
+            $this->writer()->show($uid, 13, 5, true, $editor);
+            self::fail('the show step must be refused');
+        } catch (VariantException $e) {
+            self::assertSame('variant.error.freeLanguage', $e->getLabelKey());
+        }
+
+        self::assertSame(1, (int) $this->row($uid)['hidden'], self::VARIANT_STAYS_HIDDEN);
+        self::assertSame('', (string) $this->row(13)['tx_contexts_disable'], self::ORIGINAL_NOT_HIDDEN);
+    }
+
+    /**
+     * The site with English and German, German in $germanFallbackType.
+     */
+    private function writeSite(string $germanFallbackType): void
+    {
+        $this->get(SiteWriter::class)->write('main', [
+            'rootPageId' => 1,
+            'base'       => 'https://example.com/',
+            'languages'  => [
+                ['languageId' => 0, 'title' => 'English', 'locale' => 'en_US.UTF-8', 'base' => '/'],
+                ['languageId' => 1, 'title' => 'Deutsch', 'locale' => 'de_DE.UTF-8', 'base' => '/de/', 'fallbackType' => $germanFallbackType],
+            ],
+        ]);
+    }
+
+    /**
+     * The uids of the translations connected to $uid.
+     *
+     * @return list<int>
+     */
+    private function translationsOf(int $uid): array
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
+        $queryBuilder->getRestrictions()->removeAll();
+
+        return array_map(intval(...), $queryBuilder->select('uid')->from('tt_content')
+            ->where(
+                $queryBuilder->expr()->eq('l18n_parent', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT)),
+                $queryBuilder->expr()->eq('deleted', 0),
+            )
+            ->executeQuery()
+            ->fetchFirstColumn());
+    }
+
+    /**
+     * A hidden German translation connected to $parent.
+     *
+     * @param array<string, int|string> $fields
+     */
+    private function insertTranslation(int $uid, int $parent, string $header, array $fields = []): void
+    {
+        GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('tt_content')->insert('tt_content', $fields + [
+            'uid'              => $uid,
+            'pid'              => 2,
+            'header'           => $header,
+            'bodytext'         => '<p>Günstig und stabil.</p>',
+            'CType'            => 'text',
+            'sys_language_uid' => 1,
+            'l18n_parent'      => $parent,
+            'hidden'           => 1,
+            'sorting'          => 1100,
+        ]);
     }
 
     /**

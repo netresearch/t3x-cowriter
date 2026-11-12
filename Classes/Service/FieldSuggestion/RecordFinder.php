@@ -326,13 +326,24 @@ class RecordFinder
      */
     public function countTranslations(string $table, string $pointerField, int $uid, int $workspaceId): int
     {
+        return count($this->findTranslations($table, $pointerField, $uid, $workspaceId));
+    }
+
+    /**
+     * The records that are translations of $uid (their transOrigPointerField
+     * points to it), as $workspaceId sees them, hidden ones included.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findTranslations(string $table, string $pointerField, int $uid, int $workspaceId): array
+    {
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()
             ->removeAll()
             ->add(new DeletedRestriction())
             ->add(new WorkspaceRestriction($workspaceId));
 
-        $count = 0;
+        $translations = [];
         foreach ($queryBuilder
             ->select('*')
             ->from($table)
@@ -340,12 +351,13 @@ class RecordFinder
             ->executeQuery()
             ->fetchAllAssociative() as $row) {
             // A translation this workspace deletes does not count.
-            if ($this->overlay($table, $row, $workspaceId) !== null) {
-                ++$count;
+            $overlaid = $this->overlay($table, $row, $workspaceId);
+            if ($overlaid !== null) {
+                $translations[] = $overlaid;
             }
         }
 
-        return $count;
+        return $translations;
     }
 
     /**

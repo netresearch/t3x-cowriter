@@ -1220,14 +1220,14 @@
             <trans-unit id="variant.error.notAvailable" resname="variant.error.notAvailable">
                 <source>This element cannot get an audience variant, or you may not create one.</source>
             </trans-unit>
-            <trans-unit id="variant.error.translations" resname="variant.error.translations">
-                <source>This element has translations. A copy would take them over with the old text, so an element with translations gets no audience variant. A free translation (not connected to the default language) can get one in its language.</source>
-            </trans-unit>
             <trans-unit id="variant.error.connectedTranslation" resname="variant.error.connectedTranslation">
-                <source>This element is a translation connected to the default language. Neither it nor its default-language element can get an audience variant; a free translation (not connected to the default language) can.</source>
+                <source>This element is a translation connected to the default language. It cannot get an audience variant: create the variant of its default-language element. A free translation (not connected to the default language) can get one in its language.</source>
             </trans-unit>
             <trans-unit id="variant.error.originalTranslated" resname="variant.error.originalTranslated">
-                <source>This element got translations since the variant was created. Hiding it in the context would hide them there too. Show the variant without hiding this element.</source>
+                <source>This element has a translation in a language the variant has none in, or none that is published whenever the translation of this element is (start and stop dates). Hiding this element in the context would hide that translation there too. Translate the variant into that language first, or show the variant without hiding this element.</source>
+            </trans-unit>
+            <trans-unit id="variant.error.freeLanguage" resname="variant.error.freeLanguage">
+                <source>This site shows the language of a translation in free mode, with its own records instead of translations of the default language. There the context does not reach the translations: the translation of the variant would be shown to every visitor in that language, and the translation of this element would not be hidden. Set the visibility of the translations in that language in the Layout module.</source>
             </trans-unit>
             <trans-unit id="variant.error.noText" resname="variant.error.noText">
                 <source>This element has no saved text to rewrite. Save the element first.</source>
