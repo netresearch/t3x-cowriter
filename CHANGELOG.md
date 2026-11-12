@@ -2,6 +2,25 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.28.0 (2026-11-12)
+
+### FEATURE
+
+- The writing dialog lists the hints an nr-llm guardrail reports without stopping a text, such as a rule nr-llm's rule-set judge says the text breaks, above the result in the notice box a kept answer uses; the text stays insertable. This covers chat, completion and tasks, a task run with tools included. With an nr-llm that reports no hints nothing changes (#275).
+
+### BUGFIX
+
+- An element with translations now gets an audience variant instead of HTTP 409. The copy leaves the translations in the old wording behind; a site that translates saved elements (for example EXT:autotranslate) translates the variant from its new text. "Show the variant" shows the variant's translations with it, and hides the original in the context only when the variant has a translation, published at least whenever the original's is, in every language the original has one in. In a language the site shows in free mode (`fallbackType: free`) a variant translation is shown only when it is restricted to that context alone, and the original is not hidden there. A connected translation still gets no variant (#274).
+- The FormEngine buttons "Create an audience variant", "Present as tabs or accordion" and "Suggest values with AI" have an accessible name (#274).
+
+### DOCS
+
+- Configuration › Audience variant and Usage: elements with translations, the show step's rules for translations, schedules and free-mode languages (#274).
+
+### BUILD
+
+- `checks.yml` follows the typo3-extension template again (#273, #276, #277).
+
 ## 3.27.0 (2026-11-08)
 
 ### FEATURE
