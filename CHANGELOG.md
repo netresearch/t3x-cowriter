@@ -2,6 +2,12 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.28.3 (2026-11-13)
+
+### BUGFIX
+
+- Cowriter accepts nr-llm 0.46 beside 0.43.9 and later, so an installation can update to nr-llm 0.46.0.
+
 ## 3.28.2 (2026-11-13)
 
 ### BUGFIX
