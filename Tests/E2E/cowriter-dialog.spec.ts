@@ -155,8 +155,6 @@ test.describe('Cowriter Dialog', () => {
             await expect(insertBtn).toBeVisible();
         } catch {
             // LLM not available or error occurred
-            // Check the Result area for error content
-            const resultArea = dialog.locator('.result-area, [class*="result"]');
             // Either result or error is acceptable for E2E
         }
     });
