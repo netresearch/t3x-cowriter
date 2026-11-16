@@ -63,7 +63,7 @@ jobs:
           node-version: '24'
 
       - name: Install npm packages
-        run: npm ci --ignore-scripts=true || npm install --ignore-scripts=true
+        run: npm ci --ignore-scripts=true
 
       - name: Fail when the CKEditor build is missing
         # Without it the project skips itself and this job would prove nothing.
