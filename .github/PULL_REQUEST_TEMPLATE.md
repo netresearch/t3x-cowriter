@@ -20,7 +20,7 @@
 - [ ] I have updated the documentation if needed
 - [ ] I have added tests that prove my fix/feature works
 - [ ] My code follows the project's code style (PSR-12)
-- [ ] I have updated CHANGELOG.md if this is a user-facing change
+- [ ] I have updated Documentation/ if this is a user-facing change (the release PR writes CHANGELOG.md)
 
 ## Test Plan
 
