@@ -2,6 +2,12 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.28.8 (2026-11-18)
+
+### BUGFIX
+
+- Cowriter accepts nr-llm 0.51 beside 0.43.9 to 0.50, so an installation can update to nr-llm 0.51.0 ([#294](https://github.com/netresearch/t3x-cowriter/pull/294)).
+
 ## 3.28.7 (2026-11-17)
 
 ### BUGFIX
