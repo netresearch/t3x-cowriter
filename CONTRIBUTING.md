@@ -110,7 +110,7 @@ Checks that run on every pull request in this repository:
   Opengrep cover the PHP code); Betterleaks secret scanning; zizmor for the
   workflow files; the pull request quality check.
 - `.github/workflows/ci.yml`: PHP lint, code style, PHPStan (level 10,
-  `Build/phpstan.neon`), Rector, unit and functional tests on PHP 8.2 to 8.5
+  `Build/phpstan.neon`), Rector, unit and functional tests on PHP 8.2 to 8.6
   with TYPO3 13.4 and 14.3 on SQLite, and the functional tests once more on
   MariaDB (PHP 8.4, TYPO3 14.3). Locally:
   `Build/Scripts/runTests.sh -s functional -d mariadb -p 8.4`.
