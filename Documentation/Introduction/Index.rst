@@ -57,7 +57,7 @@ Features
 *   **XSS Protection**: LLM output is returned raw and sanitized on the frontend
     via a DOMParser-based pipeline before insertion into the editor
 *   Support for TYPO3 v13.4 and v14
-*   Compatible with PHP 8.2 — 8.5
+*   Compatible with PHP 8.2 — 8.6
 
 Requirements
 ============

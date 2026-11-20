@@ -73,7 +73,7 @@ All files in `.github/workflows/` are thin callers of `netresearch/typo3-ci-work
 
 ## Code Style
 
-- PSR-12 + PER-CS 2.0; `declare(strict_types=1);` in every PHP file; PHP 8.2 baseline (must stay compatible through 8.5)
+- PSR-12 + PER-CS 2.0; `declare(strict_types=1);` in every PHP file; PHP 8.2 baseline (must stay compatible through 8.6)
 - PHPStan level 10; refresh baseline only via `composer ci:test:php:phpstan:baseline`
 - Prefer `final readonly` classes, constructor promotion, DI via [Configuration/Services.yaml](Configuration/Services.yaml)
 - JavaScript: ES modules, CKEditor 5 plugin conventions, ESLint ([eslint.config.js](eslint.config.js)), no jQuery
