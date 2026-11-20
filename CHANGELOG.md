@@ -2,6 +2,17 @@
 <!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
 # Changelog
 
+## 3.28.9 (2026-11-21)
+
+### BUGFIX
+
+- Cowriter accepts nr-llm 0.52 beside 0.43.9 to 0.51, so an installation can update to nr-llm 0.52.0 ([#297](https://github.com/netresearch/t3x-cowriter/pull/297)).
+
+### BUILD
+
+- CI tests PHP 8.6, and the documentation states PHP 8.2 to 8.6 as the supported range ([#296](https://github.com/netresearch/t3x-cowriter/pull/296)).
+- The JavaScript tests run on vitest 5.1.1 ([#299](https://github.com/netresearch/t3x-cowriter/pull/299)), and the Checks workflow uses harden-runner 2.23.0 ([#300](https://github.com/netresearch/t3x-cowriter/pull/300)).
+
 ## 3.28.8 (2026-11-18)
 
 ### BUGFIX
