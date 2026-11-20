@@ -9,7 +9,7 @@
 
 ## Overview
 
-Multi-layer test suite: PHP unit, functional, integration, and E2E tests (PHPUnit via `../Build/Scripts/runTests.sh`, configs in `../Build/phpunit/`), JavaScript unit tests (Vitest, `JavaScript/`), and browser E2E specs (Playwright, `E2E/*.spec.ts`). CI runs the PHP suites across the PHP 8.2–8.5 × TYPO3 ^13.4/^14.3 matrix.
+Multi-layer test suite: PHP unit, functional, integration, and E2E tests (PHPUnit via `../Build/Scripts/runTests.sh`, configs in `../Build/phpunit/`), JavaScript unit tests (Vitest, `JavaScript/`), and browser E2E specs (Playwright, `E2E/*.spec.ts`). CI runs the PHP suites across the PHP 8.2–8.6 × TYPO3 ^13.4/^14.3 matrix.
 
 ## Setup
 

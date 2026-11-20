@@ -55,7 +55,7 @@ make up                      # Start DDEV + install TYPO3 v13/v14 + render docs 
 make urls                    # Show access URLs
 ```
 
-**CI is authoritative** — verify fixes pass in GitHub Actions before merging. The matrix (PHP 8.2–8.5 × TYPO3 ^13.4/^14.3) runs via the shared reusable workflows in `netresearch/typo3-ci-workflows`.
+**CI is authoritative** — verify fixes pass in GitHub Actions before merging. The matrix (PHP 8.2–8.6 × TYPO3 ^13.4/^14.3) runs via the shared reusable workflows in `netresearch/typo3-ci-workflows`.
 
 ## CI/CD Workflows
 
@@ -63,7 +63,7 @@ All files in `.github/workflows/` are thin callers of `netresearch/typo3-ci-work
 
 | File | Purpose |
 |------|---------|
-| `ci.yml` | Test matrix PHP 8.2–8.5 × TYPO3 ^13.4/^14.3 incl. functional tests (SQLite), one functional cell on MariaDB (PHP 8.4, TYPO3 ^14.3), coverage upload |
+| `ci.yml` | Test matrix PHP 8.2–8.6 × TYPO3 ^13.4/^14.3 incl. functional tests (SQLite), one functional cell on MariaDB (PHP 8.4, TYPO3 ^14.3), coverage upload |
 | `checks.yml` | Composer audit + Opengrep, betterleaks, zizmor, fuzz, license check, CodeQL, dependency review, PR quality, Scorecard (push/schedule) |
 | `testing.yml` | Extended testing (shared extended-testing reusable) |
 | `docs.yml` | TYPO3 documentation rendering |
@@ -73,7 +73,7 @@ All files in `.github/workflows/` are thin callers of `netresearch/typo3-ci-work
 
 ## Code Style
 
-- PSR-12 + PER-CS 2.0; `declare(strict_types=1);` in every PHP file; PHP 8.2 baseline (must stay compatible through 8.5)
+- PSR-12 + PER-CS 2.0; `declare(strict_types=1);` in every PHP file; PHP 8.2 baseline (must stay compatible through 8.6)
 - PHPStan level 10; refresh baseline only via `composer ci:test:php:phpstan:baseline`
 - Prefer `final readonly` classes, constructor promotion, DI via [Configuration/Services.yaml](Configuration/Services.yaml)
 - JavaScript: ES modules, CKEditor 5 plugin conventions, ESLint ([eslint.config.js](eslint.config.js)), no jQuery
