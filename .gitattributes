@@ -21,3 +21,4 @@
 /.sonarcloud.properties export-ignore
 /captainhook.json       export-ignore
 /vitest.config.js       export-ignore
+/changelog.d/           export-ignore
