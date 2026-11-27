@@ -62,7 +62,7 @@
         "bk2k/bootstrap-package": "^16.0.1",
         "netresearch/contexts": "^5.0.4",
         "netresearch/rte-ckeditor-image": "^13.10.3",
-        "netresearch/typo3-ci-workflows": "^2.0.3",
+        "netresearch/typo3-ci-workflows": "^2.3.1",
         "typo3/cms-seo": "^13.4 || ^14.3",
         "typo3/cms-workspaces": "^13.4 || ^14.3"
     },
@@ -117,7 +117,10 @@
         "ci:cgl": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then php-cs-fixer fix --config Build/.php-cs-fixer.dist.php \"$@\"; else ./Build/Scripts/runTests.sh -s cgl \"$@\"; fi' --",
         "ci:rector": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then rector process --config Build/rector.php \"$@\"; else ./Build/Scripts/runTests.sh -s rector \"$@\"; fi' --",
         "ci:security": "composer audit",
-        "ci:test:php:cgl": "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then php-cs-fixer fix --config Build/.php-cs-fixer.dist.php --dry-run --diff \"$@\"; else ./Build/Scripts/runTests.sh -s cgl -n \"$@\"; fi' --",
+        "ci:test:php:cgl": [
+            "@ci:test:changelog",
+            "sh -c 'if [ -f /.dockerenv ] || [ -n \"${CI:-}\" ]; then php-cs-fixer fix --config Build/.php-cs-fixer.dist.php --dry-run --diff \"$@\"; else ./Build/Scripts/runTests.sh -s cgl -n \"$@\"; fi' --"
+        ],
         "ci:test:php:lint": [
             "phplint --configuration Build/.phplint.yml"
         ],
@@ -141,6 +144,8 @@
             "@ci:test:php:functional",
             "@ci:test:php:integration",
             "@ci:test:php:e2e"
-        ]
+        ],
+        "changelog:collect": "changelog-fragments collect",
+        "ci:test:changelog": "changelog-fragments check @no_additional_args"
     }
 }

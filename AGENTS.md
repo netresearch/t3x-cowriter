@@ -36,6 +36,7 @@ composer ci:test:php:phpstan # PHPStan (Build/phpstan.neon)
 composer ci:test:php:rector  # Rector dry-run
 composer ci:test:php:cgl     # Code style check
 composer ci:cgl              # Auto-fix code style
+composer ci:test:changelog   # Check the changelog.d/ fragments
 composer ci:rector           # Apply Rector
 
 # PHP tests (Docker-based via Build/Scripts/runTests.sh)
@@ -89,12 +90,13 @@ All files in `.github/workflows/` are thin callers of `netresearch/typo3-ci-work
 1. `composer ci:test` green; tests updated and green (`composer ci:test:all`, `npm test`)
 2. Conventional Commits: `type(scope): subject` — scopes: `backend`, `frontend`, `config`, `docs`, `build`, `ddev`
 3. Signed commits with DCO sign-off required: `git commit -S --signoff` (see [CONTRIBUTING.md](CONTRIBUTING.md))
-4. Update Documentation/ for user-facing changes (the release PR writes the `CHANGELOG.md` entry, see Changelog below); keep AGENTS.md in sync when commands or CI change
+4. Update Documentation/ for user-facing changes (a user-visible change adds a `changelog.d/` fragment, see Changelog below); keep AGENTS.md in sync when commands or CI change
 
 ## Changelog
 
-- Changes are recorded in [`CHANGELOG.md`](CHANGELOG.md), newest first: `## X.Y.Z (YYYY-MM-DD)` with `### FEATURE`, `### BUGFIX`, `### TASK`, `### DOCS`, `### BUILD` as needed; each entry ends with its PR number, for example `(#268)`. There is no `Unreleased` section.
-- The release PR `chore(release): X.Y.Z` writes the version's section from the PRs merged since the last tag; feature and fix PRs leave the file alone.
+- Changes are recorded in [`CHANGELOG.md`](CHANGELOG.md), [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) from the release after 3.28.11 on: `## [X.Y.Z] - YYYY-MM-DD` with `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` as needed, newest first, below `## [Unreleased]`. Releases up to 3.28.11 keep their original format (`## X.Y.Z (YYYY-MM-DD)` with `### FEATURE`, `### BUGFIX` and the like) below.
+- A feature or fix PR writes its entry as a fragment `changelog.d/<branch-slug>.<section>.md` ([format](changelog.d/README.md)) instead of editing `CHANGELOG.md`; `composer ci:test:changelog` checks it, and CI runs it through `composer ci:test:php:cgl`.
+- The release PR `chore(release): X.Y.Z` runs `composer changelog:collect`, which moves the fragments into `## [Unreleased]`, and then renames that section to `## [X.Y.Z] - YYYY-MM-DD`.
 
 ## Index of scoped AGENTS.md
 
